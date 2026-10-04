@@ -7,6 +7,20 @@ namespace Amane.Pdf.Api;
 
 public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 {
+    public async Task ValidateAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
+    {
+        if (new FileInfo(files.InputPath).Length == 0) throw new PdfInputException();
+
+        // This inspection also detects encryption when the input password is unknown or empty.
+        var encrypted = await RunAsync(["--is-encrypted", files.InputPath], cancellationToken);
+        if (encrypted is 0 or 3) throw new PdfInputException();
+        if (encrypted != 2) throw new InvalidOperationException("PDF inspection failed.");
+
+        var check = await RunAsync(["--check", files.InputPath], cancellationToken);
+        if (check is 2 or 3) throw new PdfInputException();
+        if (check != 0) throw new InvalidOperationException("PDF inspection failed.");
+    }
+
     public async Task ProtectAsync(TemporaryPdfFiles files, string password, CancellationToken cancellationToken)
     {
         var ownerPassword = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -18,6 +32,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         {
             ["inputFile"] = files.InputPath,
             ["outputFile"] = files.OutputPath,
+            ["passwordMode"] = "unicode",
             ["encrypt"] = new Dictionary<string, object>
             {
                 ["userPassword"] = password,
@@ -29,7 +44,9 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         {
             await JsonSerializer.SerializeAsync(stream, job, cancellationToken: cancellationToken);
         }
-        if (await RunAsync(["--job-json-file=" + files.JobPath], cancellationToken) != 0)
+        var exitCode = await RunAsync(["--job-json-file=" + files.JobPath], cancellationToken);
+        if (exitCode == 3) throw new PdfInputException();
+        if (exitCode != 0)
         {
             throw new InvalidOperationException("PDF processing failed.");
         }

@@ -38,6 +38,17 @@ PDF処理部分に問題が発生した場合でも、Webサイト本体への�
 
 JSONの形式とCLIの対応は[qpdf公式QPDFJob文書](https://qpdf.readthedocs.io/en/stable/qpdf-job.html)に従います。
 
+## 入力検証とエラー
+
+- Content-Typeや利用者ファイル名を信用せず、qpdfでPDF構造を検証する
+- 空ファイル、非PDF、破損PDF、qpdf warningを422で拒否する
+- 既暗号化PDFは`--is-encrypted`で判定し、空のuser passwordや一致するpasswordでも拒否する
+- 必須項目不足/重複、multipart形式不正、制御文字やUTF-8で127 bytesを超えるpasswordは400で拒否する
+- qpdf実行失敗や未知のexit codeは500とし、HTTP response/logには内部例外を含めない
+- エラーは固定文言のProblem Detailsへ統一し、password、PDF本文、内部path、stack trace、stderrを含めない
+
+qpdfの検証はPDF構造の検証であり、PDF内のJavaScriptや添付ファイルの無害化はこのAPIの機能に含みません。
+
 ## リソース制限
 
 公開前に次の上限を設けます。
@@ -67,5 +78,5 @@ qpdfの更新状況を定期的に確認し、既知の脆弱性や重要な修�
 
 ## 後続Issueで実装する対策
 
-詳細なPDF入力検証と統一エラー仕様は#3、サイズ・timeout・同時実行制限は#4、DockerのE2E CIは#5で追加します。
+サイズ・timeout・同時実行制限は#4、DockerのE2E CIは#5で追加します。
 利用者/IP単位の頻度制限、コンテナのCPU/メモリ/ネットワーク設定は入口・実行環境の責務です。

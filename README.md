@@ -12,11 +12,12 @@ PDFを安全に処理するための小さなWeb APIです。
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
 - 独立したランダムowner password、QPDFJob JSON経由のパスワード入力
 - 成功・失敗・キャンセル時の一時ファイル削除
+- 正常PDFの検証、破損/警告/既暗号化PDFの拒否、統一Problem Details
+- Unicodeパスワード対応
 - 実qpdfを使った自動テスト、Docker build、GitHub Actions
 
 後続Issueで実装する項目:
 
-- 詳細なPDF入力検証とエラー仕様（#3）
 - ファイルサイズ・処理時間・同時実行数の制限（#4）
 - Docker上のE2EをCIで検証（#5）
 
@@ -55,6 +56,25 @@ curl --fail-with-body -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
 ```
 
 このパスワードは動作確認用の例です。実パスワードをshell履歴へ残さない方法は呼び出し側で用意してください。
+
+### 入力とエラー
+
+`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。
+Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
+
+Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
+exit code 2（error）と3（warning）は422として拒否し、自動修復したPDFを成功扱いにしません。
+既暗号化PDFは、password不要で開けるものや送信したpasswordが一致するものも含め、v1では拒否します。
+
+| HTTP status | 条件 |
+| --- | --- |
+| 200 | 暗号化PDFを返却 |
+| 400 | multipart形式不正、必須項目不足/重複、password仕様違反 |
+| 422 | 空ファイル、非PDF、破損/警告のあるPDF、既暗号化PDF |
+| 500 | qpdf実行環境や処理中の想定外の内部障害 |
+
+エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
+サイズ超過・timeout・同時実行上限の仕様は#4で追加します。
 
 ## 構成
 
