@@ -67,11 +67,19 @@ timeoutは504で返し、qpdfの検査・暗号化の各段階でprocess treeの
 
 利用者/IP単位の頻度制限は入口側、CPU/メモリ/tmpfs容量の上限は実行環境側で設定します。
 
-## ネットワーク
+## コンテナとネットワーク
 
-PDF処理コンテナから外部インターネットへ通信する必要は基本的にありません。
+実コンテナsmoke testで次を確認しています。
 
-本番環境では、運用上必要な通信を確認した上で、不要な外向き通信を許可しない構成を目標とします。
+- appユーザー（non-root）で実行する
+- read-only root filesystem + tmpfs /tmpでPDF暗号化・入力拒否・削除が成立する
+- CPU 1 / memory 512 MiB / tmpfs 256 MiBを外側から指定できる
+- capabilityをdropし、no-new-privilegesで実行できる
+- DB、Secret、永続Volumeなしで動作し、終了時にはコンテナを削除する
+- 外部networkなし（--network none）のコンテナでもloopback HTTPで実PDF処理が成立する
+
+PDF処理時に外向き通信は必要ありません。サービス間通信や不要な外向き通信の制御は、本番実行環境で設定する責務です。
+SIGKILLやコンテナ強制終了ではfinallyは実行されません。tmpfsを用いることで、コンテナを削除した後にPDFやpasswordファイルを永続Volumeへ残さない構成にできます。
 
 ## qpdf
 
@@ -81,7 +89,10 @@ qpdfはApache License 2.0で公開されているOSSです。
 
 qpdfの更新状況を定期的に確認し、既知の脆弱性や重要な修正がある場合は更新します。
 
-## 後続Issueで実装する対策
+## 検証と責務の境界
 
-DockerのE2E CIは#5で追加します。
-利用者/IP単位の頻度制限、コンテナのCPU/メモリ/ネットワーク設定は入口・実行環境の責務です。
+実qpdfの暗号化/正誤password/Unicode/不正入力、一時ファイル削除、argv非露出を.NETテストで確認します。
+timeoutとキャンセルは実process shimで遅延を再現し、親/子PIDの終了と処理枠の再利用を確認します。
+CIでは実コンテナでhealth、QPDFJob JSONと必要機能、暗号化、異常入力、413、情報非露出、一時領域の削除を確認し、host/containerのqpdf versionを記録します。
+
+API自身のサイズ・処理時間・同時実行制限は実装済みです。利用者/IP単位の頻度制限、CPU/メモリ/ネットワーク設定、公開・deployは入口と実行環境の責務です。

@@ -4,6 +4,7 @@ obj/
 .vscode/
 .idea/
 TestResults/
+__pycache__/
 *.user
 *.suo
 *.swp
