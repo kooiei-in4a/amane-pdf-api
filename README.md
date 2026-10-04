@@ -15,11 +15,9 @@ PDFを安全に処理するための小さなWeb APIです。
 - 正常PDFの検証、破損/警告/既暗号化PDFの拒否、統一Problem Details
 - Unicodeパスワード対応
 - PDF 50 MiB / qpdf処理30秒 / 同時2処理 / 待ち行列0の制限
-- 実qpdfを使った自動テスト、Docker build、GitHub Actions
+- 実qpdfを使った自動テスト、Docker build、実コンテナE2Eを含むGitHub Actions
 
-後続Issueで実装する項目:
-
-- Docker上のE2EをCIで検証（#5）
+API単体の実装とDocker / CIの実処理検証が完了しています。
 
 `amane-tools-site` との接続は別Repositoryの責務です。
 
@@ -51,11 +49,15 @@ password  PDFを開くためのパスワード
 qpdfがexit code 0で終了するまでレスポンスを開始しません。利用者ファイル名は保存先にも返却名にも使いません。
 
 ```bash
-curl --fail-with-body -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
-  -F password=example-password http://localhost:8080/api/pdf/protect -o protected.pdf
+read -r -s -p 'PDF password: ' pdf_password
+printf '\n'
+printf '%s' "$pdf_password" | curl --fail-with-body \
+  -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
+  -F 'password=<-' http://127.0.0.1:8080/api/pdf/protect -o protected.pdf
+unset pdf_password
 ```
 
-このパスワードは動作確認用の例です。実パスワードをshell履歴へ残さない方法は呼び出し側で用意してください。
+このBashの例ではパスワードを対話入力し、stdinからcurlへ渡します。パスワード値をcommand line argvやshell履歴に載せません。
 
 ### 入力とエラー
 
@@ -123,6 +125,7 @@ Dockerfile
 - .NET 10 SDK
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Docker（コンテナ確認を行う場合）
+- Python 3（Docker smoke test。追加package不要）
 
 ビルドとテスト:
 
@@ -135,7 +138,7 @@ dotnet test --configuration Release --no-build
 ローカル起動:
 
 ```bash
-dotnet run --project src/Amane.Pdf.Api --urls http://localhost:8080
+dotnet run --project src/Amane.Pdf.Api --urls http://127.0.0.1:8080
 ```
 
 起動後:
@@ -150,7 +153,10 @@ Docker:
 
 ```bash
 docker build -t amane-pdf-api:dev .
-docker run --rm -p 8080:8080 amane-pdf-api:dev
+docker run --rm -p 127.0.0.1:8080:8080 \
+  --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m \
+  --cpus 1 --memory 512m --cap-drop ALL \
+  --security-opt no-new-privileges=true amane-pdf-api:dev
 ```
 
 コンテナ内のqpdf確認:
@@ -158,6 +164,29 @@ docker run --rm -p 8080:8080 amane-pdf-api:dev
 ```bash
 docker run --rm --entrypoint qpdf amane-pdf-api:dev --version
 ```
+
+## Docker / CIの検証
+
+CIと同じ実コンテナsmoke test:
+
+```bash
+docker build -t amane-pdf-api:ci .
+python3 scripts/docker-smoke.py amane-pdf-api:ci
+```
+
+CIではrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。
+qpdfの存在/versionだけでなく、QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能を実処理で確認します。必要機能が欠けるimageではCIが失敗します。
+
+smoke testは13件のPOSTとhealthを検証します。正常暗号化、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化とpassword確認を行います。
+各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
+
+確認したqpdf versionは開発環境12.3.2、コンテナ11.9.0です。CIではhost/containerそれぞれのversionをログへ出します。qpdfの完全なversion pinを目的とせず、必要機能を検証します。
+将来releaseを行う場合は、そのCI runのimage digestとqpdf versionを使用imageと対応付けて記録してください。
+
+DB、Secret、PDFの永続Volumeは不要です。writable領域は/tmpだけで成立します。CPU/memory/tmpfsの容量は起動オプションで外側から調整できます。
+実行時に外向き通信は不要で、`--network none`でも処理可能です。サービス間の到達性と入口側の利用回数制限は実行環境で設定します。
+これらの確認はローカル/CIの検証であり、本番deployやGHCR publishは行いません。
 
 ## セキュリティ
 
