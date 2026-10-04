@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
-using System.Text;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace Amane.Pdf.Api;
 
@@ -10,40 +9,32 @@ public static class PdfProtectEndpoint
     {
         try
         {
-            if (!MediaTypeHeaderValue.TryParse(context.Request.ContentType, out var contentType) ||
-                !contentType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
+            if (context.Request.ContentLength > options.Value.MaxRequestBytes)
             {
-                await Results.Problem(statusCode: 400, title: "multipart/form-data が必要です。").ExecuteAsync(context);
-                return;
+                throw new BadHttpRequestException("Request size limit exceeded.", 413);
             }
-            IFormCollection form;
+            var bodySize = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (bodySize is { IsReadOnly: false }) bodySize.MaxRequestBodySize = options.Value.MaxRequestBytes;
+            using var files = new TemporaryPdfFiles(options.Value.TempRoot);
+            var password = await MultipartPdfUpload.ReadAsync(context.Request, files, options.Value, context.RequestAborted);
+            var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
+            timeout.CancelAfter(TimeSpan.FromSeconds(options.Value.QpdfTimeoutSeconds));
             try
             {
-                form = await context.Request.ReadFormAsync(context.RequestAborted);
+                await processor.ValidateAsync(files, timeout.Token);
+                await processor.ProtectAsync(files, password, timeout.Token);
             }
-            catch (IOException)
+            catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested && !stopping.IsCancellationRequested)
             {
-                throw new BadHttpRequestException("Invalid multipart body.");
-            }
-            var file = form.Files.GetFile("file");
-            var password = form["password"].ToString();
-            if (file is null || form.Files.Count != 1 || form["password"].Count != 1 || string.IsNullOrEmpty(password))
-            {
-                await Results.Problem(statusCode: 400, title: "file と password が必要です。").ExecuteAsync(context);
+                await Results.Problem(statusCode: 504, title: "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
                 return;
             }
-            if (Encoding.UTF8.GetByteCount(password) > 127 || password.Any(char.IsControl))
+            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
             {
-                await Results.Problem(statusCode: 400, title: "password は制御文字を含まないUTF-8で127 bytes以内にしてください。").ExecuteAsync(context);
+                context.Abort();
                 return;
             }
-            using var files = new TemporaryPdfFiles(options.Value.TempRoot);
-            await using (var input = TemporaryPdfFiles.CreatePrivateFile(files.InputPath))
-            {
-                await file.CopyToAsync(input, context.RequestAborted);
-            }
-            await processor.ValidateAsync(files, context.RequestAborted);
-            await processor.ProtectAsync(files, password, context.RequestAborted);
             await using var output = File.OpenRead(files.OutputPath);
             context.Response.ContentType = "application/pdf";
             context.Response.ContentLength = output.Length;
@@ -58,9 +49,11 @@ public static class PdfProtectEndpoint
         {
             await Results.Problem(statusCode: 400, title: "multipart/form-data の形式が不正です。").ExecuteAsync(context);
         }
-        catch (BadHttpRequestException)
+        catch (BadHttpRequestException exception)
         {
-            await Results.Problem(statusCode: 400, title: "リクエストの形式が不正です。").ExecuteAsync(context);
+            var tooLarge = exception.StatusCode == 413;
+            await Results.Problem(statusCode: tooLarge ? 413 : 400,
+                title: tooLarge ? "PDFまたはリクエストのサイズ上限を超過しました。" : "リクエストの形式が不正です。").ExecuteAsync(context);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
@@ -75,6 +68,7 @@ public static class PdfProtectEndpoint
             }
             context.RequestServices.GetRequiredService<ILoggerFactory>()
                 .CreateLogger("PdfProtect").LogError("PDF処理で内部障害が発生しました。");
+            context.Response.Clear();
             await Results.Problem(statusCode: 500, title: "PDF処理に失敗しました。").ExecuteAsync(context);
         }
     }
