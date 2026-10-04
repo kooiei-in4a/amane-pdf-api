@@ -14,11 +14,11 @@ PDFを安全に処理するための小さなWeb APIです。
 - 成功・失敗・キャンセル時の一時ファイル削除
 - 正常PDFの検証、破損/警告/既暗号化PDFの拒否、統一Problem Details
 - Unicodeパスワード対応
+- PDF 50 MiB / qpdf処理30秒 / 同時2処理 / 待ち行列0の制限
 - 実qpdfを使った自動テスト、Docker build、GitHub Actions
 
 後続Issueで実装する項目:
 
-- ファイルサイズ・処理時間・同時実行数の制限（#4）
 - Docker上のE2EをCIで検証（#5）
 
 `amane-tools-site` との接続は別Repositoryの責務です。
@@ -70,11 +70,34 @@ exit code 2（error）と3（warning）は422として拒否し、自動修復�
 | --- | --- |
 | 200 | 暗号化PDFを返却 |
 | 400 | multipart形式不正、必須項目不足/重複、password仕様違反 |
+| 413 | PDFサイズまたはmultipartリクエスト総量の超過 |
 | 422 | 空ファイル、非PDF、破損/警告のあるPDF、既暗号化PDF |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
+| 503 | 同時PDF処理数の上限超過（待ち行列なし） |
+| 504 | qpdfの検査・暗号化全体の制限時間超過 |
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
-サイズ超過・timeout・同時実行上限の仕様は#4で追加します。
+
+## リソース制限と設定
+
+| 環境変数 | 初期値 | 意味 |
+| --- | --- | --- |
+| `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込むPDFの最大bytes |
+| `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査・暗号化全体の最大秒数 |
+| `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
+| `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
+| `Pdf__TempRoot` | `/tmp/amane-pdf-api`（Linux標準環境） | 処理専用一時領域の親ディレクトリ |
+
+.NET標準configurationの`Pdf`セクションでも同じ設定ができます。不正な制限値は起動時に拒否します。
+待ち行列は0です。ASP.NET Core標準Concurrency Limiterでbodyを読み始める前に処理枠を取得し、上限超過には503を返します。`GET /healthz`はこの制限の対象外です。
+
+リクエスト総量の上限はPDF上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
+Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesのカウントを併用します。
+MultipartReaderでPDFを直接一時ファイルへストリーム保存し、上限を超える1 byteを検出したら保存を停止します。フォームの全量bufferや二重の一時保存は行いません。
+passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で拒否します。
+
+30秒はアップロード完了後のqpdf検査と暗号化の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もqpdfをキャンセルします。
+利用者/IP単位の利用回数制限やアップロード接続の運用制御は、`amane-tools-site` / Caddy等の入口側の責務です。
 
 ## 構成
 
@@ -140,14 +163,8 @@ docker run --rm --entrypoint qpdf amane-pdf-api:dev --version
 
 PDFは外部から受け取る信用できない入力として扱います。
 
-一時ファイル削除とqpdfへの安全な入力は実装済みです。後続Issueと入口側の構成で次を対応します。
-
-- アップロードサイズ上限
-- 処理時間上限
-- 同時実行数上限
-- 利用者/IP単位Rate Limit（入口側の責務）
-- コンテナのCPU / メモリ制限
-- PDF処理コンテナから不要な外部通信を許可しない構成
+入力検証、サイズ/処理時間/同時実行制限、一時ファイル削除、qpdfへの安全なパスワード入力を実装しています。
+利用者/IP単位Rate Limit、コンテナのCPU/メモリ上限、外向き通信の制御は入口と実行環境の責務です。
 
 詳細は [docs/security.md](docs/security.md) を参照してください。
 
