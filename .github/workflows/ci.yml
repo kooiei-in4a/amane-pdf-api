@@ -27,6 +27,9 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Install qpdf
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf && qpdf --version
+
       - name: Build
         run: dotnet build --configuration Release --no-restore
 

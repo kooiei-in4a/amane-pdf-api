@@ -6,25 +6,21 @@ PDFを安全に処理するための小さなWeb APIです。
 
 ## 現在の状態
 
-初期化段階です。
-
 実装済み:
 
-- .NET 10 / ASP.NET Core の最小API
-- `GET /healthz`
-- Docker build
-- 自動テストとGitHub Actions
-- qpdfを含む実行コンテナの骨格
+- .NET 10 / ASP.NET Core の最小API、`GET /healthz`
+- `POST /api/pdf/protect` によるPDFのAES-256暗号化
+- 独立したランダムowner password、QPDFJob JSON経由のパスワード入力
+- 成功・失敗・キャンセル時の一時ファイル削除
+- 実qpdfを使った自動テスト、Docker build、GitHub Actions
 
-未実装:
+後続Issueで実装する項目:
 
-- PDFアップロード
-- パスワード設定
-- qpdf呼び出し
-- ファイルサイズ・処理時間・同時実行数の制限
-- `amane-tools-site` との接続
+- 詳細なPDF入力検証とエラー仕様（#3）
+- ファイルサイズ・処理時間・同時実行数の制限（#4）
+- Docker上のE2EをCIで検証（#5）
 
-PDF暗号化機能は、初期化とは別のIssue / Pull Requestで実装します。
+`amane-tools-site` との接続は別Repositoryの責務です。
 
 ## 方針
 
@@ -40,7 +36,7 @@ PDF暗号化機能は、初期化とは別のIssue / Pull Requestで実装しま
 
 ソースコードは公開し、どのようにPDFを処理しているか確認できる状態にします。
 
-## 予定しているAPI
+## API
 
 ```text
 POST /api/pdf/protect
@@ -50,9 +46,15 @@ file      PDFファイル
 password  PDFを開くためのパスワード
 ```
 
-成功時は暗号化済みPDFを返す予定です。
+成功時は `200 OK`、`Content-Type: application/pdf` で暗号化済みPDFを返します。
+qpdfがexit code 0で終了するまでレスポンスを開始しません。利用者ファイル名は保存先にも返却名にも使いません。
 
-このエンドポイントはまだ実装していません。
+```bash
+curl --fail-with-body -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
+  -F password=example-password http://localhost:8080/api/pdf/protect -o protected.pdf
+```
+
+このパスワードは動作確認用の例です。実パスワードをshell履歴へ残さない方法は呼び出し側で用意してください。
 
 ## 構成
 
@@ -76,6 +78,7 @@ Dockerfile
 必要なもの:
 
 - .NET 10 SDK
+- qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Docker（コンテナ確認を行う場合）
 
 ビルドとテスト:
@@ -89,7 +92,7 @@ dotnet test --configuration Release --no-build
 ローカル起動:
 
 ```bash
-dotnet run --project src/Amane.Pdf.Api
+dotnet run --project src/Amane.Pdf.Api --urls http://localhost:8080
 ```
 
 起動後:
@@ -117,14 +120,12 @@ docker run --rm --entrypoint qpdf amane-pdf-api:dev --version
 
 PDFは外部から受け取る信用できない入力として扱います。
 
-本番公開までに、少なくとも次を実装します。
+一時ファイル削除とqpdfへの安全な入力は実装済みです。後続Issueと入口側の構成で次を対応します。
 
 - アップロードサイズ上限
 - 処理時間上限
 - 同時実行数上限
-- Rate Limit
-- 一時ファイルの確実な削除
-- qpdf実行時のパスワード露出防止
+- 利用者/IP単位Rate Limit（入口側の責務）
 - コンテナのCPU / メモリ制限
 - PDF処理コンテナから不要な外部通信を許可しない構成
 
