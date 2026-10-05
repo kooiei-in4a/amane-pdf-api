@@ -28,6 +28,8 @@ public sealed class PdfPageSelectionOperationTests
     }
 
     [TestMethod]
+    [DataRow("1", "90,180,270")]
+    [DataRow("1-2", "180,270")]
     [DataRow("2", "0,180,270")]
     [DataRow("4,2", "0,180")]
     public async Task DeletePages_RemovesPagesAndPreservesRemainingOrder(string pages, string rotations)
@@ -133,6 +135,17 @@ public sealed class PdfPageSelectionOperationTests
     }
 
     [TestMethod]
+    [DataRow("/api/pdf/extract?pages=1")]
+    [DataRow("/api/pdf/delete-pages?pages=1")]
+    [DataRow("/api/pdf/reorder?pages=1")]
+    public async Task PasswordField_Returns400BeforeQpdf(string path)
+    {
+        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = "/must-not-run/qpdf" });
+        using var form = PdfTestContext.Form(PdfTestContext.Fixture);
+        await AssertProblemAsync(test, path, form, HttpStatusCode.BadRequest);
+    }
+
+    [TestMethod]
     public async Task DeletePages_PassesCompactComplementRatherThanRawQueryToQpdf()
     {
         if (!RequireLinux()) return;
@@ -165,11 +178,21 @@ public sealed class PdfPageSelectionOperationTests
     [DataRow("/api/pdf/extract?pages=1")]
     [DataRow("/api/pdf/delete-pages?pages=1")]
     [DataRow("/api/pdf/reorder?pages=1")]
-    public async Task InvalidAndEncryptedPdf_Return422(string path)
+    public async Task InvalidWarningAndEncryptedPdf_Return422(string path)
     {
         await using var test = new PdfTestContext();
-        using (var invalid = PdfTestContext.FileForm(Encoding.UTF8.GetBytes("PDF-CONTENT-SENTINEL: not a PDF")))
+        var invalidPdfs = new[]
+        {
+            Encoding.UTF8.GetBytes("PDF-CONTENT-SENTINEL: not a PDF"),
+            Encoding.UTF8.GetBytes("%PDF-1.4\nPDF-CONTENT-SENTINEL\n%%EOF"),
+            Encoding.ASCII.GetBytes(Encoding.ASCII.GetString(PdfTestContext.Fixture)
+                .Replace("/Length 41", "/Length 39", StringComparison.Ordinal))
+        };
+        foreach (var pdf in invalidPdfs)
+        {
+            using var invalid = PdfTestContext.FileForm(pdf);
             await AssertProblemAsync(test, path, invalid, HttpStatusCode.UnprocessableEntity);
+        }
 
         using var protectForm = PdfTestContext.Form(PdfTestContext.Fixture);
         using var protectedResponse = await test.Client.PostAsync("/api/pdf/protect", protectForm);
