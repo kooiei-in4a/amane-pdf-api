@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -43,6 +44,42 @@ internal sealed class PdfTestContext : IAsyncDisposable
             form.Add(new StringContent(password), "password");
         }
         return form;
+    }
+
+    public static MultipartFormDataContent FileForm(byte[]? file = null, string fileName = "sample.pdf")
+        => Form(file, password: null, fileName);
+
+    public async Task<byte[]> CreatePagedPdfAsync(int pageCount)
+    {
+        var input = Path.Combine(Root, "page-source.pdf");
+        var output = Path.Combine(Root, $"{pageCount}-pages.pdf");
+        await File.WriteAllBytesAsync(input, Fixture);
+        var arguments = new List<string> { "--empty", "--pages" };
+        for (var i = 0; i < pageCount; i++)
+        {
+            arguments.Add(input);
+            arguments.Add("1");
+        }
+        arguments.Add("--");
+        arguments.Add(output);
+        Assert.AreEqual(0, (await QpdfAsync([.. arguments])).ExitCode);
+        return await File.ReadAllBytesAsync(output);
+    }
+
+    public async Task<int[]> ReadPageRotationsAsync(byte[] pdf)
+    {
+        var path = Path.Combine(Root, "rotation-" + Guid.NewGuid().ToString("N") + ".pdf");
+        await File.WriteAllBytesAsync(path, pdf);
+        var result = await QpdfAsync("--json", path);
+        Assert.AreEqual(0, result.ExitCode);
+        using var document = JsonDocument.Parse(result.Output);
+        var objects = document.RootElement.GetProperty("qpdf")[1];
+        return [.. document.RootElement.GetProperty("pages").EnumerateArray().Select(page =>
+        {
+            var key = "obj:" + page.GetProperty("object").GetString();
+            var value = objects.GetProperty(key).GetProperty("value");
+            return value.TryGetProperty("/Rotate", out var rotation) ? rotation.GetInt32() : 0;
+        })];
     }
 
     public void AssertClean() => Assert.IsFalse(Directory.Exists(TempRoot) && Directory.EnumerateFileSystemEntries(TempRoot).Any());
