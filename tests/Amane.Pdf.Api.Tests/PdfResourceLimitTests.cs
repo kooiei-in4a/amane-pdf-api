@@ -11,9 +11,11 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfResourceLimitTests
 {
     [TestMethod]
-    [DataRow(0, 200)]
-    [DataRow(-1, 413)]
-    public async Task RotateFileSizeBoundary_IsEnforcedBeforeQpdf(int difference, int status)
+    [DataRow("/api/pdf/rotate?angle=90", 0, 200)]
+    [DataRow("/api/pdf/rotate?angle=90", -1, 413)]
+    [DataRow("/api/pdf/optimize", 0, 200)]
+    [DataRow("/api/pdf/optimize", -1, 413)]
+    public async Task FileOnlyEndpointSizeBoundary_IsEnforcedBeforeQpdf(string path, int difference, int status)
     {
         await using var test = new PdfTestContext(new()
         {
@@ -21,7 +23,7 @@ public sealed class PdfResourceLimitTests
             ["Pdf:QpdfPath"] = difference < 0 ? "/must-not-run/qpdf" : "qpdf"
         });
         using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
-        using var response = await test.Client.PostAsync("/api/pdf/rotate?angle=90", form);
+        using var response = await test.Client.PostAsync(path, form);
         Assert.AreEqual((HttpStatusCode)status, response.StatusCode);
         test.AssertClean();
     }
@@ -179,6 +181,30 @@ public sealed class PdfResourceLimitTests
     }
 
     [TestMethod]
+    public async Task OptimizeTimeout_KillsProcessTree_CleansFiles_AndReleasesPermit()
+    {
+        if (!RequireLinux()) return;
+        using var blocker = new BlockingQpdf("--object-streams=generate");
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:QpdfPath"] = blocker.Executable,
+            ["Pdf:QpdfTimeoutSeconds"] = "1",
+            ["Pdf:MaxConcurrentProcesses"] = "1"
+        });
+        using var first = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var response = await test.Client.PostAsync("/api/pdf/optimize", first);
+        Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
+        Assert.AreEqual("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        await blocker.AssertStoppedAsync();
+        await WaitForCleanupAsync(test);
+        using var second = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var next = await test.Client.PostAsync("/api/pdf/optimize", second);
+        Assert.AreEqual(HttpStatusCode.GatewayTimeout, next.StatusCode);
+        await blocker.AssertStoppedAsync();
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task ConcurrencyLimit_RejectsThirdRequest_WithoutQueue_AndKeepsHealthAvailable()
     {
         if (!RequireLinux()) return;
@@ -270,6 +296,57 @@ public sealed class PdfResourceLimitTests
         {
             cancellation.Cancel();
             foreach (var job in jobs) await ObserveCancellationAsync(job);
+        }
+        await blocker.AssertStoppedAsync();
+        await WaitForCleanupAsync(test);
+    }
+
+    [TestMethod]
+    public async Task Optimize_SharesConcurrencyLimiter()
+    {
+        if (!RequireLinux()) return;
+        using var blocker = new BlockingQpdf("--object-streams=generate");
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:QpdfPath"] = blocker.Executable,
+            ["Pdf:MaxConcurrentProcesses"] = "1"
+        });
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var optimize = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        var optimizeJob = test.Client.PostAsync("/api/pdf/optimize", optimize, cancellation.Token);
+        try
+        {
+            await blocker.WaitForJobsAsync(1);
+            using var protect = PdfTestContext.Form(PdfTestContext.Fixture);
+            using var response = await test.Client.PostAsync("/api/pdf/protect", protect).WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.AreEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await ObserveCancellationAsync(optimizeJob);
+        }
+        await blocker.AssertStoppedAsync();
+        await WaitForCleanupAsync(test);
+    }
+
+    [TestMethod]
+    public async Task OptimizeCancellation_KillsProcessTree_AndCleansFiles()
+    {
+        if (!RequireLinux()) return;
+        using var blocker = new BlockingQpdf("--object-streams=generate");
+        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = blocker.Executable });
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        var job = test.Client.PostAsync("/api/pdf/optimize", form, cancellation.Token);
+        try
+        {
+            await blocker.WaitForJobsAsync(1);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await ObserveCancellationAsync(job);
         }
         await blocker.AssertStoppedAsync();
         await WaitForCleanupAsync(test);

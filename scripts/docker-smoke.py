@@ -141,6 +141,16 @@ class ApiContainer:
         self.assert_clean()
         return result
 
+    def optimize(self, file):
+        body, content_type = multipart(file, password=None)
+        status, headers, result = self.request("POST", "/api/pdf/optimize", body, content_type)
+        assert status == 200, f"Expected HTTP 200, received {status}."
+        assert headers.get("Content-Type", "").split(";", 1)[0] == "application/pdf"
+        assert "filename=optimized.pdf" in headers.get("Content-Disposition", "")
+        assert result.startswith(b"%PDF-")
+        self.assert_clean()
+        return result
+
     def extract(self, file, pages):
         body, content_type = multipart(file, password=None)
         status, headers, result = self.request("POST", "/api/pdf/extract?pages=" + pages, body, content_type)
@@ -187,6 +197,7 @@ class ApiContainer:
             "exec", "--interactive", self.name, "sh", "-c",
             "umask 077; cat > /tmp/smoke-check/output.pdf", data=pdf,
         )
+        docker("exec", self.name, "qpdf", "--check", CHECK_ROOT + "/output.pdf")
         result = docker("exec", self.name, "qpdf", "--json", CHECK_ROOT + "/output.pdf")
         document = json.loads(result.stdout)
         objects = document["qpdf"][1]
@@ -224,6 +235,8 @@ def main(image):
         assert api.page_rotations(api.rotate(rotated, pages="1")) == [180]
         extracted = api.extract(FIXTURE, "1")
         assert api.page_rotations(extracted) == [0]
+        optimized = api.optimize(FIXTURE)
+        assert api.page_rotations(optimized) == [0]
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)
         api.protect(b"", expected=422)
@@ -231,7 +244,7 @@ def main(image):
         api.protect(b"%PDF-1.4\n" + SENTINEL.encode() + b"\n%%EOF", expected=422)
         api.protect(FIXTURE.replace(b"/Length 41", b"/Length 39"), expected=422)
         api.protect(encrypted, expected=422)
-        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/rotation/page selection/passwords/400/422/logs/cleanup PASS")
+        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/optimization/rotation/page selection/passwords/400/422/logs/cleanup PASS")
     with running_container(image, (f"Pdf__MaxFileBytes={len(FIXTURE)}",)) as api:
         api.protect(FIXTURE)
         api.protect(FIXTURE + b"X", expected=413)
