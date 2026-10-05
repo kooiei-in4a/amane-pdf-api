@@ -66,6 +66,31 @@ internal sealed class PdfTestContext : IAsyncDisposable
         return await File.ReadAllBytesAsync(output);
     }
 
+    public async Task<byte[]> CreateRotationMarkedPdfAsync(int pageCount)
+    {
+        if (pageCount is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(pageCount));
+        var input = Path.Combine(Root, "marker-source.pdf");
+        var output = Path.Combine(Root, $"{pageCount}-marked-pages.pdf");
+        await File.WriteAllBytesAsync(input, await CreatePagedPdfAsync(pageCount));
+        var arguments = Enumerable.Range(2, pageCount - 1)
+            .Select(page => $"--rotate=+{(page - 1) * 90}:{page}")
+            .Append(input)
+            .Append(output)
+            .ToArray();
+        Assert.AreEqual(0, (await QpdfAsync(arguments)).ExitCode);
+        return await File.ReadAllBytesAsync(output);
+    }
+
+    public async Task AssertValidPdfAsync(byte[] pdf, int expectedPageCount)
+    {
+        var path = Path.Combine(Root, "validation-" + Guid.NewGuid().ToString("N") + ".pdf");
+        await File.WriteAllBytesAsync(path, pdf);
+        Assert.AreEqual(0, (await QpdfAsync("--check", path)).ExitCode);
+        var count = await QpdfAsync("--show-npages", path);
+        Assert.AreEqual(0, count.ExitCode);
+        Assert.AreEqual(expectedPageCount, int.Parse(count.Output.Trim(), System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     public async Task<int[]> ReadPageRotationsAsync(byte[] pdf)
     {
         var path = Path.Combine(Root, "rotation-" + Guid.NewGuid().ToString("N") + ".pdf");

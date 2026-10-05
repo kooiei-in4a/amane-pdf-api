@@ -2,7 +2,7 @@
 
 PDFを安全に処理するための小さなWeb APIです。
 
-`amane-tools-site` から受け取ったPDFの暗号化とページ回転を、安全なqpdf処理として提供します。
+`amane-tools-site` から受け取ったPDFの暗号化、ページ回転、ページ抽出・削除・並べ替えを、安全なqpdf処理として提供します。
 
 ## 現在の状態
 
@@ -11,6 +11,9 @@ PDFを安全に処理するための小さなWeb APIです。
 - .NET 10 / ASP.NET Core の最小API、`GET /healthz`
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
+- `POST /api/pdf/extract` による指定ページの抽出
+- `POST /api/pdf/delete-pages` による指定ページの削除
+- `POST /api/pdf/reorder` による全ページの並べ替え
 - 独立したランダムowner password、QPDFJob JSON経由のパスワード入力
 - 成功・失敗・キャンセル時の一時ファイル削除
 - 正常PDFの検証、破損/警告/既暗号化PDFの拒否、統一Problem Details
@@ -85,24 +88,50 @@ curl --fail-with-body \
   -o rotated.pdf
 ```
 
+### PDFページ抽出・削除・並べ替え
+
+```text
+POST /api/pdf/extract?pages=1-3,7
+POST /api/pdf/delete-pages?pages=2,5
+POST /api/pdf/reorder?pages=3,1,2,4-10
+Content-Type: multipart/form-data
+
+file  PDFファイル
+```
+
+抽出は指定ページだけを指定順で返し、削除は指定ページ以外を元の順序で返します。並べ替えでは入力PDFの全ページをちょうど1回ずつ指定する必要があります。全ページ削除、並べ替えでのページ欠落、範囲外、重複は400です。
+
+`pages` は3 APIとも必須です。回転APIと同じparserを使用し、ASCII数字、`,`、`-` だけを受け付けます。例えば `1`、`1,3,5`、`1-3`、`5,1,3-4`、`1-3,7,10-12` を指定できます。空白、先頭0、0、負数、空要素、逆range、重複は使用できず、文字列長は最大4096文字です。qpdf固有のpage range構文は公開しません。
+
+成功時は `200 OK`、`Content-Type: application/pdf` で、それぞれ固定ファイル名 `extracted.pdf`、`pages-deleted.pdf`、`reordered.pdf` を返します。
+
+```bash
+curl --fail-with-body \
+  -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
+  'http://127.0.0.1:8080/api/pdf/extract?pages=1' \
+  -o extracted.pdf
+```
+
+4096文字の上限は並べ替えにも適用されます。大量ページを1ページずつ逆順指定するなど、完全なページ列が4096文字を超える並べ替えは初版では対象外です。別のJSON body APIはありません。
+
 ### 入力とエラー
 
-暗号化APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。回転APIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
+暗号化APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。回転、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
 
 Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
 exit code 2（error）と3（warning）は422として拒否し、自動修復したPDFを成功扱いにしません。
-既暗号化PDFは、password不要で開けるものや送信したpasswordが一致するものも含め、v1では拒否します。
+既暗号化PDFは、password不要で開けるものや送信したpasswordが一致するものも含め、v1では全操作で拒否します。
 
 | HTTP status | 条件 |
 | --- | --- |
-| 200 | 暗号化または回転済みPDFを返却 |
+| 200 | 暗号化、回転、抽出、削除、並べ替え済みPDFを返却 |
 | 400 | multipart形式不正、必須項目不足/重複、passwordまたはangle/pages仕様違反 |
 | 413 | PDFサイズまたはmultipartリクエスト総量の超過 |
 | 422 | 空ファイル、非PDF、破損/警告のあるPDF、既暗号化PDF |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
 | 503 | 同時PDF処理数の上限超過（待ち行列なし） |
-| 504 | qpdfの検査・暗号化または回転全体の制限時間超過 |
+| 504 | qpdfの検査と各PDF処理全体の制限時間超過 |
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
 
@@ -124,8 +153,8 @@ Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesの�
 MultipartReaderでPDFを直接一時ファイルへストリーム保存し、上限を超える1 byteを検出したら保存を停止します。フォームの全量bufferや二重の一時保存は行いません。
 passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で拒否します。
 
-30秒はアップロード完了後のqpdf検査と暗号化、または検査・ページ数取得・回転の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もqpdfをキャンセルします。
-暗号化と回転は同じ同時実行枠を共有します。既暗号化PDFは回転APIでも拒否します。
+30秒はアップロード完了後のqpdf検査と暗号化、または検査・ページ数取得・ページ操作の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もqpdfをキャンセルします。
+暗号化、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはページ操作APIでも拒否します。
 利用者/IP単位の利用回数制限やアップロード接続の運用制御は、`amane-tools-site` / Caddy等の入口側の責務です。
 
 ## 構成
@@ -204,7 +233,7 @@ python3 scripts/docker-smoke.py amane-pdf-api:ci
 CIではrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。
 qpdfの存在/versionだけでなく、QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能を実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは15件のPOSTとhealthを検証します。正常暗号化、相対回転とページ指定、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+smoke testは16件のPOSTとhealthを検証します。正常暗号化、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化とpassword確認を行います。
 各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 

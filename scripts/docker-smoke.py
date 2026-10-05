@@ -141,6 +141,16 @@ class ApiContainer:
         self.assert_clean()
         return result
 
+    def extract(self, file, pages):
+        body, content_type = multipart(file, password=None)
+        status, headers, result = self.request("POST", "/api/pdf/extract?pages=" + pages, body, content_type)
+        assert status == 200, f"Expected HTTP 200, received {status}."
+        assert headers.get("Content-Type", "").split(";", 1)[0] == "application/pdf"
+        assert "filename=extracted.pdf" in headers.get("Content-Disposition", "")
+        assert result.startswith(b"%PDF-")
+        self.assert_clean()
+        return result
+
     def assert_clean(self):
         assert docker(
             "exec", self.name, "sh", "-c",
@@ -212,6 +222,8 @@ def main(image):
         rotated = api.rotate(FIXTURE)
         assert api.page_rotations(rotated) == [90]
         assert api.page_rotations(api.rotate(rotated, pages="1")) == [180]
+        extracted = api.extract(FIXTURE, "1")
+        assert api.page_rotations(extracted) == [0]
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)
         api.protect(b"", expected=422)
@@ -219,7 +231,7 @@ def main(image):
         api.protect(b"%PDF-1.4\n" + SENTINEL.encode() + b"\n%%EOF", expected=422)
         api.protect(FIXTURE.replace(b"/Length 41", b"/Length 39"), expected=422)
         api.protect(encrypted, expected=422)
-        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/relative rotation/passwords/400/422/logs/cleanup PASS")
+        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/rotation/page selection/passwords/400/422/logs/cleanup PASS")
     with running_container(image, (f"Pdf__MaxFileBytes={len(FIXTURE)}",)) as api:
         api.protect(FIXTURE)
         api.protect(FIXTURE + b"X", expected=413)

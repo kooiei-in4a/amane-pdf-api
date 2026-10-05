@@ -89,6 +89,13 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
     }
 
+    public async Task SelectPagesAsync(TemporaryPdfFiles files, string pageRange, CancellationToken cancellationToken)
+    {
+        var exitCode = await RunAsync([files.InputPath, "--pages", ".", pageRange, "--", files.OutputPath], cancellationToken);
+        if (exitCode == 3) throw new PdfInputException();
+        if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
+    }
+
     public async Task<int> RunAsync(string[] arguments, CancellationToken cancellationToken)
     {
         using var process = Start(arguments, cancellationToken);

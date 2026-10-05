@@ -33,7 +33,7 @@ PDF処理部分に問題が発生した場合でも、Webサイト本体への�
 - owner passwordはuser passwordと独立した暗号学的乱数32 bytesから生成する
 - 処理専用ディレクトリはランダム名、Linuxでは0700、入力PDF/JSONは0600とする
 - qpdfのstdout/stderrはログ・例外・HTTPレスポンスへ出さず破棄する
-- 回転角度とページ指定は厳密に解析し、生のqueryではなく再構築した値をqpdfの`ArgumentList`へ渡す
+- 回転角度とページ指定は厳密に解析し、生のqueryではなく再構築した値をqpdfの`ArgumentList`へ渡す。ページ削除の補集合も連続rangeへまとめて再構築する
 - ページ数取得のstdoutは64 bytesを上限として保持し、正のASCII整数だけを受け付ける
 - qpdfのexit code 0を確認してから出力PDFをストリーム送信する
 - クライアントキャンセル時はqpdfのprocess treeを終了し、終了待ちしてから一時領域を削除する
@@ -56,15 +56,15 @@ qpdfの検証はPDF構造の検証であり、PDF内のJavaScriptや添付ファ
 実装済みの初期値:
 
 - PDF 50 MiB、リクエスト総量はその上限 + multipart用64 KiB
-- qpdfの検査と暗号化、または検査・ページ数取得・回転の全体で30秒
+- qpdfの検査と暗号化、または検査・ページ数取得・ページ操作の全体で30秒
 - 同時PDF処理数2、待ち行列0
 
 `Pdf` configurationにまとめ、正でない制限値などは起動時に拒否します。
 Kestrelのbody上限とContent-Lengthチェックに加え、実際に読んだbytesを制限します。Content-Lengthなしでも上限超過のPDFを全量保存しません。
 MultipartReaderで直接privateファイルへ書き込み、passwordのbufferも127 bytesへ制限します。
 
-Concurrency Limiterは暗号化と回転で同じ処理枠を共有し、アップロード開始前からレスポンス送信/削除まで保持して、超過を503で拒否します。利用者/IPでpartitionせず、healthは制限しません。
-timeoutは504で返し、qpdfの検査・暗号化・ページ数取得・回転の各段階でprocess treeの終了と終了待ちを行ってから一時領域を削除します。クライアントキャンセルやアプリ停止でもqpdfを終了します。
+Concurrency Limiterは暗号化、回転、抽出、削除、並べ替えで同じ処理枠を共有し、アップロード開始前からレスポンス送信/削除まで保持して、超過を503で拒否します。利用者/IPでpartitionせず、healthは制限しません。
+timeoutは504で返し、qpdfの検査・暗号化・ページ数取得・ページ操作の各段階でprocess treeの終了と終了待ちを行ってから一時領域を削除します。クライアントキャンセルやアプリ停止でもqpdfを終了します。
 サイズ超過は413、形式不正は400です。内部情報を含まないProblem Detailsで返します。
 
 利用者/IP単位の頻度制限は入口側、CPU/メモリ/tmpfs容量の上限は実行環境側で設定します。
@@ -85,7 +85,7 @@ SIGKILLやコンテナ強制終了ではfinallyは実行されません。tmpfs�
 
 ## qpdf
 
-PDFの暗号化とページ回転処理にはqpdfを使用します。
+PDFの暗号化、ページ回転、ページ抽出・削除・並べ替え処理にはqpdfを使用します。
 
 qpdfはApache License 2.0で公開されているOSSです。
 
@@ -93,8 +93,8 @@ qpdfの更新状況を定期的に確認し、既知の脆弱性や重要な修�
 
 ## 検証と責務の境界
 
-実qpdfの暗号化/正誤password/Unicode/相対回転/ページ指定/不正入力、一時ファイル削除、argv非露出を.NETテストで確認します。
+実qpdfの暗号化/正誤password/Unicode/相対回転/ページ抽出・削除・並べ替え/不正入力、一時ファイル削除、argv非露出を.NETテストで確認します。
 timeoutとキャンセルは実process shimで遅延を再現し、親/子PIDの終了と処理枠の再利用を確認します。
-CIでは実コンテナでhealth、QPDFJob JSONと必要機能、暗号化、異常入力、413、情報非露出、一時領域の削除を確認し、host/containerのqpdf versionを記録します。
+CIでは実コンテナでhealth、QPDFJob JSONと必要機能、暗号化、代表的なページ選択、異常入力、413、情報非露出、一時領域の削除を確認し、host/containerのqpdf versionを記録します。
 
 API自身のサイズ・処理時間・同時実行制限は実装済みです。利用者/IP単位の頻度制限、CPU/メモリ/ネットワーク設定、公開・deployは入口と実行環境の責務です。
