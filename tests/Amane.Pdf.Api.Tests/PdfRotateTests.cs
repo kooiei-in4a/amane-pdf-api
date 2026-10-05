@@ -75,6 +75,7 @@ public sealed class PdfRotateTests
     [TestMethod]
     [DataRow("")]
     [DataRow("+90")]
+    [DataRow("%2B90")]
     [DataRow("090")]
     [DataRow("450")]
     [DataRow("0")]
@@ -144,6 +145,18 @@ public sealed class PdfRotateTests
         await using var test = new PdfTestContext();
         using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
         await AssertProblemAsync(test, "/api/pdf/rotate?angle=90&pages=2", form, HttpStatusCode.BadRequest);
+    }
+
+    [TestMethod]
+    [DataRow("1-2147483647", false)]
+    [DataRow("99999999999", true)]
+    public async Task HugeOrOverflowingPageNumber_Returns400_WithoutExpandingRange(string pages, bool beforeQpdf)
+    {
+        await using var test = new PdfTestContext(beforeQpdf
+            ? new() { ["Pdf:QpdfPath"] = "/must-not-run/qpdf" }
+            : null);
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        await AssertProblemAsync(test, "/api/pdf/rotate?angle=90&pages=" + pages, form, HttpStatusCode.BadRequest);
     }
 
     [TestMethod]

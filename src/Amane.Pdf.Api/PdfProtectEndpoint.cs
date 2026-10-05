@@ -6,60 +6,20 @@ public static class PdfProtectEndpoint
 {
     public static async Task HandleAsync(HttpContext context, QpdfProcessor processor, IOptions<PdfOptions> options)
     {
-        try
-        {
-            PdfEndpointHelpers.ApplyRequestSizeLimit(context, options.Value);
-            using var files = new TemporaryPdfFiles(options.Value.TempRoot);
-            var password = await MultipartPdfUpload.ReadAsync(context.Request, files, options.Value, context.RequestAborted);
-            var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
-            timeout.CancelAfter(TimeSpan.FromSeconds(options.Value.QpdfTimeoutSeconds));
-            try
+        string? password = null;
+        await PdfEndpointHelpers.ExecuteAsync(
+            context,
+            options.Value,
+            "protected.pdf",
+            validateRequest: null,
+            async (files, cancellationToken) =>
             {
-                await processor.ValidateAsync(files, timeout.Token);
-                await processor.ProtectAsync(files, password, timeout.Token);
-            }
-            catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested && !stopping.IsCancellationRequested)
+                password = await MultipartPdfUpload.ReadAsync(context.Request, files, options.Value, cancellationToken);
+            },
+            async (files, cancellationToken) =>
             {
-                await Results.Problem(statusCode: 504, title: "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
-                return;
-            }
-            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
-            {
-                context.Abort();
-                return;
-            }
-            await PdfEndpointHelpers.SendPdfAsync(context, files.OutputPath, "protected.pdf");
-        }
-        catch (PdfInputException)
-        {
-            await Results.Problem(statusCode: 422, title: "未暗号化の正常なPDFが必要です。").ExecuteAsync(context);
-        }
-        catch (InvalidDataException)
-        {
-            await Results.Problem(statusCode: 400, title: "multipart/form-data の形式が不正です。").ExecuteAsync(context);
-        }
-        catch (BadHttpRequestException exception)
-        {
-            var tooLarge = exception.StatusCode == 413;
-            await Results.Problem(statusCode: tooLarge ? 413 : 400,
-                title: tooLarge ? "PDFまたはリクエストのサイズ上限を超過しました。" : "リクエストの形式が不正です。").ExecuteAsync(context);
-        }
-        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
-        {
-            // The process has exited and temporary files have been removed before returning.
-        }
-        catch (Exception)
-        {
-            if (context.Response.HasStarted)
-            {
-                context.Abort();
-                return;
-            }
-            context.RequestServices.GetRequiredService<ILoggerFactory>()
-                .CreateLogger("PdfProtect").LogError("PDF処理で内部障害が発生しました。");
-            context.Response.Clear();
-            await Results.Problem(statusCode: 500, title: "PDF処理に失敗しました。").ExecuteAsync(context);
-        }
+                await processor.ValidateAsync(files, cancellationToken);
+                await processor.ProtectAsync(files, password!, cancellationToken);
+            });
     }
 }

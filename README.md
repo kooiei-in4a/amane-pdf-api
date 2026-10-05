@@ -87,7 +87,7 @@ curl --fail-with-body \
 
 ### 入力とエラー
 
-`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。
+暗号化APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。回転APIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
 
 Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
