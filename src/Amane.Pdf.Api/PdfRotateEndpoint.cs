@@ -2,22 +2,42 @@ using Microsoft.Extensions.Options;
 
 namespace Amane.Pdf.Api;
 
-public static class PdfProtectEndpoint
+public static class PdfRotateEndpoint
 {
     public static async Task HandleAsync(HttpContext context, QpdfProcessor processor, IOptions<PdfOptions> options)
     {
         try
         {
+            var angleValues = context.Request.Query["angle"];
+            if (angleValues.Count != 1) throw new BadHttpRequestException("Invalid angle query.");
+            var angle = angleValues[0] switch
+            {
+                "90" => 90,
+                "180" => 180,
+                "270" => 270,
+                _ => throw new BadHttpRequestException("Invalid angle query.")
+            };
+
+            PdfPageSelection? selection = null;
+            if (context.Request.Query.TryGetValue("pages", out var pageValues))
+            {
+                if (pageValues.Count != 1) throw new BadHttpRequestException("Invalid pages query.");
+                selection = PdfPageSelection.Parse(pageValues[0] ?? string.Empty);
+            }
+
             PdfEndpointHelpers.ApplyRequestSizeLimit(context, options.Value);
             using var files = new TemporaryPdfFiles(options.Value.TempRoot);
-            var password = await MultipartPdfUpload.ReadAsync(context.Request, files, options.Value, context.RequestAborted);
+            await MultipartPdfUpload.ReadFileAsync(context.Request, files, options.Value, context.RequestAborted);
             var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
             timeout.CancelAfter(TimeSpan.FromSeconds(options.Value.QpdfTimeoutSeconds));
             try
             {
                 await processor.ValidateAsync(files, timeout.Token);
-                await processor.ProtectAsync(files, password, timeout.Token);
+                var pageRange = selection is null
+                    ? null
+                    : selection.ToQpdfRange(await processor.GetPageCountAsync(files, timeout.Token));
+                await processor.RotateAsync(files, angle, pageRange, timeout.Token);
             }
             catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested && !stopping.IsCancellationRequested)
             {
@@ -29,7 +49,7 @@ public static class PdfProtectEndpoint
                 context.Abort();
                 return;
             }
-            await PdfEndpointHelpers.SendPdfAsync(context, files.OutputPath, "protected.pdf");
+            await PdfEndpointHelpers.SendPdfAsync(context, files.OutputPath, "rotated.pdf");
         }
         catch (PdfInputException)
         {
@@ -57,7 +77,7 @@ public static class PdfProtectEndpoint
                 return;
             }
             context.RequestServices.GetRequiredService<ILoggerFactory>()
-                .CreateLogger("PdfProtect").LogError("PDF処理で内部障害が発生しました。");
+                .CreateLogger("PdfRotate").LogError("PDF処理で内部障害が発生しました。");
             context.Response.Clear();
             await Results.Problem(statusCode: 500, title: "PDF処理に失敗しました。").ExecuteAsync(context);
         }

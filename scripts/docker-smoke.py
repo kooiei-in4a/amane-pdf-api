@@ -128,6 +128,19 @@ class ApiContainer:
         self.assert_clean()
         return result
 
+    def rotate(self, file, angle=90, pages=None):
+        body, content_type = multipart(file, password=None)
+        path = f"/api/pdf/rotate?angle={angle}"
+        if pages is not None:
+            path += "&pages=" + pages
+        status, headers, result = self.request("POST", path, body, content_type)
+        assert status == 200, f"Expected HTTP 200, received {status}."
+        assert headers.get("Content-Type", "").split(";", 1)[0] == "application/pdf"
+        assert "filename=rotated.pdf" in headers.get("Content-Disposition", "")
+        assert result.startswith(b"%PDF-")
+        self.assert_clean()
+        return result
+
     def assert_clean(self):
         assert docker(
             "exec", self.name, "sh", "-c",
@@ -158,6 +171,22 @@ class ApiContainer:
                 assert b"AESv3" in result.stdout and b"R = 6" in result.stdout
         docker("exec", self.name, "rm", "-rf", CHECK_ROOT)
 
+    def page_rotations(self, pdf):
+        docker("exec", self.name, "mkdir", "-m", "700", "-p", CHECK_ROOT)
+        docker(
+            "exec", "--interactive", self.name, "sh", "-c",
+            "umask 077; cat > /tmp/smoke-check/output.pdf", data=pdf,
+        )
+        result = docker("exec", self.name, "qpdf", "--json", CHECK_ROOT + "/output.pdf")
+        document = json.loads(result.stdout)
+        objects = document["qpdf"][1]
+        rotations = [
+            objects["obj:" + page["object"]]["value"].get("/Rotate", 0)
+            for page in document["pages"]
+        ]
+        docker("exec", self.name, "rm", "-rf", CHECK_ROOT)
+        return rotations
+
     def close(self):
         if self.created:
             docker("rm", "--force", self.name)
@@ -180,6 +209,9 @@ def main(image):
         assert "256bit" in schema["encrypt"] and "passwordMode" in schema and "check" in schema and "isEncrypted" in schema
         encrypted = api.protect(FIXTURE)
         api.verify_encryption(encrypted)
+        rotated = api.rotate(FIXTURE)
+        assert api.page_rotations(rotated) == [90]
+        assert api.page_rotations(api.rotate(rotated, pages="1")) == [180]
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)
         api.protect(b"", expected=422)
@@ -187,7 +219,7 @@ def main(image):
         api.protect(b"%PDF-1.4\n" + SENTINEL.encode() + b"\n%%EOF", expected=422)
         api.protect(FIXTURE.replace(b"/Length 41", b"/Length 39"), expected=422)
         api.protect(encrypted, expected=422)
-        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/passwords/400/422/logs/cleanup PASS")
+        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/relative rotation/passwords/400/422/logs/cleanup PASS")
     with running_container(image, (f"Pdf__MaxFileBytes={len(FIXTURE)}",)) as api:
         api.protect(FIXTURE)
         api.protect(FIXTURE + b"X", expected=413)

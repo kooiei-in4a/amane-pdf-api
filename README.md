@@ -2,7 +2,7 @@
 
 PDFを安全に処理するための小さなWeb APIです。
 
-最初の用途は、`amane-tools-site` から受け取ったPDFへパスワードを設定し、暗号化済みPDFを返すことです。
+`amane-tools-site` から受け取ったPDFの暗号化とページ回転を、安全なqpdf処理として提供します。
 
 ## 現在の状態
 
@@ -10,6 +10,7 @@ PDFを安全に処理するための小さなWeb APIです。
 
 - .NET 10 / ASP.NET Core の最小API、`GET /healthz`
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
+- `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
 - 独立したランダムowner password、QPDFJob JSON経由のパスワード入力
 - 成功・失敗・キャンセル時の一時ファイル削除
 - 正常PDFの検証、破損/警告/既暗号化PDFの拒否、統一Problem Details
@@ -37,6 +38,8 @@ API単体の実装とDocker / CIの実処理検証が完了しています。
 
 ## API
 
+### PDF暗号化
+
 ```text
 POST /api/pdf/protect
 Content-Type: multipart/form-data
@@ -59,6 +62,29 @@ unset pdf_password
 
 このBashの例ではパスワードを対話入力し、stdinからcurlへ渡します。パスワード値をcommand line argvやshell履歴に載せません。
 
+### PDFページ回転
+
+```text
+POST /api/pdf/rotate?angle=90
+POST /api/pdf/rotate?angle=90&pages=1,3-5
+Content-Type: multipart/form-data
+
+file  PDFファイル
+```
+
+`angle` は `90`、`180`、`270` のいずれかを文字列として指定します。入力PDFが現在持つ回転状態に対する、時計回りの相対回転です。例えば90度回転済みのPDFへ `angle=90` を適用すると180度になります。
+
+`pages` を省略すると全ページを回転します。指定する場合は、ASCII数字による1始まりのページ番号と、カンマ、ハイフンだけを使用できます。`1`、`1,3,5`、`1-3`、`5,1,3-4` のように指定でき、順序は自由です。先頭0、空要素、空白、逆range、重複するページ、実ページ数を超える指定は拒否します。文字列長の上限は4096文字です。
+
+成功時は `200 OK`、`Content-Type: application/pdf`、固定ファイル名 `rotated.pdf` で返します。
+
+```bash
+curl --fail-with-body \
+  -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
+  'http://127.0.0.1:8080/api/pdf/rotate?angle=90&pages=1' \
+  -o rotated.pdf
+```
+
 ### 入力とエラー
 
 `file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。
@@ -70,13 +96,13 @@ exit code 2（error）と3（warning）は422として拒否し、自動修復�
 
 | HTTP status | 条件 |
 | --- | --- |
-| 200 | 暗号化PDFを返却 |
-| 400 | multipart形式不正、必須項目不足/重複、password仕様違反 |
+| 200 | 暗号化または回転済みPDFを返却 |
+| 400 | multipart形式不正、必須項目不足/重複、passwordまたはangle/pages仕様違反 |
 | 413 | PDFサイズまたはmultipartリクエスト総量の超過 |
 | 422 | 空ファイル、非PDF、破損/警告のあるPDF、既暗号化PDF |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
 | 503 | 同時PDF処理数の上限超過（待ち行列なし） |
-| 504 | qpdfの検査・暗号化全体の制限時間超過 |
+| 504 | qpdfの検査・暗号化または回転全体の制限時間超過 |
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
 
@@ -85,7 +111,7 @@ exit code 2（error）と3（warning）は422として拒否し、自動修復�
 | 環境変数 | 初期値 | 意味 |
 | --- | --- | --- |
 | `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込むPDFの最大bytes |
-| `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査・暗号化全体の最大秒数 |
+| `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と暗号化または回転全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
 | `Pdf__TempRoot` | `/tmp/amane-pdf-api`（Linux標準環境） | 処理専用一時領域の親ディレクトリ |
@@ -98,7 +124,8 @@ Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesの�
 MultipartReaderでPDFを直接一時ファイルへストリーム保存し、上限を超える1 byteを検出したら保存を停止します。フォームの全量bufferや二重の一時保存は行いません。
 passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で拒否します。
 
-30秒はアップロード完了後のqpdf検査と暗号化の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もqpdfをキャンセルします。
+30秒はアップロード完了後のqpdf検査と暗号化、または検査・ページ数取得・回転の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もqpdfをキャンセルします。
+暗号化と回転は同じ同時実行枠を共有します。既暗号化PDFは回転APIでも拒否します。
 利用者/IP単位の利用回数制限やアップロード接続の運用制御は、`amane-tools-site` / Caddy等の入口側の責務です。
 
 ## 構成
@@ -177,7 +204,7 @@ python3 scripts/docker-smoke.py amane-pdf-api:ci
 CIではrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。
 qpdfの存在/versionだけでなく、QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能を実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは13件のPOSTとhealthを検証します。正常暗号化、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+smoke testは15件のPOSTとhealthを検証します。正常暗号化、相対回転とページ指定、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化とpassword確認を行います。
 各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 

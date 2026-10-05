@@ -28,6 +28,7 @@ app.UseRateLimiter();
 app.MapGet("/", () => Results.Text("amane-pdf-api"));
 app.MapGet("/healthz", () => Results.Text("Healthy"));
 app.MapPost("/api/pdf/protect", PdfProtectEndpoint.HandleAsync).RequireRateLimiting("pdf");
+app.MapPost("/api/pdf/rotate", PdfRotateEndpoint.HandleAsync).RequireRateLimiting("pdf");
 
 app.Run();
 

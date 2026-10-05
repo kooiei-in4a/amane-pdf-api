@@ -7,6 +7,14 @@ namespace Amane.Pdf.Api;
 public static class MultipartPdfUpload
 {
     public static async Task<string> ReadAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
+        => await ReadCoreAsync(request, files, options, requirePassword: true, cancellationToken)
+            ?? throw new BadHttpRequestException("Missing required field.");
+
+    public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
+        => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
+
+    private static async Task<string?> ReadCoreAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options,
+        bool requirePassword, CancellationToken cancellationToken)
     {
         if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var contentType) ||
             !contentType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
@@ -45,7 +53,7 @@ public static class MultipartPdfUpload
                     await input.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                 }
             }
-            else if (name == "password" && !isFile && password is null)
+            else if (requirePassword && name == "password" && !isFile && password is null)
             {
                 // A bounded UTF-8 field; never buffer an arbitrary form field or file in memory.
                 var bytes = new byte[128];
@@ -74,7 +82,7 @@ public static class MultipartPdfUpload
                 throw new BadHttpRequestException("Unexpected or duplicate multipart field.");
             }
         }
-        if (!hasFile || password is null) throw new BadHttpRequestException("Missing required field.");
+        if (!hasFile || (requirePassword && password is null)) throw new BadHttpRequestException("Missing required field.");
         // Count an optional MIME epilogue as part of the request before starting qpdf.
         while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
         return password;
