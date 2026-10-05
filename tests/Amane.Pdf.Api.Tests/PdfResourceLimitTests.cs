@@ -161,6 +161,24 @@ public sealed class PdfResourceLimitTests
     }
 
     [TestMethod]
+    public async Task PageSelectionTimeout_KillsProcessTree_AndCleansFiles()
+    {
+        if (!RequireLinux()) return;
+        using var blocker = new BlockingQpdf("*/input.pdf");
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:QpdfPath"] = blocker.Executable,
+            ["Pdf:QpdfTimeoutSeconds"] = "1"
+        });
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var response = await test.Client.PostAsync("/api/pdf/extract?pages=1", form);
+        Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
+        Assert.AreEqual("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        await blocker.AssertStoppedAsync();
+        await WaitForCleanupAsync(test);
+    }
+
+    [TestMethod]
     public async Task ConcurrencyLimit_RejectsThirdRequest_WithoutQueue_AndKeepsHealthAvailable()
     {
         if (!RequireLinux()) return;
@@ -222,6 +240,42 @@ public sealed class PdfResourceLimitTests
     }
 
     [TestMethod]
+    public async Task PageSelectionEndpoints_ShareConcurrencyLimiter()
+    {
+        if (!RequireLinux()) return;
+        using var blocker = new BlockingQpdf("*/input.pdf");
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:QpdfPath"] = blocker.Executable,
+            ["Pdf:MaxConcurrentProcesses"] = "3"
+        });
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var extract = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var delete = PdfTestContext.FileForm(await test.CreatePagedPdfAsync(2));
+        using var reorder = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        var jobs = new[]
+        {
+            test.Client.PostAsync("/api/pdf/extract?pages=1", extract, cancellation.Token),
+            test.Client.PostAsync("/api/pdf/delete-pages?pages=2", delete, cancellation.Token),
+            test.Client.PostAsync("/api/pdf/reorder?pages=1", reorder, cancellation.Token)
+        };
+        try
+        {
+            await blocker.WaitForJobsAsync(3);
+            using var protect = PdfTestContext.Form(PdfTestContext.Fixture);
+            using var response = await test.Client.PostAsync("/api/pdf/protect", protect).WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.AreEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            foreach (var job in jobs) await ObserveCancellationAsync(job);
+        }
+        await blocker.AssertStoppedAsync();
+        await WaitForCleanupAsync(test);
+    }
+
+    [TestMethod]
     public async Task RotateCancellationDuringPageCount_KillsProcessTree_AndCleansFiles()
     {
         if (!RequireLinux()) return;
@@ -230,6 +284,28 @@ public sealed class PdfResourceLimitTests
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
         var job = test.Client.PostAsync("/api/pdf/rotate?angle=90&pages=1", form, cancellation.Token);
+        try
+        {
+            await blocker.WaitForJobsAsync(1);
+        }
+        finally
+        {
+            cancellation.Cancel();
+            await ObserveCancellationAsync(job);
+        }
+        await blocker.AssertStoppedAsync();
+        await WaitForCleanupAsync(test);
+    }
+
+    [TestMethod]
+    public async Task PageSelectionCancellation_KillsProcessTree_AndCleansFiles()
+    {
+        if (!RequireLinux()) return;
+        using var blocker = new BlockingQpdf("*/input.pdf");
+        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = blocker.Executable });
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        var job = test.Client.PostAsync("/api/pdf/extract?pages=1", form, cancellation.Token);
         try
         {
             await blocker.WaitForJobsAsync(1);

@@ -29,6 +29,9 @@ app.MapGet("/", () => Results.Text("amane-pdf-api"));
 app.MapGet("/healthz", () => Results.Text("Healthy"));
 app.MapPost("/api/pdf/protect", PdfProtectEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/rotate", PdfRotateEndpoint.HandleAsync).RequireRateLimiting("pdf");
+app.MapPost("/api/pdf/extract", PdfPageSelectionEndpoints.ExtractAsync).RequireRateLimiting("pdf");
+app.MapPost("/api/pdf/delete-pages", PdfPageSelectionEndpoints.DeletePagesAsync).RequireRateLimiting("pdf");
+app.MapPost("/api/pdf/reorder", PdfPageSelectionEndpoints.ReorderAsync).RequireRateLimiting("pdf");
 
 app.Run();
 

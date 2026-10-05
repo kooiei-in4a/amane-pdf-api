@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 
 namespace Amane.Pdf.Api;
 
@@ -51,14 +52,55 @@ public sealed class PdfPageSelection
 
     public string ToQpdfRange(int pageCount)
     {
-        if (pageCount <= 0 || ranges.Any(range => range.End > pageCount))
-        {
-            throw InvalidPages();
-        }
+        ValidatePageCount(pageCount);
 
         return string.Join(',', ranges.Select(range => range.Start == range.End
             ? range.Start.ToString(CultureInfo.InvariantCulture)
             : string.Create(CultureInfo.InvariantCulture, $"{range.Start}-{range.End}")));
+    }
+
+    public string ToComplementQpdfRange(int pageCount)
+    {
+        ValidatePageCount(pageCount);
+        var result = new StringBuilder();
+        var nextPage = 1;
+        foreach (var range in ranges.OrderBy(range => range.Start))
+        {
+            if (nextPage < range.Start) AppendRange(result, nextPage, range.Start - 1);
+            if (range.End == pageCount)
+            {
+                nextPage = 0;
+                break;
+            }
+            nextPage = range.End + 1;
+        }
+        if (nextPage > 0 && nextPage <= pageCount) AppendRange(result, nextPage, pageCount);
+        if (result.Length == 0) throw InvalidPages();
+        return result.ToString();
+    }
+
+    public string ToCompleteQpdfRange(int pageCount)
+    {
+        ValidatePageCount(pageCount);
+        var selectedPageCount = ranges.Sum(range => (long)range.End - range.Start + 1);
+        if (selectedPageCount != pageCount) throw InvalidPages();
+        return ToQpdfRange(pageCount);
+    }
+
+    private void ValidatePageCount(int pageCount)
+    {
+        if (pageCount <= 0 || ranges.Any(range => range.End > pageCount)) throw InvalidPages();
+    }
+
+    private static void AppendRange(StringBuilder result, int start, int end)
+    {
+        if (result.Length > 0) result.Append(',');
+        result.Append(start.ToString(CultureInfo.InvariantCulture));
+        if (start != end)
+        {
+            result.Append('-');
+            result.Append(end.ToString(CultureInfo.InvariantCulture));
+        }
     }
 
     private static int ParsePageNumber(string value, ref int index)
