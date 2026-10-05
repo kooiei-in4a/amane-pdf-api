@@ -5,6 +5,8 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
     .Validate(options => options.MaxFileBytes > 0 && options.MaxFileBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
+        options.MaxMergeFiles is >= 2 and <= 10 &&
+        options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
         options.MaxConcurrentProcesses > 0 && !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
@@ -29,6 +31,7 @@ app.MapGet("/", () => Results.Text("amane-pdf-api"));
 app.MapGet("/healthz", () => Results.Text("Healthy"));
 app.MapPost("/api/pdf/protect", PdfProtectEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/optimize", PdfOptimizeEndpoint.HandleAsync).RequireRateLimiting("pdf");
+app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/rotate", PdfRotateEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/extract", PdfPageSelectionEndpoints.ExtractAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/delete-pages", PdfPageSelectionEndpoints.DeletePagesAsync).RequireRateLimiting("pdf");

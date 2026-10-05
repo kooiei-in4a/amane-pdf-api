@@ -13,19 +13,41 @@ public static class MultipartPdfUpload
     public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
         => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
 
+    public static async Task<IReadOnlyList<string>> ReadMergeFilesAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken cancellationToken)
+    {
+        var boundary = ReadBoundary(request);
+        using var body = new SizeLimitedReadStream(request.Body, options.MaxMergeRequestBytes);
+        var reader = new MultipartReader(boundary, body);
+        var paths = new List<string>();
+        var buffer = new byte[64 * 1024];
+        long total = 0;
+        while (await ReadNextAsync(reader, cancellationToken) is { } section)
+        {
+            var disposition = ReadDisposition(section);
+            var name = HeaderUtilities.RemoveQuotes(disposition.Name).Value;
+            var isFile = disposition.FileName.HasValue || disposition.FileNameStar.HasValue;
+            if (name != "file" || !isFile)
+                throw new BadHttpRequestException("Unexpected multipart field.");
+            // Reject the N+1 part before creating or writing another temporary file.
+            if (paths.Count >= options.MaxMergeFiles)
+                throw new BadHttpRequestException("PDF file count limit exceeded.");
+
+            var path = files.MergeInputPath(paths.Count + 1);
+            var remaining = Math.Min(options.MaxFileBytes, options.MaxMergeInputBytes - total);
+            total += await CopyFileAsync(section.Body, path, remaining, buffer, cancellationToken);
+            paths.Add(path);
+        }
+        if (paths.Count < 2) throw new BadHttpRequestException("At least two PDF files are required.");
+        // Count an optional MIME epilogue before starting any qpdf process.
+        while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
+        return paths;
+    }
+
     private static async Task<string?> ReadCoreAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options,
         bool requirePassword, CancellationToken cancellationToken)
     {
-        if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var contentType) ||
-            !contentType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new BadHttpRequestException("Invalid multipart content type.");
-        }
-        var boundary = HeaderUtilities.RemoveQuotes(contentType.Boundary).Value;
-        if (string.IsNullOrEmpty(boundary) || boundary.Length > 128)
-        {
-            throw new BadHttpRequestException("Invalid multipart boundary.");
-        }
+        var boundary = ReadBoundary(request);
         using var body = new SizeLimitedReadStream(request.Body, options.MaxRequestBytes);
         var reader = new MultipartReader(boundary, body);
         var hasFile = false;
@@ -33,25 +55,13 @@ public static class MultipartPdfUpload
         var buffer = new byte[64 * 1024];
         while (await ReadNextAsync(reader, cancellationToken) is { } section)
         {
-            if (!ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var disposition) ||
-                !disposition.DispositionType.Equals("form-data", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new BadHttpRequestException("Invalid multipart section.");
-            }
+            var disposition = ReadDisposition(section);
             var name = HeaderUtilities.RemoveQuotes(disposition.Name).Value;
             var isFile = disposition.FileName.HasValue || disposition.FileNameStar.HasValue;
             if (name == "file" && isFile && !hasFile)
             {
                 hasFile = true;
-                await using var input = TemporaryPdfFiles.CreatePrivateFile(files.InputPath);
-                long copied = 0;
-                int read;
-                while ((read = await ReadBodyAsync(section.Body, buffer.AsMemory(0, (int)Math.Min(buffer.Length, options.MaxFileBytes - copied + 1)), cancellationToken)) != 0)
-                {
-                    copied += read;
-                    if (copied > options.MaxFileBytes) throw new BadHttpRequestException("PDF size limit exceeded.", 413);
-                    await input.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                }
+                await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, cancellationToken);
             }
             else if (requirePassword && name == "password" && !isFile && password is null)
             {
@@ -86,6 +96,40 @@ public static class MultipartPdfUpload
         // Count an optional MIME epilogue as part of the request before starting qpdf.
         while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
         return password;
+    }
+
+    private static string ReadBoundary(HttpRequest request)
+    {
+        if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var contentType) ||
+            !contentType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
+            throw new BadHttpRequestException("Invalid multipart content type.");
+        var boundary = HeaderUtilities.RemoveQuotes(contentType.Boundary).Value;
+        if (string.IsNullOrEmpty(boundary) || boundary.Length > 128)
+            throw new BadHttpRequestException("Invalid multipart boundary.");
+        return boundary;
+    }
+
+    private static ContentDispositionHeaderValue ReadDisposition(MultipartSection section)
+    {
+        if (!ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var disposition) ||
+            !disposition.DispositionType.Equals("form-data", StringComparison.OrdinalIgnoreCase))
+            throw new BadHttpRequestException("Invalid multipart section.");
+        return disposition;
+    }
+
+    private static async Task<long> CopyFileAsync(Stream body, string path, long limit, byte[] buffer,
+        CancellationToken cancellationToken)
+    {
+        await using var input = TemporaryPdfFiles.CreatePrivateFile(path);
+        long copied = 0;
+        int read;
+        while ((read = await ReadBodyAsync(body, buffer.AsMemory(0, (int)Math.Min(buffer.Length, limit - copied + 1)), cancellationToken)) != 0)
+        {
+            copied += read;
+            if (copied > limit) throw new BadHttpRequestException("PDF size limit exceeded.", 413);
+            await input.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
+        return copied;
     }
 
     private static async Task<MultipartSection?> ReadNextAsync(MultipartReader reader, CancellationToken cancellationToken)
