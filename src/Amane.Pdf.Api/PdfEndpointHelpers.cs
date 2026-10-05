@@ -10,16 +10,18 @@ internal static class PdfEndpointHelpers
         string downloadFileName,
         Action? validateRequest,
         Func<TemporaryPdfFiles, CancellationToken, Task> readUploadAsync,
-        Func<TemporaryPdfFiles, CancellationToken, Task> processAsync)
+        Func<TemporaryPdfFiles, CancellationToken, Task> processAsync,
+        long? maxRequestBytes = null)
     {
+        var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         try
         {
             validateRequest?.Invoke();
-            ApplyRequestSizeLimit(context, options);
+            ApplyRequestSizeLimit(context, maxRequestBytes ?? options.MaxRequestBytes);
+            using var operation = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
             using var files = new TemporaryPdfFiles(options.TempRoot);
-            await readUploadAsync(files, context.RequestAborted);
-            var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
+            await readUploadAsync(files, operation.Token);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(operation.Token);
             timeout.CancelAfter(TimeSpan.FromSeconds(options.QpdfTimeoutSeconds));
             try
             {
@@ -35,7 +37,7 @@ internal static class PdfEndpointHelpers
                 context.Abort();
                 return;
             }
-            await SendPdfAsync(context, files.OutputPath, downloadFileName);
+            await SendPdfAsync(context, files.OutputPath, downloadFileName, operation.Token);
         }
         catch (PdfInputException)
         {
@@ -55,6 +57,10 @@ internal static class PdfEndpointHelpers
         {
             // The process has exited and temporary files have been removed before returning.
         }
+        catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+        {
+            context.Abort();
+        }
         catch (Exception)
         {
             if (context.Response.HasStarted)
@@ -69,23 +75,23 @@ internal static class PdfEndpointHelpers
         }
     }
 
-    private static void ApplyRequestSizeLimit(HttpContext context, PdfOptions options)
+    private static void ApplyRequestSizeLimit(HttpContext context, long maxRequestBytes)
     {
-        if (context.Request.ContentLength > options.MaxRequestBytes)
+        if (context.Request.ContentLength > maxRequestBytes)
         {
             throw new BadHttpRequestException("Request size limit exceeded.", 413);
         }
 
         var bodySize = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-        if (bodySize is { IsReadOnly: false }) bodySize.MaxRequestBodySize = options.MaxRequestBytes;
+        if (bodySize is { IsReadOnly: false }) bodySize.MaxRequestBodySize = maxRequestBytes;
     }
 
-    private static async Task SendPdfAsync(HttpContext context, string path, string fileName)
+    private static async Task SendPdfAsync(HttpContext context, string path, string fileName, CancellationToken cancellationToken)
     {
         await using var output = File.OpenRead(path);
         context.Response.ContentType = "application/pdf";
         context.Response.ContentLength = output.Length;
         context.Response.Headers.ContentDisposition = $"attachment; filename={fileName}";
-        await output.CopyToAsync(context.Response.Body, context.RequestAborted);
+        await output.CopyToAsync(context.Response.Body, cancellationToken);
     }
 }

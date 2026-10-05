@@ -9,6 +9,12 @@ public sealed class TemporaryPdfFiles : IDisposable
     public string OutputPath => Path.Combine(DirectoryPath, "output.pdf");
     public string JobPath => Path.Combine(DirectoryPath, "job.json");
 
+    public string MergeInputPath(int index)
+    {
+        if (index < 1) throw new ArgumentOutOfRangeException(nameof(index));
+        return Path.Combine(DirectoryPath, $"input-{index:D4}.pdf");
+    }
+
     public TemporaryPdfFiles(string root)
     {
         DirectoryPath = Path.Combine(root, Convert.ToHexString(RandomNumberGenerator.GetBytes(16)));

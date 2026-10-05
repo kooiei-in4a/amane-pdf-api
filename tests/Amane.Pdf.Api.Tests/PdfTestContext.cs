@@ -49,6 +49,14 @@ internal sealed class PdfTestContext : IAsyncDisposable
     public static MultipartFormDataContent FileForm(byte[]? file = null, string fileName = "sample.pdf")
         => Form(file, password: null, fileName);
 
+    public static MultipartFormDataContent MergeForm(params byte[][] inputs)
+    {
+        var form = new MultipartFormDataContent();
+        foreach (var input in inputs)
+            form.Add(new ByteArrayContent(input), "file", "../../private-name.pdf");
+        return form;
+    }
+
     public async Task<byte[]> CreatePagedPdfAsync(int pageCount)
     {
         var input = Path.Combine(Root, "page-source.pdf");

@@ -7,16 +7,20 @@ namespace Amane.Pdf.Api;
 
 public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 {
-    public async Task ValidateAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
+    public Task ValidateAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
+        => ValidateAsync(files.InputPath, cancellationToken);
+
+    // Only API-generated paths inside a private job directory are supplied by endpoints.
+    public async Task ValidateAsync(string path, CancellationToken cancellationToken)
     {
-        if (new FileInfo(files.InputPath).Length == 0) throw new PdfInputException();
+        if (new FileInfo(path).Length == 0) throw new PdfInputException();
 
         // This inspection also detects encryption when the input password is unknown or empty.
-        var encrypted = await RunAsync(["--is-encrypted", files.InputPath], cancellationToken);
+        var encrypted = await RunAsync(["--is-encrypted", path], cancellationToken);
         if (encrypted is 0 or 3) throw new PdfInputException();
         if (encrypted != 2) throw new InvalidOperationException("PDF inspection failed.");
 
-        var check = await RunAsync(["--check", files.InputPath], cancellationToken);
+        var check = await RunAsync(["--check", path], cancellationToken);
         if (check is 2 or 3) throw new PdfInputException();
         if (check != 0) throw new InvalidOperationException("PDF inspection failed.");
     }
@@ -105,6 +109,21 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
     public async Task SelectPagesAsync(TemporaryPdfFiles files, string pageRange, CancellationToken cancellationToken)
     {
         var exitCode = await RunAsync([files.InputPath, "--pages", ".", pageRange, "--", files.OutputPath], cancellationToken);
+        if (exitCode == 3) throw new PdfInputException();
+        if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
+    }
+
+    public async Task MergeAsync(TemporaryPdfFiles files, IReadOnlyList<string> inputPaths, CancellationToken cancellationToken)
+    {
+        var arguments = new List<string> { "--empty", "--pages" };
+        foreach (var path in inputPaths)
+        {
+            arguments.Add(path);
+            arguments.Add("1-z");
+        }
+        arguments.Add("--");
+        arguments.Add(files.OutputPath);
+        var exitCode = await RunAsync([.. arguments], cancellationToken);
         if (exitCode == 3) throw new PdfInputException();
         if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
     }

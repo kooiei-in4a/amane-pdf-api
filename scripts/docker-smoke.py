@@ -23,13 +23,14 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD):
+def multipart(file=None, password=PASSWORD, files=None):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
-    if file is not None:
+    inputs = files if files is not None else ([] if file is None else [file])
+    for input_file in inputs:
         parts.append(
             (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="../../untrusted.pdf"\r\n'
-             "Content-Type: application/octet-stream\r\n\r\n").encode() + file + b"\r\n"
+             "Content-Type: application/octet-stream\r\n\r\n").encode() + input_file + b"\r\n"
         )
     if password is not None:
         parts.append(
@@ -151,6 +152,16 @@ class ApiContainer:
         self.assert_clean()
         return result
 
+    def merge(self, files):
+        body, content_type = multipart(password=None, files=files)
+        status, headers, result = self.request("POST", "/api/pdf/merge", body, content_type)
+        assert status == 200, f"Expected HTTP 200, received {status}."
+        assert headers.get("Content-Type", "").split(";", 1)[0] == "application/pdf"
+        assert "filename=merged.pdf" in headers.get("Content-Disposition", "")
+        assert result.startswith(b"%PDF-")
+        self.assert_clean()
+        return result
+
     def extract(self, file, pages):
         body, content_type = multipart(file, password=None)
         status, headers, result = self.request("POST", "/api/pdf/extract?pages=" + pages, body, content_type)
@@ -237,6 +248,7 @@ def main(image):
         assert api.page_rotations(extracted) == [0]
         optimized = api.optimize(FIXTURE)
         assert api.page_rotations(optimized) == [0]
+        assert api.page_rotations(api.merge([rotated, FIXTURE])) == [90, 0]
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)
         api.protect(b"", expected=422)
@@ -244,7 +256,7 @@ def main(image):
         api.protect(b"%PDF-1.4\n" + SENTINEL.encode() + b"\n%%EOF", expected=422)
         api.protect(FIXTURE.replace(b"/Length 41", b"/Length 39"), expected=422)
         api.protect(encrypted, expected=422)
-        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/optimization/rotation/page selection/passwords/400/422/logs/cleanup PASS")
+        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/optimization/merge/rotation/page selection/passwords/400/422/logs/cleanup PASS")
     with running_container(image, (f"Pdf__MaxFileBytes={len(FIXTURE)}",)) as api:
         api.protect(FIXTURE)
         api.protect(FIXTURE + b"X", expected=413)

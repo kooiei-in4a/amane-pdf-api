@@ -2,7 +2,7 @@
 
 PDFを安全に処理するための小さなWeb APIです。
 
-`amane-tools-site` から受け取ったPDFの暗号化、lossless構造最適化、ページ回転、ページ抽出・削除・並べ替えを、安全なqpdf処理として提供します。
+`amane-tools-site` から受け取ったPDFの暗号化、lossless構造最適化、結合、ページ回転、ページ抽出・削除・並べ替えを、安全なqpdf処理として提供します。
 
 ## 現在の状態
 
@@ -11,6 +11,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - .NET 10 / ASP.NET Core の最小API、`GET /healthz`
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
+- `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
 - `POST /api/pdf/extract` による指定ページの抽出
 - `POST /api/pdf/delete-pages` による指定ページの削除
@@ -87,6 +88,34 @@ curl --fail-with-body \
   -o optimized.pdf
 ```
 
+### PDF結合
+
+```text
+POST /api/pdf/merge
+Content-Type: multipart/form-data
+
+file  1つ目のPDF
+file  2つ目のPDF
+file  3つ目のPDF（任意）
+...
+```
+
+同名の `file` fieldを複数指定し、multipart内の出現順で各PDFの全ページを結合します。2〜10ファイルを受け付け、1ファイル最大50 MiB、入力PDF合計最大50 MiBが既定値です。ページ指定やpassword fieldは受け付けず、既暗号化PDFは拒否します。各入力を実qpdfで逐次検証し、空、非PDF、破損、warningのある入力が1件でもあれば全体を拒否します。
+
+成功時は `200 OK`、`Content-Type: application/pdf`、`Content-Disposition: attachment; filename=merged.pdf` で返します。利用者ファイル名は内部path、qpdf argv、返却名、ログへ使用しません。
+
+```bash
+curl --fail-with-body \
+  -F file=@first.pdf \
+  -F file=@second.pdf \
+  http://127.0.0.1:8080/api/pdf/merge \
+  -o merged.pdf
+```
+
+qpdfの `--empty --pages` を使用するため、入力PDFの文書レベルmetadataやoutline（しおり）の保持・統合は保証しません。v1の目的はページ内容の結合です。出力PDFは入力合計より大きくなる可能性があります。
+
+アップロード完了後、全入力の検証と最終結合を合わせて1つの30秒のtimeout予算を使用します。入力ごとにtimeoutをリセットせず、request内でqpdfを並列実行しません。1 merge requestは既存APIと共有する同時実行枠の1枠を、アップロードから返却・削除まで保持します。
+
 ### PDFページ回転
 
 ```text
@@ -149,9 +178,9 @@ exit code 2（error）と3（warning）は422として拒否し、自動修復�
 
 | HTTP status | 条件 |
 | --- | --- |
-| 200 | 暗号化、最適化、回転、抽出、削除、並べ替え済みPDFを返却 |
-| 400 | multipart形式不正、必須項目不足/重複、passwordまたはangle/pages仕様違反 |
-| 413 | PDFサイズまたはmultipartリクエスト総量の超過 |
+| 200 | 暗号化、最適化、結合、回転、抽出、削除、並べ替え済みPDFを返却 |
+| 400 | multipart形式不正、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはangle/pages仕様違反 |
+| 413 | 単一PDF、merge入力合計、またはmultipartリクエスト総量のサイズ超過 |
 | 422 | 空ファイル、非PDF、破損/警告のあるPDF、既暗号化PDF |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
 | 503 | 同時PDF処理数の上限超過（待ち行列なし） |
@@ -164,6 +193,8 @@ exit code 2（error）と3（warning）は422として拒否し、自動修復�
 | 環境変数 | 初期値 | 意味 |
 | --- | --- | --- |
 | `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込むPDFの最大bytes |
+| `Pdf__MaxMergeFiles` | `10` | mergeの最大ファイル数。設定可能な範囲は2〜10 |
+| `Pdf__MaxMergeInputBytes` | `52428800`（50 MiB） | 実際に読み込むmerge入力PDF合計の最大bytes |
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
@@ -172,13 +203,17 @@ exit code 2（error）と3（warning）は422として拒否し、自動修復�
 .NET標準configurationの`Pdf`セクションでも同じ設定ができます。不正な制限値は起動時に拒否します。
 待ち行列は0です。ASP.NET Core標準Concurrency Limiterでbodyを読み始める前に処理枠を取得し、上限超過には503を返します。`GET /healthz`はこの制限の対象外です。
 
-リクエスト総量の上限はPDF上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
+単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
 Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesのカウントを併用します。
 MultipartReaderでPDFを直接一時ファイルへストリーム保存し、上限を超える1 byteを検出したら保存を停止します。フォームの全量bufferや二重の一時保存は行いません。
 passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で拒否します。
 
-30秒はアップロード完了後のqpdf検査と各PDF処理、または検査・ページ数取得・ページ操作の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もqpdfをキャンセルします。
-暗号化、最適化、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはすべての処理APIで拒否します。
+mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
+
+30秒はアップロード完了後のqpdf検査と各PDF処理、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
+暗号化、最適化、結合、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはすべての処理APIで拒否します。
+
+merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 512 MiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
 利用者/IP単位の利用回数制限やアップロード接続の運用制御は、`amane-tools-site` / Caddy等の入口側の責務です。
 
 ## 構成
@@ -257,7 +292,7 @@ python3 scripts/docker-smoke.py amane-pdf-api:ci
 CIではrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。
 qpdfの存在/versionだけでなく、QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能を実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは17件のPOSTとhealthを検証します。正常暗号化、lossless最適化、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+smoke testは18件のPOSTとhealthを検証します。正常暗号化、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化とpassword確認を行います。
 各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 
