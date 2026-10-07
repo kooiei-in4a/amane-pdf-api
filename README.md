@@ -318,6 +318,9 @@ PDFは外部から受け取る信用できない入力として扱います。
 
 コード、API名、製品名、コマンド、標準的な技術用語など、日本語化すると分かりにくくなる部分は英語表記を使用します。
 
+- [docs/security.md](docs/security.md): セキュリティ方針
+- [docs/roadmap.md](docs/roadmap.md): PDF機能拡張の方針、採用した判断と検証記録
+
 ## ライセンス
 
 このプロジェクトは Apache License 2.0 で公開します。
