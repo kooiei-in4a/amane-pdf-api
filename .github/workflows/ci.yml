@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
 
     steps:
@@ -32,6 +32,9 @@ jobs:
 
       - name: Install qpdf
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf && qpdf --version
+
+      - name: Verify qpdf version
+        run: qpdf --version | grep -Eq '^qpdf version (1[2-9]|[2-9][0-9])\.'
 
       - name: Build
         run: dotnet build --configuration Release --no-restore

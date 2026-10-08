@@ -5,6 +5,7 @@ import contextlib
 import http.client
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import time
@@ -85,6 +86,9 @@ class ApiContainer:
         assert not any(mount["Type"] == "volume" for mount in container["Mounts"])
         if self.isolated:
             assert container["HostConfig"]["NetworkMode"] == "none"
+
+    def exec(self, *arguments):
+        return docker("exec", self.name, *arguments)
 
     def request(self, method, path, body=b"", content_type=None, chunked=False):
         if self.isolated:
@@ -236,7 +240,12 @@ def running_container(image, settings=(), isolated=False):
 
 def main(image):
     with running_container(image) as api:
-        print(docker("exec", api.name, "qpdf", "--version").stdout.decode().strip())
+        version = api.exec("qpdf", "--version").stdout.decode().splitlines()[0]
+        print(version)
+        match = re.match(r"qpdf version (\d+)\.", version)
+        assert match and int(match.group(1)) >= 12, "qpdf 12 or later is required: " + version
+        for option in ("--remove-info", "--remove-metadata"):
+            api.exec("qpdf", "--help=" + option)
         schema = json.loads(docker("exec", api.name, "qpdf", "--job-json-help").stdout)
         assert "256bit" in schema["encrypt"] and "passwordMode" in schema and "check" in schema and "isEncrypted" in schema
         encrypted = api.protect(FIXTURE)
