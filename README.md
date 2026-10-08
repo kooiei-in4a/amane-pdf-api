@@ -14,6 +14,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
 - Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
+- `POST /api/pdf/split` によるPDF分割とZIP返却
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
 - `POST /api/pdf/extract` による指定ページの抽出
 - `POST /api/pdf/delete-pages` による指定ページの削除
@@ -243,9 +244,34 @@ curl --fail-with-body \
 
 4096文字の上限は並べ替えにも適用されます。大量ページを1ページずつ逆順指定するなど、完全なページ列が4096文字を超える並べ替えは初版では対象外です。別のJSON body APIはありません。
 
+### PDF分割（ZIP）
+
+```text
+POST /api/pdf/split?every=2
+POST /api/pdf/split?ranges=1-3,4,5-10
+Content-Type: multipart/form-data
+
+file  PDFファイル
+```
+
+`every`か`ranges`の一方だけ、値も一つだけを指定します。未知のquery key、重複は400です。keyは大文字小文字を区別せず、`EVERY=2`も受け付けます。`every=2&Every=3`は重複として拒否します。`every`は先頭0のないASCII数字、1〜99999です。先頭からNページずつ分け、最後が短くても構いません。`ranges`は既存ページ指定と同じ4096文字以内の規則で、カンマ区切りの各範囲を1ファイルにします。指定順を維持し、指定しないページはページ一覧に含めません。
+
+結果は2〜100ファイル（初期値）で、範囲外、1ファイルになる指定、分割数超過は400です。成功は完成したZIPの200、`application/zip`、`Content-Length`、固定名`split.zip`です。ZIP内の名前は`part-001_p1-3.pdf`、単一ページなら`part-002_p4.pdf`です。Stored（method 0）、各entryの時刻は1980-01-01 00:00:00です。文書のID等を固定する機能ではなく、ZIP全体のbytes一致は保証しません。
+
+元PDFを主入力にするため、文書情報・添付・しおり等が残ることがあります。選択しないページへのしおりは参照先がなくなる場合があります。情報の消去・無害化は保証しません。
+
+ZIP内のPDF合計は初期値50 MiB、入力・作成中ZIP・現在のパートの一時容量予算は124 MiBです。PDF合計・最大パート・指定順によって一時容量上限に達することがあり、合計50 MiB以内でも拒否します。容量上限は422 `reason: "output-too-large"`、固定title「分割処理の容量上限に達したため、処理できませんでした。含めるページを減らすか、分け方を変更してお試しください。」です。途中のZIPは返しません。破損・暗号化等の共通422にはreasonを付けません。
+
+```bash
+curl --fail-with-body -F file=@input.pdf \
+  'http://127.0.0.1:8080/api/pdf/split?every=2' -o split.zip
+```
+
+サイトのUI・日次回数の返却は[amane-tools-site #40](https://github.com/kooiei-in4a/amane-tools-site/issues/40)の責務です。splitの上流400と検証済み422 `output-too-large`だけを返却し、その他の422は返却しません。サイトの公開はAPI splitのdeploy後に行います。core dumpに関する公開条件と測定結果は[分割の検証記録](docs/split-validation.md)を参照してください。
+
 ### 入力とエラー
 
-暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、回転、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
+暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、圧縮、分割、回転、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
 
 Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
@@ -254,8 +280,8 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 
 | HTTP status | 条件 |
 | --- | --- |
-| 200 | 暗号化、解除、最適化、結合、回転、抽出、削除、並べ替え済みPDFを返却 |
-| 400 | multipart形式不正、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはangle/pages仕様違反 |
+| 200 | 処理済みPDF、splitは完成ZIPを返却 |
+| 400 | multipart/query形式不正、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはページ指定等の仕様違反、splitの分割数不足/超過 |
 | 413 | 単一PDF、merge入力合計、またはmultipartリクエスト総量のサイズ超過 |
 | 422 | 空ファイル、非PDF、破損/警告のあるPDF、処理上限超過、unlock以外の既暗号化PDF。unlockは上記reason表を参照 |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
@@ -273,6 +299,9 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込むPDFの最大bytes |
 | `Pdf__MaxMergeFiles` | `10` | mergeの最大ファイル数。設定可能な範囲は2〜10 |
 | `Pdf__MaxMergeInputBytes` | `52428800`（50 MiB） | 実際に読み込むmerge入力PDF合計の最大bytes |
+| `Pdf__MaxSplitParts` | `100` | 分割数上限。設定範囲2〜500 |
+| `Pdf__MaxSplitOutputBytes` | `52428800`（50 MiB） | ZIP内PDFの実サイズ合計。MaxFileBytesから独立 |
+| `Pdf__MaxSplitJobBytes` | `130023424`（124 MiB） | splitの入力・ZIP・現在のパートの容量予算 |
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
@@ -306,7 +335,7 @@ passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で�
 mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
 
 30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
-暗号化、解除、最適化、結合、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
+暗号化、解除、最適化、圧縮、結合、分割、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
 merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 1.5 GiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
 ファイルサイズが50 MiB以内でも、大きな画像のデコードやqpdfのbufferが上限に達すると422になり得ます。破損、警告、処理上限超過をstderrで区別しません。全qpdf呼び出し（unlockの各probe・出力検証、64 bytesのページ数取得を含む）へ同じ制限を適用します。出力検証の失敗は500です。
@@ -337,6 +366,12 @@ E = I − R + A、F = E + H
 入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、fsize超過は部分出力を削除して500です。画像段階のSIGXFSZ（153）は不採用、126／127は500です。既知のmetadata・時間・容量上限は画像処理を終了し、想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
 
 APIの制限は設定で調整できる安全境界です。job上限・PNM・画素数・画像数・AS・同時処理数を増やすときは、tmpfsとコンテナmemoryも上の式と合わせて見直してください。qpdfとJPEGツールは各job内で逐次起動するため、メモリ計画には両者のASの大きい方を使います。実HTTPの圧縮率・画質、段階別時間、memory.peak／memory.events、tmpfsは[圧縮の実測記録](docs/compress-validation.md)に記載します。数値は対象fixtureでの事実であり、他のPDFの保証ではありません。
+
+splitは入力・ZIP・1パートを4 KiBへ切り上げて数えます。次のパートには、入力と既存ZIPを除いた予算からZIP余裕1 MiB・FSIZE検出用4 KiBを引き、残りの半分を4 KiBへ切り下げて予約します。パートとZIPコピーの重複を含むためです。ZIPの最終ファイル長は採用したPDF合計＋1 MiB以内とし、ヘッダーの巻き戻し書込みは累計bytesではなく最終長で検査します。
+
+`MaxSplitOutputBytes`は正、最大4,293,918,718 bytesで、完成ZIPをuint.MaxValue未満に保ちZIP64を使いません。`MaxSplitJobBytes`は`A(MaxFileBytes) + 1 MiB + 3×4096`以上、`long.MaxValue−4095`以下です（Aは4 KiB切り上げ）。overflowを含む不正な設定は起動時に拒否します。PDF合計の上限を増やしてもjob予算・tmpfsは増えません。4 KiB pageのx86_64 Linux Dockerが容量検証の前提です。64 KiB pageのarm64等は再測定が必要です。
+
+Linuxのパート生成は共通AS/JPEGMEMと`RLIMIT_FSIZE=partBudget+1`を使い、終了待ち後に実サイズを比較します。exit 0でも予算を超えれば422です。非Linuxにもsplitを登録しますが、qpdf書出し中のFSIZE/ASのhard limitは適用できず、処理後とZIPコピー時のサイズ検査だけです。全パートの生成・検査・コピー・ZIP最終化は、アップロード後の一つの30秒を共有します。100/500パートや任意PDFの時間内成功を保証しません。
 
 標準値で拒否される大きな画像を扱う例（2 GiB、AS 768 MiB）：
 
@@ -432,6 +467,7 @@ CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
 smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実SIGXFSZ、3つのJPEG copyrightファイルとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+splitはevery=1、Stored/固定時刻/名前、別TZのDOS時刻、直接prlimit実行での終了コード、HTTPの同値/1 byte超過/実FSIZE超過、cat 500とcleanup/healthを確認します。容量・同時実行・100パートの時間は通常のsmokeへ入れず、`sudo python3 scripts/split-validation.py IMAGE /tmp/split-metrics.json`で別に測定します。[分割の検証記録](docs/split-validation.md)に結果とcore dumpの公開条件を記載しています。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 1.5 GiB（swapなし）、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
 小さいASで通常PDFの成功と画像PDFの422、標準ASへ増やした同じPDFの成功、自己テスト失敗時の非0終了と固定ログ、util-linux copyrightの存在も確認します。各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 

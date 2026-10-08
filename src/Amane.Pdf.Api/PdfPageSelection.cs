@@ -9,6 +9,14 @@ public sealed class PdfPageSelection
 
     private readonly PageRange[] ranges;
 
+    internal int RangeCount => ranges.Length;
+
+    internal IReadOnlyList<(int Start, int End)> GetRanges(int pageCount)
+    {
+        ValidatePageCount(pageCount);
+        return ranges.Select(range => (range.Start, range.End)).ToArray();
+    }
+
     private PdfPageSelection(List<PageRange> ranges)
     {
         this.ranges = [.. ranges];
@@ -112,7 +120,7 @@ public sealed class PdfPageSelection
         {
             try
             {
-                number = checked(number * 10 + value[index] - '0');
+                number = checked(number * 10 + (value[index] - '0'));
             }
             catch (OverflowException)
             {

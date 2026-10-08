@@ -133,7 +133,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
             if (output[i] is < (byte)'0' or > (byte)'9') throw new InvalidOperationException("PDF page count failed.");
             try
             {
-                pageCount = checked(pageCount * 10 + output[i] - (byte)'0');
+                pageCount = checked(pageCount * 10 + (output[i] - (byte)'0'));
             }
             catch (OverflowException)
             {
@@ -171,6 +171,24 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         var exitCode = await RunAsync([files.InputPath, "--pages", ".", pageRange, "--", files.OutputPath], cancellationToken);
         if (exitCode == 3) throw new PdfInputException();
         if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
+    }
+
+    internal async Task SplitPartAsync(string inputPath, string pageRange, string outputPath,
+        long partBudget, CancellationToken cancellationToken)
+    {
+        var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,
+            [inputPath, "--pages", ".", pageRange, "--", outputPath], options.Value.QpdfAddressSpaceLimitBytes,
+            checked(partBudget + 1), new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory });
+        var result = await ExternalProcessRunner.RunAsync(request, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (result.ExitCode is 126 or 127) throw new InvalidOperationException("PDF processing failed.");
+        var output = new FileInfo(outputPath);
+        if (output.Exists && output.Length > partBudget) throw new PdfSplitOutputTooLargeException();
+        if (result.ExitCode == 3) throw new PdfInputException();
+        if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
+            throw new InvalidOperationException("PDF processing failed.");
+        try { await ValidateAsync(outputPath, cancellationToken); }
+        catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
     }
 
     public async Task MergeAsync(TemporaryPdfFiles files, IReadOnlyList<string> inputPaths, CancellationToken cancellationToken)

@@ -8,7 +8,7 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.MaxMergeFiles is >= 2 and <= 10 &&
         options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
-        options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) &&
+        options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || PdfCompressProcessor.IsValid(options)) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
@@ -37,6 +37,7 @@ app.MapPost("/api/pdf/optimize", PdfOptimizeEndpoint.HandleAsync).RequireRateLim
 if (OperatingSystem.IsLinux())
     app.MapPost("/api/pdf/compress", PdfCompressEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");
+app.MapPost("/api/pdf/split", PdfSplitEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/rotate", PdfRotateEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/extract", PdfPageSelectionEndpoints.ExtractAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/delete-pages", PdfPageSelectionEndpoints.DeletePagesAsync).RequireRateLimiting("pdf");

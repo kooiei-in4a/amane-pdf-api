@@ -13,6 +13,7 @@ import time
 import uuid
 import zlib
 import importlib.util
+import zipfile
 
 
 FIXTURE = (Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf").read_bytes()
@@ -336,6 +337,82 @@ def assert_startup_failure(image, settings, expected_message="PDF処理のメモ
         docker("rm", "--force", name, check=False)
 
 
+def split_request(api, source, expected=200):
+    body, ct = multipart(source, password=None)
+    code, headers, result = api.request("POST", "/api/pdf/split?every=1", body, ct)
+    assert code == expected, ("split", code, expected)
+    if expected == 200:
+        assert headers["Content-Type"].split(";")[0] == "application/zip"
+        assert "filename=split.zip" in headers["Content-Disposition"]
+        assert int(headers["Content-Length"]) == len(result)
+    else:
+        problem = json.loads(result)
+        assert problem["status"] == expected
+        assert problem.get("reason") == ("output-too-large" if expected == 422 else None)
+        assert "Content-Disposition" not in headers
+        for value in (b"/tmp/", SENTINEL.encode(), PASSWORD.encode(), b"untrusted.pdf"):
+            assert value not in result
+    api.assert_clean()
+    assert api.request("GET", "/healthz")[0] == 200
+    return result
+
+
+def split_calibration(api, source):
+    """HTTPからは見えない終了コードを、同じイメージのprlimit/qpdfで確認する。"""
+    root = "/tmp/split-smoke-check"
+    api.exec("mkdir", "-m", "700", root)
+    docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/split-smoke-check/input.pdf", data=source)
+    lengths = []
+    records = []
+    try:
+        for page in (1, 2):
+            output = root + "/part.pdf"
+            docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/split-smoke-check/part.pdf", data=b"")
+            args = ("qpdf", root + "/input.pdf", "--pages", ".", str(page), "--", output)
+            result = docker("exec", "--env", "JPEGMEM=600M", api.name, "prlimit", "--as=570425344:570425344", "--", *args, check=False)
+            assert result.returncode == 0
+            length = int(api.exec("stat", "-c", "%s", output).stdout)
+            lengths.append(length)
+            if page == 2:
+                for budget in (length, length - 1, 128):
+                    result = docker("exec", "--env", "JPEGMEM=600M", api.name, "prlimit", "--as=570425344:570425344",
+                                    f"--fsize={budget+1}:{budget+1}", "--", *args, check=False)
+                    actual = int(api.exec("stat", "-c", "%s", output).stdout)
+                    records.append({"budget": budget, "exit": result.returncode, "bytes": actual})
+                    if budget >= length - 1:
+                        assert result.returncode == 0 and actual == length
+                    else:
+                        assert result.returncode not in (0, 126, 127) and actual == budget + 1
+        print("Docker split calibration " + json.dumps(records), flush=True)
+        return sum(lengths), lengths[-1]
+    finally:
+        api.exec("rm", "-rf", root)
+
+
+def split_smoke(image):
+    for tz in ("UTC", "Asia/Tokyo"):
+        with running_container(image, ("TZ=" + tz,), isolated=True) as api:
+            source = api.merge([api.rotate(FIXTURE), FIXTURE])
+            result = split_request(api, source)
+            with zipfile.ZipFile(io.BytesIO(result)) as archive:
+                assert archive.namelist() == ["part-001_p1.pdf", "part-002_p2.pdf"]
+                for entry, rotation in zip(archive.infolist(), (90, 0)):
+                    assert entry.compress_type == zipfile.ZIP_STORED
+                    assert entry.date_time == (1980, 1, 1, 0, 0, 0)
+                    assert api.page_rotations(archive.read(entry)) == [rotation]
+            api.assert_clean()
+            if tz == "UTC":
+                total, last = split_calibration(api, source)
+                fixture = source
+    # The total bound becomes the partBudget on the final part. Job capacity must not bind first.
+    for limit, expected in ((total, 200), (total - 1, 422), (total - last + 128, 422)):
+        with running_container(image, (f"Pdf__MaxSplitOutputBytes={limit}",), isolated=True) as api:
+            split_request(api, fixture, expected)
+    with running_container(image, ("Pdf__QpdfPath=/usr/bin/cat",), isolated=True) as api:
+        split_request(api, fixture, 500)
+    print("Docker split: Stored/pages/names/TZ/exact/exit0 overflow/real FSIZE/500/cleanup/health PASS", flush=True)
+
+
 def compress_smoke(image):
     spec = importlib.util.spec_from_file_location("compress_validation", Path(__file__).with_name("compress-validation.py"))
     validation = importlib.util.module_from_spec(spec)
@@ -383,6 +460,7 @@ def compress_smoke(image):
 
 def main(image):
     compress_smoke(image)
+    split_smoke(image)
     post_count = 0
     with running_container(image) as api:
         api.exec("test", "-r", "/usr/share/doc/util-linux/copyright")
