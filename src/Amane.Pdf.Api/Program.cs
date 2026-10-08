@@ -8,7 +8,9 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.MaxMergeFiles is >= 2 and <= 10 &&
         options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
-        options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
+        options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) &&
+        (!OperatingSystem.IsLinux() || PdfCompressProcessor.IsValid(options)) &&
+        !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
 builder.Services.AddSingleton<QpdfProcessor>();
@@ -32,6 +34,8 @@ app.MapGet("/healthz", () => Results.Text("Healthy"));
 app.MapPost("/api/pdf/protect", PdfProtectEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/unlock", PdfUnlockEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/optimize", PdfOptimizeEndpoint.HandleAsync).RequireRateLimiting("pdf");
+if (OperatingSystem.IsLinux())
+    app.MapPost("/api/pdf/compress", PdfCompressEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/rotate", PdfRotateEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/extract", PdfPageSelectionEndpoints.ExtractAsync).RequireRateLimiting("pdf");

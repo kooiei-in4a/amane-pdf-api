@@ -127,3 +127,23 @@ timeoutとキャンセルは実process shimで遅延を再現し、親/子PIDの
 CIでは実コンテナでhealth、QPDFJob JSONと必要機能、`--remove-info` / `--remove-metadata` の存在、暗号化、解除成功とwrong-password、lossless最適化、代表的なページ選択、異常入力、413、情報非露出、一時領域の削除を確認し、host/containerのqpdf versionを記録します。
 
 API自身のサイズ・処理時間・同時実行制限は実装済みです。利用者/IP単位の頻度制限、CPU/メモリ/ネットワーク設定、公開・deployは入口と実行環境の責務です。
+
+## JPEG画像圧縮（Linux）
+
+compressはページResourcesの直接の画像XObjectだけを選び、Form内・inline imageをたどりません。DCTDecode単独、DecodeParmsなし、8 bit、実JPEGと辞書の寸法・成分数一致、生JPEG 32 KiB以上、初期値1億画素以下を検査します。DeviceGray／DeviceRGB、Nが一致するICCBased、辞書を持つCalGray／CalRGBが対象です。ImageMask=true、Decode、color key Mask配列、Matte付きSMask、対象外ColorSpace、未解決・循環参照は除外します。ColorSpace・profileと保持対象のMask／SMask・Interpolateを維持し、ICC header／acsp、Range／Alternate、WhitePoint等の値域の検査は追加しません。
+
+JPEGはサイズ上限付きstreamで最初のEOIまで解析します。2026-10-08のHuman承認により、MPFのHDR gain mapなどEOI以降のデータを無視し、置換時には新JPEGへ引き継ぎません。SOF0／SOF1／SOF2のprecision 8・成分数1／3だけを許容し、EOIより前のheight 0／DNL、複数SOF、対応外SOF、切れたmarker、不正なsegment長、SOSなしを拒否します。最初のSOFで検査を終えません。エントロピー等の検査は制限付きdjpegの-strictにも任せます。縮小は整数の切り上げM/8、拡大なしです。新JPEGも同じparserで本体と実寸・成分数を再検査し、実寸でWidth／Heightを更新します。後続データの有無は検査対象外ですが、EOI以前の検査と期待する寸法・成分数の一致は維持します。Lengthはqpdfに生成させ、採用はchecked整数の10×新サイズ≤9×元サイズで決めます。
+
+既存ExternalProcessRunnerとProcessMemoryLimitsを使用し、prlimitをshellやlauncherなしで直接起動します。RunnerのDIや独自kill／waitは追加しません。qpdfのJPEGMEM／ASは共通設定を維持します。djpeg／cjpegはAS 64 MiB、必要な出力にはRLIMIT_FSIZEを適用し、-maxmemory 64M／-strict、djpegには-maxscans 100を付けます。Linux起動時には小さな画像で必要オプションの実動作を確認し、失敗・timeoutは固定ログだけで起動を止めます。自己テストを省略する本番設定はありません。偽コマンドと短いrequest予算による異常系テストは、実コマンド・有効な設定で起動した後にテスト側だけで差し替えます。
+
+pages／metadata JSONはfsize付きファイル出力、初期値16 MiB・深さ64です。候補辞書は最大500参照ずつ取得してprivate spoolへ保存し、spool合計16 MiBを上限とします。全候補のDOMを同時保持しません。ページ、Parent、Resources、XObject、画像辞書、SMask／Mask／ICCの参照を階層ごとにまとめて先読みし、ページ数に比例した1参照ずつの外部起動を避けます。ページ側は最大500ページずつ（低いspool設定ではさらに少なく）取得→画像参照収集→削除し、別名の連鎖を含めてspoolと容量台帳から解放します。画像／ICC／Mask／SMask辞書は画像の判定・変換に必要な間保持します。深い継承・別名や大きな辞書で一単位が上限へ達した場合も、上限を緩めず既知のmetadata上限として扱います。間接参照はmetadataだけで解決し、Length降順の固有objectを最大500個選びます。生JPEGは最大50画像ずつ、S=round4KiB(最大Length+4KiB)、n×Sを予約し、Length合計とn×Sをともに残り領域へ収めます。抽出fsizeはS、JSONはファイル出力なし・既存Runnerのstdout上限1 MiBです。サイズ・objectとdatafileの対応・private batch directory内のpath・symlinkなしを確認します。stdout超過や部分抽出はファイルを削除し、複数画像バッチから各画像一回だけの抽出へ縮小します。無制限retryはしません。
+
+job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM、新JPEG、採用JPEG、JSONの同時存在を予約します。PNMは縮小後のceil寸法×成分数+headerから求め、512 bytesの余裕を足したfsizeを使い、初期値24 MiBを超える画像を採用しません。新JPEGのfsizeは元の90%と残り容量から求めます。採用条件はI+A+J+F≤L、F=I−R+A+4 MiBとし、実測R／A、実サイズJ、各ファイルの割当量も確認します。結合時にはentry断片群とupdate.jsonが同時に存在するため、I＋採用JPEG割当＋entry割当合計＋update.json割当も採用前に確認します。結合時と出力書き出し時の容量をそれぞれ判定します。共有objectは一度だけ数えます。採用JPEGは保持、不採用raw／PNM／新JPEGは削除します。最終処理前には不要な中間物を削除します。jobは0700、.NETで作成するファイルは0600、qpdfの自動生成rawは0700のbatch directoryを境界とします。
+
+アップロード完了後・入力検証前から30秒、同じ開始時刻から21秒で画像処理を終了します。CompressSoftTimeoutSecondsはQpdfTimeoutSeconds未満を必須とし、起動時に検証します。実行中の画像・バッチもsoft deadlineで中断し、一枚のdjpeg＋cjpegは共有2秒、バッチ抽出も2秒です。request中断・アプリ停止・hard timeoutを画像失敗として握りつぶしません。cancel時のkill tree／wait／stdout・stderr drainはRunnerが行います。残り9秒で書き出し・出力検証を行いますが、hard deadlineに達すれば504となります。
+
+画像単位の非0終了（126／127以外、SIGXFSZの153も含む）はその画像を保持します。126／127・起動失敗は500です。既知のmetadata・時間・容量上限は画像処理を終了し、採用済み結果で最終処理を試みます。候補判定中のmetadata上限では未採用の候補を新たに変換せず、採用済みJPEGがなければ置換0になります。想定外のmetadata異常、最終書き出し／出力検証の失敗（2／3も含む）は500、入力検査の上限超過は従来のreasonなし422です。出力見積りは上界の保証ではなく、出力fsize超過の部分ファイルは削除して500です。最終検証とファイルopen後に成功ヘッダーを付け、エラーには付けません。PDF・画像・JSON・stdout／stderr・内部pathを本番ログやエラーへ出しません。
+
+最終qpdfにはobject-streams=generateとcompression-level=9だけを指定します。stream-data、recompress-flate、decode-levelは指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTの生データ、LZW／ASCIIHex／ASCII85・複合filterのデコード後データと表示上の意味を検証します。qpdf --checkだけを表示保持の根拠とせず、CIの構造・データ比較と描画比較を行います。描画ツールはruntimeに含めません。
+
+標準条件はmemory 1.5 GiB・swapなし・CPU 1・tmpfs 256 MiB・同時2・non-root・read-only・network noneです。2×124 MiBのjobに8 MiBのtmpfs余裕を残します。tmpfsもcgroup memoryへ含まれるので、ファイルの容量式だけで成立を判断しません。上限は設定可能な安全境界であり、拡大するときはREADMEのメモリ式・tmpfs式と実測を見直します。Webシステムのプラン別サイズ・回数制限はサイト側の責務です。[圧縮の実測記録](compress-validation.md)は対象fixtureでの確認であり、任意の入力の成功を保証しません。

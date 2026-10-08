@@ -18,7 +18,7 @@ ENV ASPNETCORE_HTTP_PORTS=8080
 
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends qpdf \
+    && apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=app:app /app/publish ./

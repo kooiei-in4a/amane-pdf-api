@@ -11,7 +11,8 @@ internal static class PdfEndpointHelpers
         Action? validateRequest,
         Func<TemporaryPdfFiles, CancellationToken, Task> readUploadAsync,
         Func<TemporaryPdfFiles, CancellationToken, Task> processAsync,
-        long? maxRequestBytes = null)
+        long? maxRequestBytes = null,
+        Action<HttpResponse>? onSend = null)
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         try
@@ -37,7 +38,7 @@ internal static class PdfEndpointHelpers
                 context.Abort();
                 return;
             }
-            await SendPdfAsync(context, files.OutputPath, downloadFileName, operation.Token);
+            await SendPdfAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend);
         }
         catch (PdfUnlockException exception)
         {
@@ -101,12 +102,15 @@ internal static class PdfEndpointHelpers
         if (bodySize is { IsReadOnly: false }) bodySize.MaxRequestBodySize = maxRequestBytes;
     }
 
-    private static async Task SendPdfAsync(HttpContext context, string path, string fileName, CancellationToken cancellationToken)
+    private static async Task SendPdfAsync(HttpContext context, string path, string fileName, CancellationToken cancellationToken,
+        Action<HttpResponse>? onSend)
     {
         await using var output = File.OpenRead(path);
+        cancellationToken.ThrowIfCancellationRequested();
         context.Response.ContentType = "application/pdf";
         context.Response.ContentLength = output.Length;
         context.Response.Headers.ContentDisposition = $"attachment; filename={fileName}";
+        onSend?.Invoke(context.Response);
         await output.CopyToAsync(context.Response.Body, cancellationToken);
     }
 }

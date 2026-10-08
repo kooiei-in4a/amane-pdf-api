@@ -20,3 +20,48 @@ Linuxではqpdfのメモリ制限にprlimitを使用します。
 - コンテナ内の著作権・ライセンス情報: `/usr/share/doc/util-linux/copyright`
 
 prlimitはベースOSに元から含まれるユーティリティを別プロセスとして実行します。APIコードへリンクしません。Docker smokeでcopyrightファイルの存在を確認します。
+
+## libjpeg-turbo（djpeg／cjpegとJPEGライブラリ）
+
+LinuxのJPEG画像縮小・再圧縮に `libjpeg-turbo-progs` のdjpeg／cjpegを別プロセスとして使用します。APIコードへ新しい画像ライブラリをリンクしません。runtimeのqpdfの依存として既に導入されていた `libjpeg-turbo8` はqpdf等が使うlibjpeg互換ライブラリです。今回 `libjpeg-turbo-progs` とともに追加される `libturbojpeg0` はTurboJPEG APIの共有ライブラリで、APTの依存として同梱されます。APIはTurboJPEG APIを直接呼びません。
+
+- 公式Repository: https://github.com/libjpeg-turbo/libjpeg-turbo
+- ライセンス構成: IJG、BSD-3-Clause、zlib（各ファイルの条件は配布物を参照）
+- コンテナ内のcopyright: `/usr/share/doc/libjpeg-turbo-progs/copyright`、`/usr/share/doc/libjpeg-turbo8/copyright`、`/usr/share/doc/libturbojpeg0/copyright`
+- Docker smokeで上の3ファイルの存在を検査します。
+
+IJGのバイナリ配布に伴う表示:
+
+> This software is based in part on the work of the Independent JPEG Group.
+
+Ubuntu配布物に記載された著作権者にはThomas G. Lane、Guido Vollbeding、MIYASAKA Masaru、D. R. Commander、Nokia Corporation、Pierre Ossman／Cendio AB、Siarhei Siamashka、Linaro、MIPS Technologies、Matthieu Darbois、Google、Intel、Arm等が含まれます。ファイルごとの年・権利者・条件は上記copyrightファイルに保持されます。
+
+BSD-3-Clause全文（配布物のlibjpeg-turbo表示）:
+
+```text
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+- Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+- Neither the name of the libjpeg-turbo Project nor the names of its
+  contributors may be used to endorse or promote products derived from this
+  software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS",
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+```
+
+zlibライセンスの部分には、無保証・損害責任の否認、商用利用を含む利用・変更・再配布の許可、原作者の詐称禁止、変更版の明示、ソース配布時の表示保持が定められています。第三者ソフトウェアの原著作権表示・ライセンスを削除せず、上のcopyrightファイルをコンテナへ残します。poppler-utils／Pillow／NumPyはCIと一時fixture生成・測定のみに使い、runtime imageへ追加しません。

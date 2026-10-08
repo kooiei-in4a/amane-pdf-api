@@ -12,6 +12,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
 - `POST /api/pdf/unlock` による、正しいuser / owner passwordでの暗号化解除
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
+- Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
 - `POST /api/pdf/extract` による指定ページの抽出
@@ -176,6 +177,44 @@ curl --fail-with-body \
   -o rotated.pdf
 ```
 
+### PDF画像圧縮（Linux）
+
+```text
+POST /api/pdf/compress?level=standard
+POST /api/pdf/compress?level=strong
+Content-Type: multipart/form-data
+
+file  PDFファイル一つ
+```
+
+| level | 長辺の目標（下限の目安） | JPEG品質 |
+| --- | ---: | ---: |
+| standard | 1754 px | 75 |
+| strong | 1169 px | 60 |
+
+`level`は一つだけ必須です。未知の値・query key・重複は400です。multipartも`file`一つだけとし、passwordなどの追加fieldは400です。成功は200、`application/pdf`、固定名`compressed.pdf`です。非Linuxにはこのendpointを登録しません。lossless構造最適化の`optimize`は従来どおりです。
+
+目標は上限ではなく、原画像が十分大きい場合の下限の目安です。長辺が目標以下なら縮小せず、拡大もしません。それ以外は整数の`M = min(8, max(1, ceil(目標×8÷長辺)))`を選び、djpegの`-scale M/8`で縮小します。長辺は目標以上、通常は目標の約2倍までになります。極端な縦横比では1/8でも2倍を超えます。8064×6048は両levelとも長辺2016 pxになりますが、品質75／60の違いは残ります。
+
+対象はページResourcesから直接参照される固有の画像XObjectで、DCTDecodeだけ、DecodeParmsなし、BitsPerComponent 8、生JPEG 32 KiB以上、初期値1億画素以下です。JPEGのprecision 8・成分数1／3・実寸とPDF辞書が一致する必要があります。DeviceGray／DeviceRGB、Nが一致するICCBased、辞書を持つCalGray／CalRGBを扱います。ImageMask=true、Decode、color key Mask配列、Matte付きSMask、未解決・循環参照は除外します。Form内、inline image、CMYK、Indexed／Lab／Separation／DeviceN、Flate／JPEG 2000／JBIG2／CCITTなどの再圧縮は対象外です。ColorSpaceとprofile、保持対象のMask／SMask、Interpolateは維持します。ICC header・acsp、Range／Alternate、WhitePointの値域は検査しません。
+
+2026-10-08のHuman承認により、JPEGは最初のEOIまでを本体として解析し、それ以降のデータを無視します。MPFのHDR gain mapなどの後続データも対象判定を妨げません。置換した場合、その後続データは新JPEGへ引き継がれません。EOIより前の不正なmarker・segment、height 0／DNL、複数・対応外SOF、SOSなしは引き続き拒否します。
+
+新JPEGが元JPEGより10%以上小さい場合だけ置き換えます。文字・ベクター・フォント・ページの表示上の意味を保ち、共有画像objectを一度だけ処理します。画像単位の変換失敗・時間／容量制限ではその画像を保持し、採用済みの途中結果で最終処理へ進みます。progressiveは固定の`-maxmemory 64M`・AS 64 MiBでdjpegが`Backing store not supported`となる場合があります。12 MP（4000×3000）の4:4:4でも失敗を確認しました。失敗する目安は4:2:0で約21 MP以上、4:4:4で約11 MP以上ですが、画像により異なり、受付境界を保証する値ではありません。失敗した画像は元のまま保持されます。任意のJPEGやPDFの圧縮成功・サイズ削減は保証しません。
+
+`X-Pdf-Images-Recompressed`は置き換えた固有object数です。共有画像が何ページに出ても1個と数えます。0は「画像を置き換えていない」ことだけを意味し、対象なし、削減不足、変換失敗、時間／容量制限を区別しません。置換0個や出力の増大も正常PDFなら200です。出力検証と送信ファイルのopen後に付け、エラーには付けません。
+
+アップロード完了後・入力検証前から30秒を共有し、同じ開始時刻から21秒で画像処理を打ち切ります。一枚のdjpeg／cjpegは合計2秒、バッチ抽出も2秒です。残り9秒で書き出し・出力検証を行いますが、成功を保証する予算ではなく、hard timeoutは504です。request中断・アプリ停止は画像単位の失敗として扱いません。
+
+最終書き出しは`--object-streams=generate --compression-level=9`だけを指定し、stream-data／recompress-flate／decode-levelを指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTは生データを保持します。LZW／ASCIIHex／ASCII85や複合filterはqpdfの一般化された可逆decodeによりfilterが変わり得ます。デコード後データ・表示上の意味は保持します。qpdfによるobject番号の変更は許容します。
+
+```bash
+curl --fail-with-body -F file=@input.pdf \
+  'http://127.0.0.1:8080/api/pdf/compress?level=standard' -o compressed.pdf
+```
+
+サイト側のUI・利用者向け制限・ヘッダーの伝達は[amane-tools-site #38](https://github.com/kooiei-in4a/amane-tools-site/issues/38)で扱います。
+
 ### PDFページ抽出・削除・並べ替え
 
 ```text
@@ -240,10 +279,23 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__PrlimitPath` | `/usr/bin/prlimit` | Linuxの制限付き実行に使うprlimit |
 | `Pdf__QpdfAddressSpaceLimitBytes` | `570425344`（544 MiB） | Linuxでqpdfに適用するRLIMIT_AS。正のbytes値 |
 | `Pdf__QpdfJpegMemory` | `600M` | 全OSのqpdfに渡すJPEGMEM。正のASCII数字＋任意の`M`/`m`、30文字未満、単位換算後のsigned long overflowを拒否 |
+| `Pdf__DjpegPath` / `Pdf__CjpegPath` | `djpeg` / `cjpeg` | LinuxのJPEG変換実行ファイル |
+| `Pdf__JpegAddressSpaceLimitBytes` | `67108864`（64 MiB） | djpeg／cjpegのRLIMIT_AS |
+| `Pdf__CompressJobLimitBytes` | `130023424`（124 MiB） | job全体のファイル割当上限 |
+| `Pdf__CompressPnmLimitBytes` | `25165824`（24 MiB） | 縮小後PNMの安全上限 |
+| `Pdf__CompressMaxPixels` | `100000000` | 画像一枚の画素数上限 |
+| `Pdf__CompressMaxImages` | `500` | Length降順で処理する固有画像数 |
+| `Pdf__CompressJsonLimitBytes` | `16777216`（16 MiB） | pages／metadata／update JSONの上限 |
+| `Pdf__CompressJsonDepth` | `64` | JSONと参照解決の深さ上限 |
+| `Pdf__CompressSpoolLimitBytes` | `16777216`（16 MiB） | 辞書spoolの合計割当上限 |
+| `Pdf__CompressStdoutLimitBytes` | `1048576`（1 MiB） | バッチ抽出JSONの保持上限 |
+| `Pdf__CompressSoftTimeoutSeconds` | `21` | 共通開始時刻から画像処理を打ち切る秒数。`QpdfTimeoutSeconds`未満が必須 |
+| `Pdf__CompressImageTimeoutSeconds` | `2` | 一枚のdjpeg＋cjpegの共有秒数 |
+| `Pdf__CompressBatchTimeoutSeconds` | `2` | バッチ抽出の最大秒数 |
 | `Pdf__TempRoot` | `/tmp/amane-pdf-api`（Linux標準環境） | 処理専用一時領域の親ディレクトリ |
 
 .NET標準configurationの`Pdf`セクションでも同じ設定ができます。不正な制限値は起動時に拒否します。JPEGMEMの`M`/`m`は1,000,000 bytes、接尾辞なしは1,000 bytes単位です（MiBは1,048,576 bytes）。空白、符号、`MiB`等は受け付けません。単位は[libjpeg-turboのJPEGMEM実装](https://github.com/libjpeg-turbo/libjpeg-turbo/blob/2.1.5/jmemmgr.c)に従います。
-Linuxでは同じAS制限で`/bin/true`と`qpdf --version`を起動して0終了を確認し、失敗・timeoutならHTTP待受を開始せず終了します。ログには固定文言だけを出します。非LinuxではJPEGMEMだけを適用し、ASと自己テストは適用しません。
+Linuxでは同じAS制限で`/bin/true`と`qpdf --version`を起動して0終了を確認し、失敗・timeoutならHTTP待受を開始せず終了します。ログには固定文言だけを出します。Linuxではdjpeg／cjpegも小さな画像を実際に変換し、-maxmemory／-maxscans／-strict／-scaleとAS／fsize付き起動を確認します。失敗時の固定ログは「PDF処理のメモリ制限の自己テストに失敗しました。」です。非LinuxではJPEGMEMだけを適用し、ASと自己テストは適用しません。
 待ち行列は0です。ASP.NET Core標準Concurrency Limiterでbodyを読み始める前に処理枠を取得し、上限超過には503を返します。`GET /healthz`はこの制限の対象外です。
 
 単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
@@ -271,6 +323,20 @@ merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理
 qpdfの観測VmSizeは対象写真で最大457.3 MiB、追加で確認した100 MPグレーprogressiveでは487.2 MiBでした。AS 544 MiBはそれぞれ約86.7 MiB（19.0%）／56.8 MiB（11.7%）の余裕を持ちます。JPEGMEM 600Mは600,000,000 bytesで、標準AS全体の570,425,344 bytesより大きくし、JPEGの予算が先に処理範囲を狭めないようにしています。巨大progressiveの早期拒否には、ASを増やす運用で効果を確認しています。
 
 128 MiB（.NET API）と64 MiB（余裕）は容量計画用の見積りで、.NETへのhard limitではありません。tmpfs圧力下の各形式60要求ではAPI RSS最大109.2 MiB、全標準負荷のcgroup peak最大982.7 MiB、OOMイベント0でした。managed heapとGC committedも測定しました。詳しい数値は [docs/qpdf-memory-validation.md](docs/qpdf-memory-validation.md) に記載しています。式は仮想メモリ上限を使った目安で、任意のPDFや将来のruntimeでの成功・OOM回避を数学的に保証しません。標準値の変更やruntime更新時には実HTTP負荷と`memory.peak` / `memory.events`を再測定してください。
+
+compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。ページ、Parent、Resources、XObjectは最大500ページの単位内で階層ごとに一括取得し、画像参照を集めたらページ側辞書と別名の連鎖を削除してspool・容量台帳から外します。低いspool設定では単位を小さくします。画像辞書とSMask／Mask／ICCは、その後に判定へ必要な間だけ保持します。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMは`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`の実サイズに512 bytesを加えて予約・fsizeを設定します。新JPEGは元の90%と残り容量でfsizeを決めます。
+
+```text
+I = 入力実サイズ、R = 採用した元JPEGの実サイズ合計、A = 採用JPEGの実サイズ合計
+J = update JSON実サイズ、H = 4 MiB、L = job上限
+E = I − R + A、F = E + H
+採用条件: I + A + J + F ≤ L （割当量も4 KiB単位で別途確認）
+標準tmpfs: 256 MiB ≥ 2 × 124 MiB + 8 MiB
+```
+
+入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、fsize超過は部分出力を削除して500です。画像段階のSIGXFSZ（153）は不採用、126／127は500です。既知のmetadata・時間・容量上限は画像処理を終了し、想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
+
+APIの制限は設定で調整できる安全境界です。job上限・PNM・画素数・画像数・AS・同時処理数を増やすときは、tmpfsとコンテナmemoryも上の式と合わせて見直してください。qpdfとJPEGツールは各job内で逐次起動するため、メモリ計画には両者のASの大きい方を使います。実HTTPの圧縮率・画質、段階別時間、memory.peak／memory.events、tmpfsは[圧縮の実測記録](docs/compress-validation.md)に記載します。数値は対象fixtureでの事実であり、他のPDFの保証ではありません。
 
 標準値で拒否される大きな画像を扱う例（2 GiB、AS 768 MiB）：
 
@@ -311,6 +377,7 @@ Dockerfile
 - .NET 10 SDK
 - Linuxではprlimit（util-linux。通常はOSに同梱）
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
+- Linuxではlibjpeg-turbo-progs（djpeg／cjpegと必要なオプション）
 - Docker（コンテナ確認を行う場合）
 - Python 3（Docker smoke test。追加package不要）
 
@@ -361,10 +428,10 @@ docker build -t amane-pdf-api:ci .
 python3 scripts/docker-smoke.py amane-pdf-api:ci
 ```
 
-CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
+CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは25件のPOSTとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実SIGXFSZ、3つのJPEG copyrightファイルとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 1.5 GiB（swapなし）、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
 小さいASで通常PDFの成功と画像PDFの422、標準ASへ増やした同じPDFの成功、自己テスト失敗時の非0終了と固定ログ、util-linux copyrightの存在も確認します。各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 
