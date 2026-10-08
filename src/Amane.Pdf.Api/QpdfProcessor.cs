@@ -55,6 +55,67 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         }
     }
 
+    public async Task UnlockAsync(TemporaryPdfFiles files, string password, CancellationToken cancellationToken)
+    {
+        if (new FileInfo(files.InputPath).Length == 0) throw new PdfUnlockException(PdfUnlockReason.InvalidPdf);
+
+        // Probe without the supplied password first, so owner-only restrictions are always rejected.
+        var required = await RunAsync(["--requires-password", files.InputPath], cancellationToken);
+        if (required == 3) throw new PdfUnlockException(PdfUnlockReason.NoOpenPassword);
+        if (required == 2)
+        {
+            // Exit 2 also covers unreadable/damaged input; it does not prove lack of encryption.
+            var plainCheck = await RunAsync(["--check", files.InputPath], cancellationToken);
+            if (plainCheck == 0) throw new PdfUnlockException(PdfUnlockReason.NotEncrypted);
+            if (plainCheck is 2 or 3) throw new PdfUnlockException(PdfUnlockReason.InvalidPdf);
+            throw new InvalidOperationException("PDF inspection failed.");
+        }
+        if (required != 0) throw new InvalidOperationException("PDF inspection failed.");
+
+        var authenticated = await RunUnlockJobAsync(files, password, files.JobPath, "requiresPassword", cancellationToken);
+        if (authenticated == 0) throw new PdfUnlockException(PdfUnlockReason.WrongPassword);
+        // Broken Root/Pages references can fail here, after the empty-password probe returned 0.
+        if (authenticated == 2) throw new PdfUnlockException(PdfUnlockReason.InvalidPdf);
+        if (authenticated != 3) throw new InvalidOperationException("PDF inspection failed.");
+
+        var check = await RunUnlockJobAsync(files, password, files.UnlockCheckJobPath, "check", cancellationToken);
+        if (check is 2 or 3) throw new PdfUnlockException(PdfUnlockReason.InvalidPdf);
+        if (check != 0) throw new InvalidOperationException("PDF inspection failed.");
+
+        var decrypted = await RunUnlockJobAsync(files, password, files.UnlockDecryptJobPath, "decrypt", cancellationToken);
+        if (decrypted == 3) throw new PdfUnlockException(PdfUnlockReason.InvalidPdf);
+        if (decrypted != 0) throw new InvalidOperationException("PDF processing failed.");
+
+        try
+        {
+            await ValidateAsync(files.OutputPath, cancellationToken);
+        }
+        catch (PdfInputException)
+        {
+            // Input was already checked. Invalid/encrypted output is an internal failure, not a 422.
+            throw new InvalidOperationException("PDF output validation failed.");
+        }
+    }
+
+    private async Task<int> RunUnlockJobAsync(TemporaryPdfFiles files, string password, string jobPath,
+        string operation, CancellationToken cancellationToken)
+    {
+        var job = new Dictionary<string, object>
+        {
+            ["inputFile"] = files.InputPath,
+            ["password"] = password,
+            ["passwordMode"] = "unicode",
+            [operation] = ""
+        };
+        if (operation == "decrypt") job["outputFile"] = files.OutputPath;
+        await using (var stream = TemporaryPdfFiles.CreatePrivateFile(jobPath))
+        {
+            await JsonSerializer.SerializeAsync(stream, job, cancellationToken: cancellationToken);
+        }
+        // In particular, --check stdout can contain passwords. RunAsync discards both output streams.
+        return await RunAsync(["--job-json-file=" + jobPath], cancellationToken);
+    }
+
     public async Task<int> GetPageCountAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
     {
         var (exitCode, output) = await RunWithBoundedStdoutAsync(["--show-npages", files.InputPath], 64, cancellationToken);

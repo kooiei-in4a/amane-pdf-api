@@ -8,6 +8,8 @@ public sealed class TemporaryPdfFiles : IDisposable
     public string InputPath => Path.Combine(DirectoryPath, "input.pdf");
     public string OutputPath => Path.Combine(DirectoryPath, "output.pdf");
     public string JobPath => Path.Combine(DirectoryPath, "job.json");
+    internal string UnlockCheckJobPath => Path.Combine(DirectoryPath, "unlock-check.json");
+    internal string UnlockDecryptJobPath => Path.Combine(DirectoryPath, "unlock-decrypt.json");
 
     public string MergeInputPath(int index)
     {

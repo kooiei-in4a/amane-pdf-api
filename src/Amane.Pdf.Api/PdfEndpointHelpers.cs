@@ -39,6 +39,21 @@ internal static class PdfEndpointHelpers
             }
             await SendPdfAsync(context, files.OutputPath, downloadFileName, operation.Token);
         }
+        catch (PdfUnlockException exception)
+        {
+            var (reason, title) = exception.Reason switch
+            {
+                PdfUnlockReason.NotEncrypted => ("not-encrypted", "パスワードが設定されたPDFが必要です。"),
+                PdfUnlockReason.NoOpenPassword => ("no-open-password", "開くためのパスワードが設定されていないPDFは解除できません。"),
+                PdfUnlockReason.WrongPassword => ("wrong-password", "パスワードが正しくありません。"),
+                PdfUnlockReason.InvalidPdf => ("invalid-pdf", "正常なPDFが必要です。"),
+                // All producers use the four named values; no request data is converted to this enum.
+                // This unreachable guard bypasses the sibling catch (Exception); update the switch when adding a reason.
+                _ => throw new InvalidOperationException("Unknown PDF unlock reason.")
+            };
+            await Results.Problem(statusCode: 422, title: title,
+                extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
+        }
         catch (PdfInputException)
         {
             await Results.Problem(statusCode: 422, title: "未暗号化の正常なPDFが必要です。").ExecuteAsync(context);
