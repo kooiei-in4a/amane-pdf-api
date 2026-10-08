@@ -30,8 +30,20 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      - name: Install qpdf
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf && qpdf --version
+      - name: Install PDF tools and CI-only rendering tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs poppler-utils python3-pil python3-numpy
+
+      - name: Prepare host qpdf
+        # Ubuntu's /usr/bin/qpdf AppArmor profile permits only .pdf/.json outputs,
+        # whereas qpdf itself generates extensionless raw stream files. Use the
+        # same packaged binary outside that path for host tests; Docker uses qpdf.
+        run: |
+          mkdir -p "$RUNNER_TEMP/pdf-tools"
+          cp /usr/bin/qpdf "$RUNNER_TEMP/pdf-tools/qpdf"
+          echo "$RUNNER_TEMP/pdf-tools" >> "$GITHUB_PATH"
+
+      - name: Verify JPEG options with real conversion
+        run: /usr/bin/python3 scripts/compress-validation.py --tools
 
       - name: Verify Linux memory limiter
         run: prlimit --version && test -r /usr/share/doc/util-linux/copyright
@@ -49,4 +61,7 @@ jobs:
         run: docker build -t amane-pdf-api:ci .
 
       - name: Docker E2E smoke (1.5 GiB, no swap, CPU 1, tmpfs 256 MiB)
-        run: python3 scripts/docker-smoke.py amane-pdf-api:ci
+        run: /usr/bin/python3 scripts/docker-smoke.py amane-pdf-api:ci
+
+      - name: Compare PDF structure, streams and rendering (CI tools only)
+        run: /usr/bin/python3 scripts/compress-validation.py --render amane-pdf-api:ci

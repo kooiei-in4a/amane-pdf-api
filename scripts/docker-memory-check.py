@@ -11,6 +11,7 @@ import importlib.util
 import json
 import math
 import os
+import re
 import signal
 import subprocess
 import tempfile
@@ -34,6 +35,7 @@ parser.add_argument(
     "--counters", type=Path, help="Optional host dotnet-counters executable"
 )
 parser.add_argument("--cases", nargs="+")
+parser.add_argument("--compress", choices=("standard", "strong"), help="圧縮APIの時間・品質・容量を測定")
 args = parser.parse_args()
 if os.geteuid() != 0:
     parser.error(
@@ -72,6 +74,9 @@ class Monitor:
         self.stop = threading.Event()
         self.peak = {}
         self.samples = 0
+        self.processes = {}
+        self.jobs = {}
+        self.error = None
 
     def sample(self):
         vals = {"cgroup_current": int((self.cg / "memory.current").read_text())}
@@ -88,6 +93,43 @@ class Monitor:
         vals["qpdf_RSS_sum"] = sum(p.get("VmRSS", 0) for p in q)
         vals["qpdf_RSS_single"] = max((p.get("VmHWM", 0) for p in q), default=0)
         vals["qpdf_AS_single"] = max((p.get("VmSize", 0) for p in q), default=0)
+        if args.compress:
+            now = time.monotonic()
+            live = set()
+            for text_pid in (self.cg / "cgroup.procs").read_text().split():
+                pid = int(text_pid)
+                comm = Path(f"/proc/{pid}/comm").read_text().strip()
+                if comm not in ("qpdf", "djpeg", "cjpeg"): continue
+                vals[comm + "_RSS_single"] = status(pid).get("VmHWM", 0)
+                argv = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+                match = re.search(r"/amane-pdf-api/([A-F0-9]{32})/", argv)
+                if not match: continue
+                job = match[1]
+                self.jobs.setdefault(job, len(self.jobs) + 1)
+                if comm != "qpdf": phase = "conversion"
+                elif "--json-stream-data=file" in argv: phase = "extraction"
+                elif "--json" in argv: phase = "metadata"
+                elif "--check" in argv or "--is-encrypted" in argv:
+                    phase = "output_validation" if "/output.pdf" in argv else "input_validation"
+                else: phase = "final_write"
+                item = self.processes.setdefault(pid, {"job": self.jobs[job], "phase": phase, "first": now, "last": now})
+                item["last"] = now
+                live.add(pid)
+                limits = Path(f"/proc/{pid}/limits").read_text().splitlines()
+                for key, prefix in (("AS", "Max address space"), ("fsize", "Max file size")):
+                    line = next(line for line in limits if line.startswith(prefix))
+                    value = line[len(prefix):].split()[0]
+                    if value != "unlimited":
+                        vals[phase + "_" + comm + "_" + key] = int(value)
+                        if phase == "extraction" and key == "fsize":
+                            count = argv.count("--json-object=")
+                            vals["raw_batch_images"] = count
+                            vals["raw_batch_reserved_bytes"] = count * int(value)
+            for pid, item in self.processes.items():
+                if pid not in live and "end" not in item: item["end"] = now
+            vals["pnm_bytes"] = max((p.stat().st_size for p in (self.root / "tmp/amane-pdf-api").glob("*/image.pnm")), default=0)
+            vals["job_allocated_bytes"] = max((sum(p.stat().st_blocks * 512 for p in job.rglob("*") if p.is_file())
+                for job in (self.root / "tmp/amane-pdf-api").glob("*") if job.is_dir()), default=0)
         for k, v in vals.items():
             self.peak[k] = max(v, self.peak.get(k, 0))
         self.samples += 1
@@ -98,10 +140,15 @@ class Monitor:
                 self.sample()
             except (FileNotFoundError, ProcessLookupError):
                 pass
+            except Exception as error:
+                self.error = error
+                self.stop.set()
 
     def finish(self):
         self.stop.set()
         self.thread.join()
+        if self.error is not None:
+            raise RuntimeError("Resource monitor failed; do not treat measurements as valid") from self.error
         self.peak["cgroup_peak"] = int((self.cg / "memory.peak").read_text())
         self.peak["events"] = {
             k: int(v)
@@ -111,6 +158,17 @@ class Monitor:
             )
         }
         self.peak["samples"] = self.samples
+        if args.compress:
+            phases = {}
+            for item in self.processes.values():
+                key = str(item["job"])
+                row = phases.setdefault(key, {})
+                row[item["phase"]] = row.get(item["phase"], 0) + item.get("end", item["last"]) - item["first"]
+            self.peak["phase_seconds_sampled"] = {job: {k: round(v, 3) for k, v in row.items()} for job, row in phases.items()}
+            first = {job: min(p["first"] for p in self.processes.values() if p["job"] == job) for job in self.jobs.values()}
+            self.peak["final_start_seconds_sampled"] = {str(job): round(min(p["first"] for p in self.processes.values()
+                if p["job"] == job and p["phase"] == "final_write") - first[job], 3) for job in first
+                if any(p["job"] == job and p["phase"] == "final_write" for p in self.processes.values())}
         return self.peak
 
 
@@ -118,7 +176,7 @@ def request(api, item):
     path, inputs, _expected = item
     body, ct = smoke.multipart(password=None, files=inputs)
     start = time.monotonic()
-    code, _headers, result = api.request("POST", path, body, ct)
+    code, headers, result = api.request("POST", path, body, ct)
     elapsed = time.monotonic() - start
     # Compare expected status after preserving measurements.
     if code == 200:
@@ -135,18 +193,51 @@ def request(api, item):
                 ).returncode
                 == 0
             )
-    else:
+    elif code == 422:
         problem = json.loads(result)
         assert (
             problem["title"]
             == "このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。"
         )
         assert "reason" not in problem
-    return {
+    measurement = {
         "status": code,
         "seconds": round(elapsed, 3),
         "output_bytes": len(result),
     }
+    if args.compress and code == 200:
+        measurement["recompressed"] = int(headers["X-Pdf-Images-Recompressed"])
+        if current_case not in ("500-images", "mixed-images", "near-50mib", "a4-600dpi-flate"):
+            measurement["quality"] = quality(inputs[0], result, args.compress, measurement["recompressed"])
+    return measurement
+
+
+def quality(source, result, level, recompressed):
+    from PIL import Image
+    import numpy as np
+    with tempfile.TemporaryDirectory(prefix="issue22-quality-") as tmp:
+        directory = Path(tmp)
+        def raw(pdf, label):
+            path = directory / (label + ".pdf"); path.write_bytes(pdf)
+            pages = json.loads(subprocess.check_output(["qpdf", "--json=2", "--json-key=pages", str(path)]))["pages"]
+            image = pages[0]["images"][0]; ref = image["object"].split()
+            jpeg = directory / (label + ".jpg")
+            jpeg.write_bytes(subprocess.check_output(["qpdf", "--show-object=" + ref[0] + "," + ref[1], "--raw-stream-data", str(path)]))
+            return jpeg, image
+        original, image = raw(source, "input"); rewritten, output = raw(result, "output")
+        if recompressed == 0:
+            assert original.read_bytes() == rewritten.read_bytes()
+            edge = max(output["width"], output["height"])
+            return {"long_edge": edge, "a4_dpi": round(edge * 25.4 / 297, 1), "pdf_reduction_percent": round(100 * (1-len(result)/len(source)), 2), "psnr_db": "unchanged (raw identical)"}
+        edge = max(image["width"], image["height"]); target = 1754 if level == "standard" else 1169
+        scale = min(8, max(1, (target * 8 + edge - 1) // edge)) if edge > target else 8
+        pnm = directory / "scaled.pnm"
+        subprocess.run(["prlimit", "--as=67108864:67108864", "--fsize=25165824:25165824", "--", "djpeg", "-scale", f"{scale}/8", "-maxmemory", "64M", "-maxscans", "100", "-strict", "-outfile", str(pnm), str(original)], check=True, capture_output=True)
+        a = np.asarray(Image.open(pnm), dtype=np.float32); b = np.asarray(Image.open(rewritten), dtype=np.float32)
+        assert a.shape == b.shape
+        mse = float(np.mean((a-b)**2)); psnr = 10 * math.log10(255**2/mse) if mse else None
+        edge = max(output["width"], output["height"])
+        return {"long_edge": edge, "a4_dpi": round(edge * 25.4 / 297, 1), "pdf_reduction_percent": round(100 * (1-len(result)/len(source)), 2), "psnr_db": round(psnr, 2) if psnr else None, "pnm_bytes": pnm.stat().st_size}
 
 
 def run(name, items, fill_mib=0):
@@ -228,14 +319,13 @@ def run(name, items, fill_mib=0):
         api.assert_clean()
         assert api.request("GET", "/healthz")[0] == 200
         assert measure["events"]["oom"] == measure["events"]["oom_kill"] == 0
-        assert (
-            measure["qpdf_count"] == 2
-        ), "Two simultaneous qpdf processes were not observed"
+        if not args.compress:
+            assert measure["qpdf_count"] == 2, "Two simultaneous qpdf processes were not observed"
         assert not any(
-            Path(f"/proc/{pid}/comm").read_text().strip() == "qpdf"
+            Path(f"/proc/{pid}/comm").read_text().strip() in ("qpdf", "djpeg", "cjpeg")
             for pid in (mon_cgroup(api) / "cgroup.procs").read_text().split()
             if Path(f"/proc/{pid}/comm").exists()
-        ), "qpdf process remains"
+        ), "PDF tool process remains"
 
         result = {
             "case": name,
@@ -287,7 +377,7 @@ def load(name):
 
 
 if __name__ == "__main__":
-    names = args.cases or [
+    names = args.cases or (["4000x3000-baseline", "4000x3000-baseline-444", "4000x3000-progressive-420", "6000x4000-baseline", "6000x4000-baseline-444", "6000x4000-progressive-420", "8064x6048-baseline", "8064x6048-baseline-444", "8064x6048-progressive-420", "7014x7014-baseline", "document-scan", "near-50mib", "500-images", "a4-600dpi-flate"] if args.compress else [
         "4000x3000-baseline",
         "6000x4000-baseline",
         "6000x4000-baseline-444",
@@ -306,11 +396,14 @@ if __name__ == "__main__":
         "sustained-baseline",
         "sustained-baseline-444",
         "sustained-progressive-420",
-    ]
+    ])
     if "mixed" in names and not (root / "15000x15000-progressive-420.pdf").exists():
         parser.error("The mixed case requires memory-fixtures.py --include-giant.")
     for name in names:
-        if name == "near-merge":
+        current_case = name
+        if args.compress:
+            items = [("/api/pdf/compress?level=" + args.compress, [load(name)], 200)] * 2
+        elif name == "near-merge":
             file = load("near-50mib")
             items = [("/api/pdf/merge", [file, smoke.FIXTURE], 200)] * 2
         elif name == "near-optimize":
@@ -346,4 +439,4 @@ if __name__ == "__main__":
             if name.startswith("sustained-")
             else 0
         )
-        run(name, items, fill)
+        run((args.compress + "-" if args.compress else "") + name, items, fill)

@@ -29,13 +29,24 @@ internal static class ProcessMemoryLimits
 
     internal static ExternalProcessRequest CreateRequest(string prlimitPath, string executablePath,
         IReadOnlyList<string> arguments, long addressSpaceLimitBytes, string jpegMemory, int? stdoutLimit = null)
+        => CreateRequest(prlimitPath, executablePath, arguments, addressSpaceLimitBytes, null,
+            new Dictionary<string, string> { ["JPEGMEM"] = jpegMemory }, stdoutLimit);
+
+    internal static ExternalProcessRequest CreateRequest(string prlimitPath, string executablePath,
+        IReadOnlyList<string> arguments, long addressSpaceLimitBytes, long? fileSizeLimitBytes,
+        IReadOnlyDictionary<string, string>? environment, int? stdoutLimit = null)
     {
-        var environment = new Dictionary<string, string> { ["JPEGMEM"] = jpegMemory };
         if (!OperatingSystem.IsLinux())
             return new(executablePath, arguments, Environment: environment, StdoutLimit: stdoutLimit);
 
         var limit = addressSpaceLimitBytes.ToString(CultureInfo.InvariantCulture);
-        return new(prlimitPath, [$"--as={limit}:{limit}", "--", executablePath, .. arguments],
+        var limits = new List<string> { $"--as={limit}:{limit}" };
+        if (fileSizeLimitBytes is long size)
+        {
+            var value = size.ToString(CultureInfo.InvariantCulture);
+            limits.Add($"--fsize={value}:{value}");
+        }
+        return new(prlimitPath, [.. limits, "--", executablePath, .. arguments],
             Environment: environment, StdoutLimit: stdoutLimit);
     }
 
@@ -54,6 +65,7 @@ internal static class ProcessMemoryLimits
                 if ((await ExternalProcessRunner.RunAsync(request, timeout.Token)).ExitCode != 0)
                     throw new InvalidOperationException();
             }
+            await PdfCompressProcessor.ValidateStartupAsync(options, timeout.Token);
         }
         catch (Exception)
         {

@@ -12,6 +12,7 @@ import sys
 import time
 import uuid
 import zlib
+import importlib.util
 
 
 FIXTURE = (Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf").read_bytes()
@@ -335,7 +336,53 @@ def assert_startup_failure(image, settings, expected_message="PDF処理のメモ
         docker("rm", "--force", name, check=False)
 
 
+def compress_smoke(image):
+    spec = importlib.util.spec_from_file_location("compress_validation", Path(__file__).with_name("compress-validation.py"))
+    validation = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(validation)
+    with running_container(image, isolated=True) as api:
+        fixture_root = "/tmp/compress-smoke-fixture"
+        for package in ("libjpeg-turbo-progs", "libjpeg-turbo8", "libturbojpeg0"):
+            api.exec("test", "-r", f"/usr/share/doc/{package}/copyright")
+        for executable in ("djpeg", "cjpeg"):
+            version = api.exec(executable, "-version")
+            print((version.stdout + version.stderr).decode().strip())
+        api.exec("mkdir", "-m", "700", "-p", fixture_root)
+        try:
+            for gray in (False, True):
+                w, h = 2200, 1600
+                row = bytes((x // 10 + (x % 3) * 17) % 256 for x in range(w * (1 if gray else 3)))
+                pnm = f"P{5 if gray else 6}\n{w} {h}\n255\n".encode() + row * h
+                api_data = fixture_root + "/fixture.pnm"
+                docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/compress-smoke-fixture/fixture.pnm", data=pnm)
+                api.exec("cjpeg", "-quality", "90", "-outfile", fixture_root + "/fixture.jpg", api_data)
+                raw = api.exec("cat", fixture_root + "/fixture.jpg").stdout
+                assert len(raw) >= 32768
+                source = validation.image_pdf(raw, w, h, color="/DeviceGray" if gray else "/DeviceRGB")
+                for level in ("standard", "strong"):
+                    body, ct = multipart(source, password=None)
+                    code, headers, result = api.request("POST", "/api/pdf/compress?level=" + level, body, ct)
+                    assert code == 200 and headers["X-Pdf-Images-Recompressed"] == "1"
+                    assert len(result) < len(source) and "filename=compressed.pdf" in headers["Content-Disposition"]
+                    api.verify_decryption(result)
+                    api.assert_clean()
+            # Real kernel SIGXFSZ, in the same non-root/read-only/tmpfs environment.
+            result = docker("exec", api.name, "prlimit", "--as=67108864:67108864", "--fsize=4096:4096", "--", "dd",
+                "if=/dev/zero", "of=" + fixture_root + "/limited", "bs=8192", "count=2", "status=none", check=False)
+            assert result.returncode == 153, result.returncode
+            assert api.exec("stat", "-c", "%s", fixture_root + "/limited").stdout.strip() == b"4096"
+            assert api.exec("stat", "-c", "%a", fixture_root).stdout.strip() == b"700"
+            assert api.exec("stat", "-c", "%a", api_data).stdout.strip() == b"600"
+        finally:
+            api.exec("rm", "-rf", fixture_root)
+        api.assert_clean()
+    for settings in (("Pdf__DjpegPath=/missing/djpeg",), ("Pdf__CjpegPath=/bin/false",), ("Pdf__JpegAddressSpaceLimitBytes=1",)):
+        assert_startup_failure(image, settings)
+    print("Docker compress: both levels/color/gray/permissions/startup/SIGXFSZ/three copyrights PASS")
+
+
 def main(image):
+    compress_smoke(image)
     post_count = 0
     with running_container(image) as api:
         api.exec("test", "-r", "/usr/share/doc/util-linux/copyright")
