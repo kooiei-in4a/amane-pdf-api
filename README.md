@@ -267,7 +267,7 @@ curl --fail-with-body -F file=@input.pdf \
   'http://127.0.0.1:8080/api/pdf/split?every=2' -o split.zip
 ```
 
-サイトのUI・日次回数の返却は[amane-tools-site #40](https://github.com/kooiei-in4a/amane-tools-site/issues/40)の責務です。splitの上流400と検証済み422 `output-too-large`だけを返却し、その他の422は返却しません。サイトの公開はAPI splitのdeploy後に行います。core dumpに関する公開条件と測定結果は[分割の検証記録](docs/split-validation.md)を参照してください。
+サイトのUI・日次回数の返却は[amane-tools-site #40](https://github.com/kooiei-in4a/amane-tools-site/issues/40)の責務です。splitの上流400と検証済み422 `output-too-large`だけを返却し、その他の422は返却しません。サイトの公開はAPI splitのdeploy後に行います。core dumpに関する公開条件は[FSIZE core対策の検証記録](docs/fsize-core-validation.md)、分割の容量測定は[分割の検証記録](docs/split-validation.md)を参照してください。
 
 ### 入力とエラー
 
@@ -324,7 +324,8 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__TempRoot` | `/tmp/amane-pdf-api`（Linux標準環境） | 処理専用一時領域の親ディレクトリ |
 
 .NET標準configurationの`Pdf`セクションでも同じ設定ができます。不正な制限値は起動時に拒否します。JPEGMEMの`M`/`m`は1,000,000 bytes、接尾辞なしは1,000 bytes単位です（MiBは1,048,576 bytes）。空白、符号、`MiB`等は受け付けません。単位は[libjpeg-turboのJPEGMEM実装](https://github.com/libjpeg-turbo/libjpeg-turbo/blob/2.1.5/jmemmgr.c)に従います。
-Linuxでは同じAS制限で`/bin/true`と`qpdf --version`を起動して0終了を確認し、失敗・timeoutならHTTP待受を開始せず終了します。ログには固定文言だけを出します。Linuxではdjpeg／cjpegも小さな画像を実際に変換し、-maxmemory／-maxscans／-strict／-scaleとAS／fsize付き起動を確認します。失敗時の固定ログは「PDF処理のメモリ制限の自己テストに失敗しました。」です。非LinuxではJPEGMEMだけを適用し、ASと自己テストは適用しません。
+Linuxでは共通の起動経路を`/usr/bin/env --ignore-signal=XFSZ -- prlimit --core=0:0 --as=... [--fsize=...] -- tool args...`とし、FSIZE超過によるSIGXFSZを無視してcore生成を防ぎます。CORE=0は補助対策であり、単独ではpipe collectorへの受渡しを止めません。SIGSEGV／ABRT等の別signalによるcoreはこの対策の対象外です。shellは使わず、envとprlimitはexecで実toolへ置き換わります。
+Linuxでは同じ経路で`/bin/true`と`qpdf --version`を起動して0終了を確認し、失敗・timeoutならHTTP待受を開始せず終了します。env不在・オプション非対応でも無対策の経路へfallbackしません。ログには固定文言だけを出します。Linuxではdjpeg／cjpegも小さな画像を実際に変換し、-maxmemory／-maxscans／-strict／-scaleとAS／fsize付き起動を確認します。失敗時の固定ログは「PDF処理のメモリ制限の自己テストに失敗しました。」です。非LinuxではJPEGMEMだけを適用し、Linuxの制限と自己テストは適用しません。
 待ち行列は0です。ASP.NET Core標準Concurrency Limiterでbodyを読み始める前に処理枠を取得し、上限超過には503を返します。`GET /healthz`はこの制限の対象外です。
 
 単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
@@ -363,7 +364,7 @@ E = I − R + A、F = E + H
 標準tmpfs: 256 MiB ≥ 2 × 124 MiB + 8 MiB
 ```
 
-入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、fsize超過は部分出力を削除して500です。画像段階のSIGXFSZ（153）は不採用、126／127は500です。既知のmetadata・時間・容量上限は画像処理を終了し、想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
+入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、最終出力の実サイズがfsize上限以上なら、exit 0でも部分出力を削除して500です。同値も安全側に拒否します。画像段階の書込みエラーは不採用、126／127は500です。SIGXFSZ無視時のqpdfはJSONが途中で切れてもexit 0となり得るため、pages／metadata JSONの実サイズがfsize上限以上なら既知のmetadata上限として画像処理を終了します。同値でも安全側に判定し、既に採用した画像があれば保持して最終処理へ進みます。想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
 
 APIの制限は設定で調整できる安全境界です。job上限・PNM・画素数・画像数・AS・同時処理数を増やすときは、tmpfsとコンテナmemoryも上の式と合わせて見直してください。qpdfとJPEGツールは各job内で逐次起動するため、メモリ計画には両者のASの大きい方を使います。実HTTPの圧縮率・画質、段階別時間、memory.peak／memory.events、tmpfsは[圧縮の実測記録](docs/compress-validation.md)に記載します。数値は対象fixtureでの事実であり、他のPDFの保証ではありません。
 
@@ -410,7 +411,7 @@ Dockerfile
 必要なもの:
 
 - .NET 10 SDK
-- Linuxではprlimit（util-linux。通常はOSに同梱）
+- Linuxではprlimit（util-linux）と、`--ignore-signal=XFSZ`に対応する`/usr/bin/env`（通常はOSに同梱）
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Linuxではlibjpeg-turbo-progs（djpeg／cjpegと必要なオプション）
 - Docker（コンテナ確認を行う場合）
@@ -466,8 +467,8 @@ python3 scripts/docker-smoke.py amane-pdf-api:ci
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実SIGXFSZ、3つのJPEG copyrightファイルとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
-splitはevery=1、Stored/固定時刻/名前、別TZのDOS時刻、直接prlimit実行での終了コード、HTTPの同値/1 byte超過/実FSIZE超過、cat 500とcleanup/healthを確認します。容量・同時実行・100パートの時間は通常のsmokeへ入れず、`sudo python3 scripts/split-validation.py IMAGE /tmp/split-metrics.json`で別に測定します。[分割の検証記録](docs/split-validation.md)に結果とcore dumpの公開条件を記載しています。
+smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実FSIZE超過時のdjpeg／cjpeg／ddの通常エラー終了、3つのJPEG copyrightファイルとhealthを検証します。共通起動経路のCORE／AS／FSIZEとSIGXFSZ無視の継承も確認します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+splitはevery=1、Stored/固定時刻/名前、別TZのDOS時刻、APIと同じenv／prlimit経由の終了コード、HTTPの同値/1 byte超過/実FSIZE超過、cat 500とcleanup/healthを確認します。容量・同時実行・100パートの時間は通常のsmokeへ入れず、`sudo python3 scripts/split-validation.py IMAGE /tmp/split-metrics.json`で別に測定します。[分割の検証記録](docs/split-validation.md)と[FSIZE core対策の検証記録](docs/fsize-core-validation.md)に結果と公開条件を記載しています。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 1.5 GiB（swapなし）、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
 小さいASで通常PDFの成功と画像PDFの422、標準ASへ増やした同じPDFの成功、自己テスト失敗時の非0終了と固定ログ、util-linux copyrightの存在も確認します。各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 

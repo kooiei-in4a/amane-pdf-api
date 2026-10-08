@@ -41,7 +41,7 @@ def check(api, cgroup, name, limit, jpeg_memory):
     if jpeg_memory != "unset":
         command.append("JPEGMEM=" + jpeg_memory)
     if limit:
-        command.extend(["prlimit", f"--as={limit * 1048576}:{limit * 1048576}", "--"])
+        command.extend(["/usr/bin/env", "--ignore-signal=XFSZ", "--", "prlimit", "--core=0:0", f"--as={limit * 1048576}:{limit * 1048576}", "--"])
     command.extend(["qpdf", "--check", "/tmp/qpdf-input.pdf"])
     peak_rss = peak_vm = 0
     start = time.monotonic()

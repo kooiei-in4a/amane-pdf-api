@@ -2,6 +2,8 @@
 
 基準mainは`d6b8f95ea3b439a92b2e3f8e51d8c66614ab9d7d`。このPRのsplit実装をローカルで検証した記録で、本番deployの確認ではありません。
 
+この文書のexit 153とCORE unlimitedは#23実装時の観測です。#46で共通起動にSIGXFSZ無視とCORE=0を加えた後の結果は[FSIZE core対策の検証記録](fsize-core-validation.md)を参照してください。下の測定値は実施当時の記録として残します。
+
 ## 条件と再現手順
 
 hostはUbuntu 26.04、x86_64、page size 4096、.NET SDK 10.0.401 / runtime 10.0.12。Dockerは29.8.2、runtime imageはaspnet:10.0-resolute、qpdf 12.3.2です。測定イメージIDは`sha256:43c6514ac864702ef7f44e3278fcd27a8d1479cdad6b5bc7535a374cfabd170d`。APIの実装コードはこのPRのものです。

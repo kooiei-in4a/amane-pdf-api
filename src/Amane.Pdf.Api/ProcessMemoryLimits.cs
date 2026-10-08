@@ -40,13 +40,16 @@ internal static class ProcessMemoryLimits
             return new(executablePath, arguments, Environment: environment, StdoutLimit: stdoutLimit);
 
         var limit = addressSpaceLimitBytes.ToString(CultureInfo.InvariantCulture);
-        var limits = new List<string> { $"--as={limit}:{limit}" };
+        var limits = new List<string> { "--core=0:0", $"--as={limit}:{limit}" };
         if (fileSizeLimitBytes is long size)
         {
             var value = size.ToString(CultureInfo.InvariantCulture);
             limits.Add($"--fsize={value}:{value}");
         }
-        return new(prlimitPath, [.. limits, "--", executablePath, .. arguments],
+        // Ignored signals survive exec. env and prlimit replace themselves with
+        // the foreground tool, preserving the runner's PID/kill/wait behavior.
+        // CORE=0 is supplementary: it alone does not stop a pipe collector.
+        return new("/usr/bin/env", ["--ignore-signal=XFSZ", "--", prlimitPath, .. limits, "--", executablePath, .. arguments],
             Environment: environment, StdoutLimit: stdoutLimit);
     }
 

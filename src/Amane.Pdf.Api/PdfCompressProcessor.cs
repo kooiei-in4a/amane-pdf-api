@@ -154,7 +154,9 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             using (TemporaryPdfFiles.CreatePrivateFile(pagesPath)) { }
             var result = await RunQpdfAsync(["--json=2", "--json-key=pages", files.InputPath, pagesPath], size, null, token);
             RequireStarted(result);
-            if (result.ExitCode == 153 || result.ExitCode != 0 && new FileInfo(pagesPath).Length >= size) throw new CompressLimitException();
+            // qpdf may return 0 when a write hits FSIZE with SIGXFSZ ignored.
+            // Retain 153 defensively; normal ignored-SIGXFSZ writes use the size check.
+            if (result.ExitCode == 153 || new FileInfo(pagesPath).Length >= size) throw new CompressLimitException();
             if (result.ExitCode != 0) throw new InvalidOperationException("PDF pages metadata failed.");
             using var document = CompressJson.Parse(await File.ReadAllBytesAsync(pagesPath, token), options.CompressJsonDepth);
             if (!document.RootElement.TryGetProperty("pages", out var array) || array.ValueKind != JsonValueKind.Array)
@@ -547,7 +549,9 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         arguments.AddRange(["--object-streams=generate", "--compression-level=9", files.OutputPath]);
         var result = await RunQpdfAsync([.. arguments], fsize, null, token);
         RequireStarted(result);
-        if (result.ExitCode != 0 || new FileInfo(files.OutputPath).Length > fsize) throw new InvalidOperationException("PDF output failed.");
+        // A truncated EOF can pass qpdf --check. Reject a saturated output budget
+        // even on exit 0, including an otherwise valid PDF exactly at the limit.
+        if (result.ExitCode != 0 || new FileInfo(files.OutputPath).Length >= fsize) throw new InvalidOperationException("PDF output failed.");
         try { await new QpdfProcessor(Microsoft.Extensions.Options.Options.Create(options)).ValidateAsync(files.OutputPath, token); }
         catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
         token.ThrowIfCancellationRequested();

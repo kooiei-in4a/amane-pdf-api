@@ -67,7 +67,7 @@ qpdfの`--check`はPDFの完全な適合性や無害性を保証せず、PDF内�
 - 結合では全入力検証と最終結合を1つの30秒予算で制御し、qpdfをrequest内で並列起動しない
 - unlockはJSON作成・対象判定・認証・入力検査・解除・出力検証で1つの30秒予算を共有し、qpdfを逐次実行する
 - 同時PDF処理数2、待ち行列0
-- Linuxではすべてのqpdf実行にprlimitのRLIMIT_AS 544 MiB（570425344 bytes）を適用。shellを挟まず直接起動する
+- Linuxではすべてのqpdf実行をenv → prlimit → qpdfのexec経路で起動し、SIGXFSZ無視、RLIMIT_CORE=0、RLIMIT_AS 544 MiB（570425344 bytes）を適用。shellは挟まない
 - 全OSのqpdfにJPEGMEM=600M（600,000,000 bytes）を既存RunnerのEnvironmentで渡す。非LinuxにはAS制限を適用しない
 - Linuxの起動時は同じASで/bin/trueとqpdf --versionを確認し、失敗時は固定ログだけで非0終了する
 
@@ -134,7 +134,7 @@ compressはページResourcesの直接の画像XObjectだけを選び、Form内�
 
 JPEGはサイズ上限付きstreamで最初のEOIまで解析します。2026-10-08のHuman承認により、MPFのHDR gain mapなどEOI以降のデータを無視し、置換時には新JPEGへ引き継ぎません。SOF0／SOF1／SOF2のprecision 8・成分数1／3だけを許容し、EOIより前のheight 0／DNL、複数SOF、対応外SOF、切れたmarker、不正なsegment長、SOSなしを拒否します。最初のSOFで検査を終えません。エントロピー等の検査は制限付きdjpegの-strictにも任せます。縮小は整数の切り上げM/8、拡大なしです。新JPEGも同じparserで本体と実寸・成分数を再検査し、実寸でWidth／Heightを更新します。後続データの有無は検査対象外ですが、EOI以前の検査と期待する寸法・成分数の一致は維持します。Lengthはqpdfに生成させ、採用はchecked整数の10×新サイズ≤9×元サイズで決めます。
 
-既存ExternalProcessRunnerとProcessMemoryLimitsを使用し、prlimitをshellやlauncherなしで直接起動します。RunnerのDIや独自kill／waitは追加しません。qpdfのJPEGMEM／ASは共通設定を維持します。djpeg／cjpegはAS 64 MiB、必要な出力にはRLIMIT_FSIZEを適用し、-maxmemory 64M／-strict、djpegには-maxscans 100を付けます。Linux起動時には小さな画像で必要オプションの実動作を確認し、失敗・timeoutは固定ログだけで起動を止めます。自己テストを省略する本番設定はありません。偽コマンドと短いrequest予算による異常系テストは、実コマンド・有効な設定で起動した後にテスト側だけで差し替えます。
+既存ExternalProcessRunnerとProcessMemoryLimitsを使用し、OS標準の`/usr/bin/env --ignore-signal=XFSZ --`からprlimitとtoolへexecします。RunnerのDIや独自kill／waitは追加しません。qpdfのJPEGMEM／ASは共通設定を維持します。djpeg／cjpegもSIGXFSZ無視とCORE=0、AS 64 MiB、必要な出力にはRLIMIT_FSIZEを適用し、-maxmemory 64M／-strict、djpegには-maxscans 100を付けます。Linux起動時には同じ経路で小さな画像を変換して必要オプションの実動作を確認し、失敗・timeoutは固定ログだけで起動を止めます。自己テストを省略する本番設定はありません。偽コマンドと短いrequest予算による異常系テストは、実コマンド・有効な設定で起動した後にテスト側だけで差し替えます。
 
 pages／metadata JSONはfsize付きファイル出力、初期値16 MiB・深さ64です。候補辞書は最大500参照ずつ取得してprivate spoolへ保存し、spool合計16 MiBを上限とします。全候補のDOMを同時保持しません。ページ、Parent、Resources、XObject、画像辞書、SMask／Mask／ICCの参照を階層ごとにまとめて先読みし、ページ数に比例した1参照ずつの外部起動を避けます。ページ側は最大500ページずつ（低いspool設定ではさらに少なく）取得→画像参照収集→削除し、別名の連鎖を含めてspoolと容量台帳から解放します。画像／ICC／Mask／SMask辞書は画像の判定・変換に必要な間保持します。深い継承・別名や大きな辞書で一単位が上限へ達した場合も、上限を緩めず既知のmetadata上限として扱います。間接参照はmetadataだけで解決し、Length降順の固有objectを最大500個選びます。生JPEGは最大50画像ずつ、S=round4KiB(最大Length+4KiB)、n×Sを予約し、Length合計とn×Sをともに残り領域へ収めます。抽出fsizeはS、JSONはファイル出力なし・既存Runnerのstdout上限1 MiBです。サイズ・objectとdatafileの対応・private batch directory内のpath・symlinkなしを確認します。stdout超過や部分抽出はファイルを削除し、複数画像バッチから各画像一回だけの抽出へ縮小します。無制限retryはしません。
 
@@ -142,7 +142,7 @@ job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM
 
 アップロード完了後・入力検証前から30秒、同じ開始時刻から21秒で画像処理を終了します。CompressSoftTimeoutSecondsはQpdfTimeoutSeconds未満を必須とし、起動時に検証します。実行中の画像・バッチもsoft deadlineで中断し、一枚のdjpeg＋cjpegは共有2秒、バッチ抽出も2秒です。request中断・アプリ停止・hard timeoutを画像失敗として握りつぶしません。cancel時のkill tree／wait／stdout・stderr drainはRunnerが行います。残り9秒で書き出し・出力検証を行いますが、hard deadlineに達すれば504となります。
 
-画像単位の非0終了（126／127以外、SIGXFSZの153も含む）はその画像を保持します。126／127・起動失敗は500です。既知のmetadata・時間・容量上限は画像処理を終了し、採用済み結果で最終処理を試みます。候補判定中のmetadata上限では未採用の候補を新たに変換せず、採用済みJPEGがなければ置換0になります。想定外のmetadata異常、最終書き出し／出力検証の失敗（2／3も含む）は500、入力検査の上限超過は従来のreasonなし422です。出力見積りは上界の保証ではなく、出力fsize超過の部分ファイルは削除して500です。最終検証とファイルopen後に成功ヘッダーを付け、エラーには付けません。PDF・画像・JSON・stdout／stderr・内部pathを本番ログやエラーへ出しません。
+画像単位の非0終了（126／127以外、SIGXFSZの153も含む）はその画像を保持します。126／127・起動失敗は500です。既知のmetadata・時間・容量上限は画像処理を終了し、採用済み結果で最終処理を試みます。候補判定中のmetadata上限では未採用の候補を新たに変換せず、採用済みJPEGがなければ置換0になります。想定外のmetadata異常、最終書き出し／出力検証の失敗（2／3も含む）は500、入力検査の上限超過は従来のreasonなし422です。出力見積りは上界の保証ではなく、最終出力の実サイズがfsize上限以上なら、exit 0やqpdf --check成功でも削除して500です。上限同値の正常PDFも安全側に拒否します。最終検証とファイルopen後に成功ヘッダーを付け、エラーには付けません。PDF・画像・JSON・stdout／stderr・内部pathを本番ログやエラーへ出しません。
 
 最終qpdfにはobject-streams=generateとcompression-level=9だけを指定します。stream-data、recompress-flate、decode-levelは指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTの生データ、LZW／ASCIIHex／ASCII85・複合filterのデコード後データと表示上の意味を検証します。qpdf --checkだけを表示保持の根拠とせず、CIの構造・データ比較と描画比較を行います。描画ツールはruntimeに含めません。
 
@@ -160,6 +160,8 @@ ZipArchive/entry streamをusingで囲まず、コピー成功時だけentryを�
 
 ## core dumpと公開条件
 
-FSIZE超過時のSIGXFSZはcore dumpを発生させ得ます。qpdfのメモリにはPDF内容が含まれ得るため、コンテナ内にcoreファイルがないことだけではhostのcollectorへ内容が渡らない証明になりません。pipe方式のcore collectorではRLIMIT_COREを無視し得るため、`--core=0:0`だけを対策とは扱いません。
+FSIZE超過時のSIGXFSZの既定動作はcoreを伴う終了です。Linuxの共通起動経路でSIGXFSZをSIG_IGNへ設定してtoolへexecし、この終了を防ぎます。書込み上限はprlimitで維持します。qpdfは切れたJSONでもexit 0となり得るため、pages／metadataの実サイズが上限以上なら、同値を含めて既知のmetadata上限として画像処理を終了します。splitは従来どおりpartBudget+1のFSIZEと実サイズの比較で専用422を返します。
 
-実装PRで合成PDFだけを使い、Docker環境とhost collectorの扱いを確認します。dumpの内容がコンテナ外へ渡らないことを確認できなければ、PRに結果と未確認点を記録し、merge可否はHumanが判断します。deployは必要な共通対策（compressを含む別Issue）が解決し、内容が外へ渡らないことを確認するまで保留します。#23ではhost設定・共通prlimit・Runner・独自launcherを変更しません。サイトのsplitツールのdeployもAPI deploy後に行います。通常のmerge/tag/Release/deployのHuman承認も必要です。
+CORE soft/hard=0も共通適用しますが、pipe方式のcore collectorはRLIMIT_COREを無視するため、CORE=0だけを受渡し防止策とは扱いません。SIGSEGV／ABRT等の別signalによるcoreは今回の対策対象外です。qpdfのメモリにはPDF内容が含まれ得るため、コンテナ内にcoreファイルがないことだけではhostのcollectorへ内容が渡らない証明になりません。[Linuxのcore仕様](https://man7.org/linux/man-pages/man5/core.5.html)と[signalのexec時の継承](https://man7.org/linux/man-pages/man7/signal.7.html)を参照してください。
+
+合成データによるAPIの検証結果は[FSIZE core対策の検証記録](fsize-core-validation.md)に残します。本番に近い隔離VMでのcollector起動数・受信bytes・保存数の確認とinfraの容量整合は[共通対策 #46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)で追跡し、完了までAPI splitのdeployを保留します。サイトのsplitツールもAPI deploy後に行います。PRのmergeとdeployはそれぞれHumanの承認が必要です。
