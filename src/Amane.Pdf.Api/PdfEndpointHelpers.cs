@@ -56,7 +56,7 @@ internal static class PdfEndpointHelpers
         }
         catch (PdfInputException)
         {
-            await Results.Problem(statusCode: 422, title: "未暗号化の正常なPDFが必要です。").ExecuteAsync(context);
+            await Results.Problem(statusCode: 422, title: "このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。").ExecuteAsync(context);
         }
         catch (InvalidDataException)
         {

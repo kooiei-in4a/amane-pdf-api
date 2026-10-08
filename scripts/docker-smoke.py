@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import uuid
+import zlib
 
 
 FIXTURE = (Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf").read_bytes()
@@ -44,7 +45,8 @@ def multipart(file=None, password=PASSWORD, files=None):
 
 
 class ApiContainer:
-    def __init__(self, image, settings=(), isolated=False):
+    def __init__(self, image, settings=(), isolated=False, memory_mib=1024):
+        self.memory_mib = memory_mib
         self.name = "amane-pdf-smoke-" + uuid.uuid4().hex
         self.port = None
         self.image = image
@@ -57,7 +59,7 @@ class ApiContainer:
         arguments = [
             "run", "--detach", "--name", self.name,
             "--read-only", "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=256m",
-            "--cpus", "1", "--memory", "512m", "--cap-drop", "ALL",
+            "--cpus", "1", "--memory", f"{self.memory_mib}m", "--memory-swap", f"{self.memory_mib}m", "--cap-drop", "ALL",
             "--security-opt", "no-new-privileges=true",
         ]
         if self.isolated:
@@ -85,7 +87,8 @@ class ApiContainer:
         assert container["HostConfig"]["ReadonlyRootfs"]
         assert "/tmp" in container["HostConfig"]["Tmpfs"]
         assert container["HostConfig"]["NanoCpus"] == 1_000_000_000
-        assert container["HostConfig"]["Memory"] == 512 * 1024 * 1024
+        assert container["HostConfig"]["Memory"] == self.memory_mib * 1024 * 1024
+        assert container["HostConfig"]["MemorySwap"] == self.memory_mib * 1024 * 1024
         assert not any(mount["Type"] == "volume" for mount in container["Mounts"])
         if self.isolated:
             assert container["HostConfig"]["NetworkMode"] == "none"
@@ -279,9 +282,64 @@ def running_container(image, settings=(), isolated=False):
         api.close()
 
 
+def flate_image_pdf():
+    """16 MP RGB。圧縮fixtureだけをメモリに保持する。"""
+    compressor = zlib.compressobj(1)
+    row = bytes(x % 251 for x in range(4096 * 3))
+    parts = [compressor.compress(row) for _ in range(4096)]
+    parts.append(compressor.flush())
+    image = b"".join(parts)
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << /XObject << /Im0 4 0 R >> >> >>",
+        (f"<< /Type /XObject /Subtype /Image /Width 4096 /Height 4096 /ColorSpace /DeviceRGB "
+         f"/BitsPerComponent 8 /Filter /FlateDecode /Length {len(image)} >>\nstream\n").encode() + image + b"\nendstream",
+    ]
+    output = io.BytesIO()
+    output.write(b"%PDF-1.4\n")
+    offsets = []
+    for number, value in enumerate(objects, 1):
+        offsets.append(output.tell())
+        output.write(f"{number} 0 obj\n".encode() + value + b"\nendobj\n")
+    xref = output.tell()
+    output.write(b"xref\n0 5\n0000000000 65535 f \n")
+    for offset in offsets:
+        output.write(f"{offset:010} 00000 n \n".encode())
+    output.write(f"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
+    return output.getvalue()
+
+
+def assert_startup_failure(image, settings, expected_message="PDF処理のメモリ制限の自己テストに失敗しました。"):
+    name = "amane-pdf-smoke-startup-" + uuid.uuid4().hex
+    arguments = ["run", "--detach", "--name", name, "--read-only", "--network", "none",
+                 "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=256m", "--cpus", "1",
+                 "--memory", "1g", "--memory-swap", "1g", "--cap-drop", "ALL",
+                 "--security-opt", "no-new-privileges=true"]
+    for setting in settings:
+        arguments += ["--env", setting]
+    try:
+        docker(*arguments, image)
+        for _ in range(50):
+            state = json.loads(docker("inspect", name).stdout)[0]["State"]
+            if not state["Running"]:
+                break
+            time.sleep(0.1)
+        assert not state["Running"] and state["ExitCode"] != 0, "Invalid limits must prevent startup."
+        logs = docker("logs", name)
+        output = logs.stdout + logs.stderr
+        assert expected_message.encode() in output
+        for detail in (b"/missing/", b"/src/", b"prlimit:", b"error while loading", b"Unhandled exception"):
+            assert detail not in output, "Startup logs exposed internal details."
+    finally:
+        docker("rm", "--force", name, check=False)
+
+
 def main(image):
     post_count = 0
     with running_container(image) as api:
+        api.exec("test", "-r", "/usr/share/doc/util-linux/copyright")
+        api.exec("prlimit", "--version")
         version = api.exec("qpdf", "--version").stdout.decode().splitlines()[0]
         print(version)
         match = re.match(r"qpdf version (\d+)\.", version)
@@ -318,10 +376,26 @@ def main(image):
         api.protect(FIXTURE + b"X", expected=413, chunked=True)
         print("Docker E2E: exact file limit / Content-Length and chunked 413 PASS")
         post_count += api.post_count
-    with running_container(image, ("Pdf__QpdfPath=/missing/qpdf",)) as api:
+    with running_container(image, ("Pdf__QpdfPath=/usr/bin/cat",)) as api:
         api.protect(FIXTURE, expected=500)
         print("Docker E2E: sanitized internal failure / cleanup PASS")
         post_count += api.post_count
+    large = flate_image_pdf()
+    with running_container(image, (f"Pdf__QpdfAddressSpaceLimitBytes={64 * 1024 * 1024}",), isolated=True) as api:
+        api.protect(FIXTURE)
+        problem = json.loads(api.protect(large, expected=422))
+        assert problem["title"] == "このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。"
+        assert "reason" not in problem
+        post_count += api.post_count
+    with running_container(image, isolated=True) as api:
+        api.verify_encryption(api.protect(large))
+        post_count += api.post_count
+    for settings in (("Pdf__PrlimitPath=/missing/prlimit",), ("Pdf__QpdfPath=/missing/qpdf",),
+                     ("Pdf__QpdfAddressSpaceLimitBytes=1",), ("Pdf__QpdfAddressSpaceLimitBytes=16777216",)):
+        assert_startup_failure(image, settings)
+    for settings in (("Pdf__QpdfAddressSpaceLimitBytes=0",), ("Pdf__QpdfJpegMemory=64MiB",), ("Pdf__PrlimitPath=",)):
+        assert_startup_failure(image, settings, "PDF設定値が不正です。")
+    print("Docker E2E: real prlimit / resource 422 / raised limit / startup self-test / util-linux copyright PASS")
     with running_container(image, isolated=True) as api:
         encrypted = api.protect(FIXTURE)
         api.verify_encryption(encrypted)

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Amane.Pdf.Api.Tests;
 
@@ -21,6 +23,9 @@ internal sealed class PdfTestContext : IAsyncDisposable
     {
         Directory.CreateDirectory(Root);
         settings ??= [];
+        // Request-stage fault injection happens after the real startup self-test.
+        // Startup failure tests use WebApplicationFactory directly.
+        settings.Remove("Pdf:QpdfPath", out var requestQpdfPath);
         settings["Pdf:TempRoot"] = TempRoot;
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -28,6 +33,8 @@ internal sealed class PdfTestContext : IAsyncDisposable
             builder.ConfigureLogging(logging => logging.AddProvider(new CaptureLoggerProvider(Logs)));
         });
         Client = Factory.CreateClient();
+        if (requestQpdfPath is not null)
+            Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = requestQpdfPath;
     }
 
     public static MultipartFormDataContent Form(byte[]? file = null, string? password = "test-password", string fileName = "sample.pdf")

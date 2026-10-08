@@ -166,7 +166,7 @@ public sealed class PdfValidationTests
         if (expected == HttpStatusCode.UnprocessableEntity)
         {
             using var problem = System.Text.Json.JsonDocument.Parse(body);
-            Assert.AreEqual("未暗号化の正常なPDFが必要です。", problem.RootElement.GetProperty("title").GetString());
+            Assert.AreEqual("このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。", problem.RootElement.GetProperty("title").GetString());
             Assert.IsFalse(problem.RootElement.TryGetProperty("reason", out _));
         }
         Assert.IsFalse(body.Contains(test.Root, StringComparison.Ordinal));

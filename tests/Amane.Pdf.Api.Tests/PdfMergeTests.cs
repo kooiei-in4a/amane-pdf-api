@@ -225,7 +225,8 @@ public sealed class PdfMergeTests
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?> { [key] = value })));
-        Assert.Throws<OptionsValidationException>(() => factory.CreateClient());
+        // Invalid configuration now exits with a fixed log before the test host starts.
+        Assert.Throws<InvalidOperationException>(() => factory.CreateClient());
     }
 
     [TestMethod]

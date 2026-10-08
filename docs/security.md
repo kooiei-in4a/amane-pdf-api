@@ -45,11 +45,11 @@ JSONの形式とCLIの対応は[qpdf公式QPDFJob文書](https://qpdf.readthedoc
 ## 入力検証とエラー
 
 - Content-Typeや利用者ファイル名を信用せず、qpdfでPDF構造を検証する
-- 空ファイル、非PDF、破損PDF、qpdf warningを422で拒否する
+- 空ファイル、非PDF、破損PDF、qpdf warning、入力検査での処理上限超過を422で拒否する
 - unlock以外の既暗号化PDFは`--is-encrypted`で判定し、空のuser passwordや一致するpasswordでも拒否する
 - unlockはpasswordなしの`--requires-password`で対象を判定し、開くpasswordが不要なPDFは正しいowner passwordを渡しても拒否する
 - unlockはprivate JSONで認証と構造検査を行い、解除後の非空・未暗号化・構造検査成功を確認してから送信する。出力検証の失敗は422ではなく500とする
-- unlockの422だけに固定の`not-encrypted` / `no-open-password` / `wrong-password` / `invalid-pdf`をreasonとして付け、既存422のtitle・bodyを維持する
+- unlockの422だけに固定の`not-encrypted` / `no-open-password` / `wrong-password` / `invalid-pdf`をreasonとして付け、unlock専用のtitleとreasonを維持する。共通422はreasonなしとし、破損・パスワード設定・大きすぎる画像の確認を促す固定titleを返す
 - 必須項目不足/重複、multipart形式不正、制御文字やUTF-8で127 bytesを超えるpassword、不正なangle/pagesは400で拒否する
 - 結合は2〜10個の同名`file` fieldだけを受け付け、全入力を逐次検証する。不正入力が1件でもあれば結合全体を拒否する
 - qpdf実行失敗や未知のexit codeは500とし、HTTP response/logには内部例外を含めない
@@ -67,6 +67,9 @@ qpdfの`--check`はPDFの完全な適合性や無害性を保証せず、PDF内�
 - 結合では全入力検証と最終結合を1つの30秒予算で制御し、qpdfをrequest内で並列起動しない
 - unlockはJSON作成・対象判定・認証・入力検査・解除・出力検証で1つの30秒予算を共有し、qpdfを逐次実行する
 - 同時PDF処理数2、待ち行列0
+- Linuxではすべてのqpdf実行にprlimitのRLIMIT_AS 324 MiB（339738624 bytes）を適用。shellを挟まず直接起動する
+- 全OSのqpdfにJPEGMEM=64M（64,000,000 bytes）を既存RunnerのEnvironmentで渡す。非LinuxにはAS制限を適用しない
+- Linuxの起動時は同じASで/bin/trueとqpdf --versionを確認し、失敗時は固定ログだけで非0終了する
 
 `Pdf` configurationにまとめ、正でない制限値などは起動時に拒否します。
 Kestrelのbody上限とContent-Lengthチェックに加え、実際に読んだbytesを制限します。Content-Lengthなしでも上限超過のPDFを全量保存しません。
@@ -80,6 +83,12 @@ timeoutは504で返し、qpdfの検査と各PDF処理の段階でprocess treeの
 
 結合の出力PDFは入力合計より大きくなる可能性があります。入力合計50 MiB、同時2 requestはtmpfs 256 MiBへ収めやすくする初期値であり、出力サイズを保証しません。tmpfs / memory limitを実行環境側の安全境界として維持します。`--empty --pages`による結合は文書レベルmetadata / outlineの保持・統合を保証しません。
 
+qpdf自身も`--check`でJPEG streamをプロセス内でデコードします。JPEGMEMはlibjpegの内部メモリ管理へ作用しますが、baseline JPEGの全メモリやqpdf自身のデコード済みbufferを制限できません。Flate画像にもJPEGMEMだけでは十分ではありません。AS、同時実行数、tmpfs、コンテナmemoryを合わせて管理します。制限は設定値で、実行時の空きメモリに応じた自動調整はしません。
+
+入力checkの2/3は破損、警告、上限超過を区別せず共通422とし、stderr解析や新しいreasonを追加しません。unlockのprobeの3は段階によって判定結果を表すため既存の対応を維持します。出力検証の失敗、126/127等の起動失敗、想定外の終了は500です。
+
+[READMEの容量式](../README.md#リソース制限と設定)と[実測記録](qpdf-memory-validation.md)を運用時の見直しに使用してください。式の.NET値と余裕は見積りであり、AS以外のAPIメモリや出力サイズのhard limitを追加するものではありません。
+
 利用者/IP単位の頻度制限は入口側、CPU/メモリ/tmpfs容量の上限は実行環境側で設定します。
 
 API単体ではパスワードを試す回数を制限しません。総当たり対策は入口側（`amane-tools-site`）の日次回数・分単位の制限を前提とします。Issue #21の前提は未ログイン3回・無料10回の日次制限と分単位のレート制限ですが、その実装・適用状況はこのリポジトリでは確認できません。既存のConcurrency Limiterは共有処理枠の制限であり、利用者ごとの試行回数制限ではありません。
@@ -90,7 +99,7 @@ API単体ではパスワードを試す回数を制限しません。総当た�
 
 - appユーザー（non-root）で実行する
 - read-only root filesystem + tmpfs /tmpでPDF暗号化・入力拒否・削除が成立する
-- CPU 1 / memory 512 MiB / tmpfs 256 MiBを外側から指定できる
+- CPU 1 / memory 1 GiB（memory-swapも1 GiB、swapなし） / tmpfs 256 MiBを外側から指定できる
 - capabilityをdropし、no-new-privilegesで実行できる
 - DB、Secret、永続Volumeなしで動作し、終了時にはコンテナを削除する
 - 外部networkなし（--network none）のコンテナでもloopback HTTPで実PDF処理が成立する

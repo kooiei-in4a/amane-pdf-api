@@ -8,7 +8,7 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.MaxMergeFiles is >= 2 and <= 10 &&
         options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
-        options.MaxConcurrentProcesses > 0 && !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
+        options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
 builder.Services.AddSingleton<QpdfProcessor>();
@@ -38,6 +38,24 @@ app.MapPost("/api/pdf/extract", PdfPageSelectionEndpoints.ExtractAsync).RequireR
 app.MapPost("/api/pdf/delete-pages", PdfPageSelectionEndpoints.DeletePagesAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/reorder", PdfPageSelectionEndpoints.ReorderAsync).RequireRateLimiting("pdf");
 
-app.Run();
+try
+{
+    var pdfOptions = app.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+    await ProcessMemoryLimits.ValidateStartupAsync(pdfOptions, app.Lifetime.ApplicationStopping);
+}
+catch (OptionsValidationException)
+{
+    app.Logger.LogCritical("PDF設定値が不正です。");
+    await app.DisposeAsync();
+    return 1;
+}
+catch (InvalidOperationException)
+{
+    app.Logger.LogCritical("PDF処理のメモリ制限の自己テストに失敗しました。");
+    await app.DisposeAsync();
+    return 1;
+}
+await app.RunAsync();
+return 0;
 
 public partial class Program;
