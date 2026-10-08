@@ -17,6 +17,8 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
     private readonly List<(PdfObjectRef Reference, string Jpeg, string Entry)> adopted = [];
     private long originalBytes;
     private long adoptedBytes;
+    private long adoptedAllocation;
+    private long entryAllocation;
     private long updateBytes = Encoding.UTF8.GetByteCount("{\"qpdf\":[{\"jsonversion\":2},{}]}");
 
     internal static bool IsValid(PdfOptions value)
@@ -27,6 +29,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             value.CompressMaxPixels > 0 && value.CompressMaxImages > 0 && value.CompressJsonLimitBytes > 0 &&
             value.CompressJsonDepth > 0 && value.CompressSpoolLimitBytes > 0 && value.CompressStdoutLimitBytes > 0 &&
             value.CompressSoftTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
+            value.CompressSoftTimeoutSeconds < value.QpdfTimeoutSeconds &&
             value.CompressImageTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
             value.CompressBatchTimeoutSeconds is > 0 and <= int.MaxValue / 1000;
 
@@ -160,7 +163,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                 ? PdfObjectRef.Parse(value) : null).Select(reference => reference ?? throw new InvalidOperationException("PDF page reference is invalid.")).Distinct().ToArray();
         }
         finally { Capacity.Delete(pagesPath); }
-        await metadata.FetchAsync(pages, token);
+        await PrimePageResourcesAsync(metadata, pages, token);
         var references = new HashSet<PdfObjectRef>();
         foreach (var page in pages)
         {
@@ -188,6 +191,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             }
         }
         await metadata.FetchAsync(references, token);
+        await PrimeImageReferencesAsync(metadata, references, token);
         var images = new List<CompressImage>();
         foreach (var reference in references)
         {
@@ -248,6 +252,105 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             }
         }
         return images;
+    }
+
+    private async Task PrimePageResourcesAsync(CompressMetadata metadata, PdfObjectRef[] pages, CancellationToken token)
+    {
+        var frontier = pages.ToHashSet();
+        var seen = new HashSet<PdfObjectRef>();
+        var owners = new HashSet<PdfObjectRef>();
+        var resources = new HashSet<PdfObjectRef>();
+        for (var depth = 0; depth < options.CompressJsonDepth && frontier.Count > 0; depth++)
+        {
+            frontier.ExceptWith(seen);
+            seen.UnionWith(frontier);
+            await metadata.FetchAsync(frontier, token);
+            var next = new HashSet<PdfObjectRef>();
+            foreach (var reference in frontier)
+            {
+                token.ThrowIfCancellationRequested();
+                var obj = await metadata.GetAsync(reference, token);
+                if (obj is not { } item || !item.TryGetProperty("value", out var dict) || dict.ValueKind != JsonValueKind.Object) continue;
+                if (dict.TryGetProperty("/Resources", out var value))
+                {
+                    owners.Add(reference);
+                    AddReference(resources, value);
+                }
+                else if (dict.TryGetProperty("/Parent", out var parent)) AddReference(next, parent);
+            }
+            frontier = next;
+        }
+        await metadata.FetchChainsAsync(resources, token);
+        var xobjects = new HashSet<PdfObjectRef>();
+        foreach (var reference in owners)
+        {
+            token.ThrowIfCancellationRequested();
+            var obj = (await metadata.GetAsync(reference, token))!.Value;
+            var dict = await metadata.DictionaryAsync(obj.GetProperty("value").GetProperty("/Resources"), token);
+            if (dict is { } resource && resource.TryGetProperty("/XObject", out var value)) AddReference(xobjects, value);
+        }
+        await metadata.FetchChainsAsync(xobjects, token);
+    }
+
+    private async Task PrimeImageReferencesAsync(CompressMetadata metadata, IEnumerable<PdfObjectRef> images, CancellationToken token)
+    {
+        string[] keys = ["/Subtype", "/Filter", "/DecodeParms", "/Decode", "/ImageMask", "/Mask", "/SMask",
+            "/Width", "/Height", "/BitsPerComponent", "/Length", "/ColorSpace"];
+        var references = new HashSet<PdfObjectRef>();
+        foreach (var reference in images)
+        {
+            token.ThrowIfCancellationRequested();
+            var dict = await ImageDictionaryAsync(reference);
+            if (dict is not { } dictionary) continue;
+            foreach (var key in keys)
+                if (dictionary.TryGetProperty(key, out var value)) AddReference(references, value);
+        }
+        await metadata.FetchChainsAsync(references, token);
+        references.Clear();
+        foreach (var reference in images)
+        {
+            token.ThrowIfCancellationRequested();
+            var dict = await ImageDictionaryAsync(reference);
+            if (dict is not { } dictionary) continue;
+            var filter = await metadata.PropertyAsync(dictionary, "/Filter", token);
+            if (filter is { ValueKind: JsonValueKind.Array } && filter.Value.GetArrayLength() == 1) AddReference(references, filter.Value[0]);
+            var color = await metadata.PropertyAsync(dictionary, "/ColorSpace", token);
+            if (color is { ValueKind: JsonValueKind.Array } && color.Value.GetArrayLength() == 2)
+            {
+                AddReference(references, color.Value[0]);
+                AddReference(references, color.Value[1]);
+            }
+        }
+        await metadata.FetchChainsAsync(references, token);
+        references.Clear();
+        foreach (var reference in images)
+        {
+            token.ThrowIfCancellationRequested();
+            var dict = await ImageDictionaryAsync(reference);
+            if (dict is not { } dictionary) continue;
+            var color = await metadata.PropertyAsync(dictionary, "/ColorSpace", token);
+            if (color is not { ValueKind: JsonValueKind.Array } || color.Value.GetArrayLength() != 2) continue;
+            var name = await metadata.ResolveAsync(color.Value[0], token);
+            if (name is not { ValueKind: JsonValueKind.String } || name.Value.GetString() != "/ICCBased" ||
+                PdfObjectRef.Parse(color.Value[1]) is not { } profileRef) continue;
+            var profile = await metadata.GetAsync(profileRef, token);
+            if (profile is { } obj && obj.TryGetProperty("stream", out var stream) &&
+                stream.TryGetProperty("dict", out var profileDict) && profileDict.ValueKind == JsonValueKind.Object &&
+                profileDict.TryGetProperty("/N", out var n)) AddReference(references, n);
+        }
+        await metadata.FetchChainsAsync(references, token);
+
+        async Task<JsonElement?> ImageDictionaryAsync(PdfObjectRef reference)
+        {
+            var obj = await metadata.GetAsync(reference, token);
+            return obj is { } item && item.TryGetProperty("stream", out var stream) &&
+                stream.TryGetProperty("dict", out var dict) && dict.ValueKind == JsonValueKind.Object ? dict : null;
+        }
+    }
+
+    private static void AddReference(ISet<PdfObjectRef> references, JsonElement value)
+    {
+        if (PdfObjectRef.Parse(value) is { } reference) references.Add(reference);
     }
 
     private static async Task<int> ComponentsAsync(JsonElement? color, CompressMetadata metadata, CancellationToken token)
@@ -375,9 +478,9 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             if (nextJ > options.CompressJsonLimitBytes) return;
             var nextA = checked(adoptedBytes + bytes); var nextR = checked(originalBytes + image.Length);
             var outputLimit = checked(new FileInfo(files.InputPath).Length - nextR + nextA + OutputHeadroom);
-            var retainedAllocation = adopted.Sum(item => CompressCapacity.Allocated(new FileInfo(item.Jpeg).Length));
-            if (checked(CompressCapacity.Allocated(new FileInfo(files.InputPath).Length) + retainedAllocation +
-                CompressCapacity.Allocated(bytes) + CompressCapacity.Allocated(nextJ) + CompressCapacity.Allocated(outputLimit)) > options.CompressJobLimitBytes) return;
+            var nextAllocation = checked(adoptedAllocation + CompressCapacity.Allocated(bytes));
+            var nextEntries = checked(entryAllocation + CompressCapacity.Allocated(entryBytes.Length));
+            if (!Capacity.CanFinalize(new FileInfo(files.InputPath).Length, nextAllocation, nextEntries, nextJ, outputLimit)) return;
             Capacity.Reserve(jpeg, bytes);
             Capacity.Reserve(entry, entryBytes.Length);
             await using (var file = TemporaryPdfFiles.CreatePrivateFile(entry)) await file.WriteAsync(entryBytes, token);
@@ -387,6 +490,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             adopted.Add((image.Reference, retained, entry));
             keepEntry = true;
             adoptedBytes = nextA; originalBytes = nextR; updateBytes = nextJ;
+            adoptedAllocation = nextAllocation; entryAllocation = nextEntries;
         }
         catch (CompressLimitException) { }
         catch (OperationCanceledException) when (!hardToken.IsCancellationRequested && !softToken.IsCancellationRequested) { }

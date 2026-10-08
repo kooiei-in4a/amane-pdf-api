@@ -10,6 +10,12 @@ internal sealed class CompressCapacity(long limit)
     internal long Peak { get; private set; }
     internal long Remaining => limit - Used;
     internal static long Allocated(long bytes) => checked((bytes + 4095) / 4096 * 4096);
+    internal bool CanFinalize(long inputBytes, long jpegAllocation, long entriesAllocation, long jsonBytes, long outputBytes)
+    {
+        var retained = checked(Allocated(inputBytes) + jpegAllocation + Allocated(jsonBytes));
+        // Joining entries and writing the PDF are distinct peaks; account for both.
+        return checked(retained + entriesAllocation) <= limit && checked(retained + Allocated(outputBytes)) <= limit;
+    }
     internal void Reserve(string key, long bytes)
     {
         var value = Allocated(bytes);

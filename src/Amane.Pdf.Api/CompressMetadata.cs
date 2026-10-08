@@ -101,6 +101,28 @@ internal sealed class CompressMetadata(PdfCompressProcessor owner)
         return document.RootElement.Clone();
     }
 
+    // Prime scalar/dictionary aliases a level at a time, without retaining their DOMs.
+    internal async Task FetchChainsAsync(IEnumerable<PdfObjectRef> references, CancellationToken token)
+    {
+        var frontier = references.ToHashSet();
+        var seen = new HashSet<PdfObjectRef>();
+        for (var depth = 0; depth < owner.Options.CompressJsonDepth && frontier.Count > 0; depth++)
+        {
+            frontier.ExceptWith(seen);
+            seen.UnionWith(frontier);
+            await FetchAsync(frontier, token);
+            var next = new HashSet<PdfObjectRef>();
+            foreach (var reference in frontier)
+            {
+                token.ThrowIfCancellationRequested();
+                var obj = await GetAsync(reference, token);
+                if (obj is { } item && item.TryGetProperty("value", out var value) && PdfObjectRef.Parse(value) is { } alias)
+                    next.Add(alias);
+            }
+            frontier = next;
+        }
+    }
+
     internal async Task<JsonElement?> ResolveAsync(JsonElement value, CancellationToken token)
     {
         var seen = new HashSet<PdfObjectRef>();

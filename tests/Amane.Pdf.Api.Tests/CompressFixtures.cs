@@ -47,6 +47,45 @@ internal static class CompressFixtures
     }
 
     internal static byte[] Text(string value) => Encoding.ASCII.GetBytes(value);
+    internal static byte[] MultiPage(byte[] jpeg, int count, bool indirect, bool inherited, bool dependencies)
+    {
+        var objects = new List<byte[]> { Text("<< /Type /Catalog /Pages 2 0 R >>"), Array.Empty<byte>() };
+        var content = Add(Stream("", Text("q 595 0 0 842 0 0 cm /Im0 Do Q\n")));
+        var kids = new List<int>();
+        var shared = dependencies ? 0 : AddImage();
+        for (var i = 0; i < count; i++)
+        {
+            var image = shared == 0 ? AddImage() : shared;
+            var resources = $"<< /XObject << /Im0 {image} 0 R >> >>";
+            if (indirect)
+            {
+                var xobject = Add(Text($"<< /Im0 {image} 0 R >>"));
+                resources = $"{Add(Text($"<< /XObject {xobject} 0 R >>"))} 0 R";
+            }
+            var parent = inherited ? Add([]) : 2;
+            var page = Add(Text($"<< /Type /Page /Parent {parent} 0 R /MediaBox [0 0 595 842] " +
+                (inherited ? "" : $"/Resources {resources} ") + $"/Contents {content} 0 R >>"));
+            if (inherited) objects[parent - 1] = Text($"<< /Type /Pages /Parent 2 0 R /Kids [{page} 0 R] /Count 1 /Resources {resources} >>");
+            kids.Add(inherited ? parent : page);
+        }
+        objects[1] = Text($"<< /Type /Pages /Count {count} /Kids [{string.Join(" ", kids.Select(number => $"{number} 0 R"))}] >>");
+        return Objects(objects);
+
+        int Add(byte[] value) { objects.Add(value); return objects.Count; }
+        int AddImage()
+        {
+            var color = "/DeviceRGB"; var extra = "";
+            if (dependencies)
+            {
+                var n = Add(Text("3"));
+                var profile = Add(Stream($"/N {n} 0 R", new byte[128]));
+                var mask = Add(Stream("/Type /XObject /Subtype /Image /Width 1 /Height 1 /ImageMask true /BitsPerComponent 1", [255]));
+                var smask = Add(Stream("/Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8", [255]));
+                color = $"[/ICCBased {profile} 0 R]"; extra = $"/Mask {mask} 0 R /SMask {smask} 0 R";
+            }
+            return Add(Stream($"/Type /XObject /Subtype /Image /Width 2200 /Height 1600 /ColorSpace {color} /BitsPerComponent 8 /Filter /DCTDecode {extra}", jpeg));
+        }
+    }
     internal static byte[] Many(byte[] jpeg, int count)
     {
         var objects = new List<byte[]> { Text("<< /Type /Catalog /Pages 2 0 R >>"),

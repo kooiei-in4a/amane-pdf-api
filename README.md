@@ -198,7 +198,9 @@ file  PDFファイル一つ
 
 対象はページResourcesから直接参照される固有の画像XObjectで、DCTDecodeだけ、DecodeParmsなし、BitsPerComponent 8、生JPEG 32 KiB以上、初期値1億画素以下です。JPEGのprecision 8・成分数1／3・実寸とPDF辞書が一致する必要があります。DeviceGray／DeviceRGB、Nが一致するICCBased、辞書を持つCalGray／CalRGBを扱います。ImageMask=true、Decode、color key Mask配列、Matte付きSMask、未解決・循環参照は除外します。Form内、inline image、CMYK、Indexed／Lab／Separation／DeviceN、Flate／JPEG 2000／JBIG2／CCITTなどの再圧縮は対象外です。ColorSpaceとprofile、保持対象のMask／SMask、Interpolateは維持します。ICC header・acsp、Range／Alternate、WhitePointの値域は検査しません。
 
-新JPEGが元JPEGより10%以上小さい場合だけ置き換えます。文字・ベクター・フォント・ページの表示上の意味を保ち、共有画像objectを一度だけ処理します。画像単位の変換失敗・時間／容量制限ではその画像を保持し、採用済みの途中結果で最終処理へ進みます。24／48 MP progressiveの実測では、固定の`-maxmemory 64M`により変換できず、元画像を保持しました。任意のJPEGやPDFの圧縮成功・サイズ削減は保証しません。
+2026-10-08のHuman承認により、JPEGは最初のEOIまでを本体として解析し、それ以降のデータを無視します。MPFのHDR gain mapなどの後続データも対象判定を妨げません。置換した場合、その後続データは新JPEGへ引き継がれません。EOIより前の不正なmarker・segment、height 0／DNL、複数・対応外SOF、SOSなしは引き続き拒否します。
+
+新JPEGが元JPEGより10%以上小さい場合だけ置き換えます。文字・ベクター・フォント・ページの表示上の意味を保ち、共有画像objectを一度だけ処理します。画像単位の変換失敗・時間／容量制限ではその画像を保持し、採用済みの途中結果で最終処理へ進みます。progressiveは固定の`-maxmemory 64M`・AS 64 MiBでdjpegが`Backing store not supported`となる場合があります。12 MP（4000×3000）の4:4:4でも失敗を確認しました。失敗する目安は4:2:0で約21 MP以上、4:4:4で約11 MP以上ですが、画像により異なり、受付境界を保証する値ではありません。失敗した画像は元のまま保持されます。任意のJPEGやPDFの圧縮成功・サイズ削減は保証しません。
 
 `X-Pdf-Images-Recompressed`は置き換えた固有object数です。共有画像が何ページに出ても1個と数えます。0は「画像を置き換えていない」ことだけを意味し、対象なし、削減不足、変換失敗、時間／容量制限を区別しません。置換0個や出力の増大も正常PDFなら200です。出力検証と送信ファイルのopen後に付け、エラーには付けません。
 
@@ -287,7 +289,7 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__CompressJsonDepth` | `64` | JSONと参照解決の深さ上限 |
 | `Pdf__CompressSpoolLimitBytes` | `16777216`（16 MiB） | 辞書spoolの合計割当上限 |
 | `Pdf__CompressStdoutLimitBytes` | `1048576`（1 MiB） | バッチ抽出JSONの保持上限 |
-| `Pdf__CompressSoftTimeoutSeconds` | `21` | 共通開始時刻から画像処理を打ち切る秒数 |
+| `Pdf__CompressSoftTimeoutSeconds` | `21` | 共通開始時刻から画像処理を打ち切る秒数。`QpdfTimeoutSeconds`未満が必須 |
 | `Pdf__CompressImageTimeoutSeconds` | `2` | 一枚のdjpeg＋cjpegの共有秒数 |
 | `Pdf__CompressBatchTimeoutSeconds` | `2` | バッチ抽出の最大秒数 |
 | `Pdf__TempRoot` | `/tmp/amane-pdf-api`（Linux標準環境） | 処理専用一時領域の親ディレクトリ |
@@ -322,7 +324,7 @@ qpdfの観測VmSizeは対象写真で最大457.3 MiB、追加で確認した100 
 
 128 MiB（.NET API）と64 MiB（余裕）は容量計画用の見積りで、.NETへのhard limitではありません。tmpfs圧力下の各形式60要求ではAPI RSS最大109.2 MiB、全標準負荷のcgroup peak最大982.7 MiB、OOMイベント0でした。managed heapとGC committedも測定しました。詳しい数値は [docs/qpdf-memory-validation.md](docs/qpdf-memory-validation.md) に記載しています。式は仮想メモリ上限を使った目安で、任意のPDFや将来のruntimeでの成功・OOM回避を数学的に保証しません。標準値の変更やruntime更新時には実HTTP負荷と`memory.peak` / `memory.events`を再測定してください。
 
-compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMは`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`の実サイズに512 bytesを加えて予約・fsizeを設定します。新JPEGは元の90%と残り容量でfsizeを決めます。
+compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。ページ、Parent、Resources、XObject、画像辞書、SMask／Mask／ICCは階層ごとに一括取得します。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMは`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`の実サイズに512 bytesを加えて予約・fsizeを設定します。新JPEGは元の90%と残り容量でfsizeを決めます。
 
 ```text
 I = 入力実サイズ、R = 採用した元JPEGの実サイズ合計、A = 採用JPEGの実サイズ合計
@@ -332,7 +334,7 @@ E = I − R + A、F = E + H
 標準tmpfs: 256 MiB ≥ 2 × 124 MiB + 8 MiB
 ```
 
-入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、fsize超過は部分出力を削除して500です。画像段階のSIGXFSZ（153）は不採用、126／127は500です。既知のmetadata・時間・容量上限は画像処理を終了し、想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
+入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、fsize超過は部分出力を削除して500です。画像段階のSIGXFSZ（153）は不採用、126／127は500です。既知のmetadata・時間・容量上限は画像処理を終了し、想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
 
 APIの制限は設定で調整できる安全境界です。job上限・PNM・画素数・画像数・AS・同時処理数を増やすときは、tmpfsとコンテナmemoryも上の式と合わせて見直してください。qpdfとJPEGツールは各job内で逐次起動するため、メモリ計画には両者のASの大きい方を使います。実HTTPの圧縮率・画質、段階別時間、memory.peak／memory.events、tmpfsは[圧縮の実測記録](docs/compress-validation.md)に記載します。数値は対象fixtureでの事実であり、他のPDFの保証ではありません。
 

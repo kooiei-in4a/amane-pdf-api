@@ -19,11 +19,34 @@ public sealed class JpegHeaderTests
         Assert.IsNull(Parse(Jpeg(0xc3)));
         Assert.IsNull(Parse(good[..^1]));
         Assert.IsNull(Parse([.. good[..2], 0xff, 0xe0, 0, 1, .. good[2..]]));
-        Assert.IsNull(Parse([.. good, 0xff]));
+        Assert.IsNull(Parse(good[..21])); // SOF without a scan/EOI.
+        Assert.IsNull(Parse([.. good[..21], 0xff, 0xd9])); // EOI without SOS.
         var zero = good.ToArray(); zero[7] = zero[8] = 0; Assert.IsNull(Parse(zero));
         var precision = good.ToArray(); precision[6] = 12; Assert.IsNull(Parse(precision));
         Assert.IsNull(Parse(good, limit: good.Length - 1));
         Assert.IsNull(Parse(good, pixels: 100));
+    }
+
+    [TestMethod]
+    public void FirstEoi_EndsPrimaryJpeg_WithoutParsingTrailingGainMapData()
+    {
+        var good = Jpeg(0xc0);
+        Assert.AreEqual(Parse(good), Parse([.. good, 0xff, 0xdc, 0, 1, .. Jpeg(0xc3), 0xff]));
+        Assert.IsNull(Parse([.. good[..^2], 0xff, 0xdc, 0, 4, 0, 1, .. good]));
+    }
+
+    [TestMethod]
+    public void FinalizationCapacity_IncludesEntryAndUpdateCoexistence_AndRounding()
+    {
+        const long mib = 1024 * 1024;
+        Assert.IsFalse(new CompressCapacity(13 * mib).CanFinalize(mib, mib, 6 * mib, 6 * mib, 4 * mib));
+        Assert.IsTrue(new CompressCapacity(14 * mib).CanFinalize(mib, mib, 6 * mib, 6 * mib, 4 * mib));
+        Assert.IsFalse(new CompressCapacity(14 * mib).CanFinalize(mib, mib, 6 * mib, 6 * mib + 1, 4 * mib));
+        var capacity = new CompressCapacity(14 * mib);
+        capacity.Reserve("input", mib); capacity.Reserve("jpeg", mib); capacity.Reserve("entries", 6 * mib);
+        capacity.Reserve("update", 6 * mib); // Joining can reserve the full update before deleting entries.
+        capacity.Release("entries"); capacity.Reserve("output", 4 * mib);
+        Assert.IsTrue(capacity.Peak <= 14 * mib);
     }
 
     [TestMethod]

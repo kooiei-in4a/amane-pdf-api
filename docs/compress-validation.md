@@ -14,6 +14,8 @@ Issue #22の2026-10-08更新本文に対する実装検証です。#42／PR #43�
 
 ## 圧縮率と画質
 
+次の20条件はレビュー対応前の実測です。追加した12 MP progressive 4:4:4と300ページの測定は末尾の「PR #45レビュー対応後の検証」に記録します。
+
 表の順序は「長辺px／A4長辺297 mmに置いた場合のdpi／PDF全体の削減率%／PSNR dB」です。PSNRは指定M/8で縮小したPNMと新JPEGを比較し、JPEG再圧縮による差だけを示します。縮小による情報量の減少は長辺・dpiで示します。PDFのページサイズ自体は変更しません。
 
 | 入力 | standard | strong | 置換数（各要求） |
@@ -29,13 +31,13 @@ Issue #22の2026-10-08更新本文に対する実装検証です。#42／PR #43�
 | 約48 MP、progressive 4:2:0 | 8064／689.6／約0／未変換 | 8064／689.6／約0／未変換 | 0 |
 | 文書スキャン相当、2480×3508グレー | 1754／150.0／74.26／32.28 | 1316／112.5／86.74／28.19 | 1 |
 
-24／48 MPのprogressiveは、固定の`-maxmemory 64M`でdjpegがbacking storeを必要として非0終了しました。ASを192 MiBへ上げた補助probeでも同じため、ASだけの問題とは判断していません。Issue本文の画像単位失敗として元JPEGを保持し、生データ一致・正常200・ヘッダー0を確認しました。−0.01%は構造書き出しによる僅かな増加です。採用成功やファイル全体の削減を保証するように仕様を変更していません。
+progressiveは24／48 MPだけが失敗するわけではありません。固定の`-maxmemory 64M`・AS 64 MiBで、12 MP（4000×3000）の4:4:4でもdjpegが`Backing store not supported`となることを追加検証しました。係数の保存量からの目安は4:2:0で約21 MP以上、4:4:4で約11 MP以上です。この境界は推定であり、任意の画像の成功・失敗を保証しません。設定はHuman判断により変更していません。24／48 MPの4:2:0については、ASを192 MiBへ上げた過去の補助probeでも同じ失敗があり、ASだけの問題とは判断していません。Issue本文の画像単位失敗として元JPEGを保持し、生データ一致・正常200・ヘッダー0を確認しました。−0.01%は構造書き出しによる僅かな増加です。採用成功やファイル全体の削減を保証するように仕様を変更していません。
 
 上の写真・文書20条件のHTTP時間は最大2.520秒でした。長辺が目標以下なら拡大しないこと、整数の切り上げ、8064×6048が両levelとも2016になることは別途実JPEGのAPIテストで確認しています。
 
 ## 時間・メモリ・tmpfs
 
-MiBは1,048,576 bytesです。HTTPは同時2件の遅い方、置換数は2要求の値、tmpfsとjob割当は観測最大です。500画像・大小混在・最悪PNMは最終版イメージで再測定しました。
+MiBは1,048,576 bytesです。HTTPは同時2件の遅い方、置換数は2要求の値、tmpfsとjob割当は観測最大です。次の表はレビュー対応前の実装での記録です。500画像・大小混在・最悪PNMはその時点の最終版イメージで再測定しました。
 
 | 入力 | level | HTTP秒 | 置換数 | cgroup memory.peak bytes | tmpfs bytes | 1 job割当bytes |
 | --- | --- | ---: | --- | ---: | ---: | ---: |
@@ -92,7 +94,7 @@ CI専用の`compress-validation.py --render`は26種類×両levelを比較しま
 
 その他のAPI／parserテストは、不正query／multipart、413／共通422／503、辞書とJPEGの寸法・成分数不一致、ICCBased Nの非整数・不一致、未解決／循環参照、SOF0／1／2、DNL、複数SOF、破損marker、対象外ColorSpace、全不採用・出力増大、最終2／3／153の500、126／127と通常画像失敗の区別、成功ヘッダーなし、情報非露出、0700／0600、設定変更を確認します。timeout／cancel／アプリ停止には既存Runnerによる親子processの終了とjob削除・処理枠の再利用を確認します。循環PDFは共通入力検査で422になる場合も含みます。
 
-Docker smokeは実JPEGの両level圧縮、実AS／fsize、SIGXFSZ、djpeg／cjpeg起動失敗、固定ログ、3つのJPEG copyrightファイルを検査します。Linuxの自己テストに省略設定はなく、fakeはPdfTestContextで起動後に差し替えます。既存#42のテストと外部Runnerは変更していません。
+Docker smokeは実JPEGの両level圧縮、実AS／fsize、SIGXFSZ、djpeg／cjpeg起動失敗、固定ログ、3つのJPEG copyrightファイルを検査します。Linuxの自己テストに省略設定はなく、fakeはPdfTestContextで起動後に差し替えます。既存#42のテストケースと外部Runnerは変更していません。PdfTestContextは短いrequest予算も起動後に差し替え、実コマンド・有効な設定による自己テストを維持します。
 
 ## 再測定
 
@@ -109,15 +111,72 @@ sudo python3 scripts/docker-memory-check.py amane-pdf-api:verify \
   /tmp/compress-fixtures /tmp/compress-results-standard --compress standard
 sudo python3 scripts/docker-memory-check.py amane-pdf-api:verify \
   /tmp/compress-fixtures /tmp/compress-results-strong --compress strong
-# 大小混在を含める場合は --cases mixed-images 500-images を追加
+# 一部だけ測る場合は --cases 300-pages-direct 300-pages-indirect 300-pages-inherited 4000x3000-progressive-444 を追加
+# 大小混在だけを測る場合は --cases mixed-images 500-images を追加
 ```
 
 ## 確認範囲とセルフレビュー
 
-確認済みの事実は、上のfixtureのHTTP結果・実サイズ・kernel memory情報と、Release build（警告・エラー0）／test（424件PASS）、Docker build／smoke、CI専用描画比較です。段階別時間・tmpfs／RSS peakはサンプリング推定です。任意のPDF、写真の一般的な削減率、500枚すべての置換、他のCPU環境での30秒内成功、非Linuxでのruntime試験、サイト#38の動作は未検証です。出力見積りFは数学的な上界ではなく、fsize超過は仕様どおり500です。
+レビュー対応前に確認した事実は、上のfixtureのHTTP結果・実サイズ・kernel memory情報と、Release build（警告・エラー0）／test（424件PASS）、Docker build／smoke、CI専用描画比較です。段階別時間・tmpfs／RSS peakはサンプリング推定です。任意のPDF、写真の一般的な削減率、500枚すべての置換、他のCPU環境での30秒内成功、非Linuxでのruntime試験、サイト#38の動作は未検証です。出力見積りFは数学的な上界ではなく、fsize超過は仕様どおり500です。
 
 [GitHub CI run 37760739723](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/37760739723)でも、Release build／424 tests／Docker build／smoke／描画比較がすべてPASSしました。上限付近・JPEGありの追加は実測文書だけの変更で、検証したAPIソースは同じです。
 
 セルフレビューでは、JSON深さ設定が一部のserializerに反映されていない点、update JSON上限の判定漏れ、採用前に中断したupdate断片の即時削除、非0世代objectのraw名の検査を修正し、関連テストを追加しました。重大な問題は残っていないと判断しています。サイト#38はlevelの下限目安、ヘッダー0、部分成功、PDF全体の増大、Linux提供と413／422／503／504を扱い、proxyでヘッダーを伝達する必要があります。サイトの変更・merge・tag・Release・deploy・イメージ公開は行いません。
 
-fixtureと実写真はRepositoryに含めず一時領域へ生成しました。検証に使った一時画像・fixture・測定出力・コンテナ・検証イメージを削除し、残っていないことを確認しました。PRレビュー用のworktree・branchとソースの生成スクリプトは保持します。
+初回実装時のfixtureと実写真はRepositoryに含めず一時領域へ生成しました。その検証に使った一時画像・fixture・測定出力・コンテナ・検証イメージを削除し、残っていないことを確認しました。PRレビュー用のworktree・branchとソースの生成スクリプトは保持します。
+
+## PR #45レビュー対応後の検証
+
+### 変更とテスト
+
+- ページ→Parent→Resources→XObject→画像辞書→SMask／Mask／ICCの参照を階層ごとに取得します。辞書・値の別名参照も階層単位で先読みし、循環と深さ上限を維持します。既存の500件chunk、JSON 16 MiB・深さ64、spool 16 MiB、fsizeを変更せず、全辞書のDOMは保持しません。
+- 起動回数を数えるAPIテストは、10ページ・直接Resourcesで最大3回、10／300ページ・間接Resources／XObjectでともに最大5回、300ページ・間接かつParent継承で最大6回、10ページ・各画像にSMask／Mask／ICCと間接Nがある場合で最大9回です。共有画像は1個、依存参照付きの10固有画像は10個を置換し、ページ数も検証します。fake qpdfは実コマンドでの起動後に差し替えます。
+- 最初のEOI以降のデータを無視するHuman承認をIssue本文へ追記しました。parserの後続データ許容、APIの両levelでヘッダー1と実寸・precision・成分数一致、EOIより前の異常拒否をテストします。cjpeg出力にも同じparserを使い、後続データがあっても本体のDNL・寸法違い・成分数違いを採用しないテストを追加しました。実機のMPF／Ultra HDR表示の保持は未検証で、後続gain mapは置換JPEGへコピーしません。
+- entry群とupdate.jsonの同時存在について、各entryの4 KiB割当を合計して採用前に判定します。結合時と最終出力時の二つのpeakを確認する容量境界テストを追加しました。低いjob上限で不採用、上限を戻すと採用になる既存APIテストも維持します。旧版が標準job上限でこの理由による500になる実PDFは再現していません。
+- `CompressSoftTimeoutSeconds < QpdfTimeoutSeconds`を起動時の設定検証に追加し、21／30は有効、30／30・31／30は無効となるテストを追加しました。短いrequest予算はテスト側だけで起動後に設定し、本番の自己テストを省略しません。
+
+### 300ページ・間接参照（確認済み）
+
+`memory-fixtures.py --compress`に直接記述・間接参照・Parent継承の3種類を追加しました。各PDFはA4の300ページに2048×2048グレーbaseline JPEGを1固有objectずつ置き、画像内容は同じです。生JPEGは各59,478 bytes（quality 80）。入力は直接17,950,339、間接17,977,749、継承18,007,530 bytesです。レビュー時の15 MB fixtureとは異なる合成fixtureであり、レビューの11.3／22.9秒との絶対時間の比較はしません。
+
+標準Docker条件・API設定は上記と同じです。同時2件の実HTTPで、全12要求が200・各300枚置換でした。表のHTTPは2件の遅い方、kernel memory.peakは実測、tmpfs／job割当は約20 msサンプリングの観測最大です。
+
+| Resourcesの形式 | level | HTTP秒 | 置換数 | memory.peak bytes | tmpfs bytes | 1 job割当bytes |
+| --- | --- | ---: | --- | ---: | ---: | ---: |
+| 直接 | standard | 24.341 | 300／300 | 140,169,216 | 70,459,392 | 35,229,696 |
+| 間接（XObjectも間接） | standard | 24.910 | 300／300 | 143,659,008 | 70,533,120 | 35,266,560 |
+| 間接＋Parent継承 | standard | 25.001 | 300／300 | 144,642,048 | 70,598,656 | 35,299,328 |
+| 直接 | strong | 16.679 | 300／300 | 114,946,048 | 55,894,016 | 27,992,064 |
+| 間接（XObjectも間接） | strong | 16.981 | 300／300 | 118,513,664 | 55,726,080 | 27,975,680 |
+| 間接＋Parent継承 | strong | 17.718 | 300／300 | 124,866,560 | 55,832,576 | 27,959,296 |
+
+`memory.events`のmax／oom／oom_killは全ケース0、hard 30秒の504もありませんでした。standardで最終書き出しを観測した開始時刻は、直接20.496秒、間接20.700–20.801秒、継承20.957秒です。今回のfixtureはsoft 21秒までに300枚を処理できましたが、任意の300ページPDFの全画像処理を保証しません。
+
+以下は段階別のサンプリング推定です。短い外部プロセスの未観測分や.NET内での処理を含まず、各段階の和はHTTPと一致しません。
+
+| Resources／level | 入力検証秒 | metadata秒 | 抽出秒 | 変換秒 | 最終書き出し秒 | 出力検証秒 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 直接／standard | 3.978–4.086 | 0.117–0.144 | 0.156–0.254 | 13.693–13.893 | 0.086 | 3.404–3.482 |
+| 間接／standard | 4.076–4.119 | 0.205–0.287 | 0.334–0.418 | 14.036–14.044 | 0.102–0.111 | 3.693–3.846 |
+| 継承／standard | 4.056–4.143 | 0.358–0.396 | 0.431–0.486 | 13.321–13.790 | 0.115 | 3.559–3.663 |
+| 直接／strong | 3.943–3.986 | 0.065–0.145 | 0.334–0.430 | 6.503–7.291 | 0.055 | 2.130–2.211 |
+| 間接／strong | 3.984–4.027 | 0.221–0.232 | 0.377–0.412 | 7.206–7.544 | 0.028–0.059 | 1.989–1.993 |
+| 継承／strong | 4.095–4.117 | 0.262–0.399 | 0.367–0.426 | 7.582–7.592 | 0.086 | 2.183 |
+
+standardのmetadataプロセスは直接3／3回、間接5／5回、継承6／6回を観測しました。これはサンプリングで見えた起動数の下限です。短い起動を見逃し得るため、正確な回数上限の根拠には上記wrapperによるテストを使います。rawは最大50個、S=65,536 bytes、n×S=3,276,800 bytes、metadata fsize=16,777,216 bytes、djpeg／cjpeg AS=67,108,864 bytesを確認しました。PNM fsizeはstandard 3,211,793／strong 1,638,929、cjpeg fsizeは53,530 bytesでした。
+
+### 12 MP progressive 4:4:4（確認済み）
+
+公開画像は新たに取得せず、4000×3000カラーの合成画像をquality 85のprogressive 4:4:4にしました（入力PDF 3,421,884 bytes）。標準Docker条件・同時2件で、standard 1.293／1.294秒、strong 1.299／1.301秒、全4要求が200・ヘッダー0でした。出力は3,422,035 bytes、元JPEGの生データ一致、長辺4000 px／A4長辺換算342.1 dpi、削減率−0.0044%です。未変換なので再圧縮PSNRは評価対象外です。
+
+同じruntimeのnon-root・read-only・network none・memory 1.5 GiB・swapなし・CPU 1・tmpfs 256 MiBの補助コンテナでも、AS 64 MiB・`-maxmemory 64M -maxscans 100 -strict -scale 4/8`／`3/8`でdjpegがexit 1・`Backing store not supported`となることを確認しました。製品ログへのstderr追加はしていません。API測定のmemory.peakはstandard 300,339,200／strong 296,243,200 bytes、観測tmpfs最大13,701,120 bytes、max／oom／oom_killは0でした。
+
+約21 MP（4:2:0）／約11 MP（4:4:4）は係数保持量からの目安であり推定です。12 MP 4:4:4と既存の24／48 MP 4:2:0の失敗は実測ですが、境界前後の全画像を網羅した値ではありません。失敗した画像を元のまま保持する仕様を受け入れ、ASとmaxmemoryは変更していません。
+
+### 検証とセルフレビューの範囲
+
+最新修正のRelease build（警告・エラー0）、全Release test（439件PASS・skip 0）、Docker build／smoke、26種類×両levelの構造・データ・描画比較はすべてPASSしました。最新commitのGitHub CI結果はPR #45へ記録します。起動停止のテストではTestServerのAbortが一時領域削除の完了より先に観測される競合があり、既存unlock／mergeテストと同様に削除を最大5秒待ってから検証するよう修正しました。新JPEGのDNL拒否テストが寸法不一致でも失敗する点は、期待する寸法の出力に変更して本体の検査だけを確認するよう直しました。外部Runner、QpdfProcessor、DI、kill／waitの本番処理には変更がありません。
+
+確認済み／推定／未検証の区別は上記のとおりです。実機MPF／HDR表示、他のCPU環境、任意のPDFの30秒内成功、標準job上限で旧JSON結合問題が500になる実PDF、サイト#38の動作は未検証です。API契約はHuman承認のEOI後続データ許容以外を維持し、サイト#38にはprogressiveの失敗目安と元画像保持、置換時のgain map非継承を説明する必要があります。
+
+今回のレビュー対応の一時fixture・測定結果・補助probe・コンテナ・検証イメージも削除済みです。公開画像の新規取得はなく、生成コードとPRのworktree／branchを保持します。merge・tag・Release・deploy・イメージ公開は行っていません。

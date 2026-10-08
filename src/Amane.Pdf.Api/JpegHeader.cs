@@ -2,7 +2,8 @@ namespace Amane.Pdf.Api;
 
 internal sealed record JpegHeader(int Width, int Height, int Precision, int Components)
 {
-    // Parse the whole bounded stream, including markers after the first frame and scan.
+    // Parse the bounded JPEG body through its first EOI, including markers after SOF.
+    // Trailing MPF/gain-map data is outside the primary JPEG body.
     // The decoder still performs the entropy/Huffman validation under AS/time limits.
     internal static JpegHeader? Read(string path, long maxBytes, long maxPixels, CancellationToken token)
     {
@@ -26,7 +27,7 @@ internal sealed record JpegHeader(int Width, int Height, int Precision, int Comp
             if (marker < 0) return null;
             if (entropy && (marker == 0 || marker is >= 0xd0 and <= 0xd7)) continue;
             entropy = false;
-            if (marker == 0xd9) return scan && frame is not null && reader.Next() == -1 ? frame : null;
+            if (marker == 0xd9) return scan && frame is not null ? frame : null;
             if (marker is 0 or 0xd8 or 0xdc or >= 0xd0 and <= 0xd7) return null;
             if (marker == 1) continue; // TEM has no segment length.
             var high = reader.Next();

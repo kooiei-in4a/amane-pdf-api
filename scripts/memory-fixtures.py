@@ -56,6 +56,37 @@ def pdf(data, w, h, gray=False, filter="DCTDecode"):
     return out.getvalue()
 
 
+def pdf_objects(objects):
+    out = io.BytesIO(); out.write(b"%PDF-1.4\n"); offsets = []
+    for n, obj in enumerate(objects, 1):
+        offsets.append(out.tell()); out.write(f"{n} 0 obj\n".encode() + obj + b"\nendobj\n")
+    pos = out.tell(); out.write(f"xref\n0 {len(objects)+1}\n0000000000 65535 f \n".encode())
+    for offset in offsets: out.write(f"{offset:010} 00000 n \n".encode())
+    out.write(f"trailer\n<< /Size {len(objects)+1} /Root 1 0 R >>\nstartxref\n{pos}\n%%EOF\n".encode())
+    return out.getvalue()
+
+
+def multipage_pdf(raw, count, indirect=False, inherited=False):
+    objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b""]
+    def add(value): objects.append(value); return len(objects)
+    contents = b"q 595 0 0 842 0 0 cm /Im0 Do Q\n"
+    content = add(f"<< /Length {len(contents)} >>\nstream\n".encode()+contents+b"endstream")
+    kids = []
+    for n in range(count):
+        image = add(f"<< /Type /XObject /Subtype /Image /Width 2048 /Height 2048 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length {len(raw)} >>\nstream\n".encode()+raw+b"\nendstream")
+        resources = f"<< /XObject << /Im0 {image} 0 R >> >>"
+        if indirect:
+            xobject = add(f"<< /Im0 {image} 0 R >>".encode())
+            resources = str(add(f"<< /XObject {xobject} 0 R >>".encode()))+" 0 R"
+        parent = add(b"") if inherited else 2
+        page = add((f"<< /Type /Page /Parent {parent} 0 R /MediaBox [0 0 595 842] " +
+            ("" if inherited else f"/Resources {resources} ")+f"/Contents {content} 0 R >>").encode())
+        if inherited: objects[parent-1] = f"<< /Type /Pages /Parent 2 0 R /Kids [{page} 0 R] /Count 1 /Resources {resources} >>".encode()
+        kids.append(parent if inherited else page)
+    objects[1] = f"<< /Type /Pages /Count {count} /Kids [{' '.join(str(k)+' 0 R' for k in kids)}] >>".encode()
+    return pdf_objects(objects)
+
+
 meta = {}
 dimensions = [
     (4000, 3000, False),
@@ -97,6 +128,7 @@ for w, h, gray in dimensions:
         variants.append((True, 2, "progressive"))
     elif w in (6000, 8064) or args.compress and w == 4000:
         variants.extend([(False, 0, "baseline-444"), (True, 2, "progressive-420")])
+        if args.compress and w == 4000: variants.append((True, 0, "progressive-444"))
     elif w == 15000:
         variants = [(True, 2, "progressive-420")]
     for progressive, subsampling, variant in variants:
@@ -146,6 +178,11 @@ if args.compress:
     encoded = io.BytesIO(); Image.fromarray(gray).save(encoded, format="JPEG", quality=85)
     raw = encoded.getvalue()
     assert len(raw) >= 32768
+    pages_jpeg = io.BytesIO(); Image.fromarray(gray).save(pages_jpeg, format="JPEG", quality=80)
+    for name, indirect, inherited in (("300-pages-direct",False,False),("300-pages-indirect",True,False),("300-pages-inherited",True,True)):
+        generated = multipage_pdf(pages_jpeg.getvalue(),300,indirect,inherited)
+        (root/(name+".pdf")).write_bytes(generated)
+        print(name,len(generated),"JPEG",len(pages_jpeg.getvalue()),flush=True)
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>", b""]
     refs = []
     for n in range(500):

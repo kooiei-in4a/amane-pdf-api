@@ -28,6 +28,7 @@ internal sealed class PdfTestContext : IAsyncDisposable
         settings.Remove("Pdf:QpdfPath", out var requestQpdfPath);
         settings.Remove("Pdf:DjpegPath", out var requestDjpegPath);
         settings.Remove("Pdf:CjpegPath", out var requestCjpegPath);
+        settings.Remove("Pdf:QpdfTimeoutSeconds", out var requestTimeout);
         settings["Pdf:TempRoot"] = TempRoot;
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -41,6 +42,10 @@ internal sealed class PdfTestContext : IAsyncDisposable
             Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.DjpegPath = requestDjpegPath;
         if (requestCjpegPath is not null)
             Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.CjpegPath = requestCjpegPath;
+        // Short request budgets are fault injection too; production startup validates soft < hard.
+        if (requestTimeout is not null)
+            Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfTimeoutSeconds = int.Parse(requestTimeout,
+                System.Globalization.CultureInfo.InvariantCulture);
     }
 
     public static MultipartFormDataContent Form(byte[]? file = null, string? password = "test-password", string fileName = "sample.pdf")

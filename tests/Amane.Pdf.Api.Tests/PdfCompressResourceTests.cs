@@ -10,6 +10,92 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfCompressResourceTests
 {
     [TestMethod]
+    [DataRow(10, false, false, false, 3)]
+    [DataRow(10, true, false, false, 5)]
+    [DataRow(300, true, false, false, 5)]
+    [DataRow(300, true, true, false, 6)]
+    [DataRow(10, true, true, true, 9)]
+    public async Task MultiPageMetadata_IsFetchedPerLevel_IncludingInheritedResourcesAndImageDependencies(
+        int pages, bool indirect, bool inherited, bool dependencies, int maximumStarts)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        var counter = Path.Combine(test.Root, "metadata-starts");
+        var wrapper = await PdfCompressTests.WrapperAsync(test,
+            "for arg do case \"$arg\" in --json-key=pages|--json-stream-data=none) " +
+            $"printf 'metadata\\n' >> '{counter}';; esac; done\nexec qpdf \"$@\"\n");
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
+        var jpeg = await CompressFixtures.JpegAsync(test);
+        using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.MultiPage(jpeg, pages, indirect, inherited, dependencies));
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual(dependencies ? pages.ToString() : "1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        Assert.IsTrue((await File.ReadAllLinesAsync(counter)).Length <= maximumStarts, "Metadata process starts grew with individual references.");
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), pages);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(21, 30, true)]
+    [DataRow(30, 30, false)]
+    [DataRow(31, 30, false)]
+    public void SoftDeadlineMustPrecedeHardDeadline(int soft, int hard, bool valid)
+        => Assert.AreEqual(valid, PdfCompressProcessor.IsValid(new() { CompressSoftTimeoutSeconds = soft, QpdfTimeoutSeconds = hard }));
+
+    [TestMethod]
+    [DataRow("standard", 1925, 1400)]
+    [DataRow("strong", 1375, 1000)]
+    public async Task JpegWithDataAfterEoi_RecompressesPrimaryImage(string level, int width, int height)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        var jpeg = await CompressFixtures.JpegAsync(test);
+        byte[] source = [.. jpeg, .. jpeg, 0xff, 0xdc, 0, 1, 0xff];
+        using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Pdf(source), level);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        var path = Path.Combine(test.Root, "trailing-output.pdf");
+        await File.WriteAllBytesAsync(path, await response.Content.ReadAsByteArrayAsync());
+        var pages = await test.QpdfAsync("--json=2", "--json-key=pages", path);
+        using var document = System.Text.Json.JsonDocument.Parse(pages.Output);
+        var image = document.RootElement.GetProperty("pages")[0].GetProperty("images")[0];
+        Assert.AreEqual(width, image.GetProperty("width").GetInt32());
+        Assert.AreEqual(height, image.GetProperty("height").GetInt32());
+        var extracted = Path.Combine(test.Root, "trailing-output.jpg");
+        // Inspect inline base64 rather than converting binary stdout through the runner.
+        var json = await test.QpdfAsync("--json=2", "--json-stream-data=inline", "--decode-level=none", path);
+        using var rawDocument = System.Text.Json.JsonDocument.Parse(json.Output);
+        var raw = rawDocument.RootElement.GetProperty("qpdf")[1].GetProperty("obj:" + image.GetProperty("object").GetString())
+            .GetProperty("stream").GetProperty("data").GetString()!;
+        await File.WriteAllBytesAsync(extracted, Convert.FromBase64String(raw));
+        Assert.AreEqual(new JpegHeader(width, height, 8, 3), JpegHeader.Read(extracted, source.Length, 100_000_000, CancellationToken.None));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("marker")]
+    [DataRow("dimensions")]
+    [DataRow("components")]
+    public async Task NewJpegReinspection_StillRejectsInvalidBodyDimensionsOrComponents(string kind)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        var input = await CompressFixtures.JpegAsync(test);
+        var fake = await CompressFixtures.JpegAsync(test, width: kind == "dimensions" ? 64 : 1925,
+            height: kind == "dimensions" ? 64 : 1400, gray: kind == "components");
+        if (kind == "marker") fake = [.. fake[..^2], 0xff, 0xdc, 0, 4, 0, 1, 0xff, 0xd9];
+        fake = [.. fake, 0xff, 0xdc, 0, 1]; // Ignoring a trailer must not weaken the body checks.
+        var path = Path.Combine(test.Root, "fake-cjpeg.jpg");
+        await File.WriteAllBytesAsync(path, fake);
+        var wrapper = await PdfCompressTests.WrapperAsync(test,
+            $"previous=; for arg do if [ \"$previous\" = -outfile ]; then cp '{path}' \"$arg\"; exit $?; fi; previous=$arg; done\nexit 127\n");
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.CjpegPath = wrapper;
+        using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Pdf(input));
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("0", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     [DataRow("cycle")]
     [DataRow("null")]
     [DataRow("wrong-N")]
@@ -219,6 +305,10 @@ public sealed class PdfCompressResourceTests
         try { using var response = await pending.WaitAsync(TimeSpan.FromSeconds(5)); }
         catch (OperationCanceledException) { }
         await blocker.AssertStoppedAsync();
+        // TestServer observes Abort before ExecuteAsync's finally finishes deleting the job.
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (Directory.Exists(test.TempRoot) && Directory.EnumerateFileSystemEntries(test.TempRoot).Any())
+            await Task.Delay(20, cleanup.Token);
         test.AssertClean();
     }
 }
