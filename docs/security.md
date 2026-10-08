@@ -55,7 +55,7 @@ JSONの形式とCLIの対応は[qpdf公式QPDFJob文書](https://qpdf.readthedoc
 - qpdf実行失敗や未知のexit codeは500とし、HTTP response/logには内部例外を含めない
 - エラーは固定文言のProblem Detailsへ統一し、password、PDF本文、内部path、stack trace、stderrを含めない
 
-qpdfの`--check`はPDFの完全な適合性や無害性を保証せず、PDF内のJavaScriptや添付ファイルの無害化はこのAPIの機能に含みません。
+qpdfの`--check`はPDFの完全な適合性や無害性を保証しません。cleanでは文書添付・添付注釈・AF / EF / RF経由の埋め込みファイルを除去し、出力検査で残存した場合は成功として返しません。filespec名やprivate application dataが残る場合があり、JavaScript等の無害化は含みません。他のAPIを情報除去として案内しません。
 
 ## リソース制限
 
@@ -157,6 +157,18 @@ seek可能なwrite wrapperは、ZIPの最終長が採用PDF合計＋1 MiB以内�
 ZipArchive/entry streamをusingで囲まず、コピー成功時だけentryを閉じ、全パート成功時だけarchiveを最終化します。作成・コピー・entry/archiveのDispose・パート削除・基底streamのcloseのいずれかで失敗したら、wrapperをAbortし、ZIPの最終化を再試行しません。Abort後のwrite/seek/length変更/flushを拒否します。所有する実FileStreamは必ず閉じます。主処理失敗後のclose障害だけを抑えて元の例外を維持し、成功時のclose障害は500へ伝播します。完成してcloseしたZIPだけを既存helperから送信し、部分ZIPはjob全体とともに削除します。request中断・アプリ停止・全処理timeoutは既存Runnerのprocess tree終了待ちを維持します。
 
 標準容量の前提は4 KiB pageのx86_64 Linux Docker、同時2、tmpfs 256 MiBです。非Linuxにはqpdfの書込み中のFSIZE/AS hard limitがなく、他page sizeも同じピーク容量を保証しません。容量・時間の実測は通常のsmokeと分離した`scripts/split-validation.py`で行い、[測定記録](split-validation.md)に残します。
+
+## PDF情報除去（Linux）
+
+cleanも共有のアップロード・30秒のdeadline・concurrency枠・送信・job削除を使用します。入力の検証後、qpdfのJSON v2をstreamデータなしで取得し、元object番号とheaderを保持した部分更新をQPDFJobへ渡します。removeInfo / removeMetadataと合わせて一度だけPDFを生成し、preserve-unreferencedは指定しません。catalogのNamesからEmbeddedFilesだけを切り離し、他のname treeを保持します。
+
+全辞書からAF / EF / RFを除去し、FileAttachmentはType / Subtype / Rectの許可リストに縮めます。PopupはFileAttachmentのPopup参照とPopupのParent参照の和集合を変更前に分類します。対象の間接objectはnullにし、直接PopupはAnnots配列から外します。直接・間接・別名・共有配列を同じresolverで扱い、対象外のnull・数値・文字列・不正な型は保持します。構造だけを理由に新しい422を設けません。
+
+出力では正常性、非暗号化、同じページ数、InfoのModDate以外、catalog Metadata、EmbeddedFiles、空のattachments、全AF / EF / RF、EmbeddedFile stream、許可リスト以外の添付注釈キー、Annots内の対象注釈を検査します。入力と出力で同じ関数により直接辞書・間接object・間接Subtypeを含めたPopup件数を数え、出力が入力の通常Popup数を超えないことも確認します。入力のobject番号は出力へ持ち越しません。残存と検査不能は500です。
+
+JSONは各32 MiB・深さ64、参照連鎖64、間接object 100,000、PDF出力54 MiB、job 124 MiBが初期値です。1 jobの入力から出力検査までを4096 bytes単位で予約し、実サイズへ縮め、削除後に解放します。.NETの更新・job JSONもwrite前に上限を検査します。入力DOMと不要ファイルを破棄してから次のqpdfを起動し、複数DOMを同時保持しません。2 job 248 MiBだけでメモリ成立を判断せず、tmpfsも含めたcgroupの実測を[検証記録](clean-validation.md)に残します。
+
+qpdfのファイル書込みは共通のSIGXFSZ無視・CORE=0・AS・JPEGMEMにFSIZEを加えます。cancel、126/127、実サイズがFSIZE以上、その他exit、JSONの順で判定し、exit 0でも切れたJSON/PDFや上限同値を専用422（too-complex）にします。入力checkの2/3は従来422、入力検証後の想定外exitは500です。stderrやJSONの内容から利用者向けエラーを作りません。ファイル名・PDF・JSON・プロセス出力をログやProblem Detailsへ記録しません。
 
 ## core dumpと公開条件
 

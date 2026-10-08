@@ -469,6 +469,7 @@ def compress_smoke(image):
 
 
 def main(image):
+    clean_smoke(image)
     compress_smoke(image)
     split_smoke(image)
     post_count = 0
@@ -545,6 +546,56 @@ def main(image):
         print("Docker E2E: no network / loopback HTTP / real encryption and unlock PASS")
         post_count += api.post_count
     print(f"Docker E2E: {post_count} POST checks PASS")
+
+
+def clean_request(api, source, expected=200, cleanup=True):
+    body, ct = multipart(source, password=None)
+    code, headers, result = api.request("POST", "/api/pdf/clean", body, ct)
+    assert code == expected, ("clean", code, expected)
+    if expected == 200:
+        assert headers["Content-Type"].split(";")[0] == "application/pdf"
+        assert "filename=cleaned.pdf" in headers["Content-Disposition"]
+        assert int(headers["Content-Length"]) == len(result)
+    else:
+        problem = json.loads(result)
+        assert problem["status"] == expected
+        assert problem.get("reason") == "too-complex"
+        assert "Content-Disposition" not in headers
+        for value in (b"/tmp/", SENTINEL.encode(), b"untrusted.pdf"):
+            assert value not in result
+    if cleanup:
+        api.assert_clean()
+    return result
+
+
+def clean_smoke(image):
+    with running_container(image, isolated=True) as api:
+        root = "/tmp/clean-smoke"
+        api.exec("mkdir", "-m", "700", root)
+        source = Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures/clean-source.json"
+        docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/clean-smoke/source.json", data=source.read_bytes())
+        api.exec("qpdf", "--json-input", root + "/source.json", root + "/source.pdf")
+        api.exec("qpdf", "--check", root + "/source.pdf")
+        fixture = api.exec("cat", root + "/source.pdf").stdout
+        result = clean_request(api, fixture)
+        docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/clean-smoke/output.pdf", data=result)
+        api.exec("qpdf", "--check", root + "/output.pdf")
+        api.exec("qpdf", "--qdf", "--object-streams=disable", "--decode-level=all", root + "/output.pdf", root + "/expanded.pdf")
+        expanded = api.exec("cat", root + "/expanded.pdf").stdout
+        for marker in (b"ANNOTATION_PAYLOAD_MARKER", b"NAMETREE_PAYLOAD_MARKER", b"RICHMEDIA_PAYLOAD_MARKER", b"GOTOE_PAYLOAD_MARKER",
+                       b"RELATED_FILE_PAYLOAD_MARKER", b"ATTACHMENT_DESCRIPTION_MARKER", b"ATTACHMENT_AUTHOR_MARKER", b"DOCUMENT_XMP_MARKER",
+                       b"AUTHOR_MARKER", b"PRODUCER_MARKER", b"PARENTLESS_POPUP_MARKER", b"PARENT_REFERENCED_POPUP_MARKER"):
+            assert marker not in expanded, marker.decode()
+        for marker in (b"RICHMEDIA_FILENAME_RETAINED", b"GOTOE_FILENAME_RETAINED", b"COMMENT_AUTHOR_RETAINED", b"/OBJR", b"PAGE_XMP_RETAINED"):
+            assert marker in expanded, marker.decode()
+        assert api.exec("qpdf", "--show-npages", root + "/output.pdf").stdout == b"1\n"
+        api.exec("rm", "-rf", root)
+        print("Docker clean: RichMedia/GoToE/EF/RF/attachments/authors/both Popup directions/expanded markers/cleanup PASS", flush=True)
+    for setting in ("Pdf__CleanJsonLimitBytes=128", "Pdf__CleanOutputLimitBytes=128"):
+        with running_container(image, (setting,), isolated=True) as api:
+            clean_request(api, FIXTURE, expected=422)
+    for setting in ("Pdf__CleanJsonLimitBytes=0", "Pdf__CleanOutputLimitBytes=0", "Pdf__CleanJobLimitBytes=1"):
+        assert_startup_failure(image, (setting,), "PDF設定値が不正です。")
 
 
 if __name__ == "__main__":

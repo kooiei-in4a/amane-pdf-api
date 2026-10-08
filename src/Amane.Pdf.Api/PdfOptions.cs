@@ -8,6 +8,9 @@ public sealed class PdfOptions
     public int MaxSplitParts { get; set; } = 100;
     public long MaxSplitOutputBytes { get; set; } = 50 * 1024 * 1024;
     public long MaxSplitJobBytes { get; set; } = 124 * 1024 * 1024;
+    public long CleanJsonLimitBytes { get; set; } = 32 * 1024 * 1024;
+    public long CleanOutputLimitBytes { get; set; } = 54 * 1024 * 1024;
+    public long CleanJobLimitBytes { get; set; } = 124 * 1024 * 1024;
     public int QpdfTimeoutSeconds { get; set; } = 30;
     public int MaxConcurrentProcesses { get; set; } = 2;
     public const int MultipartOverheadBytes = 64 * 1024;

@@ -61,6 +61,11 @@ internal static class PdfEndpointHelpers
             await Results.Problem(statusCode: 422, title: PdfSplitOutputTooLargeException.Title,
                 extensions: new Dictionary<string, object?> { ["reason"] = "output-too-large" }).ExecuteAsync(context);
         }
+        catch (PdfCleanTooComplexException)
+        {
+            await Results.Problem(statusCode: 422, title: "このPDFは情報除去の処理上限を超えています。",
+                extensions: new Dictionary<string, object?> { ["reason"] = "too-complex" }).ExecuteAsync(context);
+        }
         catch (PdfInputException)
         {
             await Results.Problem(statusCode: 422, title: "このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。").ExecuteAsync(context);
