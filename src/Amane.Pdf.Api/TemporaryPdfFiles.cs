@@ -11,6 +11,12 @@ public sealed class TemporaryPdfFiles : IDisposable
     internal string UnlockCheckJobPath => Path.Combine(DirectoryPath, "unlock-check.json");
     internal string UnlockDecryptJobPath => Path.Combine(DirectoryPath, "unlock-decrypt.json");
 
+    internal string SplitPartPath(int index)
+    {
+        if (index is < 1 or > 500) throw new ArgumentOutOfRangeException(nameof(index));
+        return Path.Combine(DirectoryPath, string.Create(System.Globalization.CultureInfo.InvariantCulture, $"part-{index:D3}.pdf"));
+    }
+
     public string MergeInputPath(int index)
     {
         if (index < 1) throw new ArgumentOutOfRangeException(nameof(index));

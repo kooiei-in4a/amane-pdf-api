@@ -147,3 +147,19 @@ job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM
 最終qpdfにはobject-streams=generateとcompression-level=9だけを指定します。stream-data、recompress-flate、decode-levelは指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTの生データ、LZW／ASCIIHex／ASCII85・複合filterのデコード後データと表示上の意味を検証します。qpdf --checkだけを表示保持の根拠とせず、CIの構造・データ比較と描画比較を行います。描画ツールはruntimeに含めません。
 
 標準条件はmemory 1.5 GiB・swapなし・CPU 1・tmpfs 256 MiB・同時2・non-root・read-only・network noneです。2×124 MiBのjobに8 MiBのtmpfs余裕を残します。tmpfsもcgroup memoryへ含まれるので、ファイルの容量式だけで成立を判断しません。上限は設定可能な安全境界であり、拡大するときはREADMEのメモリ式・tmpfs式と実測を見直します。Webシステムのプラン別サイズ・回数制限はサイト側の責務です。[圧縮の実測記録](compress-validation.md)は対象fixtureでの確認であり、任意の入力の成功を保証しません。
+
+## PDF分割とZIPの破棄
+
+splitは入力検査・ページ数取得後に2〜設定上限の計画を確定し、元PDFから1パートずつ生成・検査します。qpdfの出力先はAPIが作る0700のjob内の0600ファイルです。ZIPへ128 KiB bufferでコピーし、パートのhandleを閉じて削除できた後に容量を解放します。入力・作成中ZIP・パートの同時存在を4 KiB単位で管理します。最初にZIP余裕1 MiBとFSIZEの1 byte検出用4 KiBを予約し、パートとZIPコピーの重複に残予算の半分を使います。Linuxでは共通AS/JPEGMEMに加えてpartBudget+1のFSIZEを適用し、実出力がpartBudgetを超えればexit 0でも専用422とします。126/127は常に500、予算以内の3は共通422、その他の非0は500です。生成PDFの検証失敗は500です。stderrの解析でENOSPCを422へ変換しません。
+
+seek可能なwrite wrapperは、ZIPの最終長が採用PDF合計＋1 MiB以内で、入力＋現在のパート＋ZIPの割当量がjob予算以内であることを検査します。全write overload・WriteByte・SetLengthを共通検査に通し、cancelを容量超過より先に判定します。Stored、固定名とDOS時刻、最大500entry、完成ZIPはuint.MaxValue未満に制限し、ZIP64を対象外とします。元PDFの文書情報・添付・しおりが残り得るため、情報除去として案内しません。
+
+ZipArchive/entry streamをusingで囲まず、コピー成功時だけentryを閉じ、全パート成功時だけarchiveを最終化します。作成・コピー・entry/archiveのDispose・パート削除・基底streamのcloseのいずれかで失敗したら、wrapperをAbortし、ZIPの最終化を再試行しません。Abort後のwrite/seek/length変更/flushを拒否します。所有する実FileStreamは必ず閉じます。主処理失敗後のclose障害だけを抑えて元の例外を維持し、成功時のclose障害は500へ伝播します。完成してcloseしたZIPだけを既存helperから送信し、部分ZIPはjob全体とともに削除します。request中断・アプリ停止・全処理timeoutは既存Runnerのprocess tree終了待ちを維持します。
+
+標準容量の前提は4 KiB pageのx86_64 Linux Docker、同時2、tmpfs 256 MiBです。非Linuxにはqpdfの書込み中のFSIZE/AS hard limitがなく、他page sizeも同じピーク容量を保証しません。容量・時間の実測は通常のsmokeと分離した`scripts/split-validation.py`で行い、[測定記録](split-validation.md)に残します。
+
+## core dumpと公開条件
+
+FSIZE超過時のSIGXFSZはcore dumpを発生させ得ます。qpdfのメモリにはPDF内容が含まれ得るため、コンテナ内にcoreファイルがないことだけではhostのcollectorへ内容が渡らない証明になりません。pipe方式のcore collectorではRLIMIT_COREを無視し得るため、`--core=0:0`だけを対策とは扱いません。
+
+実装PRで合成PDFだけを使い、Docker環境とhost collectorの扱いを確認します。dumpの内容がコンテナ外へ渡らないことを確認できなければ、PRに結果と未確認点を記録し、merge可否はHumanが判断します。deployは必要な共通対策（compressを含む別Issue）が解決し、内容が外へ渡らないことを確認するまで保留します。#23ではhost設定・共通prlimit・Runner・独自launcherを変更しません。サイトのsplitツールのdeployもAPI deploy後に行います。通常のmerge/tag/Release/deployのHuman承認も必要です。

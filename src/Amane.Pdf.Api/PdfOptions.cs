@@ -5,6 +5,9 @@ public sealed class PdfOptions
     public long MaxFileBytes { get; set; } = 50 * 1024 * 1024;
     public int MaxMergeFiles { get; set; } = 10;
     public long MaxMergeInputBytes { get; set; } = 50 * 1024 * 1024;
+    public int MaxSplitParts { get; set; } = 100;
+    public long MaxSplitOutputBytes { get; set; } = 50 * 1024 * 1024;
+    public long MaxSplitJobBytes { get; set; } = 124 * 1024 * 1024;
     public int QpdfTimeoutSeconds { get; set; } = 30;
     public int MaxConcurrentProcesses { get; set; } = 2;
     public const int MultipartOverheadBytes = 64 * 1024;

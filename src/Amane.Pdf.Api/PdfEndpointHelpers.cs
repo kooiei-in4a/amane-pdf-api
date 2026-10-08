@@ -12,7 +12,8 @@ internal static class PdfEndpointHelpers
         Func<TemporaryPdfFiles, CancellationToken, Task> readUploadAsync,
         Func<TemporaryPdfFiles, CancellationToken, Task> processAsync,
         long? maxRequestBytes = null,
-        Action<HttpResponse>? onSend = null)
+        Action<HttpResponse>? onSend = null,
+        string contentType = "application/pdf")
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         try
@@ -38,7 +39,7 @@ internal static class PdfEndpointHelpers
                 context.Abort();
                 return;
             }
-            await SendPdfAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend);
+            await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
         }
         catch (PdfUnlockException exception)
         {
@@ -54,6 +55,11 @@ internal static class PdfEndpointHelpers
             };
             await Results.Problem(statusCode: 422, title: title,
                 extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
+        }
+        catch (PdfSplitOutputTooLargeException)
+        {
+            await Results.Problem(statusCode: 422, title: PdfSplitOutputTooLargeException.Title,
+                extensions: new Dictionary<string, object?> { ["reason"] = "output-too-large" }).ExecuteAsync(context);
         }
         catch (PdfInputException)
         {
@@ -102,12 +108,12 @@ internal static class PdfEndpointHelpers
         if (bodySize is { IsReadOnly: false }) bodySize.MaxRequestBodySize = maxRequestBytes;
     }
 
-    private static async Task SendPdfAsync(HttpContext context, string path, string fileName, CancellationToken cancellationToken,
-        Action<HttpResponse>? onSend)
+    private static async Task SendFileAsync(HttpContext context, string path, string fileName, CancellationToken cancellationToken,
+        Action<HttpResponse>? onSend, string contentType)
     {
         await using var output = File.OpenRead(path);
         cancellationToken.ThrowIfCancellationRequested();
-        context.Response.ContentType = "application/pdf";
+        context.Response.ContentType = contentType;
         context.Response.ContentLength = output.Length;
         context.Response.Headers.ContentDisposition = $"attachment; filename={fileName}";
         onSend?.Invoke(context.Response);
