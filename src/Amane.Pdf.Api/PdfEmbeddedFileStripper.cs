@@ -12,11 +12,12 @@ internal sealed class PdfEmbeddedFileStripper
     private readonly JsonElement objects;
     private readonly Dictionary<PdfObjectRef, JsonElement> references = [];
     private readonly List<JsonElement> dictionaries = [];
-    private readonly HashSet<JsonElement> attachments = [];
-    private readonly HashSet<JsonElement> popups = [];
-    private readonly HashSet<JsonElement> nullObjects = [];
-    private readonly HashSet<JsonElement> annotationArrays = [];
-    private readonly HashSet<JsonElement> changedObjects = [];
+    private readonly PdfJsonElementIdentityComparer identity;
+    private readonly HashSet<JsonElement> attachments;
+    private readonly HashSet<JsonElement> popups;
+    private readonly HashSet<JsonElement> nullObjects;
+    private readonly HashSet<JsonElement> annotationArrays;
+    private readonly HashSet<JsonElement> changedObjects;
     private readonly JsonElement catalogNames;
     internal bool HasChanges => changedObjects.Count != 0;
     internal int RetainedPopupCount { get; }
@@ -38,9 +39,18 @@ internal sealed class PdfEmbeddedFileStripper
     }
 
     internal PdfEmbeddedFileStripper(JsonDocument document, CancellationToken token = default)
+        : this(document, token, planChanges: true) { }
+
+    private PdfEmbeddedFileStripper(JsonDocument document, CancellationToken token, bool planChanges)
     {
         this.document = document;
         this.token = token;
+        identity = new(document);
+        attachments = new(identity);
+        popups = new(identity);
+        nullObjects = new(identity);
+        annotationArrays = new(identity);
+        changedObjects = new(identity);
         if (document.RootElement.ValueKind != JsonValueKind.Object ||
             !document.RootElement.TryGetProperty("qpdf", out var qpdf) || qpdf.ValueKind != JsonValueKind.Array ||
             qpdf.GetArrayLength() != 2 || qpdf[0].ValueKind != JsonValueKind.Object || qpdf[1].ValueKind != JsonValueKind.Object)
@@ -75,13 +85,16 @@ internal sealed class PdfEmbeddedFileStripper
             var annots = Property(dictionary, "/Annots");
             if (annots.ValueKind == JsonValueKind.Array) annotationArrays.Add(annots);
         }
-        // Only indirect Popup objects become null. Direct dictionaries are removed
-        // from annotation arrays (or disappear when their containing /Popup is dropped).
-        foreach (var wrapper in references.Values)
-            if (popups.Contains(Content(wrapper))) nullObjects.Add(wrapper);
-        RetainedPopupCount = CountPopups(popups);
-        foreach (var entry in objects.EnumerateObject())
-            if (nullObjects.Contains(entry.Value) || Changes(Content(entry.Value))) changedObjects.Add(entry.Value);
+        if (planChanges)
+        {
+            // Only indirect Popup objects become null. Direct dictionaries are removed
+            // from annotation arrays (or disappear when their containing /Popup is dropped).
+            foreach (var wrapper in references.Values)
+                if (popups.Contains(Content(wrapper))) nullObjects.Add(wrapper);
+            RetainedPopupCount = CountPopups(popups);
+            foreach (var entry in objects.EnumerateObject())
+                if (nullObjects.Contains(entry.Value) || Changes(Content(entry.Value))) changedObjects.Add(entry.Value);
+        }
     }
 
     private void Collect(JsonElement value)
@@ -133,7 +146,7 @@ internal sealed class PdfEmbeddedFileStripper
     }
     private bool RemoveKey(JsonElement dictionary, string name)
         => name is "/AF" or "/EF" or "/RF" ||
-            (dictionary.Equals(catalogNames) && name == "/EmbeddedFiles") ||
+            (name == "/EmbeddedFiles" && identity.Equals(dictionary, catalogNames)) ||
             (attachments.Contains(dictionary) && !AnnotationKeys.Contains(name));
     private bool RemoveAnnotation(JsonElement value)
     {
@@ -147,7 +160,11 @@ internal sealed class PdfEmbeddedFileStripper
         if (value.ValueKind == JsonValueKind.Object)
             return value.EnumerateObject().Any(property => RemoveKey(value, property.Name) || Changes(property.Value));
         if (value.ValueKind == JsonValueKind.Array)
-            return value.EnumerateArray().Any(item => (annotationArrays.Contains(value) && RemoveAnnotation(item)) || Changes(item));
+        {
+            var annots = annotationArrays.Contains(value);
+            foreach (var item in value.EnumerateArray())
+                if ((annots && RemoveAnnotation(item)) || Changes(item)) return true;
+        }
         return false;
     }
 
@@ -204,9 +221,10 @@ internal sealed class PdfEmbeddedFileStripper
         }
         else if (value.ValueKind == JsonValueKind.Array)
         {
+            var annots = annotationArrays.Contains(value);
             writer.WriteStartArray();
             foreach (var item in value.EnumerateArray())
-                if (!annotationArrays.Contains(value) || !RemoveAnnotation(item)) Write(item, writer);
+                if (!annots || !RemoveAnnotation(item)) Write(item, writer);
             writer.WriteEndArray();
         }
         else value.WriteTo(writer);
@@ -219,7 +237,7 @@ internal sealed class PdfEmbeddedFileStripper
 
     internal static void Verify(JsonDocument document, int retainedPopupCount, CancellationToken token = default)
     {
-        var graph = new PdfEmbeddedFileStripper(document, token);
+        var graph = new PdfEmbeddedFileStripper(document, token, planChanges: false);
         void Require(bool condition) { if (!condition) throw new InvalidOperationException("PDF output validation failed."); }
         Require(document.RootElement.TryGetProperty("attachments", out var listed) && listed.ValueKind == JsonValueKind.Object &&
             !listed.EnumerateObject().Any());

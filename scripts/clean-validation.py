@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cleanの上限近くの合成PDFを同時2件で測定する。通常のCI smokeとは別に実行。"""
+"""cleanの容量・object数上限に近い合成PDFを測定する。通常CI smokeとは別に実行。"""
 import argparse
 import concurrent.futures
 import hashlib
@@ -80,7 +80,29 @@ def near_limits():
     ])
 
 
-def request(api, source, barrier, directory, number):
+def many_objects(padding, pages=20000):
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R /PieceInfo << /Text 4 0 R /Bytes 5 0 R >> /AF [6 0 R] >>",
+        f"<< /Type /Pages /Count {pages} /Kids [{' '.join(str(8 + index * 3)+' 0 R' for index in range(pages))}] >>".encode(),
+        fixtures.stream("", b"q 0 0 20 20 re S Q\n"),
+        b"(" + b"P" * padding + b")",
+        fixtures.stream("", random.Random(24).randbytes(MiB)),
+        b"<< /Type /Filespec /F (ATTACHMENT_FILENAME_MARKER) /EF << /F 7 0 R >> >>",
+        fixtures.stream("/Type /EmbeddedFile", b"ATTACHMENT_PAYLOAD_MARKER"),
+    ]
+    for index in range(pages):
+        page = 8 + index * 3
+        objects.extend([
+            (f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << >> "
+             f"/Contents 3 0 R /Annots {page+2} 0 R /AF [6 0 R] >>").encode(),
+            (f"<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /URI "
+             f"/URI (https://example.test/page/{index+1}) >> >>").encode(),
+            f"[{page+1} 0 R]".encode(),
+        ])
+    return fixtures.pdf(objects)
+
+
+def request(api, source, barrier, directory, number, pages):
     body, ct = smoke.multipart(source, password=None)
     barrier.wait(timeout=30)
     started = time.monotonic()
@@ -88,6 +110,7 @@ def request(api, source, barrier, directory, number):
     seconds = time.monotonic() - started
     row = {"status": code, "seconds": round(seconds, 3), "input_bytes": len(source), "output_bytes": len(output)}
     assert code == 200, row
+    assert seconds < 30, row
     assert headers["Content-Type"].split(";")[0] == "application/pdf"
     assert "filename=cleaned.pdf" in headers["Content-Disposition"]
     path = directory / f"output-{number}.pdf"
@@ -104,21 +127,41 @@ def request(api, source, barrier, directory, number):
             assert dictionary.get("/Type") != "/EmbeddedFile"
     # The decoded private binary data must be preserved despite final compression.
     catalog = objects["obj:" + objects["trailer"]["value"]["/Root"]]["value"]
+    tree = objects["obj:" + catalog["/Pages"]]["value"]
+    assert tree["/Count"] == pages
+    assert len(tree["/Kids"]) == pages
+    row["pages"] = pages
+    row["output_objects"] = len(objects) - 1
+    if pages > 1:
+        links = sum(item.get("value", {}).get("/Subtype") == "/Link"
+                    for item in objects.values() if isinstance(item.get("value"), dict))
+        assert links == pages
+        row["retained_links"] = links
     binary_ref = catalog["/PieceInfo"]["/Bytes"].split()[0]
     binary = fixtures.command("qpdf", "--show-object=" + binary_ref, "--filtered-stream-data", str(path))
     row["private_stream_sha256"] = hashlib.sha256(binary).hexdigest()
     return row
 
 
-def main(image, concurrency):
-    source = near_limits()
+def case(image, concurrency, label):
     with tempfile.TemporaryDirectory(prefix="clean-validation-") as tmp:
         directory = Path(tmp)
         path = directory / "input.pdf"
+        pages = 20000 if label == "many-objects" else 1
+        source = many_objects(1, pages) if pages > 1 else near_limits()
         path.write_bytes(source)
+        if pages > 1:
+            baseline = fixtures.command("qpdf", "--json=2", "--json-key=qpdf", "--json-stream-data=none", "--decode-level=none", str(path))
+            padding = 32 * MiB - 128 * 1024 - len(baseline) + 1
+            assert padding > 0
+            source = many_objects(padding, pages)
+            path.write_bytes(source)
         fixtures.command("qpdf", "--check", str(path))
         objects = fixtures.command("qpdf", "--json=2", "--json-key=qpdf", "--json-stream-data=none", "--decode-level=none", str(path))
         assert len(source) < 50 * MiB and 31 * MiB < len(objects) < 32 * MiB
+        object_count = len(json.loads(objects)["qpdf"][1]) - 1
+        if pages > 1:
+            assert 60000 < object_count <= 100000
         expected_hash = hashlib.sha256(fixtures.command("qpdf", "--show-object=5", "--filtered-stream-data", str(path))).hexdigest()
         with smoke.running_container(image, isolated=True) as api:
             monitor = Monitor(api)
@@ -126,7 +169,7 @@ def main(image, concurrency):
             try:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
                     barrier = threading.Barrier(concurrency)
-                    futures = [pool.submit(request, api, source, barrier, directory, number) for number in range(1, concurrency + 1)]
+                    futures = [pool.submit(request, api, source, barrier, directory, number, pages) for number in range(1, concurrency + 1)]
                     rows = [future.result() for future in futures]
                 assert all(row["private_stream_sha256"] == expected_hash for row in rows)
                 api.assert_clean()
@@ -134,12 +177,15 @@ def main(image, concurrency):
             finally:
                 resources = monitor.finish()
             assert resources["job_count_peak_sampled"] == concurrency
-            print(json.dumps({"input_json_bytes": len(objects), "requests": rows, "resources": resources}, ensure_ascii=False), flush=True)
+            print(json.dumps({"case": label, "input_json_bytes": len(objects), "input_objects": object_count,
+                              "requests": rows, "resources": resources}, ensure_ascii=False), flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("image", nargs="?", default="amane-pdf-api:ci")
     parser.add_argument("--concurrency", type=int, choices=(1, 2), default=2)
+    parser.add_argument("--case", choices=("all", "bytes", "many-objects"), default="all")
     args = parser.parse_args()
-    main(args.image, args.concurrency)
+    for label in ("bytes", "many-objects") if args.case == "all" else (args.case,):
+        case(args.image, args.concurrency, label)

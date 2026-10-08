@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Diagnostics;
 
 namespace Amane.Pdf.Api.Tests;
 
@@ -201,5 +202,104 @@ public sealed class PdfEmbeddedFileStripperTests
         objects["trailer"] = new { value = new Dictionary<string, object> { ["/Root"] = "1 0 R" } };
         using var over = PdfEmbeddedFileStripper.Parse(JsonSerializer.SerializeToUtf8Bytes(new { qpdf = new object[] { new { jsonversion = 2 }, objects } }));
         Assert.Throws<PdfCleanTooComplexException>(() => new PdfEmbeddedFileStripper(over));
+    }
+
+    [TestMethod]
+    public void IdentityComparer_DistinguishesEqualDirectValuesAndSurvivesGc_WithCopiedInput()
+    {
+        using var input = new MemoryStream("  {\"items\":[{},{}],\"names\":{\"/Dests\":{}}}  "u8.ToArray());
+        using var document = JsonDocument.Parse(input);
+        var identity = new PdfJsonElementIdentityComparer(document);
+        var items = document.RootElement.GetProperty("items");
+        var first = items[0];
+        var second = items[1];
+        Assert.IsTrue(identity.Equals(first, items[0]));
+        Assert.IsFalse(identity.Equals(first, second));
+        Assert.AreNotEqual(identity.GetHashCode(first), identity.GetHashCode(second));
+        var set = new HashSet<JsonElement>(identity) { first, second };
+        GC.Collect();
+        Assert.IsTrue(set.Contains(items[0]));
+        Assert.IsTrue(set.Contains(items[1]));
+        Assert.IsFalse(set.Contains(default));
+        Assert.IsTrue(identity.Equals(default, default));
+        var foreign = first.Clone();
+        Assert.Throws<InvalidOperationException>(() => identity.GetHashCode(foreign));
+        Assert.Throws<InvalidOperationException>(() => identity.Equals(first, foreign));
+    }
+
+    [TestMethod]
+    [DataRow(5000, false)]
+    [DataRow(5000, true)]
+    [DataRow(20000, true)]
+    public void ManyPagesAndAnnotations_StripAndVerifyFinishWithinFiveSeconds(int pages, bool af)
+    {
+        var bytes = ManyPages(pages, af);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var timer = Stopwatch.StartNew();
+        using var document = PdfEmbeddedFileStripper.Parse(bytes, deadline.Token);
+        var stripper = new PdfEmbeddedFileStripper(document, deadline.Token);
+        using var update = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(update)) stripper.Strip(writer);
+        using var updated = PdfEmbeddedFileStripper.Parse(update.ToArray(), deadline.Token);
+        var entries = updated.RootElement.GetProperty("qpdf")[1].EnumerateObject().ToDictionary(item => item.Name, item => item.Value, StringComparer.Ordinal);
+        using var output = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(output))
+        {
+            writer.WriteStartObject();
+            writer.WritePropertyName("qpdf");
+            writer.WriteStartArray();
+            document.RootElement.GetProperty("qpdf")[0].WriteTo(writer);
+            writer.WriteStartObject();
+            foreach (var entry in document.RootElement.GetProperty("qpdf")[1].EnumerateObject())
+            {
+                deadline.Token.ThrowIfCancellationRequested();
+                writer.WritePropertyName(entry.Name);
+                (entries.TryGetValue(entry.Name, out var replacement) ? replacement : entry.Value).WriteTo(writer);
+            }
+            writer.WriteEndObject();
+            writer.WriteEndArray();
+            writer.WriteStartObject("attachments");
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+        using var result = PdfEmbeddedFileStripper.Parse(output.ToArray(), deadline.Token);
+        PdfEmbeddedFileStripper.Verify(result, stripper.RetainedPopupCount, deadline.Token);
+        timer.Stop();
+        Assert.IsTrue(timer.Elapsed < TimeSpan.FromSeconds(5), $"{pages} pages: {timer.Elapsed.TotalSeconds:F3}s");
+        Assert.AreEqual(pages, stripper.RetainedPopupCount);
+        Assert.IsTrue(entries.Count >= pages / 10 * 3);
+        Console.WriteLine($"{pages} pages, AF={af}: Strip + Verify {timer.Elapsed.TotalSeconds:F3}s; update {update.Length} bytes.");
+    }
+
+    private static byte[] ManyPages(int pages, bool af)
+    {
+        var objects = new Dictionary<string, object>();
+        void Value(int number, object? value) => objects[$"obj:{number} 0 R"] = new { value };
+        Value(1, new Dictionary<string, object> { ["/Type"] = "/Catalog", ["/Pages"] = "2 0 R" });
+        Value(2, new Dictionary<string, object> { ["/Type"] = "/Pages", ["/Count"] = pages });
+        Value(3, new Dictionary<string, object> { ["/Type"] = "/Filespec", ["/EF"] = new Dictionary<string, object>() });
+        for (var index = 0; index < pages; index++)
+        {
+            var page = 4 + index * 3;
+            var link = page + 1;
+            var array = page + 2;
+            var attachment = 4 + pages * 3 + index * 2;
+            var popup = attachment + 1;
+            var dictionary = new Dictionary<string, object> { ["/Type"] = "/Page", ["/Parent"] = "2 0 R", ["/Annots"] = $"{array} 0 R", ["/MediaBox"] = new[] { 0, 0, 100, 100 } };
+            if (af) dictionary["/AF"] = new[] { "3 0 R" };
+            Value(page, dictionary);
+            Value(link, new Dictionary<string, object> { ["/Subtype"] = "/Link", ["/Rect"] = new[] { 0, 0, 10, 10 }, ["/A"] = new Dictionary<string, object> { ["/S"] = "/URI", ["/URI"] = "u:https://example.test/" } });
+            var annotations = new List<object> { $"{link} 0 R", new Dictionary<string, object> { ["/Subtype"] = "/Popup", ["/Parent"] = $"{link} 0 R" } };
+            if (index % 10 == 0)
+            {
+                Value(attachment, new Dictionary<string, object> { ["/Type"] = "/Annot", ["/Subtype"] = "/FileAttachment", ["/Rect"] = new[] { 0, 0, 10, 10 }, ["/FS"] = "3 0 R", ["/Popup"] = $"{popup} 0 R", ["/Contents"] = "u:attachment-description" });
+                Value(popup, new Dictionary<string, object> { ["/Subtype"] = "/Popup", ["/Contents"] = "u:popup-description" });
+                annotations.Add($"{attachment} 0 R");
+                annotations.Add($"{popup} 0 R");
+            }
+            Value(array, annotations);
+        }
+        objects["trailer"] = new { value = new Dictionary<string, object> { ["/Root"] = "1 0 R" } };
+        return JsonSerializer.SerializeToUtf8Bytes(new { qpdf = new object[] { new { jsonversion = 2, pdfversion = "1.7" }, objects } });
     }
 }
