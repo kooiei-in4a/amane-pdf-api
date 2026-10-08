@@ -74,6 +74,52 @@ internal sealed class PdfTestContext : IAsyncDisposable
         return await File.ReadAllBytesAsync(output);
     }
 
+    // Synthetic credentials and encrypted PDFs are generated only inside a private temporary directory.
+    public async Task<byte[]> CreateEncryptedPdfAsync(string userPassword, string ownerPassword,
+        string algorithm = "aes256", byte[]? input = null)
+    {
+        using var files = new TemporaryPdfFiles(Root);
+        await using (var stream = TemporaryPdfFiles.CreatePrivateFile(files.InputPath))
+        {
+            await stream.WriteAsync(input ?? Fixture);
+        }
+        var (bits, settings) = algorithm switch
+        {
+            "aes256" => ("256bit", new Dictionary<string, object> { ["print"] = "none" }),
+            "aes128" => ("128bit", new Dictionary<string, object> { ["useAes"] = "y", ["print"] = "none" }),
+            "rc4-128" => ("128bit", new Dictionary<string, object> { ["useAes"] = "n", ["print"] = "none" }),
+            "rc4-40" => ("40bit", new Dictionary<string, object> { ["print"] = "none" }),
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithm))
+        };
+        var job = new Dictionary<string, object>
+        {
+            ["inputFile"] = files.InputPath,
+            ["outputFile"] = files.OutputPath,
+            ["objectStreams"] = "disable",
+            ["passwordMode"] = "unicode",
+            ["encrypt"] = new Dictionary<string, object>
+            {
+                ["userPassword"] = userPassword,
+                ["ownerPassword"] = ownerPassword,
+                [bits] = settings
+            }
+        };
+        if (algorithm.StartsWith("rc4", StringComparison.Ordinal)) job["allowWeakCrypto"] = "";
+        Assert.AreEqual(0, await RunQpdfJobAsync(files.JobPath, job), "Encrypted fixture generation failed.");
+        return await File.ReadAllBytesAsync(files.OutputPath);
+    }
+
+    public static async Task<int> RunQpdfJobAsync(string jobPath, Dictionary<string, object> job)
+    {
+        await using (var stream = TemporaryPdfFiles.CreatePrivateFile(jobPath))
+        {
+            await JsonSerializer.SerializeAsync(stream, job);
+        }
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var result = await ExternalProcessRunner.RunAsync(new("qpdf", ["--job-json-file=" + jobPath]), timeout.Token);
+        return result.ExitCode;
+    }
+
     public async Task<byte[]> CreateRotationMarkedPdfAsync(int pageCount)
     {
         if (pageCount is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(pageCount));

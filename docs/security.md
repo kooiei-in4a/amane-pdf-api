@@ -30,9 +30,9 @@ PDF処理部分に問題が発生した場合でも、Webサイト本体への�
 - 一時ファイルを処理終了後に削除する
 - 一時領域は可能であればRAM上の一時ファイルシステムを使用する
 - qpdf公式QPDFJob JSONファイルでpasswordを渡し、argvにはランダムな内部JSON pathだけを載せる
-- owner passwordはuser passwordと独立した暗号学的乱数32 bytesから生成する
+- protectのowner passwordはuser passwordと独立した暗号学的乱数32 bytesから生成する
 - 処理専用ディレクトリはランダム名、Linuxでは0700、入力PDF/JSONは0600とする
-- qpdfのstdout/stderrはログ・例外・HTTPレスポンスへ出さず破棄する
+- qpdfのstdout/stderrはログ・例外・HTTPレスポンスへ出さず破棄する。unlockの認証後の`--check`はpasswordをstdoutに含む場合があるため、stdoutも保持しない
 - lossless最適化では固定したobject stream生成・Flate再圧縮optionだけをqpdfの`ArgumentList`へ渡し、画像最適化やdownsamplingは行わない
 - 回転角度とページ指定は厳密に解析し、生のqueryではなく再構築した値をqpdfの`ArgumentList`へ渡す。ページ削除の補集合も連続rangeへまとめて再構築する
 - 結合ではランダムjob directory内のAPI生成path（`input-0001.pdf`等）だけをqpdfの`ArgumentList`へ渡し、利用者ファイル名を使用しない
@@ -46,13 +46,16 @@ JSONの形式とCLIの対応は[qpdf公式QPDFJob文書](https://qpdf.readthedoc
 
 - Content-Typeや利用者ファイル名を信用せず、qpdfでPDF構造を検証する
 - 空ファイル、非PDF、破損PDF、qpdf warningを422で拒否する
-- 既暗号化PDFは`--is-encrypted`で判定し、空のuser passwordや一致するpasswordでも拒否する
+- unlock以外の既暗号化PDFは`--is-encrypted`で判定し、空のuser passwordや一致するpasswordでも拒否する
+- unlockはpasswordなしの`--requires-password`で対象を判定し、開くpasswordが不要なPDFは正しいowner passwordを渡しても拒否する
+- unlockはprivate JSONで認証と構造検査を行い、解除後の非空・未暗号化・構造検査成功を確認してから送信する。出力検証の失敗は422ではなく500とする
+- unlockの422だけに固定の`not-encrypted` / `no-open-password` / `wrong-password` / `invalid-pdf`をreasonとして付け、既存422のtitle・bodyを維持する
 - 必須項目不足/重複、multipart形式不正、制御文字やUTF-8で127 bytesを超えるpassword、不正なangle/pagesは400で拒否する
 - 結合は2〜10個の同名`file` fieldだけを受け付け、全入力を逐次検証する。不正入力が1件でもあれば結合全体を拒否する
 - qpdf実行失敗や未知のexit codeは500とし、HTTP response/logには内部例外を含めない
 - エラーは固定文言のProblem Detailsへ統一し、password、PDF本文、内部path、stack trace、stderrを含めない
 
-qpdfの検証はPDF構造の検証であり、PDF内のJavaScriptや添付ファイルの無害化はこのAPIの機能に含みません。
+qpdfの`--check`はPDFの完全な適合性や無害性を保証せず、PDF内のJavaScriptや添付ファイルの無害化はこのAPIの機能に含みません。
 
 ## リソース制限
 
@@ -62,6 +65,7 @@ qpdfの検証はPDF構造の検証であり、PDF内のJavaScriptや添付ファ
 - 結合は最大10ファイル、入力合計50 MiB、リクエスト総量は入力合計上限 + 64 KiB。各入力にも既存の単一PDF上限を適用する
 - qpdfの検査と各PDF処理、または検査・ページ数取得・ページ操作の全体で30秒
 - 結合では全入力検証と最終結合を1つの30秒予算で制御し、qpdfをrequest内で並列起動しない
+- unlockはJSON作成・対象判定・認証・入力検査・解除・出力検証で1つの30秒予算を共有し、qpdfを逐次実行する
 - 同時PDF処理数2、待ち行列0
 
 `Pdf` configurationにまとめ、正でない制限値などは起動時に拒否します。
@@ -69,7 +73,7 @@ Kestrelのbody上限とContent-Lengthチェックに加え、実際に読んだb
 MultipartReaderで直接privateファイルへ書き込み、passwordのbufferも127 bytesへ制限します。
 結合でも複数PDFを全量bufferせず、単一・合計の残りbytesを共有のbounded copyへ渡します。ファイル数上限の次のpartは、新しいファイルを作成・書き込みする前に拒否します。
 
-Concurrency Limiterは暗号化、最適化、結合、回転、抽出、削除、並べ替えで同じ処理枠を共有し、アップロード開始前からレスポンス送信/削除まで保持して、超過を503で拒否します。結合1 requestは入力数によらず1枠です。利用者/IPでpartitionせず、healthは制限しません。
+Concurrency Limiterは暗号化、解除、最適化、結合、回転、抽出、削除、並べ替えで同じ処理枠を共有し、アップロード開始前からレスポンス送信/削除まで保持して、超過を503で拒否します。結合1 requestは入力数によらず1枠です。利用者/IPでpartitionせず、healthは制限しません。
 timeoutは504で返し、qpdfの検査と各PDF処理の段階でprocess treeの終了と終了待ちを行ってから一時領域を削除します。クライアントキャンセルやアプリ停止でもqpdfを終了します。
 サイズ超過は413、形式不正は400です。内部情報を含まないProblem Detailsで返します。
 成功、途中入力の拒否、timeout、クライアントキャンセル、アプリ停止のすべてでjob directory全体を再帰削除します。アプリ停止のtokenはアップロード・PDF送信にも適用します。
@@ -77,6 +81,8 @@ timeoutは504で返し、qpdfの検査と各PDF処理の段階でprocess treeの
 結合の出力PDFは入力合計より大きくなる可能性があります。入力合計50 MiB、同時2 requestはtmpfs 256 MiBへ収めやすくする初期値であり、出力サイズを保証しません。tmpfs / memory limitを実行環境側の安全境界として維持します。`--empty --pages`による結合は文書レベルmetadata / outlineの保持・統合を保証しません。
 
 利用者/IP単位の頻度制限は入口側、CPU/メモリ/tmpfs容量の上限は実行環境側で設定します。
+
+API単体ではパスワードを試す回数を制限しません。総当たり対策は入口側（`amane-tools-site`）の日次回数・分単位の制限を前提とします。Issue #21の前提は未ログイン3回・無料10回の日次制限と分単位のレート制限ですが、その実装・適用状況はこのリポジトリでは確認できません。既存のConcurrency Limiterは共有処理枠の制限であり、利用者ごとの試行回数制限ではありません。
 
 ## コンテナとネットワーク
 
@@ -94,18 +100,19 @@ SIGKILLやコンテナ強制終了ではfinallyは実行されません。tmpfs�
 
 ## qpdf
 
-PDFの暗号化、lossless構造最適化、結合、ページ回転、ページ抽出・削除・並べ替え処理にはqpdfを使用します。
+PDFの暗号化・パスワード解除、lossless構造最適化、結合、ページ回転、ページ抽出・削除・並べ替え処理にはqpdfを使用します。
 
 qpdfはApache License 2.0で公開されているOSSです。
 
 runtime stageはUbuntu 26.04ベースの `mcr.microsoft.com/dotnet/aspnet:10.0-resolute` を使用し、qpdfをaptから導入します。確認した版は12.3.2で、完全なversion pinは行わず、CIでhost/containerのqpdfが12系以降であることと必要機能を検証します。
+unlockの互換性は、Ubuntu 24.04 image由来のqpdf 11.9.0とlibqpdfでunlock関連89件を実行して確認しています。これは今回の互換確認結果であり、CIの対象版を変更するものではありません。
 
 qpdfの更新状況を定期的に確認し、既知の脆弱性や重要な修正がある場合は更新します。
 
 ## 検証と責務の境界
 
-実qpdfの暗号化/正誤password/Unicode/lossless最適化/複数PDF結合と入力順/相対回転/ページ抽出・削除・並べ替え/不正入力、一時ファイル削除、argv非露出を.NETテストで確認します。
+実qpdfの暗号化/解除（AES-256・AES-128・RC4のuser/owner password）/正誤password/Unicode/lossless最適化/複数PDF結合と入力順/相対回転/ページ抽出・削除・並べ替え/不正入力、一時ファイル削除、argv非露出を.NETテストで確認します。
 timeoutとキャンセルは実process shimで遅延を再現し、親/子PIDの終了と処理枠の再利用を確認します。
-CIでは実コンテナでhealth、QPDFJob JSONと必要機能、`--remove-info` / `--remove-metadata` の存在、暗号化、lossless最適化、代表的なページ選択、異常入力、413、情報非露出、一時領域の削除を確認し、host/containerのqpdf versionを記録します。
+CIでは実コンテナでhealth、QPDFJob JSONと必要機能、`--remove-info` / `--remove-metadata` の存在、暗号化、解除成功とwrong-password、lossless最適化、代表的なページ選択、異常入力、413、情報非露出、一時領域の削除を確認し、host/containerのqpdf versionを記録します。
 
 API自身のサイズ・処理時間・同時実行制限は実装済みです。利用者/IP単位の頻度制限、CPU/メモリ/ネットワーク設定、公開・deployは入口と実行環境の責務です。

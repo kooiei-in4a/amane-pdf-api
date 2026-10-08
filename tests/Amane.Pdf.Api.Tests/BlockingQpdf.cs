@@ -8,7 +8,8 @@ internal sealed class BlockingQpdf : IDisposable
     public string Executable => Path.Combine(Root, "qpdf.sh");
     public string[] Calls => File.ReadAllLines(Path.Combine(Root, "calls"));
 
-    public BlockingQpdf(string blockPattern = "--job-json-file=*", double checkDelaySeconds = 0)
+    public BlockingQpdf(string blockPattern = "--job-json-file=*", double checkDelaySeconds = 0,
+        string delayPattern = "--check")
     {
         if (OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
         Directory.CreateDirectory(Root);
@@ -16,7 +17,7 @@ internal sealed class BlockingQpdf : IDisposable
         File.WriteAllText(Executable, $"#!/bin/sh\n" +
             $"pause() {{\n  sleep \"$1\" &\n  child=$!\n  printf '%s %s\\n' \"$$\" \"$child\" > '{Root}/'\"$$\"'.pids'\n  wait \"$child\"\n}}\n" +
             $"printf '%s\\n' \"$1\" >> '{Root}/calls'\n" +
-            (checkDelaySeconds > 0 ? $"if [ \"$1\" = --check ]; then pause {delay}; fi\n" : string.Empty) +
+            (checkDelaySeconds > 0 ? $"case \"$1\" in\n{delayPattern}) pause {delay};;\nesac\n" : string.Empty) +
             $"case \"$1\" in\n{blockPattern}) pause 300;;\n*) exec qpdf \"$@\";;\nesac\n");
         File.SetUnixFileMode(Executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }

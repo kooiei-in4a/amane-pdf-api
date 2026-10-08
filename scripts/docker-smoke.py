@@ -3,6 +3,7 @@
 
 import contextlib
 import http.client
+import io
 import json
 from pathlib import Path
 import re
@@ -14,6 +15,7 @@ import uuid
 
 FIXTURE = (Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf").read_bytes()
 PASSWORD = "docker-fixture-日本語é🔒"
+WRONG_PASSWORD = "incorrect-fixture-password"
 SENTINEL = "PDF-CONTENT-SENTINEL"
 CHECK_ROOT = "/tmp/smoke-check"
 
@@ -49,6 +51,7 @@ class ApiContainer:
         self.settings = settings
         self.isolated = isolated
         self.created = False
+        self.post_count = 0
 
     def start(self):
         arguments = [
@@ -91,6 +94,8 @@ class ApiContainer:
         return docker("exec", self.name, *arguments)
 
     def request(self, method, path, body=b"", content_type=None, chunked=False):
+        if method == "POST":
+            self.post_count += 1
         if self.isolated:
             # コンテナ内loopbackだけでHTTPを送る。curl等をruntimeへ追加しない。
             headers = f"{method} {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nContent-Length: {len(body)}\r\n"
@@ -101,11 +106,14 @@ class ApiContainer:
                 "exec 3<>/dev/tcp/127.0.0.1/8080; cat >&3; cat <&3",
                 data=(headers + "\r\n").encode() + body,
             ).stdout
-            if b"\r\n\r\n" not in raw:
-                raise ConnectionError("Container HTTP server is not ready.")
-            head, response_body = raw.split(b"\r\n\r\n", 1)
-            lines = head.decode().split("\r\n")
-            return int(lines[0].split()[1]), dict(line.split(": ", 1) for line in lines[1:]), response_body
+            class BufferedSocket:
+                def makefile(self, mode):
+                    return io.BytesIO(raw)
+
+            # Problem Details may use chunked encoding even when PDF downloads have Content-Length.
+            with http.client.HTTPResponse(BufferedSocket()) as response:
+                response.begin()
+                return response.status, dict(response.getheaders()), response.read()
         headers = {}
         if content_type:
             headers["Content-Type"] = content_type
@@ -129,6 +137,24 @@ class ApiContainer:
             assert media_type == "application/problem+json"
             assert json.loads(result)["status"] == expected
             for secret in (PASSWORD.encode(), SENTINEL.encode(), b"/tmp/", b"stack", b"qpdf"):
+                assert secret not in result, "Problem Details exposed internal information."
+        self.assert_clean()
+        return result
+
+    def unlock(self, file, password=PASSWORD, expected_reason=None):
+        body, content_type = multipart(file, password)
+        status, headers, result = self.request("POST", "/api/pdf/unlock", body, content_type)
+        expected = 422 if expected_reason else 200
+        assert status == expected, f"Expected HTTP {expected}, received {status}."
+        media_type = headers.get("Content-Type", "").split(";", 1)[0]
+        if expected == 200:
+            assert media_type == "application/pdf" and result.startswith(b"%PDF-")
+            assert "filename=unlocked.pdf" in headers.get("Content-Disposition", "")
+        else:
+            assert media_type == "application/problem+json"
+            problem = json.loads(result)
+            assert problem["status"] == 422 and problem["reason"] == expected_reason
+            for secret in (PASSWORD.encode(), WRONG_PASSWORD.encode(), SENTINEL.encode(), b"/tmp/", b"stack", b"qpdf"):
                 assert secret not in result, "Problem Details exposed internal information."
         self.assert_clean()
         return result
@@ -183,7 +209,7 @@ class ApiContainer:
         ).stdout == b"", "PDF temporary files remain."
         result = docker("logs", self.name)
         logs = result.stdout + result.stderr
-        for secret in (PASSWORD.encode(), SENTINEL.encode(), b"../../untrusted.pdf", b"/tmp/amane-pdf-api/"):
+        for secret in (PASSWORD.encode(), WRONG_PASSWORD.encode(), SENTINEL.encode(), b"../../untrusted.pdf", b"/tmp/amane-pdf-api/"):
             assert secret not in logs, "Application logs exposed input or job paths."
 
     def verify_encryption(self, pdf):
@@ -194,7 +220,7 @@ class ApiContainer:
         )
         output = CHECK_ROOT + "/output.pdf"
         assert docker("exec", self.name, "qpdf", "--is-encrypted", output, check=False).returncode == 0
-        for password, inspection, exit_code in ((PASSWORD, "check", 0), (PASSWORD, "showEncryption", 0), ("incorrect-fixture-password", "check", 2)):
+        for password, inspection, exit_code in ((PASSWORD, "check", 0), (PASSWORD, "showEncryption", 0), (WRONG_PASSWORD, "check", 2)):
             job = json.dumps({"inputFile": output, "password": password, inspection: ""}).encode()
             docker(
                 "exec", "--interactive", self.name, "sh", "-c",
@@ -223,6 +249,21 @@ class ApiContainer:
         docker("exec", self.name, "rm", "-rf", CHECK_ROOT)
         return rotations
 
+    def verify_decryption(self, pdf):
+        docker("exec", self.name, "mkdir", "-m", "700", "-p", CHECK_ROOT)
+        try:
+            docker(
+                "exec", "--interactive", self.name, "sh", "-c",
+                "umask 077; cat > /tmp/smoke-check/output.pdf", data=pdf,
+            )
+            output = CHECK_ROOT + "/output.pdf"
+            assert docker("exec", self.name, "qpdf", "--is-encrypted", output, check=False).returncode == 2
+            assert docker("exec", self.name, "qpdf", "--requires-password", output, check=False).returncode == 2
+            docker("exec", self.name, "qpdf", "--check", output)
+            assert docker("exec", self.name, "qpdf", "--show-npages", output).stdout.strip() == b"1"
+        finally:
+            docker("exec", self.name, "rm", "-rf", CHECK_ROOT)
+
     def close(self):
         if self.created:
             docker("rm", "--force", self.name)
@@ -239,6 +280,7 @@ def running_container(image, settings=(), isolated=False):
 
 
 def main(image):
+    post_count = 0
     with running_container(image) as api:
         version = api.exec("qpdf", "--version").stdout.decode().splitlines()[0]
         print(version)
@@ -248,8 +290,11 @@ def main(image):
             api.exec("qpdf", "--help=" + option)
         schema = json.loads(docker("exec", api.name, "qpdf", "--job-json-help").stdout)
         assert "256bit" in schema["encrypt"] and "passwordMode" in schema and "check" in schema and "isEncrypted" in schema
+        assert "requiresPassword" in schema and "decrypt" in schema
         encrypted = api.protect(FIXTURE)
         api.verify_encryption(encrypted)
+        api.verify_decryption(api.unlock(encrypted))
+        api.unlock(encrypted, WRONG_PASSWORD, expected_reason="wrong-password")
         rotated = api.rotate(FIXTURE)
         assert api.page_rotations(rotated) == [90]
         assert api.page_rotations(api.rotate(rotated, pages="1")) == [180]
@@ -265,18 +310,26 @@ def main(image):
         api.protect(b"%PDF-1.4\n" + SENTINEL.encode() + b"\n%%EOF", expected=422)
         api.protect(FIXTURE.replace(b"/Length 41", b"/Length 39"), expected=422)
         api.protect(encrypted, expected=422)
-        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/optimization/merge/rotation/page selection/passwords/400/422/logs/cleanup PASS")
+        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/unlock/optimization/merge/rotation/page selection/passwords/400/422/logs/cleanup PASS")
+        post_count += api.post_count
     with running_container(image, (f"Pdf__MaxFileBytes={len(FIXTURE)}",)) as api:
         api.protect(FIXTURE)
         api.protect(FIXTURE + b"X", expected=413)
         api.protect(FIXTURE + b"X", expected=413, chunked=True)
         print("Docker E2E: exact file limit / Content-Length and chunked 413 PASS")
+        post_count += api.post_count
     with running_container(image, ("Pdf__QpdfPath=/missing/qpdf",)) as api:
         api.protect(FIXTURE, expected=500)
         print("Docker E2E: sanitized internal failure / cleanup PASS")
+        post_count += api.post_count
     with running_container(image, isolated=True) as api:
-        api.verify_encryption(api.protect(FIXTURE))
-        print("Docker E2E: no network / loopback HTTP / real encryption PASS")
+        encrypted = api.protect(FIXTURE)
+        api.verify_encryption(encrypted)
+        api.verify_decryption(api.unlock(encrypted))
+        api.unlock(encrypted, WRONG_PASSWORD, expected_reason="wrong-password")
+        print("Docker E2E: no network / loopback HTTP / real encryption and unlock PASS")
+        post_count += api.post_count
+    print(f"Docker E2E: {post_count} POST checks PASS")
 
 
 if __name__ == "__main__":

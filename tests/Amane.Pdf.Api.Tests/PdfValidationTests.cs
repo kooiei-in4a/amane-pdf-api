@@ -163,6 +163,12 @@ public sealed class PdfValidationTests
         Assert.AreEqual(expected, response.StatusCode);
         Assert.AreEqual("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         var body = await response.Content.ReadAsStringAsync();
+        if (expected == HttpStatusCode.UnprocessableEntity)
+        {
+            using var problem = System.Text.Json.JsonDocument.Parse(body);
+            Assert.AreEqual("未暗号化の正常なPDFが必要です。", problem.RootElement.GetProperty("title").GetString());
+            Assert.IsFalse(problem.RootElement.TryGetProperty("reason", out _));
+        }
         Assert.IsFalse(body.Contains(test.Root, StringComparison.Ordinal));
         Assert.IsFalse(body.Contains("fixture-password", StringComparison.Ordinal));
         Assert.IsFalse(body.Contains("PDF-CONTENT-SENTINEL", StringComparison.Ordinal));

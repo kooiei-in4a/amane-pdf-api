@@ -2,7 +2,7 @@
 
 PDFを安全に処理するための小さなWeb APIです。
 
-`amane-tools-site` から受け取ったPDFの暗号化、lossless構造最適化、結合、ページ回転、ページ抽出・削除・並べ替えを、安全なqpdf処理として提供します。
+`amane-tools-site` から受け取ったPDFの暗号化・パスワード解除、lossless構造最適化、結合、ページ回転、ページ抽出・削除・並べ替えを、安全なqpdf処理として提供します。
 
 ## 現在の状態
 
@@ -10,6 +10,7 @@ PDFを安全に処理するための小さなWeb APIです。
 
 - .NET 10 / ASP.NET Core の最小API、`GET /healthz`
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
+- `POST /api/pdf/unlock` による、正しいuser / owner passwordでの暗号化解除
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
@@ -18,7 +19,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - `POST /api/pdf/reorder` による全ページの並べ替え
 - 独立したランダムowner password、QPDFJob JSON経由のパスワード入力
 - 成功・失敗・キャンセル時の一時ファイル削除
-- 正常PDFの検証、破損/警告/既暗号化PDFの拒否、統一Problem Details
+- 正常PDFの検証、破損/警告の拒否、unlock以外での既暗号化PDFの拒否、統一Problem Details
 - Unicodeパスワード対応
 - PDF 50 MiB / qpdf処理30秒 / 同時2処理 / 待ち行列0の制限
 - 実qpdfを使った自動テスト、Docker build、実コンテナE2Eを含むGitHub Actions
@@ -66,6 +67,42 @@ unset pdf_password
 ```
 
 このBashの例ではパスワードを対話入力し、stdinからcurlへ渡します。パスワード値をcommand line argvやshell履歴に載せません。
+
+### PDFパスワード解除
+
+```text
+POST /api/pdf/unlock
+Content-Type: multipart/form-data
+
+file      開くパスワードが必要なPDF
+password  正しいuser passwordまたはowner password
+```
+
+開くパスワードが設定されたPDFだけを対象にし、開くパスワードがなく印刷禁止などの権限制限だけが付いたPDFは、正しいowner passwordを渡しても拒否します。AES-256、AES-128、RC4で暗号化されたPDFを受け付けます。passwordの形式はprotectと共通で、UTF-8で127 bytes以下、空・制御文字不可、trim・Unicode正規化なしです。
+
+パスワードなしの判定、送信passwordでの認証、認証後の構造検査、解除、出力検証を順に実行します。passwordはprivateなQPDFJob JSONで渡し、qpdfのargvには載せません。入力のerror / warningを拒否し、出力が非空・未暗号化で、passwordなしの構造検査を通ることを確認してから返します。
+
+成功時は `200 OK`、`Content-Type: application/pdf`、`Content-Disposition: attachment; filename=unlocked.pdf` です。出力には暗号化に伴うowner password・権限制限・暗号化を残しません。電子署名付きPDFは拒否しませんが、解除によるPDFの書き換えで署名は無効になります。
+
+```bash
+read -r -s -p 'PDF password: ' pdf_password
+printf '\n'
+printf '%s' "$pdf_password" | curl --fail-with-body \
+  -F file=@protected.pdf \
+  -F 'password=<-' http://127.0.0.1:8080/api/pdf/unlock -o unlocked.pdf
+unset pdf_password
+```
+
+unlockの422だけに、固定の `reason` extensionを付けます。
+
+| reason | 条件 | 固定title |
+| --- | --- | --- |
+| `not-encrypted` | 構造検査を通る未暗号化PDF | パスワードが設定されたPDFが必要です。 |
+| `no-open-password` | passwordなしで開ける暗号化PDF | 開くためのパスワードが設定されていないPDFは解除できません。 |
+| `wrong-password` | qpdfが送信passwordで開けないと判定 | パスワードが正しくありません。 |
+| `invalid-pdf` | 空、非PDF、破損、入力検査のerror / warning、解除のwarning | 正常なPDFが必要です。 |
+
+reasonはqpdfの判定に基づく分類であり、破損の種類によっては `wrong-password` になり得ます。開くパスワードの有無と認証可否を構造検査より先に判定します。入力検査後の解除errorや、出力検証の失敗は内部障害として500を返します。既存APIの422のtitle・bodyは変更せず、reasonも付けません。
 
 ### PDF lossless最適化
 
@@ -169,19 +206,19 @@ curl --fail-with-body \
 
 ### 入力とエラー
 
-暗号化APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、回転、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
+暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、回転、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
 
 Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
-exit code 2（error）と3（warning）は422として拒否し、自動修復したPDFを成功扱いにしません。
-既暗号化PDFは、password不要で開けるものや送信したpasswordが一致するものも含め、v1では全操作で拒否します。
+入力構造検査のexit code 2（error）と3（warning）は422として拒否し、自動修復したPDFを成功扱いにしません。
+既暗号化PDFは、password不要で開けるものや送信したpasswordが一致するものも含め、unlock以外の全操作で拒否します。
 
 | HTTP status | 条件 |
 | --- | --- |
-| 200 | 暗号化、最適化、結合、回転、抽出、削除、並べ替え済みPDFを返却 |
+| 200 | 暗号化、解除、最適化、結合、回転、抽出、削除、並べ替え済みPDFを返却 |
 | 400 | multipart形式不正、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはangle/pages仕様違反 |
 | 413 | 単一PDF、merge入力合計、またはmultipartリクエスト総量のサイズ超過 |
-| 422 | 空ファイル、非PDF、破損/警告のあるPDF、既暗号化PDF |
+| 422 | 空ファイル、非PDF、破損/警告のあるPDF、unlock以外の既暗号化PDF。unlockは上記reason表を参照 |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
 | 503 | 同時PDF処理数の上限超過（待ち行列なし） |
 | 504 | qpdfの検査と各PDF処理全体の制限時間超過 |
@@ -210,8 +247,8 @@ passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で�
 
 mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
 
-30秒はアップロード完了後のqpdf検査と各PDF処理、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
-暗号化、最適化、結合、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはすべての処理APIで拒否します。
+30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
+暗号化、解除、最適化、結合、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
 merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 512 MiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
 利用者/IP単位の利用回数制限やアップロード接続の運用制御は、`amane-tools-site` / Caddy等の入口側の責務です。
@@ -292,11 +329,12 @@ python3 scripts/docker-smoke.py amane-pdf-api:ci
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは18件のPOSTとhealthを検証します。正常暗号化、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
-全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化とpassword確認を行います。
+smoke testは22件のPOSTとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
 各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 
 確認したqpdf versionは開発環境12.3.2、コンテナ12.3.2です。CIではhost/containerそれぞれのversionをログへ出します。qpdfはaptから導入し、完全なversion pinを目的とせず、必要機能を検証します。
+unlockの互換確認として、Ubuntu 24.04 imageから取り出したqpdf 11.9.0とlibqpdfを使い、unlock関連89件（RC4 fixture生成、`requiresPassword` / `passwordMode`、user / owner password、Unicode、異常入力、timeout / cancelを含む）を実行し、PASS・FAIL 0・skip 0を確認しました。Dockerfile・CIのqpdf 12系以降という要件は維持します。
 将来releaseを行う場合は、そのCI runのimage digestとqpdf versionを使用imageと対応付けて記録してください。
 
 DB、Secret、PDFの永続Volumeは不要です。writable領域は/tmpだけで成立します。CPU/memory/tmpfsの容量は起動オプションで外側から調整できます。
