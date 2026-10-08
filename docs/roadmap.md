@@ -62,7 +62,7 @@ amane-pdf-api と amane-tools-site のPDF機能を拡張するための、戦略
 
 - `mcr.microsoft.com/dotnet/aspnet:10.0` はUbuntu 24.04.5で、aptのqpdfは11.9.0です。11.9.0の `qpdf --help=all` には `--remove-info` / `--remove-metadata` / `--remove-structure` / `--remove-acroform` / `--jpeg-quality` がありません。
 - `mcr.microsoft.com/dotnet/aspnet:10.0-resolute` はUbuntu 26.04.1 LTSで、aptの候補はqpdf `12.3.2-1`、libjpeg-turbo-progs `2.1.5-4ubuntu4`、libvips-tools `8.18.0-1build1`、tesseract-ocr `5.5.0-1build1` です。
-- GitHub Actionsの `ubuntu-26.04` runnerは公開プレビューで利用できます。
+- GitHub Actionsの `ubuntu-26.04` runnerは2026-09-17にGA（本番利用可）になりました。
 
 ### パスワード解除（qpdfの終了コード）
 

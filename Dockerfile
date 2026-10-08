@@ -12,7 +12,7 @@ RUN dotnet publish src/Amane.Pdf.Api/Amane.Pdf.Api.csproj \
     --output /app/publish \
     /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-resolute AS final
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
 
