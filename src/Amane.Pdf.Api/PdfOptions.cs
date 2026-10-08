@@ -12,7 +12,7 @@ public sealed class PdfOptions
     public long MaxMergeRequestBytes => checked(MaxMergeInputBytes + MultipartOverheadBytes);
     public string QpdfPath { get; set; } = "qpdf";
     public string PrlimitPath { get; set; } = "/usr/bin/prlimit";
-    public long QpdfAddressSpaceLimitBytes { get; set; } = 324 * 1024 * 1024;
-    public string QpdfJpegMemory { get; set; } = "64M";
+    public long QpdfAddressSpaceLimitBytes { get; set; } = 544 * 1024 * 1024;
+    public string QpdfJpegMemory { get; set; } = "600M";
     public string TempRoot { get; set; } = Path.Combine(Path.GetTempPath(), "amane-pdf-api");
 }

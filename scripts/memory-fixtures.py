@@ -1,16 +1,24 @@
 #!/usr/bin/env python3
 """メモリ検証用の合成PDFを一時領域へ生成する。PillowとNumPyは検証専用。"""
 
+import argparse
 import io
 import json
-import sys
 import zlib
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-root = Path(sys.argv[1])
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("destination", type=Path)
+parser.add_argument(
+    "--include-giant",
+    action="store_true",
+    help="JPEGMEM比較用の225 MP progressiveカラーも生成",
+)
+args = parser.parse_args()
+root = args.destination
 root.mkdir(mode=0o700, parents=True, exist_ok=True)
 
 
@@ -45,13 +53,16 @@ def pdf(data, w, h, gray=False, filter="DCTDecode"):
 
 
 meta = {}
-for w, h, gray in [
+dimensions = [
     (4000, 3000, False),
     (6000, 4000, False),
     (8064, 6048, False),
     (10000, 10000, True),
     (10000, 10000, False),
-]:
+]
+if args.include_giant:
+    dimensions.append((15000, 15000, False))
+for w, h, gray in dimensions:
     rng = np.random.default_rng(42)
     arr = np.empty((h, w) if gray else (h, w, 3), dtype=np.uint8)
     x = np.arange(w, dtype=np.float32)[None, :] / w
@@ -73,16 +84,23 @@ for w, h, gray in [
                     0,
                     255,
                 ).astype("uint8")
-    for progressive in [False, True] if gray else [False]:
+    variants = [(False, 2, "baseline")]
+    if gray:
+        variants.append((True, 2, "progressive"))
+    elif w in (6000, 8064):
+        variants.extend([(False, 0, "baseline-444"), (True, 2, "progressive-420")])
+    elif w == 15000:
+        variants = [(True, 2, "progressive-420")]
+    for progressive, subsampling, variant in variants:
         encoded = io.BytesIO()
         Image.fromarray(arr).save(
-            encoded, format="JPEG", quality=85, progressive=progressive
+            encoded,
+            format="JPEG",
+            quality=85,
+            progressive=progressive,
+            subsampling=subsampling,
         )
-        name = (
-            "100mp-color"
-            if w == 10000 and not gray
-            else f"{w}x{h}-" + ("progressive" if progressive else "baseline")
-        )
+        name = "100mp-color" if w == 10000 and not gray else f"{w}x{h}-{variant}"
         out = pdf(encoded.getvalue(), w, h, gray)
         (root / (name + ".pdf")).write_bytes(out)
         meta[name] = len(out)

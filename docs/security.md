@@ -67,8 +67,8 @@ qpdfの`--check`はPDFの完全な適合性や無害性を保証せず、PDF内�
 - 結合では全入力検証と最終結合を1つの30秒予算で制御し、qpdfをrequest内で並列起動しない
 - unlockはJSON作成・対象判定・認証・入力検査・解除・出力検証で1つの30秒予算を共有し、qpdfを逐次実行する
 - 同時PDF処理数2、待ち行列0
-- Linuxではすべてのqpdf実行にprlimitのRLIMIT_AS 324 MiB（339738624 bytes）を適用。shellを挟まず直接起動する
-- 全OSのqpdfにJPEGMEM=64M（64,000,000 bytes）を既存RunnerのEnvironmentで渡す。非LinuxにはAS制限を適用しない
+- Linuxではすべてのqpdf実行にprlimitのRLIMIT_AS 544 MiB（570425344 bytes）を適用。shellを挟まず直接起動する
+- 全OSのqpdfにJPEGMEM=600M（600,000,000 bytes）を既存RunnerのEnvironmentで渡す。非LinuxにはAS制限を適用しない
 - Linuxの起動時は同じASで/bin/trueとqpdf --versionを確認し、失敗時は固定ログだけで非0終了する
 
 `Pdf` configurationにまとめ、正でない制限値などは起動時に拒否します。
@@ -83,9 +83,11 @@ timeoutは504で返し、qpdfの検査と各PDF処理の段階でprocess treeの
 
 結合の出力PDFは入力合計より大きくなる可能性があります。入力合計50 MiB、同時2 requestはtmpfs 256 MiBへ収めやすくする初期値であり、出力サイズを保証しません。tmpfs / memory limitを実行環境側の安全境界として維持します。`--empty --pages`による結合は文書レベルmetadata / outlineの保持・統合を保証しません。
 
-qpdf自身も`--check`でJPEG streamをプロセス内でデコードします。JPEGMEMはlibjpegの内部メモリ管理へ作用しますが、baseline JPEGの全メモリやqpdf自身のデコード済みbufferを制限できません。Flate画像にもJPEGMEMだけでは十分ではありません。AS、同時実行数、tmpfs、コンテナmemoryを合わせて管理します。制限は設定値で、実行時の空きメモリに応じた自動調整はしません。
+qpdf自身も`--check`でJPEG streamをプロセス内でデコードします。JPEGMEMはlibjpegの内部メモリ管理へ作用しますが、baseline JPEGの全メモリやqpdf自身のデコード済みbufferを制限できません。Flate画像にもJPEGMEMだけでは十分ではありません。標準JPEGMEMは標準AS全体のbytes値より大きくし、ASで処理できる範囲を先に狭めない値にしています。標準ASでは巨大progressiveの拒否に大きな差はありませんでしたが、ASを768 MiBへ増やした比較ではJPEGMEM 600Mにより拒否までの時間とRSSを減らせました。ASを増やすときは、JPEGMEMによる受付範囲の変化も測定してください。AS、同時実行数、tmpfs、コンテナmemory 1.5 GiB（swapなし）を合わせて管理します。制限は設定値で、実行時の空きメモリに応じた自動調整はしません。
 
 入力checkの2/3は破損、警告、上限超過を区別せず共通422とし、stderr解析や新しいreasonを追加しません。unlockのprobeの3は段階によって判定結果を表すため既存の対応を維持します。出力検証の失敗、126/127等の起動失敗、想定外の終了は500です。
+
+6000×4000／8064×6048のカラーJPEGはbaseline 4:2:0、baseline 4:4:4、progressive 4:2:0を、標準設定・同時2件で確認しました。tmpfs圧力下では8064×6048の各形式を60要求ずつ実行しています。合成fixtureの測定であり、他形式・任意のPDFの処理成功や本番でのOOM回避を保証しません。
 
 [READMEの容量式](../README.md#リソース制限と設定)と[実測記録](qpdf-memory-validation.md)を運用時の見直しに使用してください。式の.NET値と余裕は見積りであり、AS以外のAPIメモリや出力サイズのhard limitを追加するものではありません。
 
@@ -99,7 +101,7 @@ API単体ではパスワードを試す回数を制限しません。総当た�
 
 - appユーザー（non-root）で実行する
 - read-only root filesystem + tmpfs /tmpでPDF暗号化・入力拒否・削除が成立する
-- CPU 1 / memory 1 GiB（memory-swapも1 GiB、swapなし） / tmpfs 256 MiBを外側から指定できる
+- CPU 1 / memory 1.5 GiB（memory-swapも1.5 GiB、swapなし） / tmpfs 256 MiBを外側から指定できる
 - capabilityをdropし、no-new-privilegesで実行できる
 - DB、Secret、永続Volumeなしで動作し、終了時にはコンテナを削除する
 - 外部networkなし（--network none）のコンテナでもloopback HTTPで実PDF処理が成立する

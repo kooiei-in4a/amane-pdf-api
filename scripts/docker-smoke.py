@@ -45,7 +45,7 @@ def multipart(file=None, password=PASSWORD, files=None):
 
 
 class ApiContainer:
-    def __init__(self, image, settings=(), isolated=False, memory_mib=1024):
+    def __init__(self, image, settings=(), isolated=False, memory_mib=1536):
         self.memory_mib = memory_mib
         self.name = "amane-pdf-smoke-" + uuid.uuid4().hex
         self.port = None
@@ -314,7 +314,7 @@ def assert_startup_failure(image, settings, expected_message="PDF処理のメモ
     name = "amane-pdf-smoke-startup-" + uuid.uuid4().hex
     arguments = ["run", "--detach", "--name", name, "--read-only", "--network", "none",
                  "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=256m", "--cpus", "1",
-                 "--memory", "1g", "--memory-swap", "1g", "--cap-drop", "ALL",
+                 "--memory", "1.5g", "--memory-swap", "1.5g", "--cap-drop", "ALL",
                  "--security-opt", "no-new-privileges=true"]
     for setting in settings:
         arguments += ["--env", setting]

@@ -48,5 +48,5 @@ jobs:
       - name: Docker build
         run: docker build -t amane-pdf-api:ci .
 
-      - name: Docker E2E smoke
+      - name: Docker E2E smoke (1.5 GiB, no swap, CPU 1, tmpfs 256 MiB)
         run: python3 scripts/docker-smoke.py amane-pdf-api:ci

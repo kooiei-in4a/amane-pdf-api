@@ -2,12 +2,14 @@
 """Linux Docker上の実HTTP負荷とリソースを測定する。監視処理はコンテナ外で動かす。"""
 
 import argparse
+from collections import Counter
 import concurrent.futures
 import csv
 
 # docker-smoke.py has a hyphen in its filename.
 import importlib.util
 import json
+import math
 import os
 import signal
 import subprocess
@@ -25,8 +27,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("image")
 parser.add_argument("fixtures", type=Path)
 parser.add_argument("results", type=Path)
-parser.add_argument("--as-mib", type=int, default=324)
-parser.add_argument("--memory-mib", type=int, default=1024)
+parser.add_argument("--as-mib", type=int, help="Override the API default AS limit")
+parser.add_argument("--jpeg-memory", help="Override the API default JPEGMEM")
+parser.add_argument("--memory-mib", type=int, default=1536)
 parser.add_argument(
     "--counters", type=Path, help="Optional host dotnet-counters executable"
 )
@@ -36,11 +39,14 @@ if os.geteuid() != 0:
     parser.error(
         "Host root access is required to read the container /proc and diagnostic socket."
     )
+if args.memory_mib <= 0 or (args.as_mib is not None and args.as_mib <= 0):
+    parser.error("memory and AS limits must be positive.")
 root = args.fixtures
 outroot = args.results
 outroot.mkdir(mode=0o700, parents=True, exist_ok=True)
 IMAGE = args.image
-limit = args.as_mib
+# Reporting label for the current default; do not override the API configuration.
+limit = args.as_mib if args.as_mib is not None else 544
 
 
 def status(pid):
@@ -144,9 +150,15 @@ def request(api, item):
 
 
 def run(name, items, fill_mib=0):
+    settings = []
+    if args.as_mib is not None:
+        settings.append(f"Pdf__QpdfAddressSpaceLimitBytes={args.as_mib * 1024 * 1024}")
+    if args.jpeg_memory is not None:
+        settings.append(f"Pdf__QpdfJpegMemory={args.jpeg_memory}")
+    sustained = name.startswith("sustained-")
     api = smoke.ApiContainer(
         IMAGE,
-        [f"Pdf__QpdfAddressSpaceLimitBytes={limit * 1024 * 1024}"],
+        settings,
         isolated=True,
         memory_mib=args.memory_mib,
     )
@@ -176,7 +188,7 @@ def run(name, items, fill_mib=0):
                     "--counters",
                     "EventCounters\\System.Runtime[gc-heap-size,gc-committed,working-set]",
                     "--duration",
-                    "00:01:15" if name == "sustained" else "00:00:35",
+                    "00:03:00" if sustained else "00:00:35",
                     "--format",
                     "csv",
                     "--output",
@@ -196,13 +208,13 @@ def run(name, items, fill_mib=0):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             requests = []
-            for iteration in range(30 if name == "sustained" else 1):
+            for iteration in range(30 if sustained else 1):
                 requests.extend(pool.map(worker, items))
         time.sleep(1.2)
         measure = mon.finish()
         mon = None
         if counters is not None:
-            counters.wait(timeout=80)
+            counters.wait(timeout=190)
             counters = None
         gc = {}
         if args.counters and cp.exists():
@@ -210,14 +222,15 @@ def run(name, items, fill_mib=0):
                 key = row["Counter Name"]
                 gc[key] = max(float(row["Mean/Increment"]), gc.get(key, 0))
         measure["runtime_counters"] = gc
+        measure["runtime_counter_units"] = "MB (1,000,000 bytes)"
         if args.counters:
             assert gc, "No runtime counters were recorded"
         api.assert_clean()
         assert api.request("GET", "/healthz")[0] == 200
         assert measure["events"]["oom"] == measure["events"]["oom_kill"] == 0
-        assert measure["qpdf_count"] == 2, (
-            "Two simultaneous qpdf processes were not observed"
-        )
+        assert (
+            measure["qpdf_count"] == 2
+        ), "Two simultaneous qpdf processes were not observed"
         assert not any(
             Path(f"/proc/{pid}/comm").read_text().strip() == "qpdf"
             for pid in (mon_cgroup(api) / "cgroup.procs").read_text().split()
@@ -228,14 +241,24 @@ def run(name, items, fill_mib=0):
             "case": name,
             "memory_mib": args.memory_mib,
             "limit_mib": limit,
+            "jpeg_memory_override": args.jpeg_memory,
+            "api_settings_overridden": bool(settings),
             "fill_mib": fill_mib,
             "requests": requests,
             "measure": measure,
         }
-        print(json.dumps(result), flush=True)
+        summary = {
+            **result,
+            "requests": {
+                "count": len(requests),
+                "statuses": dict(Counter(r["status"] for r in requests)),
+                "max_seconds": max(r["seconds"] for r in requests),
+            },
+        }
+        print(json.dumps(summary), flush=True)
         (outroot / f"{limit}-{name}.json").write_text(json.dumps(result, indent=2))
         assert [r["status"] for r in requests] == [i[2] for i in items] * (
-            30 if name == "sustained" else 1
+            30 if sustained else 1
         ), "Unexpected HTTP status; measurement saved"
     finally:
         try:
@@ -267,7 +290,11 @@ if __name__ == "__main__":
     names = args.cases or [
         "4000x3000-baseline",
         "6000x4000-baseline",
+        "6000x4000-baseline-444",
+        "6000x4000-progressive-420",
         "8064x6048-baseline",
+        "8064x6048-baseline-444",
+        "8064x6048-progressive-420",
         "a4-600dpi-flate",
         "near-optimize",
         "near-merge",
@@ -276,9 +303,12 @@ if __name__ == "__main__":
         "100mp-color",
         "mixed",
         "mixed-as",
-        "tmpfs-pressure",
-        "sustained",
+        "sustained-baseline",
+        "sustained-baseline-444",
+        "sustained-progressive-420",
     ]
+    if "mixed" in names and not (root / "15000x15000-progressive-420.pdf").exists():
+        parser.error("The mixed case requires memory-fixtures.py --include-giant.")
     for name in names:
         if name == "near-merge":
             file = load("near-50mib")
@@ -291,22 +321,29 @@ if __name__ == "__main__":
             ] * 2
         elif name == "mixed":
             items = [
-                ("/api/pdf/optimize", [load("8064x6048-baseline")], 200),
-                ("/api/pdf/optimize", [load("10000x10000-progressive")], 422),
+                ("/api/pdf/optimize", [load("8064x6048-progressive-420")], 200),
+                ("/api/pdf/optimize", [load("15000x15000-progressive-420")], 422),
             ]
         elif name == "mixed-as":
             items = [
-                ("/api/pdf/optimize", [load("8064x6048-baseline")], 200),
+                ("/api/pdf/optimize", [load("8064x6048-baseline-444")], 200),
                 ("/api/pdf/optimize", [load("100mp-color")], 422),
             ]
-        elif name == "sustained" or name == "tmpfs-pressure":
-            items = [("/api/pdf/optimize", [load("8064x6048-baseline")], 200)] * 2
+        elif name.startswith("sustained-"):
+            fixture = load("8064x6048-" + name.removeprefix("sustained-"))
+            items = [("/api/pdf/optimize", [fixture], 200)] * 2
         else:
             items = [
                 (
                     "/api/pdf/optimize",
                     [load(name)],
-                    422 if "progressive" in name else 200,
+                    200,
                 )
             ] * 2
-        run(name, items, 210 if name in ("tmpfs-pressure", "sustained") else 0)
+        # Leave room for two inputs and two outputs, with a few MiB of tmpfs slack.
+        fill = (
+            max(0, 248 - math.ceil(4 * len(fixture) / (1024 * 1024)))
+            if name.startswith("sustained-")
+            else 0
+        )
+        run(name, items, fill)
