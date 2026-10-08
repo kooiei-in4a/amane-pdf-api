@@ -10,6 +10,96 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfCompressResourceTests
 {
     [TestMethod]
+    [DataRow(700, false, 4194304, "standard", 11)]
+    [DataRow(700, true, 4194304, "strong", 14)]
+    [DataRow(1400, false, 16777216, "standard", 11)]
+    [DataRow(1400, false, 16777216, "strong", 11)]
+    [DataRow(1400, true, 16777216, "standard", 14)]
+    public async Task PageMetadata_IsReleasedBetweenBatches_AndBeforeImageExtraction(
+        int pages, bool inherited, int spoolLimit, string level, int maximumStarts)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        // The standard rows deliberately use the defaults; only the low-spool rows override them.
+        await using var test = new PdfTestContext(spoolLimit == 16777216 ? null : new() { ["Pdf:CompressSpoolLimitBytes"] = spoolLimit.ToString() });
+        var counter = Path.Combine(test.Root, "metadata-starts");
+        var extracted = Path.Combine(test.Root, "retained-dictionaries");
+        var wrapper = await PdfCompressTests.WrapperAsync(test,
+            "for arg do case \"$arg\" in --json-key=pages|--json-stream-data=none) " +
+            $"printf 'metadata\\n' >> '{counter}';; --json-stream-data=file) " +
+            $"for dict in '{test.TempRoot}'/*/dict-*.json; do [ ! -f \"$dict\" ] || basename \"$dict\" >> '{extracted}'; done;; " +
+            "esac; done\nexec qpdf \"$@\"\n");
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
+        var jpeg = await CompressFixtures.JpegAsync(test);
+        var input = CompressFixtures.MultiPage(jpeg, pages, true, inherited, false);
+        Assert.IsTrue(input.Length <= 50 * 1024 * 1024);
+        using var response = await PdfCompressTests.PostAsync(test, input, level);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        CollectionAssert.AreEqual(new[] { "dict-4-0.json" }, await File.ReadAllLinesAsync(extracted));
+        Assert.IsTrue((await File.ReadAllLinesAsync(counter)).Length <= maximumStarts, "Metadata was fetched per reference instead of per level and page batch.");
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), pages);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task DeletingPageMetadata_ReleasesSpoolAndCapacityForTheNextBatch()
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        using var files = new TemporaryPdfFiles(test.Root);
+        var jpeg = await CompressFixtures.JpegAsync(test);
+        await File.WriteAllBytesAsync(files.InputPath, CompressFixtures.MultiPage(jpeg, 2, true, false, false));
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        options.CompressSpoolLimitBytes = 4096;
+        var owner = new PdfCompressProcessor(options, files);
+        var inputAllocation = CompressCapacity.Allocated(new FileInfo(files.InputPath).Length);
+        owner.Capacity.Reserve(files.InputPath, new FileInfo(files.InputPath).Length);
+        var metadata = new CompressMetadata(owner);
+        await metadata.FetchAsync([new(7, 0)], CancellationToken.None);
+        var path = metadata.Files.Single();
+        Assert.AreEqual(inputAllocation + 4096, owner.Capacity.Used);
+        metadata.DeleteExcept(new HashSet<PdfObjectRef>());
+        Assert.IsFalse(File.Exists(path));
+        Assert.IsFalse(metadata.Files.Any());
+        Assert.AreEqual(inputAllocation, owner.Capacity.Used);
+        await metadata.FetchAsync([new(10, 0)], CancellationToken.None); // A 4 KiB spool can be reused.
+        Assert.AreEqual(inputAllocation + 4096, owner.Capacity.Used);
+        metadata.DeleteExcept(new HashSet<PdfObjectRef>());
+        Assert.AreEqual(inputAllocation, owner.Capacity.Used);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task PageAliasChains_AreDeletedAndTheirSpoolBudgetCanBeReused()
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        // The common PDF validator rejects an indirect object whose value is another
+        // reference. Exercise defensive metadata resolution using post-startup injection.
+        var json = "{\"qpdf\":[{\"jsonversion\":2},{\"obj:11 0 R\":{\"value\":\"12 0 R\"},\"obj:12 0 R\":{\"value\":\"13 0 R\"},\"obj:13 0 R\":{\"value\":{\"/XObject\":{\"/Im0\":\"4 0 R\"}}}}]}";
+        var wrapper = await PdfCompressTests.WrapperAsync(test,
+            "for arg do last=$arg; done\nprintf '%s' '" + json + "' > \"$last\"\n");
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        options.QpdfPath = wrapper;
+        options.CompressSpoolLimitBytes = 3 * 4096;
+        using var files = new TemporaryPdfFiles(test.Root);
+        await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
+        var owner = new PdfCompressProcessor(options, files);
+        var metadata = new CompressMetadata(owner);
+        for (var batch = 0; batch < 2; batch++)
+        {
+            await metadata.FetchChainsAsync([new(11, 0)], CancellationToken.None);
+            var paths = metadata.Files.ToArray();
+            Assert.AreEqual(3, paths.Length);
+            Assert.AreEqual(3 * 4096L, owner.Capacity.Used);
+            metadata.DeleteExcept(new HashSet<PdfObjectRef>());
+            Assert.IsFalse(paths.Any(File.Exists));
+            Assert.AreEqual(0L, owner.Capacity.Used);
+        }
+        test.AssertClean();
+    }
+
+    [TestMethod]
     [DataRow(10, false, false, false, 3)]
     [DataRow(10, true, false, false, 5)]
     [DataRow(300, true, false, false, 5)]

@@ -208,7 +208,7 @@ def request(api, item):
     }
     if args.compress and code == 200:
         measurement["recompressed"] = int(headers["X-Pdf-Images-Recompressed"])
-        if current_case not in ("500-images", "mixed-images", "near-50mib", "a4-600dpi-flate") and not current_case.startswith("300-pages-"):
+        if current_case not in ("500-images", "mixed-images", "near-50mib", "a4-600dpi-flate") and not current_case.startswith(("300-pages-", "1400-pages-")):
             measurement["quality"] = quality(inputs[0], result, args.compress, measurement["recompressed"])
     return measurement
 
@@ -378,7 +378,7 @@ def load(name):
 
 
 if __name__ == "__main__":
-    names = args.cases or (["4000x3000-baseline", "4000x3000-baseline-444", "4000x3000-progressive-420", "4000x3000-progressive-444", "6000x4000-baseline", "6000x4000-baseline-444", "6000x4000-progressive-420", "8064x6048-baseline", "8064x6048-baseline-444", "8064x6048-progressive-420", "7014x7014-baseline", "document-scan", "near-50mib", "500-images", "300-pages-direct", "300-pages-indirect", "300-pages-inherited", "a4-600dpi-flate"] if args.compress else [
+    names = args.cases or (["4000x3000-baseline", "4000x3000-baseline-444", "4000x3000-progressive-420", "4000x3000-progressive-444", "6000x4000-baseline", "6000x4000-baseline-444", "6000x4000-progressive-420", "8064x6048-baseline", "8064x6048-baseline-444", "8064x6048-progressive-420", "7014x7014-baseline", "document-scan", "near-50mib", "500-images", "300-pages-direct", "300-pages-indirect", "300-pages-inherited", "1400-pages-shared", "1400-pages-shared-inherited", "a4-600dpi-flate"] if args.compress else [
         "4000x3000-baseline",
         "6000x4000-baseline",
         "6000x4000-baseline-444",

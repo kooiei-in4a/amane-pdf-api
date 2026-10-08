@@ -111,7 +111,7 @@ sudo python3 scripts/docker-memory-check.py amane-pdf-api:verify \
   /tmp/compress-fixtures /tmp/compress-results-standard --compress standard
 sudo python3 scripts/docker-memory-check.py amane-pdf-api:verify \
   /tmp/compress-fixtures /tmp/compress-results-strong --compress strong
-# 一部だけ測る場合は --cases 300-pages-direct 300-pages-indirect 300-pages-inherited 4000x3000-progressive-444 を追加
+# 多ページだけ測る場合は --cases 1400-pages-shared 1400-pages-shared-inherited 300-pages-direct 300-pages-indirect 300-pages-inherited を追加
 # 大小混在だけを測る場合は --cases mixed-images 500-images を追加
 ```
 
@@ -126,6 +126,8 @@ sudo python3 scripts/docker-memory-check.py amane-pdf-api:verify \
 初回実装時のfixtureと実写真はRepositoryに含めず一時領域へ生成しました。その検証に使った一時画像・fixture・測定出力・コンテナ・検証イメージを削除し、残っていないことを確認しました。PRレビュー用のworktree・branchとソースの生成スクリプトは保持します。
 
 ## PR #45レビュー対応後の検証
+
+本節は初回レビュー対応commit `a327d8e` の記録です。再レビューのページspool修正は次節に記録します。
 
 ### 変更とテスト
 
@@ -175,8 +177,90 @@ standardのmetadataプロセスは直接3／3回、間接5／5回、継承6／6�
 
 ### 検証とセルフレビューの範囲
 
-最新修正のRelease build（警告・エラー0）、全Release test（439件PASS・skip 0）、Docker build／smoke、26種類×両levelの構造・データ・描画比較はすべてPASSしました。最新commitのGitHub CI結果はPR #45へ記録します。起動停止のテストではTestServerのAbortが一時領域削除の完了より先に観測される競合があり、既存unlock／mergeテストと同様に削除を最大5秒待ってから検証するよう修正しました。新JPEGのDNL拒否テストが寸法不一致でも失敗する点は、期待する寸法の出力に変更して本体の検査だけを確認するよう直しました。外部Runner、QpdfProcessor、DI、kill／waitの本番処理には変更がありません。
+a327d8eのRelease build（警告・エラー0）、全Release test（439件PASS・skip 0）、Docker build／smoke、26種類×両levelの構造・データ・描画比較はすべてPASSしました。最新commitのGitHub CI結果はPR #45へ記録します。起動停止のテストではTestServerのAbortが一時領域削除の完了より先に観測される競合があり、既存unlock／mergeテストと同様に削除を最大5秒待ってから検証するよう修正しました。新JPEGのDNL拒否テストが寸法不一致でも失敗する点は、期待する寸法の出力に変更して本体の検査だけを確認するよう直しました。外部Runner、QpdfProcessor、DI、kill／waitの本番処理には変更がありません。
 
 確認済み／推定／未検証の区別は上記のとおりです。実機MPF／HDR表示、他のCPU環境、任意のPDFの30秒内成功、標準job上限で旧JSON結合問題が500になる実PDF、サイト#38の動作は未検証です。API契約はHuman承認のEOI後続データ許容以外を維持し、サイト#38にはprogressiveの失敗目安と元画像保持、置換時のgain map非継承を説明する必要があります。
 
 今回のレビュー対応の一時fixture・測定結果・補助probe・コンテナ・検証イメージも削除済みです。公開画像の新規取得はなく、生成コードとPRのworktree／branchを保持します。merge・tag・Release・deploy・イメージ公開は行っていません。
+
+
+## PR #45再レビュー：ページ側spoolの解放
+
+### 修正と既存上限
+
+ページ側は最大500ページずつ、階層単位の取得→画像参照収集→削除を行います。低いspool設定では `min(500, max(1, floor(spool上限 / (4×4096))))` ページとし、4 MiBでは256ページにします。4は通常のpage・Parent・Resources・XObjectの4段階の目安で、深い継承・別名、大きな辞書が必ず収まるという保証ではありません。実際の各ファイル割当を既存spool上限とjob台帳で検査し、上限は緩めません。
+
+別名の連鎖を含め、その単位で取得したページ側metadataをfinallyで削除します。spoolBytesと容量台帳の割当を解放し、未解決参照のcache entryも削除します。画像参照だけをHashSetに集め、ページ処理が完了してから画像／ICC／Mask／SMask辞書を取得して判定するため、必要な画像辞書を途中で削除しません。JSONサイズ・深さ、spool、500参照chunk、500画像、job上限と外部Runner等の仕組みは変更していません。
+
+qpdfは1参照・1ページずつ起動せず、ページ単位内の階層と既存500参照chunkごとに起動します。ページ数が500を超えると単位数に応じて起動が増えますが、ページ数と同じ数の起動にはなりません。共有1画像の1,400ページはpages JSON 1回＋3単位×3階層＋画像1回で最大11回、Parent継承では最大14回です。300ページの既存上限（直接3、間接5、継承6、依存参照付き10ページ9）は維持します。
+
+### spool上限後の判定済み候補について
+
+判定済み候補を上限到達後に新たに変換する案は採用していません。Issue本文のエラー表は「既知の画像処理用metadata・時間・容量上限 → 画像処理を打ち切り、採用済み結果で最終処理」と定めています。辞書で候補と判定した段階では実JPEGのheader検査・変換・10%削減の採用判定は未完了で、採用済みJPEGではありません。今回も本文の処理順（候補判定→Length降順・最大500→変換）と打ち切り契約を維持します。したがって単位内の巨大辞書・深い参照や画像側metadata自体で上限に達し、まだ採用済みJPEGがなければ0になる場合は残ります。ページ数に比例する不要な辞書の累積は今回解消しています。
+
+### テストとセルフレビュー
+
+- 4 MiB・700ページ（間接Resources、Parent継承も含む）で共有画像を1回置換します。修正前のページ側3×700×4 KiBは約8.20 MiBで4 MiBを超えます。今回は256／256／188ページの単位で解放するため、抽出開始時に残る辞書は画像objectだけです。
+- 標準設定・1,400ページの間接Resourcesで両levelヘッダー1、Parent継承でもヘッダー1を確認します。入力50 MiB以内、出力検証・ページ数を確認し、job残留を検査します。起動回数をwrapperで数えて11／14回以内を確認します。
+- 容量台帳の入力割当＋4 KiBから、辞書削除で入力割当だけへ戻り、次の辞書を同じ4 KiB spoolで取得できることを直接検証します。別名の3段連鎖も削除・再取得できることを起動後のfake metadataで確認します。PDFの間接objectそのものを別名にした実fixtureは共通qpdf入力検証で422になるため、defensive metadata処理の単体テストへ分けました。
+- 既存4 KiB spoolの不採用テストは、ページ側の解放後にも画像辞書2個が収まらないfixtureへ変更しました。上限値と期待する200・ヘッダー0は同じで、不要なページ辞書の累積を上限テストの根拠にしません。既存の階層・継承・ICC／Mask／SMaskテストも維持しています。
+
+### 1,400ページ・共有画像の実測（確認済み／推定を区別）
+
+生成コードに `1400-pages-shared.pdf` と `1400-pages-shared-inherited.pdf` を追加しました。2048×2048グレーbaseline JPEG（quality 80、59,478 bytes）1 objectをA4の全1,400ページで共有します。Resources・XObject辞書はページごとの間接objectで、後者はページごとのParentからResourcesを継承します。入力は416,224／555,950 bytes（50 MiB以内）です。公開画像は新たに取得せず、fixture本体はRepositoryへ含めません。
+
+修正前 `a327d8e` をgit archiveから別の一時build contextへ展開して比較しました。両imageとも標準Docker条件（memory 1.5 GiB、`--memory-swap 1.5g`＝swapなし、CPU 1、tmpfs 256 MiB、同時2、non-root、read-only、network none）・標準API設定の実HTTPです。以下のHTTP／置換数とkernel memory.peak／memory.eventsは確認済みの実測値です。HTTPは2要求の遅い方です。
+
+| Resources | level | 修正前HTTP秒 | 修正前置換数 | 修正後HTTP秒（2要求） | 修正後置換数 |
+| --- | --- | ---: | --- | --- | --- |
+| 間接 | standard | 2.591 | 0／0 | 3.492／3.462 | 1／1 |
+| 間接＋Parent継承 | standard | 3.198 | 0／0 | 4.844／4.947 | 1／1 |
+| 間接 | strong | 2.682 | 0／0 | 3.335／3.314 | 1／1 |
+| 間接＋Parent継承 | strong | 3.267 | 0／0 | 4.736／4.700 | 1／1 |
+
+標準16 MiBでも旧版の置換0を実測で再現しました。旧版は途中でmetadata処理を打ち切るため、HTTPが短いことを処理速度の優位とは評価しません。修正後の全8要求は200・ヘッダー1、qpdf出力検証・job削除・health・子プロセス残留なしを確認しました。全ケースでmemory.eventsのmax／oom／oom_killは0、504なしです。
+
+metadata秒は約20 msサンプリングで観測したmetadata qpdfの累積実行時間で、.NET側の解析・削除や未観測区間を含むmetadata段階全体の正確な時間ではありません。tmpfs／job割当は同じサンプリングの観測最大であり、短いpeakを見逃し得る推定です。
+
+| Resources／level | metadata秒（推定） | memory.peak bytes（確認済み） | tmpfs bytes（観測最大） | 1 job割当bytes（観測最大） |
+| --- | --- | ---: | ---: | ---: |
+| 間接／standard | 1.402–1.435 | 61,427,712 | 11,120,640 | 6,561,792 |
+| 継承／standard | 2.459–2.550 | 70,062,080 | 15,450,112 | 8,749,056 |
+| 間接／strong | 1.397–1.648 | 66,404,352 | 11,075,584 | 6,561,792 |
+| 継承／strong | 2.279–2.400 | 69,857,280 | 15,495,168 | 8,749,056 |
+
+修正前のmemory.peakは間接standard 91,377,664／strong 87,629,824、継承standard 97,263,616／strong 96,645,120 bytesでした。修正前の観測tmpfs最大は順に33,177,600／27,869,184／32,243,712／32,243,712 bytesです。ページ側を解放することで修正後はこれらの観測値が下がりました。修正後にmetadata起動11／14回を両要求で観測し、wrapperテストの上限と一致しました。
+
+| Resources／level | 入力検証秒 | 抽出秒 | 変換秒 | 最終書き出し秒 | 出力検証秒 |
+| --- | --- | --- | --- | --- | --- |
+| 間接／standard | 0.172 | 0.108–0.171 | 0.022 | 0.130–0.173 | 0.042–0.086 |
+| 継承／standard | 0.195–0.216 | 0.194–0.208 | 0.022–0.044 | 0.129–0.195 | 0.084–0.086 |
+| 間接／strong | 0.150 | 0.151–0.173 | 0.022（1件、他は未観測） | 0.108–0.173 | 0.022–0.084 |
+| 継承／strong | 0.194 | 0.151–0.173 | 0.022–0.066 | 0.194–0.195 | 0.042–0.086 |
+
+段階時間はすべてサンプリング推定です。最終書き出し開始の観測は3.142–3.186／4.432–4.626／2.955–3.043／4.300–4.408秒で、soft 21秒より前でした。PNM実サイズはstandard 3,211,281／strong 1,638,417 bytes、fsizeは各サイズ＋512 bytesです。rawは1 object・予約65,536 bytes、metadata fsize 16,777,216、cjpeg fsize 53,530、djpeg／cjpeg AS 67,108,864 bytesを確認しました。
+
+### 300ページの比較（確認済み）
+
+前節と同じ300固有画像fixtureを同一host・標準Docker条件で修正前後各1組（同時2件）測定しました。HTTPは遅い方、metadata秒はサンプリング推定です。
+
+| Resources／level | 修正前HTTP秒 | 修正前置換数 | 修正後HTTP秒 | 修正後置換数 | 修正前metadata秒 | 修正後metadata秒 |
+| --- | ---: | --- | ---: | --- | --- | --- |
+| 直接／standard | 24.560 | 300／300 | 24.507 | 300／300 | 0.043–0.102 | 0.114–0.128 |
+| 間接／standard | 24.853 | 300／300 | 24.659 | 300／300 | 0.245–0.340 | 0.180–0.243 |
+| 継承／standard | 25.010 | 291／289 | 25.124 | 300／300 | 0.488–0.538 | 0.218–0.275 |
+| 直接／strong | 16.672 | 300／300 | 16.555 | 300／300 | 0.073–0.139 | 0.067 |
+| 間接／strong | 16.913 | 300／300 | 16.753 | 300／300 | 0.219–0.250 | 0.205–0.255 |
+| 継承／strong | 17.857 | 300／300 | 17.047 | 300／300 | 0.365–0.448 | 0.303–0.306 |
+
+修正前の継承standardは今回soft deadlineで291／289枚になり、最終書き出し開始を21.000–21.023秒に観測しました。修正後は全300枚で20.899秒でした。HTTP差は＋0.114秒（約0.46%）で、他5条件は短縮しました。各1組の測定で統計的な性能差は保証しませんが、大きな悪化は観測せず、全要求200・30秒以内でした。前節の旧測定と今回の置換数の違いも、21秒付近での時間変動を示します。
+
+修正後300ページのmemory.peak最大148,537,344 bytes、観測tmpfs最大70,598,656 bytes、1 job最大35,299,328 bytes、memory.events max／oom／oom_killは全ケース0でした。metadata起動は直接3、間接4–5、継承6回を観測し、短い起動を見逃すため正確な上限は既存wrapperテスト3／5／6回で確認します。各要求後のjob／子プロセス残留なしを確認しました。
+
+### 再レビュー対応の検証・残る確認範囲
+
+Release build（警告・エラー0）、全Release test（446件PASS、skip 0）、Docker build、Docker smoke、26種類×両levelの構造・データ・描画比較がすべてPASSしました。push後の最新commitのGitHub CI結果はPR #45に記録します。既存の多ページ・継承・ICC／Mask／SMask・timeout／cancel／容量テストもPASSしています。
+
+確認済みの事実、サンプリングによる推定、未検証事項は上記のとおりです。深い別名・継承や大きい画像側metadataが上限に達するすべてのPDF、任意のPDFの30秒以内完了、他CPU環境での性能、サイト#38の動作は未検証です。ページ単位の4 object見積りや1回の比較から、任意の多ページPDFの置換数を保証しません。API契約・既存の上限・依存・ExternalProcessRunner／QpdfProcessor／DI／kill／waitは変更せず、サイト側の追加変更はありません。
+
+今回の一時fixture・測定出力・baseline build context・qpdfコピー・Python cache・コンテナ・2つの検証イメージを削除し、残留なしを確認しました。公開画像の新規取得はなく、生成コードとPR用worktree／branchを保持します。merge・tag・Release・deploy・イメージ公開は行っていません。

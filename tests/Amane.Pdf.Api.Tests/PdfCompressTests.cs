@@ -156,7 +156,10 @@ public sealed class PdfCompressTests
         if (!Linux()) return;
         await using var test = new PdfTestContext(new() { [key] = value });
         var jpeg = await CompressFixtures.JpegAsync(test);
-        using var response = await PostAsync(test, CompressFixtures.Pdf(jpeg));
+        // Page dictionaries are released before image selection. Two image dictionaries
+        // still cannot fit in a 4 KiB spool, so this verifies the limit rather than a leak.
+        var input = key == "Pdf:CompressSpoolLimitBytes" ? CompressFixtures.Many(jpeg, 2) : CompressFixtures.Pdf(jpeg);
+        using var response = await PostAsync(test, input);
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("0", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
         await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);

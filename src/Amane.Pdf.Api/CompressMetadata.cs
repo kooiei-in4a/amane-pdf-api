@@ -148,9 +148,12 @@ internal sealed class CompressMetadata(PdfCompressProcessor owner)
     {
         foreach (var (reference, path) in paths.ToArray())
         {
-            if (keep.Contains(reference) || path is null) continue;
-            spoolBytes -= CompressCapacity.Allocated(new FileInfo(path).Length);
-            owner.Capacity.Delete(path);
+            if (keep.Contains(reference)) continue;
+            if (path is not null)
+            {
+                spoolBytes -= CompressCapacity.Allocated(new FileInfo(path).Length);
+                owner.Capacity.Delete(path);
+            }
             paths.Remove(reference);
         }
     }

@@ -163,31 +163,46 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                 ? PdfObjectRef.Parse(value) : null).Select(reference => reference ?? throw new InvalidOperationException("PDF page reference is invalid.")).Distinct().ToArray();
         }
         finally { Capacity.Delete(pagesPath); }
-        await PrimePageResourcesAsync(metadata, pages, token);
         var references = new HashSet<PdfObjectRef>();
-        foreach (var page in pages)
+        // Bound transient page dictionaries, including a parent and two resource levels.
+        // Low spool settings use smaller batches; deeper alias chains still obey the limit.
+        var pageBatchSize = (int)Math.Clamp(options.CompressSpoolLimitBytes / (4 * 4096), 1, 500);
+        foreach (var batch in pages.Chunk(pageBatchSize))
         {
-            var current = page;
-            var seen = new HashSet<PdfObjectRef>();
-            while (seen.Add(current) && seen.Count <= options.CompressJsonDepth)
+            try
             {
-                token.ThrowIfCancellationRequested();
-                var obj = await metadata.GetAsync(current, token);
-                if (obj is not { } item || !item.TryGetProperty("value", out var dictionary) || dictionary.ValueKind != JsonValueKind.Object) break;
-                if (dictionary.TryGetProperty("/Resources", out var resources))
+                await PrimePageResourcesAsync(metadata, batch, token);
+                foreach (var page in batch)
                 {
-                    var resolved = await metadata.DictionaryAsync(resources, token);
-                    if (resolved is { } resourceDict && resourceDict.TryGetProperty("/XObject", out var xobject))
+                    var current = page;
+                    var seen = new HashSet<PdfObjectRef>();
+                    while (seen.Add(current) && seen.Count <= options.CompressJsonDepth)
                     {
-                        var xobjects = await metadata.DictionaryAsync(xobject, token);
-                        if (xobjects is { } map)
-                            foreach (var property in map.EnumerateObject())
-                                if (PdfObjectRef.Parse(property.Value) is { } reference) references.Add(reference);
+                        token.ThrowIfCancellationRequested();
+                        var obj = await metadata.GetAsync(current, token);
+                        if (obj is not { } item || !item.TryGetProperty("value", out var dictionary) || dictionary.ValueKind != JsonValueKind.Object) break;
+                        if (dictionary.TryGetProperty("/Resources", out var resources))
+                        {
+                            var resolved = await metadata.DictionaryAsync(resources, token);
+                            if (resolved is { } resourceDict && resourceDict.TryGetProperty("/XObject", out var xobject))
+                            {
+                                var xobjects = await metadata.DictionaryAsync(xobject, token);
+                                if (xobjects is { } map)
+                                    foreach (var property in map.EnumerateObject())
+                                        if (PdfObjectRef.Parse(property.Value) is { } reference) references.Add(reference);
+                            }
+                            break; // Form resources are deliberately never traversed.
+                        }
+                        if (!dictionary.TryGetProperty("/Parent", out var parent) || PdfObjectRef.Parse(parent) is not { } next) break;
+                        current = next;
                     }
-                    break; // Form resources are deliberately never traversed.
                 }
-                if (!dictionary.TryGetProperty("/Parent", out var parent) || PdfObjectRef.Parse(parent) is not { } next) break;
-                current = next;
+            }
+            finally
+            {
+                // Only object references have been collected; image/dependency dictionaries
+                // are loaded below, after all transient page metadata has been released.
+                metadata.DeleteExcept(new HashSet<PdfObjectRef>());
             }
         }
         await metadata.FetchAsync(references, token);

@@ -324,7 +324,7 @@ qpdfの観測VmSizeは対象写真で最大457.3 MiB、追加で確認した100 
 
 128 MiB（.NET API）と64 MiB（余裕）は容量計画用の見積りで、.NETへのhard limitではありません。tmpfs圧力下の各形式60要求ではAPI RSS最大109.2 MiB、全標準負荷のcgroup peak最大982.7 MiB、OOMイベント0でした。managed heapとGC committedも測定しました。詳しい数値は [docs/qpdf-memory-validation.md](docs/qpdf-memory-validation.md) に記載しています。式は仮想メモリ上限を使った目安で、任意のPDFや将来のruntimeでの成功・OOM回避を数学的に保証しません。標準値の変更やruntime更新時には実HTTP負荷と`memory.peak` / `memory.events`を再測定してください。
 
-compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。ページ、Parent、Resources、XObject、画像辞書、SMask／Mask／ICCは階層ごとに一括取得します。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMは`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`の実サイズに512 bytesを加えて予約・fsizeを設定します。新JPEGは元の90%と残り容量でfsizeを決めます。
+compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。ページ、Parent、Resources、XObjectは最大500ページの単位内で階層ごとに一括取得し、画像参照を集めたらページ側辞書と別名の連鎖を削除してspool・容量台帳から外します。低いspool設定では単位を小さくします。画像辞書とSMask／Mask／ICCは、その後に判定へ必要な間だけ保持します。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMは`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`の実サイズに512 bytesを加えて予約・fsizeを設定します。新JPEGは元の90%と残り容量でfsizeを決めます。
 
 ```text
 I = 入力実サイズ、R = 採用した元JPEGの実サイズ合計、A = 採用JPEGの実サイズ合計

@@ -66,14 +66,17 @@ def pdf_objects(objects):
     return out.getvalue()
 
 
-def multipage_pdf(raw, count, indirect=False, inherited=False):
+def multipage_pdf(raw, count, indirect=False, inherited=False, shared=False):
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b""]
     def add(value): objects.append(value); return len(objects)
     contents = b"q 595 0 0 842 0 0 cm /Im0 Do Q\n"
     content = add(f"<< /Length {len(contents)} >>\nstream\n".encode()+contents+b"endstream")
+    def add_image():
+        return add(f"<< /Type /XObject /Subtype /Image /Width 2048 /Height 2048 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length {len(raw)} >>\nstream\n".encode()+raw+b"\nendstream")
+    shared_image = add_image() if shared else None
     kids = []
     for n in range(count):
-        image = add(f"<< /Type /XObject /Subtype /Image /Width 2048 /Height 2048 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length {len(raw)} >>\nstream\n".encode()+raw+b"\nendstream")
+        image = shared_image or add_image()
         resources = f"<< /XObject << /Im0 {image} 0 R >> >>"
         if indirect:
             xobject = add(f"<< /Im0 {image} 0 R >>".encode())
@@ -179,8 +182,14 @@ if args.compress:
     raw = encoded.getvalue()
     assert len(raw) >= 32768
     pages_jpeg = io.BytesIO(); Image.fromarray(gray).save(pages_jpeg, format="JPEG", quality=80)
-    for name, indirect, inherited in (("300-pages-direct",False,False),("300-pages-indirect",True,False),("300-pages-inherited",True,True)):
-        generated = multipage_pdf(pages_jpeg.getvalue(),300,indirect,inherited)
+    for name, count, indirect, inherited, shared in (
+        ("300-pages-direct",300,False,False,False),
+        ("300-pages-indirect",300,True,False,False),
+        ("300-pages-inherited",300,True,True,False),
+        ("1400-pages-shared",1400,True,False,True),
+        ("1400-pages-shared-inherited",1400,True,True,True),
+    ):
+        generated = multipage_pdf(pages_jpeg.getvalue(),count,indirect,inherited,shared)
         (root/(name+".pdf")).write_bytes(generated)
         print(name,len(generated),"JPEG",len(pages_jpeg.getvalue()),flush=True)
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>", b""]
