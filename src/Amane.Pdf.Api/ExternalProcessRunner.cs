@@ -3,14 +3,14 @@ using System.Text.RegularExpressions;
 
 namespace Amane.Pdf.Api;
 
-public sealed record ExternalProcessRequest(
+internal sealed record ExternalProcessRequest(
     string ExecutablePath,
     IReadOnlyList<string> Arguments,
     string? WorkingDirectory = null,
     IReadOnlyDictionary<string, string>? Environment = null,
     int? StdoutLimit = null);
 
-public sealed record ExternalProcessResult(int ExitCode, byte[]? Stdout);
+internal sealed record ExternalProcessResult(int ExitCode, byte[]? Stdout);
 
 // Only foreground commands whose parent waits for its children are supported.
 // A parent that exits first may leave children holding the redirected pipes; draining

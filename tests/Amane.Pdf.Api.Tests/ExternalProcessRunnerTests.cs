@@ -181,7 +181,7 @@ public sealed class ExternalProcessRunnerTests
     }
 
     [TestMethod]
-    public async Task StartFailure_PropagatesWithoutCapturingOutput()
+    public async Task StartFailure_Propagates()
     {
         if (!RequireLinux()) return;
         using var files = new TemporaryPdfFiles(Path.GetTempPath());
@@ -227,8 +227,10 @@ public sealed class ExternalProcessRunnerTests
         finally
         {
             cancellation.Cancel();
+            // Preserve the original test failure if cleanup also times out.
             try { await job.WaitAsync(TimeSpan.FromSeconds(10)); }
             catch (OperationCanceledException) { }
+            catch (TimeoutException) { }
         }
     }
 
