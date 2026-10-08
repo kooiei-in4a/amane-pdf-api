@@ -47,6 +47,8 @@ internal static class PdfEndpointHelpers
                 PdfUnlockReason.NoOpenPassword => ("no-open-password", "開くためのパスワードが設定されていないPDFは解除できません。"),
                 PdfUnlockReason.WrongPassword => ("wrong-password", "パスワードが正しくありません。"),
                 PdfUnlockReason.InvalidPdf => ("invalid-pdf", "正常なPDFが必要です。"),
+                // All producers use the four named values; no request data is converted to this enum.
+                // This unreachable guard bypasses the sibling catch (Exception); update the switch when adding a reason.
                 _ => throw new InvalidOperationException("Unknown PDF unlock reason.")
             };
             await Results.Problem(statusCode: 422, title: title,

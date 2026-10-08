@@ -334,7 +334,7 @@ smoke testは22件のPOSTとhealthを検証します。正常暗号化、解除�
 各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 
 確認したqpdf versionは開発環境12.3.2、コンテナ12.3.2です。CIではhost/containerそれぞれのversionをログへ出します。qpdfはaptから導入し、完全なversion pinを目的とせず、必要機能を検証します。
-unlockの互換確認として、Ubuntu 24.04 imageから取り出したqpdf 11.9.0とlibqpdfを使い、unlock関連89件（RC4 fixture生成、`requiresPassword` / `passwordMode`、user / owner password、Unicode、異常入力、timeout / cancelを含む）を実行し、PASS・FAIL 0・skip 0を確認しました。Dockerfile・CIのqpdf 12系以降という要件は維持します。
+2026-10時点、commit `f847c68`でqpdf 11.9.0のunlock動作を手動確認済みです。CIの対象は12系以降です。
 将来releaseを行う場合は、そのCI runのimage digestとqpdf versionを使用imageと対応付けて記録してください。
 
 DB、Secret、PDFの永続Volumeは不要です。writable領域は/tmpだけで成立します。CPU/memory/tmpfsの容量は起動オプションで外側から調整できます。

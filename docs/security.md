@@ -105,7 +105,7 @@ PDFの暗号化・パスワード解除、lossless構造最適化、結合、ペ
 qpdfはApache License 2.0で公開されているOSSです。
 
 runtime stageはUbuntu 26.04ベースの `mcr.microsoft.com/dotnet/aspnet:10.0-resolute` を使用し、qpdfをaptから導入します。確認した版は12.3.2で、完全なversion pinは行わず、CIでhost/containerのqpdfが12系以降であることと必要機能を検証します。
-unlockの互換性は、Ubuntu 24.04 image由来のqpdf 11.9.0とlibqpdfでunlock関連89件を実行して確認しています。これは今回の互換確認結果であり、CIの対象版を変更するものではありません。
+2026-10時点、commit `f847c68`でqpdf 11.9.0のunlock動作を手動確認済みです。CIの対象は12系以降です。
 
 qpdfの更新状況を定期的に確認し、既知の脆弱性や重要な修正がある場合は更新します。
 

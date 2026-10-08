@@ -76,7 +76,7 @@ internal sealed class PdfTestContext : IAsyncDisposable
 
     // Synthetic credentials and encrypted PDFs are generated only inside a private temporary directory.
     public async Task<byte[]> CreateEncryptedPdfAsync(string userPassword, string ownerPassword,
-        string algorithm = "aes256", byte[]? input = null)
+        string algorithm = "aes256", byte[]? input = null, string passwordMode = "unicode")
     {
         using var files = new TemporaryPdfFiles(Root);
         await using (var stream = TemporaryPdfFiles.CreatePrivateFile(files.InputPath))
@@ -96,7 +96,7 @@ internal sealed class PdfTestContext : IAsyncDisposable
             ["inputFile"] = files.InputPath,
             ["outputFile"] = files.OutputPath,
             ["objectStreams"] = "disable",
-            ["passwordMode"] = "unicode",
+            ["passwordMode"] = passwordMode,
             ["encrypt"] = new Dictionary<string, object>
             {
                 ["userPassword"] = userPassword,

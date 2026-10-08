@@ -66,6 +66,26 @@ public sealed class PdfUnlockTests
     }
 
     [TestMethod]
+    public async Task Unlock_Aes128WithUtf8PasswordBytes_AcceptsUnicodePasswordAndRejectsWrongPassword()
+    {
+        const string password = "日本語の検証用";
+        await using var test = new PdfTestContext();
+        // qpdf 12 requires bytes mode to generate AES-128 with UTF-8 password bytes; the API uses unicode mode.
+        var encrypted = await test.CreateEncryptedPdfAsync(password, OwnerPassword,
+            algorithm: "aes128", passwordMode: "bytes");
+        using var form = PdfTestContext.Form(encrypted, password);
+        using var response = await test.Client.PostAsync("/api/pdf/unlock", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        AssertNoExposure(test, password);
+        test.AssertClean();
+
+        using var wrongForm = PdfTestContext.Form(encrypted, "wrong-unlock-fixture");
+        await AssertProblemAsync(test, wrongForm, 422, "wrong-password", "パスワードが正しくありません。");
+        AssertNoExposure(test, password);
+    }
+
+    [TestMethod]
     public async Task Unlock_127Utf8Bytes_IsAcceptedWithoutTrimming()
     {
         var password = new string('a', 123) + "🔒";
