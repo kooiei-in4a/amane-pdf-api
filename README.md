@@ -218,10 +218,12 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | 200 | 暗号化、解除、最適化、結合、回転、抽出、削除、並べ替え済みPDFを返却 |
 | 400 | multipart形式不正、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはangle/pages仕様違反 |
 | 413 | 単一PDF、merge入力合計、またはmultipartリクエスト総量のサイズ超過 |
-| 422 | 空ファイル、非PDF、破損/警告のあるPDF、unlock以外の既暗号化PDF。unlockは上記reason表を参照 |
+| 422 | 空ファイル、非PDF、破損/警告のあるPDF、処理上限超過、unlock以外の既暗号化PDF。unlockは上記reason表を参照 |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |
 | 503 | 同時PDF処理数の上限超過（待ち行列なし） |
 | 504 | qpdfの検査と各PDF処理全体の制限時間超過 |
+
+共通422のtitleは「このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。」です。reasonは追加しません。unlock専用の4つのreasonとtitleは既存のままです。
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
 
@@ -235,9 +237,13 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
+| `Pdf__PrlimitPath` | `/usr/bin/prlimit` | Linuxの制限付き実行に使うprlimit |
+| `Pdf__QpdfAddressSpaceLimitBytes` | `570425344`（544 MiB） | Linuxでqpdfに適用するRLIMIT_AS。正のbytes値 |
+| `Pdf__QpdfJpegMemory` | `600M` | 全OSのqpdfに渡すJPEGMEM。正のASCII数字＋任意の`M`/`m`、30文字未満、単位換算後のsigned long overflowを拒否 |
 | `Pdf__TempRoot` | `/tmp/amane-pdf-api`（Linux標準環境） | 処理専用一時領域の親ディレクトリ |
 
-.NET標準configurationの`Pdf`セクションでも同じ設定ができます。不正な制限値は起動時に拒否します。
+.NET標準configurationの`Pdf`セクションでも同じ設定ができます。不正な制限値は起動時に拒否します。JPEGMEMの`M`/`m`は1,000,000 bytes、接尾辞なしは1,000 bytes単位です（MiBは1,048,576 bytes）。空白、符号、`MiB`等は受け付けません。単位は[libjpeg-turboのJPEGMEM実装](https://github.com/libjpeg-turbo/libjpeg-turbo/blob/2.1.5/jmemmgr.c)に従います。
+Linuxでは同じAS制限で`/bin/true`と`qpdf --version`を起動して0終了を確認し、失敗・timeoutならHTTP待受を開始せず終了します。ログには固定文言だけを出します。非LinuxではJPEGMEMだけを適用し、ASと自己テストは適用しません。
 待ち行列は0です。ASP.NET Core標準Concurrency Limiterでbodyを読み始める前に処理枠を取得し、上限超過には503を返します。`GET /healthz`はこの制限の対象外です。
 
 単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
@@ -250,7 +256,35 @@ mergeでは11個目（設定した上限の次）のfile partを発見した時�
 30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
 暗号化、解除、最適化、結合、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域・サイズ制限を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
-merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 512 MiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
+merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 1.5 GiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
+ファイルサイズが50 MiB以内でも、大きな画像のデコードやqpdfのbufferが上限に達すると422になり得ます。破損、警告、処理上限超過をstderrで区別しません。全qpdf呼び出し（unlockの各probe・出力検証、64 bytesのページ数取得を含む）へ同じ制限を適用します。出力検証の失敗は500です。
+
+運用では次を目安に、コンテナmemory、AS、同時実行数、tmpfsを一緒に見直してください。
+
+```text
+コンテナmemory ≥ .NET API ＋ tmpfs上限 ＋ 同時処理数 × qpdfのAS上限 ＋ 余裕
+標準の見積り：1536 MiB ≥ 128 MiB ＋ 256 MiB ＋ 2 × 544 MiB ＋ 64 MiB
+```
+
+標準環境はmemory 1.5 GiB、memory-swapも1.5 GiB（swapなし）、CPU 1、tmpfs 256 MiB、同時2です。6000×4000（24 MP）と8064×6048（約48 MP）のカラーJPEGについて、baseline 4:2:0、baseline 4:4:4、progressive 4:2:0を含む合成写真PDFを、設定を上書きせず同時2件の実HTTPで処理できることを確認しました。12 MPはbaseline 4:2:0だけを確認しています。この結果は任意の画像形式・PDFの成功を保証するものではありません。
+
+qpdfの観測VmSizeは対象写真で最大457.3 MiB、追加で確認した100 MPグレーprogressiveでは487.2 MiBでした。AS 544 MiBはそれぞれ約86.7 MiB（19.0%）／56.8 MiB（11.7%）の余裕を持ちます。JPEGMEM 600Mは600,000,000 bytesで、標準AS全体の570,425,344 bytesより大きくし、JPEGの予算が先に処理範囲を狭めないようにしています。巨大progressiveの早期拒否には、ASを増やす運用で効果を確認しています。
+
+128 MiB（.NET API）と64 MiB（余裕）は容量計画用の見積りで、.NETへのhard limitではありません。tmpfs圧力下の各形式60要求ではAPI RSS最大109.2 MiB、全標準負荷のcgroup peak最大982.7 MiB、OOMイベント0でした。managed heapとGC committedも測定しました。詳しい数値は [docs/qpdf-memory-validation.md](docs/qpdf-memory-validation.md) に記載しています。式は仮想メモリ上限を使った目安で、任意のPDFや将来のruntimeでの成功・OOM回避を数学的に保証しません。標準値の変更やruntime更新時には実HTTP負荷と`memory.peak` / `memory.events`を再測定してください。
+
+標準値で拒否される大きな画像を扱う例（2 GiB、AS 768 MiB）：
+
+```bash
+docker run --rm -p 127.0.0.1:8080:8080 \
+  --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m \
+  --cpus 1 --memory 2g --memory-swap 2g --cap-drop ALL \
+  --security-opt no-new-privileges=true \
+  -e Pdf__QpdfAddressSpaceLimitBytes=805306368 \
+  -e Pdf__QpdfJpegMemory=900M amane-pdf-api:dev
+```
+
+この変更で100 MPカラーbaseline 4:2:0 JPEGを含む同じPDFが422から200になることを確認しました。ASを増やす場合はJPEGMEMも見直してください。JPEGをASより先に制限しない目安は、JPEGMEMのbytes値をASのbytes値以上にすることです。例の900Mは900,000,000 bytes、ASは805,306,368 bytesです。巨大progressiveを先に拒否する目的でJPEGMEMを低くする場合は、受け付ける範囲が狭くなることを実測してください。
+
 利用者/IP単位の利用回数制限やアップロード接続の運用制御は、`amane-tools-site` / Caddy等の入口側の責務です。
 
 ## 構成
@@ -275,6 +309,7 @@ Dockerfile
 必要なもの:
 
 - .NET 10 SDK
+- Linuxではprlimit（util-linux。通常はOSに同梱）
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Docker（コンテナ確認を行う場合）
 - Python 3（Docker smoke test。追加package不要）
@@ -307,7 +342,7 @@ Docker:
 docker build -t amane-pdf-api:dev .
 docker run --rm -p 127.0.0.1:8080:8080 \
   --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m \
-  --cpus 1 --memory 512m --cap-drop ALL \
+  --cpus 1 --memory 1.5g --memory-swap 1.5g --cap-drop ALL \
   --security-opt no-new-privileges=true amane-pdf-api:dev
 ```
 
@@ -329,9 +364,9 @@ python3 scripts/docker-smoke.py amane-pdf-api:ci
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke testを実行します。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは22件のPOSTとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
-全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 512 MiB、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
-各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
+smoke testは25件のPOSTとhealthを検証します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 1.5 GiB（swapなし）、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
+小さいASで通常PDFの成功と画像PDFの422、標準ASへ増やした同じPDFの成功、自己テスト失敗時の非0終了と固定ログ、util-linux copyrightの存在も確認します。各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。
 
 確認したqpdf versionは開発環境12.3.2、コンテナ12.3.2です。CIではhost/containerそれぞれのversionをログへ出します。qpdfはaptから導入し、完全なversion pinを目的とせず、必要機能を検証します。
 2026-10時点、commit `f847c68`でqpdf 11.9.0のunlock動作を手動確認済みです。CIの対象は12系以降です。

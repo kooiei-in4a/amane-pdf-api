@@ -33,6 +33,9 @@ jobs:
       - name: Install qpdf
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf && qpdf --version
 
+      - name: Verify Linux memory limiter
+        run: prlimit --version && test -r /usr/share/doc/util-linux/copyright
+
       - name: Verify qpdf version
         run: qpdf --version | grep -Eq '^qpdf version (1[2-9]|[2-9][0-9])\.'
 
@@ -45,5 +48,5 @@ jobs:
       - name: Docker build
         run: docker build -t amane-pdf-api:ci .
 
-      - name: Docker E2E smoke
+      - name: Docker E2E smoke (1.5 GiB, no swap, CPU 1, tmpfs 256 MiB)
         run: python3 scripts/docker-smoke.py amane-pdf-api:ci

@@ -188,9 +188,13 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
     }
 
+    private ExternalProcessRequest CreateRequest(string[] arguments, int? outputLimit = null)
+        => ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath, arguments,
+            options.Value.QpdfAddressSpaceLimitBytes, options.Value.QpdfJpegMemory, outputLimit);
+
     public async Task<int> RunAsync(string[] arguments, CancellationToken cancellationToken)
     {
-        var result = await ExternalProcessRunner.RunAsync(new(options.Value.QpdfPath, arguments), cancellationToken);
+        var result = await ExternalProcessRunner.RunAsync(CreateRequest(arguments), cancellationToken);
         return result.ExitCode;
     }
 
@@ -198,7 +202,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         CancellationToken cancellationToken)
     {
         var result = await ExternalProcessRunner.RunAsync(
-            new(options.Value.QpdfPath, arguments, StdoutLimit: outputLimit), cancellationToken);
+            CreateRequest(arguments, outputLimit), cancellationToken);
         return (result.ExitCode, result.Stdout);
     }
 }
