@@ -142,7 +142,7 @@ job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM
 
 アップロード完了後・入力検証前から30秒、同じ開始時刻から21秒で画像処理を終了します。CompressSoftTimeoutSecondsはQpdfTimeoutSeconds未満を必須とし、起動時に検証します。実行中の画像・バッチもsoft deadlineで中断し、一枚のdjpeg＋cjpegは共有2秒、バッチ抽出も2秒です。request中断・アプリ停止・hard timeoutを画像失敗として握りつぶしません。cancel時のkill tree／wait／stdout・stderr drainはRunnerが行います。残り9秒で書き出し・出力検証を行いますが、hard deadlineに達すれば504となります。
 
-画像単位の非0終了（126／127以外、SIGXFSZの153も含む）はその画像を保持します。126／127・起動失敗は500です。既知のmetadata・時間・容量上限は画像処理を終了し、採用済み結果で最終処理を試みます。候補判定中のmetadata上限では未採用の候補を新たに変換せず、採用済みJPEGがなければ置換0になります。想定外のmetadata異常、最終書き出し／出力検証の失敗（2／3も含む）は500、入力検査の上限超過は従来のreasonなし422です。出力見積りは上界の保証ではなく、出力fsize超過の部分ファイルは削除して500です。最終検証とファイルopen後に成功ヘッダーを付け、エラーには付けません。PDF・画像・JSON・stdout／stderr・内部pathを本番ログやエラーへ出しません。
+画像単位の非0終了（126／127以外、SIGXFSZの153も含む）はその画像を保持します。126／127・起動失敗は500です。既知のmetadata・時間・容量上限は画像処理を終了し、採用済み結果で最終処理を試みます。候補判定中のmetadata上限では未採用の候補を新たに変換せず、採用済みJPEGがなければ置換0になります。想定外のmetadata異常、最終書き出し／出力検証の失敗（2／3も含む）は500、入力検査の上限超過は従来のreasonなし422です。出力見積りは上界の保証ではなく、最終出力の実サイズがfsize上限以上なら、exit 0やqpdf --check成功でも削除して500です。上限同値の正常PDFも安全側に拒否します。最終検証とファイルopen後に成功ヘッダーを付け、エラーには付けません。PDF・画像・JSON・stdout／stderr・内部pathを本番ログやエラーへ出しません。
 
 最終qpdfにはobject-streams=generateとcompression-level=9だけを指定します。stream-data、recompress-flate、decode-levelは指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTの生データ、LZW／ASCIIHex／ASCII85・複合filterのデコード後データと表示上の意味を検証します。qpdf --checkだけを表示保持の根拠とせず、CIの構造・データ比較と描画比較を行います。描画ツールはruntimeに含めません。
 

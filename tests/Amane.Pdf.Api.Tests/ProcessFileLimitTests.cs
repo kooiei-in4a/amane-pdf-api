@@ -1,5 +1,7 @@
 using System.Text;
 using System.Net;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Amane.Pdf.Api.Tests;
 
@@ -116,6 +118,53 @@ public sealed class ProcessFileLimitTests
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("0", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
         await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), kind == "pages" ? 100 : 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task FinalOutputAtFileLimit_Is500_EvenWhenRealQpdfAndCheckReturnZero()
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        var input = PdfTestContext.Fixture;
+        var limit = input.Length + 4 * 1024 * 1024; // The unchanged final-output headroom.
+        var source = Path.Combine(test.Root, "expanded.pdf");
+        var calibration = Path.Combine(test.Root, "calibration.pdf");
+        var observation = Path.Combine(test.Root, "final-state.txt");
+        // Make real qpdf's output five bytes larger than the API's FSIZE,
+        // so the limit cuts into the final %%EOF marker.
+        // An uncompressed catalog string keeps the size controllable without
+        // changing production options or exposing a test-only output limit.
+        var padding = 0;
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await File.WriteAllBytesAsync(source, CompressFixtures.Objects([
+                CompressFixtures.Text("<< /Type /Catalog /Pages 2 0 R /SyntheticPadding (" + new string('x', padding) + ") >>"),
+                CompressFixtures.Text("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+                CompressFixtures.Text("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Resources << >> >>")
+            ]));
+            Assert.AreEqual(0, (await test.QpdfAsync(source, "--object-streams=disable", "--compression-level=9", calibration)).ExitCode);
+            var length = new FileInfo(calibration).Length;
+            if (length == limit + 5L) break;
+            padding = checked(padding + (int)(limit + 5L - length));
+        }
+        Assert.AreEqual(limit + 5L, new FileInfo(calibration).Length);
+        Assert.AreEqual(0, (await test.QpdfAsync("--check", calibration)).ExitCode);
+        var wrapper = await PdfCompressTests.WrapperAsync(test,
+            "case \"$1\" in */input.pdf)\n" +
+            "for arg do last=$arg; done\n" +
+            $"qpdf '{source}' --object-streams=disable --compression-level=9 \"$last\"\n" +
+            "code=$?\nsize=$(stat -c %s \"$last\")\n" +
+            "qpdf --check \"$last\" >/dev/null 2>&1\ncheck=$?\n" +
+            $"printf '%s %s %s\\n' \"$code\" \"$size\" \"$check\" > '{observation}'\n" +
+            "exit \"$code\";; esac\nexec qpdf \"$@\"\n");
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
+        using var response = await PdfCompressTests.PostAsync(test, input);
+        Assert.AreEqual($"0 {limit} 0", (await File.ReadAllTextAsync(observation)).Trim());
+        Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.IsFalse(response.Headers.Contains("X-Pdf-Images-Recompressed"));
+        Assert.IsFalse(response.Content.Headers.Contains("Content-Disposition"));
+        Assert.IsFalse((await response.Content.ReadAsStringAsync()).Contains(test.Root));
         test.AssertClean();
     }
 }

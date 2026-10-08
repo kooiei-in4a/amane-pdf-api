@@ -72,6 +72,7 @@ internal sealed class CompressMetadata(PdfCompressProcessor owner)
                 PdfCompressProcessor.RequireStarted(result);
                 // With SIGXFSZ ignored, qpdf can return 0 after a truncated write.
                 // Treat a saturated metadata budget conservatively, before parsing.
+                // Retain 153 defensively; normal ignored-SIGXFSZ writes use the size check.
                 if (result.ExitCode == 153 || new FileInfo(output).Length >= size)
                     throw new CompressLimitException();
                 if (result.ExitCode != 0) throw new InvalidOperationException("PDF metadata failed.");

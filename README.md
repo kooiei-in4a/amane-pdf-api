@@ -364,7 +364,7 @@ E = I − R + A、F = E + H
 標準tmpfs: 256 MiB ≥ 2 × 124 MiB + 8 MiB
 ```
 
-入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、最終出力のfsize超過は部分出力を削除して500です。画像段階の書込みエラーは不採用、126／127は500です。SIGXFSZ無視時のqpdfはJSONが途中で切れてもexit 0となり得るため、pages／metadata JSONの実サイズがfsize上限以上なら既知のmetadata上限として画像処理を終了します。同値でも安全側に判定し、既に採用した画像があれば保持して最終処理へ進みます。想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
+入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、最終出力の実サイズがfsize上限以上なら、exit 0でも部分出力を削除して500です。同値も安全側に拒否します。画像段階の書込みエラーは不採用、126／127は500です。SIGXFSZ無視時のqpdfはJSONが途中で切れてもexit 0となり得るため、pages／metadata JSONの実サイズがfsize上限以上なら既知のmetadata上限として画像処理を終了します。同値でも安全側に判定し、既に採用した画像があれば保持して最終処理へ進みます。想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
 
 APIの制限は設定で調整できる安全境界です。job上限・PNM・画素数・画像数・AS・同時処理数を増やすときは、tmpfsとコンテナmemoryも上の式と合わせて見直してください。qpdfとJPEGツールは各job内で逐次起動するため、メモリ計画には両者のASの大きい方を使います。実HTTPの圧縮率・画質、段階別時間、memory.peak／memory.events、tmpfsは[圧縮の実測記録](docs/compress-validation.md)に記載します。数値は対象fixtureでの事実であり、他のPDFの保証ではありません。
 
