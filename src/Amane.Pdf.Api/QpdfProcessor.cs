@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -130,90 +129,15 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 
     public async Task<int> RunAsync(string[] arguments, CancellationToken cancellationToken)
     {
-        using var process = Start(arguments, cancellationToken);
-        // qpdf output may contain input data or paths. Drain it without storing or logging it.
-        var stdout = process.StandardOutput.BaseStream.CopyToAsync(Stream.Null);
-        var stderr = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
-        await WaitForExitAsync(process, stdout, stderr, cancellationToken);
-        return process.ExitCode;
+        var result = await ExternalProcessRunner.RunAsync(new(options.Value.QpdfPath, arguments), cancellationToken);
+        return result.ExitCode;
     }
 
     private async Task<(int ExitCode, byte[]? Output)> RunWithBoundedStdoutAsync(string[] arguments, int outputLimit,
         CancellationToken cancellationToken)
     {
-        using var process = Start(arguments, cancellationToken);
-        var stdout = ReadBoundedAsync(process.StandardOutput.BaseStream, outputLimit);
-        var stderr = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
-        await WaitForExitAsync(process, stdout, stderr, cancellationToken);
-        return (process.ExitCode, await stdout);
-    }
-
-    private Process Start(string[] arguments, CancellationToken cancellationToken)
-    {
-        var startInfo = new ProcessStartInfo(options.Value.QpdfPath)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-
-        var process = new Process { StartInfo = startInfo };
-        cancellationToken.ThrowIfCancellationRequested();
-        try
-        {
-            process.Start();
-            return process;
-        }
-        catch
-        {
-            process.Dispose();
-            throw;
-        }
-    }
-
-    private static async Task WaitForExitAsync(Process process, Task stdout, Task stderr, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken);
-        }
-        finally
-        {
-            if (!process.HasExited)
-            {
-                try
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-                catch (InvalidOperationException) when (process.HasExited)
-                {
-                    // qpdf exited between the check and Kill.
-                }
-            }
-            await process.WaitForExitAsync(CancellationToken.None);
-            await Task.WhenAll(stdout, stderr);
-        }
-    }
-
-    private static async Task<byte[]?> ReadBoundedAsync(Stream stream, int limit)
-    {
-        var output = new byte[limit];
-        var stored = 0;
-        var exceeded = false;
-        var buffer = new byte[64];
-        int read;
-        while ((read = await stream.ReadAsync(buffer)) != 0)
-        {
-            var copied = Math.Min(read, output.Length - stored);
-            if (copied > 0)
-            {
-                buffer.AsSpan(0, copied).CopyTo(output.AsSpan(stored));
-                stored += copied;
-            }
-            if (copied < read) exceeded = true;
-        }
-        return exceeded ? null : output[..stored];
+        var result = await ExternalProcessRunner.RunAsync(
+            new(options.Value.QpdfPath, arguments, StdoutLimit: outputLimit), cancellationToken);
+        return (result.ExitCode, result.Stdout);
     }
 }
