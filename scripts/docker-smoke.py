@@ -21,6 +21,7 @@ PASSWORD = "docker-fixture-日本語é🔒"
 WRONG_PASSWORD = "incorrect-fixture-password"
 SENTINEL = "PDF-CONTENT-SENTINEL"
 CHECK_ROOT = "/tmp/smoke-check"
+LIMITED_EXEC = ("/usr/bin/env", "--ignore-signal=XFSZ", "--", "prlimit", "--core=0:0")
 
 
 def docker(*arguments, data=None, check=True):
@@ -358,7 +359,7 @@ def split_request(api, source, expected=200):
 
 
 def split_calibration(api, source):
-    """HTTPからは見えない終了コードを、同じイメージのprlimit/qpdfで確認する。"""
+    """HTTPからは見えない終了コードを、APIと同じenv/prlimit/qpdfで確認する。"""
     root = "/tmp/split-smoke-check"
     api.exec("mkdir", "-m", "700", root)
     docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/split-smoke-check/input.pdf", data=source)
@@ -369,20 +370,20 @@ def split_calibration(api, source):
             output = root + "/part.pdf"
             docker("exec", "-i", api.name, "sh", "-c", "umask 077; cat > /tmp/split-smoke-check/part.pdf", data=b"")
             args = ("qpdf", root + "/input.pdf", "--pages", ".", str(page), "--", output)
-            result = docker("exec", "--env", "JPEGMEM=600M", api.name, "prlimit", "--as=570425344:570425344", "--", *args, check=False)
+            result = docker("exec", "--env", "JPEGMEM=600M", api.name, *LIMITED_EXEC, "--as=570425344:570425344", "--", *args, check=False)
             assert result.returncode == 0
             length = int(api.exec("stat", "-c", "%s", output).stdout)
             lengths.append(length)
             if page == 2:
                 for budget in (length, length - 1, 128):
-                    result = docker("exec", "--env", "JPEGMEM=600M", api.name, "prlimit", "--as=570425344:570425344",
+                    result = docker("exec", "--env", "JPEGMEM=600M", api.name, *LIMITED_EXEC, "--as=570425344:570425344",
                                     f"--fsize={budget+1}:{budget+1}", "--", *args, check=False)
                     actual = int(api.exec("stat", "-c", "%s", output).stdout)
                     records.append({"budget": budget, "exit": result.returncode, "bytes": actual})
                     if budget >= length - 1:
                         assert result.returncode == 0 and actual == length
                     else:
-                        assert result.returncode not in (0, 126, 127) and actual == budget + 1
+                        assert result.returncode in (0, 2) and actual == budget + 1
         print("Docker split calibration " + json.dumps(records), flush=True)
         return sum(lengths), lengths[-1]
     finally:
@@ -435,6 +436,15 @@ def compress_smoke(image):
                 api.exec("cjpeg", "-quality", "90", "-outfile", fixture_root + "/fixture.jpg", api_data)
                 raw = api.exec("cat", fixture_root + "/fixture.jpg").stdout
                 assert len(raw) >= 32768
+                for executable, args in (
+                    ("cjpeg", ("-quality", "75", "-maxmemory", "64M", "-strict", api_data)),
+                    ("djpeg", ("-maxmemory", "64M", "-maxscans", "100", "-strict", fixture_root + "/fixture.jpg")),
+                ):
+                    output = fixture_root + "/limited-" + executable
+                    result = docker("exec", api.name, *LIMITED_EXEC, "--as=67108864:67108864", "--fsize=64:64",
+                                    "--", executable, "-outfile", output, *args, check=False)
+                    assert result.returncode == 1, (executable, result.returncode)
+                    assert api.exec("stat", "-c", "%s", output).stdout.strip() == b"64"
                 source = validation.image_pdf(raw, w, h, color="/DeviceGray" if gray else "/DeviceRGB")
                 for level in ("standard", "strong"):
                     body, ct = multipart(source, password=None)
@@ -443,10 +453,10 @@ def compress_smoke(image):
                     assert len(result) < len(source) and "filename=compressed.pdf" in headers["Content-Disposition"]
                     api.verify_decryption(result)
                     api.assert_clean()
-            # Real kernel SIGXFSZ, in the same non-root/read-only/tmpfs environment.
-            result = docker("exec", api.name, "prlimit", "--as=67108864:67108864", "--fsize=4096:4096", "--", "dd",
+            # A real FSIZE overflow returns an I/O error with SIGXFSZ ignored.
+            result = docker("exec", api.name, *LIMITED_EXEC, "--as=67108864:67108864", "--fsize=4096:4096", "--", "dd",
                 "if=/dev/zero", "of=" + fixture_root + "/limited", "bs=8192", "count=2", "status=none", check=False)
-            assert result.returncode == 153, result.returncode
+            assert result.returncode == 1, result.returncode
             assert api.exec("stat", "-c", "%s", fixture_root + "/limited").stdout.strip() == b"4096"
             assert api.exec("stat", "-c", "%a", fixture_root).stdout.strip() == b"700"
             assert api.exec("stat", "-c", "%a", api_data).stdout.strip() == b"600"
@@ -455,7 +465,7 @@ def compress_smoke(image):
         api.assert_clean()
     for settings in (("Pdf__DjpegPath=/missing/djpeg",), ("Pdf__CjpegPath=/bin/false",), ("Pdf__JpegAddressSpaceLimitBytes=1",)):
         assert_startup_failure(image, settings)
-    print("Docker compress: both levels/color/gray/permissions/startup/SIGXFSZ/three copyrights PASS")
+    print("Docker compress: both levels/color/gray/permissions/startup/FSIZE I/O errors/three copyrights PASS")
 
 
 def main(image):
@@ -465,6 +475,12 @@ def main(image):
     with running_container(image) as api:
         api.exec("test", "-r", "/usr/share/doc/util-linux/copyright")
         api.exec("prlimit", "--version")
+        print(api.exec("/usr/bin/env", "--version").stdout.decode().splitlines()[0])
+        # Observe the inherited limits and send SIGXFSZ after both execs.
+        api.exec(*LIMITED_EXEC, "--as=67108864:67108864", "--fsize=4096:4096", "--", "/bin/sh", "-c",
+                 "grep -Eq '^Max core file size +0 +0 +bytes' /proc/$$/limits && "
+                 "grep -Eq '^Max address space +67108864 +67108864 +bytes' /proc/$$/limits && "
+                 "grep -Eq '^Max file size +4096 +4096 +bytes' /proc/$$/limits && kill -XFSZ $$")
         version = api.exec("qpdf", "--version").stdout.decode().splitlines()[0]
         print(version)
         match = re.match(r"qpdf version (\d+)\.", version)

@@ -233,7 +233,7 @@ def quality(source, result, level, recompressed):
         edge = max(image["width"], image["height"]); target = 1754 if level == "standard" else 1169
         scale = min(8, max(1, (target * 8 + edge - 1) // edge)) if edge > target else 8
         pnm = directory / "scaled.pnm"
-        subprocess.run(["prlimit", "--as=67108864:67108864", "--fsize=25165824:25165824", "--", "djpeg", "-scale", f"{scale}/8", "-maxmemory", "64M", "-maxscans", "100", "-strict", "-outfile", str(pnm), str(original)], check=True, capture_output=True)
+        subprocess.run(["/usr/bin/env", "--ignore-signal=XFSZ", "--", "prlimit", "--core=0:0", "--as=67108864:67108864", "--fsize=25165824:25165824", "--", "djpeg", "-scale", f"{scale}/8", "-maxmemory", "64M", "-maxscans", "100", "-strict", "-outfile", str(pnm), str(original)], check=True, capture_output=True)
         a = np.asarray(Image.open(pnm), dtype=np.float32); b = np.asarray(Image.open(rewritten), dtype=np.float32)
         assert a.shape == b.shape
         mse = float(np.mean((a-b)**2)); psnr = 10 * math.log10(255**2/mse) if mse else None

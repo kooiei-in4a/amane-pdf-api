@@ -154,7 +154,8 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             using (TemporaryPdfFiles.CreatePrivateFile(pagesPath)) { }
             var result = await RunQpdfAsync(["--json=2", "--json-key=pages", files.InputPath, pagesPath], size, null, token);
             RequireStarted(result);
-            if (result.ExitCode == 153 || result.ExitCode != 0 && new FileInfo(pagesPath).Length >= size) throw new CompressLimitException();
+            // qpdf may return 0 when a write hits FSIZE with SIGXFSZ ignored.
+            if (result.ExitCode == 153 || new FileInfo(pagesPath).Length >= size) throw new CompressLimitException();
             if (result.ExitCode != 0) throw new InvalidOperationException("PDF pages metadata failed.");
             using var document = CompressJson.Parse(await File.ReadAllBytesAsync(pagesPath, token), options.CompressJsonDepth);
             if (!document.RootElement.TryGetProperty("pages", out var array) || array.ValueKind != JsonValueKind.Array)
