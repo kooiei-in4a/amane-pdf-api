@@ -103,6 +103,8 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf,
 
 `OverlayCanvas` は白紙path、レイヤー出力path、ページごとの表示寸法、JSONとPDFそれぞれの書き込み予算を持つ小さいrecordとする。描画JSONの固定pathは `TemporaryPdfFiles.PdfcpuLayerJsonPath` としてPR Aで追加する。Builderがdrawの前にJSONとPDFの両方を予約し、drawの後に実サイズを照合する。drawはDIから得たPdfcpuProcessorへcanvasのpathと予算を渡す。同じjob内の生成済みpathだけを使い、容量を制限しない任意の書き込みは許さない。レイヤーに元のPDFを使うことは禁止する。PdfcpuProcessorはBuilderやOverlayCapacityへ依存しない。
 
+後続endpointはBuildAsyncが正常完了した場合だけ出力を返す。最終検査等の失敗でoutput.pdfが残っても送信せず、既存のjob所有者が成功・失敗ともjobをdisposeする。文字modelの利用者入力はBuild前に検証して400へ変換する必要がある。draw内のArgumentExceptionを現行helperへそのまま渡すと内部契約違反の500になるため、endpointでの入力検証と内部エラーを区別する。
+
 `PdfcpuLayer` はページ番号をキーとする `pages → content → text[]` の型付きmodelとする。文字の `value`、`anchor` または位置、`dx` / `dy`、fontのsize・col、`rot` だけを入力modelに持たせる。font nameは自由入力にせず、JSON writerが常に `JapaneseFont` を書く。pdfcpuの任意JSON、URL、外部ファイル参照、画像取得、フォーム要素を透過させない。schemaは [v0.16.1のTextBox](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/textBox.go) と [Content](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/content.go) に合わせる。
 
 利用者の文字は0600のJSONにだけ書く。argvに載せない。`%` はpdfcpuの置換文字として扱われるため、利用者の文字に含まれる場合は生成前に拒否する。ページ番号は後続Issueで計算した数字そのものを渡す。文字数・描画要素数・サイズ・回転角・色・配置名は共通処理で制限する。1要素128 UTF-16単位、1ページ4要素、全体4,000要素、対象1,000ページ、font size 1〜14,400 pt、座標/offset ±14,400 pt、文字回転 ±360度である。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16・`%`は拒否する。後続APIもこの範囲内で入力検証する。画像stampやimportの利用者向け仕様は#29/#26で追加する。PR Bで確定する入力上限は文字系（ページ番号・透かし・文字stamp）を対象とする。画像stamp（#29）と画像→PDF（#26）は、アップロードbytes・画素数・レイヤーまたは生成PDFの予算を各Issueで定め、同じ最大入力・容量・時間検証を行う。文字系の8 MiB検証結果を画像系へ流用しない。

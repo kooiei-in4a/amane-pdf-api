@@ -169,6 +169,40 @@ public sealed class PdfOverlayBuilderTests
         job.Settings.QpdfPath = job.Script(body + $"exec '{qpdf}' \"$@\"");
         var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => job.Builder.BuildAsync(job.Files, 1, 1, job.Draw, default));
         Assert.AreEqual(PdfOverlayBuilder.Failure, error.Message); Assert.IsNull(error.InnerException);
-        Assert.IsFalse(Directory.GetFiles(job.Files.DirectoryPath).Any(path => Path.GetFileName(path).StartsWith("overlay-")));
+        Assert.IsTrue(Directory.GetFiles(job.Files.DirectoryPath).All(path => path == job.Files.InputPath || path == job.Files.OutputPath));
+    }
+
+    [TestMethod]
+    public async Task CleanupFailure_PreservesOriginalFailure_AndAttemptsEveryFile()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var job = new OverlayJob(); await job.CreateInput(OverlayFixtures.Geometry());
+        var original = new InvalidOperationException("synthetic draw failure");
+        var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => job.Builder.BuildAsync(job.Files, 1, 1,
+            (canvas, _) =>
+            {
+                // File.Delete on a directory fails, even for a root test driver.
+                Directory.CreateDirectory(Path.Combine(job.Files.DirectoryPath, "overlay-metadata.json"));
+                File.WriteAllText(canvas.LayerPath, "partial");
+                File.WriteAllText(job.Files.PdfcpuLayerJsonPath, "partial");
+                throw original;
+            }, default));
+        Assert.AreSame(original, error);
+        CollectionAssert.AreEquivalent(new[] { job.Files.InputPath }, Directory.GetFiles(job.Files.DirectoryPath));
+    }
+
+    [TestMethod]
+    public async Task CleanupFailure_AfterValidation_DoesNotReturnOutput()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var job = new OverlayJob(); await job.CreateInput(OverlayFixtures.Geometry());
+        var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => job.Builder.BuildAsync(job.Files, 1, 1,
+            job.Draw, default, stage =>
+            {
+                if (stage.Name == "job-reserved-peak")
+                    Directory.CreateDirectory(Path.Combine(job.Files.DirectoryPath, "overlay-metadata.json"));
+            }));
+        Assert.AreEqual(PdfOverlayBuilder.Failure, error.Message);
+        CollectionAssert.AreEquivalent(new[] { job.Files.OutputPath }, Directory.GetFiles(job.Files.DirectoryPath));
     }
 }

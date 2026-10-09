@@ -28,6 +28,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         var overlaid = Path.Combine(files.DirectoryPath, "overlaid.pdf");
         var intermediates = new[] { metadata, update, blankJson, blank, layer, overlaid, files.PdfcpuLayerJsonPath };
         var inputValidated = false;
+        var completed = false;
         var stage = Stopwatch.StartNew();
         void Mark(string name, long bytes = 0, int objects = 0)
         { observe?.Invoke(new(name, stage.Elapsed.TotalMilliseconds, bytes, objects)); stage.Restart(); }
@@ -46,17 +47,17 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             await qpdf.RunOverlayWriteAsync(files, arguments, path, budget, token);
             capacity.Commit(path, budget);
         }
-        async Task<PdfPageBoxes> ReadMetadata(string path, int objectLimit)
+        async Task<PdfPageBoxes> ReadMetadata(string path, long fileLimit, int objectLimit)
         {
-            var budget = capacity.ReserveWrite(metadata, objectLimit == PdfPageBoxes.InputObjectLimit ?
-                settings.OverlayJsonLimitBytes : settings.OverlayGeneratedJsonLimitBytes, true);
+            var budget = capacity.ReserveWrite(metadata, fileLimit, true);
             await qpdf.RunOverlayWriteAsync(files,
                 ["--json=2", "--json-key=pages", "--json-key=qpdf", "--json-key=encrypt", "--json-stream-data=none", "--decode-level=none", path, metadata],
                 metadata, budget, token);
             capacity.Commit(metadata, budget);
             var result = new PdfPageBoxes(await File.ReadAllBytesAsync(metadata, token), budget, objectLimit, token);
-            observe?.Invoke(new("metadata", stage.Elapsed.TotalMilliseconds, new FileInfo(metadata).Length, result.ObjectCount));
+            var metadataBytes = new FileInfo(metadata).Length;
             capacity.Delete(metadata);
+            Mark("metadata", metadataBytes, result.ObjectCount);
             return result;
         }
         try
@@ -68,7 +69,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             Mark("validate-input", inputBytes);
             int count;
             PdfPageAttributes[] originals;
-            using (var input = await ReadMetadata(files.InputPath, PdfPageBoxes.InputObjectLimit))
+            using (var input = await ReadMetadata(files.InputPath, settings.OverlayJsonLimitBytes, PdfPageBoxes.InputObjectLimit))
             {
                 count = input.Pages.Count;
                 if (input.Encrypted != false) throw new InvalidOperationException(Failure);
@@ -99,7 +100,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
                 "--overlay", layer, "--to=" + from + "-" + to, "--from=1-z", "--"]);
             Mark("overlay", new FileInfo(overlaid).Length);
             capacity.Delete(files.InputPath); capacity.Delete(update); capacity.Delete(layer);
-            using (var combined = await ReadMetadata(overlaid, PdfPageBoxes.GeneratedObjectLimit))
+            using (var combined = await ReadMetadata(overlaid, settings.OverlayGeneratedJsonLimitBytes, PdfPageBoxes.GeneratedObjectLimit))
             {
                 if (combined.Pages.Count != count) throw new InvalidOperationException(Failure);
                 await WriteJson(update, writer => combined.WriteUpdate(writer, from, originals, true, token));
@@ -112,7 +113,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             // verifies encryption, page count and attributes in one bounded read.
             if (await qpdf.RunAsync(["--check", files.OutputPath], token) != 0) throw new InvalidOperationException(Failure);
             Mark("validate-pdf");
-            using (var final = await ReadMetadata(files.OutputPath, PdfPageBoxes.GeneratedObjectLimit))
+            using (var final = await ReadMetadata(files.OutputPath, settings.OverlayGeneratedJsonLimitBytes, PdfPageBoxes.GeneratedObjectLimit))
             {
                 if (final.Pages.Count != count || final.Encrypted != false) throw new InvalidOperationException(Failure);
                 for (var i = 0; i < originals.Length; i++)
@@ -120,6 +121,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             }
             Mark("validate-output");
             observe?.Invoke(new("job-reserved-peak", 0, capacity.Peak));
+            completed = true;
         }
         catch (PdfOverlayInputException exception) when (inputValidated && exception.Reason == PdfOverlayReason.UnsupportedPdf)
         { throw new InvalidOperationException(Failure); }
@@ -128,7 +130,16 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         {
             // Runner waits for termination before control reaches this cleanup. Do not use
             // the cancelled token here: partial files still have to be removed.
-            foreach (var path in intermediates) capacity.Delete(path);
+            var cleanupFailed = false;
+            foreach (var path in intermediates)
+            {
+                try { capacity.Delete(path); }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                { cleanupFailed = true; }
+            }
+            // Preserve an active failure; the owner still disposes the whole job.
+            // A successful build must not return with failed intermediate cleanup.
+            if (completed && cleanupFailed) throw new InvalidOperationException(Failure);
         }
     }
 

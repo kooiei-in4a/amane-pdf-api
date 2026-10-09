@@ -38,44 +38,46 @@
 
 ページは物理24×32 ptと14,400×14,400 ptを交互に配置し、UserUnit 0.5/1/2、Rotate 0/90/180/270/-90/630を混在させた。各ページにfont size 1/12/72/14,400、座標0/14,400、offset -14,400/+14,400、文字回転-360/-45/90/360を組み合わせる。小さいページ・大きいページ・長い文字列・多様なglyph・大きい配置数値を含めることで、endpoint未追加でも最大文字入力のレイヤーを実際に生成する。
 
+今回の4条件はhostの全.NETテストと描画比較を終了してから分離して実行した。先行する並行測定では一方が25.556秒となり不合格だった。この値は除外試行として残し、他方のtimerとcgroup値は旧harnessが失敗前に保存していなかったため未記録と明示する。harnessを改善し、以後は時間上限の失敗でも結果JSON/TRX/cgroup値を保存してから失敗させる。30秒と入力上限は変更せず、分離した4条件すべてで24秒基準を満たした。
+
 実測の生データ（各処理のstage時間・bytes・object数・実効予算・cgroup events・残存物）は [overlay-capacity-results.json](overlay-capacity-results.json)。レイヤーの予約実効PDF予算は全処理8,388,608 bytesであり、file上限とjob残予算の両方へ余裕を持つ。
 
 | 文字条件 | 単独秒 | 同時2件の各秒 | 最大レイヤーbytes | 最小残りbytes |
 | --- | ---: | ---: | ---: | ---: |
-| dense BMP | 11.602 | 21.676 / 21.753 | 4,193,554 | 4,195,054 |
-| dense 補助平面込み | 10.623 | 21.342 / 22.114 | 4,241,093 | 4,147,515 |
-| LF/tab BMP | 10.630 | 22.683 / 22.506 | 4,248,401 | 4,140,207 |
-| LF/tab 補助平面込み | 11.323 | 22.326 / 22.541 | 4,295,096 | 4,093,512 |
+| dense BMP | 10.529 | 21.238 / 20.369 | 4,193,556 | 4,195,052 |
+| dense 補助平面込み | 11.216 | 22.334 / 22.296 | 4,241,099 | 4,147,509 |
+| LF/tab BMP | 10.684 | 21.000 / 21.739 | 4,248,407 | 4,140,201 |
+| LF/tab 補助平面込み | 10.692 | 21.764 / 21.705 | 4,295,093 | 4,093,515 |
 
-最大レイヤーは実効予算の51.202%で、残りは48.798%。最長22.6827033秒は24秒に1.3172967秒、共有30秒に7.3172967秒の余裕がある。すべて成功し、FSIZE失敗・OOM・oom_kill・残存job・残存処理processは0。
+最大レイヤーは実効予算の51.201%で、残りは48.799%。最長22.3341110秒は24秒に1.6658890秒、共有30秒に7.6658890秒の余裕がある。すべて成功し、FSIZE失敗・OOM・oom_kill・残存job・残存処理processは0。
 
 | 文字条件 | memory.peak 単独 / 同時2件 bytes | tmpfs観測最大 単独 / 同時2件 bytes |
 | --- | ---: | ---: |
-| dense BMP | 443,932,672 / 840,994,816 | 114,196,480 / 223,989,760 |
-| dense 補助平面込み | 444,506,112 / 864,555,008 | 114,294,784 / 227,614,720 |
-| LF/tab BMP | 440,434,688 / 853,401,600 | 113,823,744 / 222,457,856 |
-| LF/tab 補助平面込み | 444,973,056 / 819,040,256 | 114,405,376 / 227,643,392 |
+| dense BMP | 461,598,720 / 846,241,792 | 114,196,480 / 227,418,112 |
+| dense 補助平面込み | 438,337,536 / 891,346,944 | 114,294,784 / 228,589,568 |
+| LF/tab BMP | 439,484,416 / 784,678,912 | 113,827,840 / 193,671,168 |
+| LF/tab 補助平面込み | 442,011,648 / 866,549,760 | 109,256,704 / 218,918,912 |
 
-memory.peakはtest driver/VSTestとmanaged heap、子tool、tmpfsも含むcgroup全体の値。最大864,555,008 bytesはmemory上限に746,057,728 bytesの余裕がある。tmpfsは約0.1秒ごとに採取した観測値で、瞬間最大の証明ではない。最大227,643,392 bytesは256 MiBに40,792,064 bytesの余裕がある。別途jobの4 KiB予約ピークは最大122,359,808 bytesで124 MiBに7,663,616 bytesの余裕があり、FSIZE sentinelを含む。job台帳と観測を併用した。
+memory.peakはtest driver/VSTestとmanaged heap、子tool、tmpfsも含むcgroup全体の値。最大891,346,944 bytesはmemory上限に719,265,792 bytesの余裕がある。tmpfsは約0.1秒ごとに採取した観測値で、瞬間最大の証明ではない。最大228,589,568 bytesは256 MiBに39,845,888 bytesの余裕がある。別途jobの4 KiB予約ピークは最大122,359,808 bytesで124 MiBに7,663,616 bytesの余裕があり、FSIZE sentinelを含む。job台帳と観測を併用した。
 
-最大レイヤー条件のoverlaidは57,133,009 bytes、最終PDFは57,060,673 bytes（62 MiBまで7,951,039 bytes）。合成後metadataは34,561,982 bytes、最終metadataは34,321,646 bytes（各40 MiB以内）。白紙PDFは121,125 bytes。最長処理（LF/tab BMP、同時2件のindex 0）の段階別時間は次のとおり。
+最大レイヤー条件のoverlaidは57,133,009 bytes、最終PDFは57,060,673 bytes（62 MiBまで7,951,039 bytes）。合成後metadataは34,561,982 bytes、最終metadataは34,321,646 bytes（各40 MiB以内）。白紙PDFは121,125 bytes。最長処理（dense 補助平面込み、同時2件のindex 0）の段階別時間は次のとおり。
 
 | 段階 | 秒 |
 | --- | ---: |
-| 入力検査 | 2.234 |
-| 入力metadata | 3.002 |
-| 入力属性・調整JSON（metadataを除く） | 0.033 |
-| 白紙JSON/PDF | 0.072 |
-| 描画JSON/pdfcpu/レイヤー検査 | 3.097 |
-| 調整とoverlay | 3.695 |
-| 合成後metadata | 3.014 |
-| 復元JSON（metadataを除く） | 0.012 |
-| 復元PDF書き出し・中間削除 | 2.474 |
-| 最終qpdf check | 2.239 |
-| 最終metadata | 2.790 |
-| 最終属性比較・検査JSON削除（metadataを除く） | 0.012 |
+| 入力検査 | 2.196 |
+| 入力metadata | 3.019 |
+| 入力属性・調整JSON | 0.092 |
+| 白紙JSON/PDF | 0.016 |
+| 描画JSON/pdfcpu/レイヤー検査 | 2.200 |
+| 調整とoverlay | 3.404 |
+| 合成後metadata | 3.167 |
+| 復元JSON | 0.007 |
+| 復元PDF書き出し・中間削除 | 3.117 |
+| 最終qpdf check | 2.276 |
+| 最終metadata | 2.800 |
+| 最終属性比較・検査JSON削除 | 0.006 |
 
-生データの`input-attributes`・`restore-attributes`・`validate-output`は直前のmetadata取得を含む区間で、上表では内数のmetadataを差し引いた。総timerは二重計上しない。最終出力だけがjobへ残ること、出力削除後のfile数0、job削除後のディレクトリ不在、test終了後のqpdf/pdfcpu/prlimit/JPEG/dotnet/testhost不在を検査した。測定fixtureの結果を任意PDFの性能保証へ広げず、cleanの19.4秒もoverlayの保証に使わない。
+各stageはmetadata取得・parse・JSON削除を含む独立区間で、metadata終了時にtimerをresetする。総timerはBuilder開始から中間物削除まで。最終出力だけがjobへ残ること、出力削除後のfile数0、job削除後のディレクトリ不在、test終了後のqpdf/pdfcpu/prlimit/JPEG/dotnet/testhost不在を検査した。測定fixtureの結果を任意PDFの性能保証へ広げず、cleanの19.4秒もoverlayの保証に使わない。
 
 ## geometry・保持・描画比較
 
@@ -101,8 +103,10 @@ qpdfの非0/126/127・出力不在/空/破損/暗号化/warning・ページ数�
 
 通常CIは独立した`build-test`と`docker`の2 job、各10分timeoutを維持する。build-testはRelease全テストと小さいfixtureのOverlayCapacity回帰検証。dockerは製品image build、既存API smoke、圧縮描画比較、日本語抽出/font、実Builderの文字・元本文の描画比較を行う。上限規模4条件の手動cgroup測定は通常CIへ入れない。
 
-ローカルの最終Release buildは警告0・エラー0で成功。全テスト、Docker build、既存APIを含む25 POST smoke、圧縮の構造/stream/描画比較、日本語抽出/font、実Builderの描画比較を実行した。最終の全716テストが成功（失敗0・skip 0、3分30秒）。単独Release buildは0.86秒だった。検証imageのlocal digestは `sha256:2aa44984e48e33781de332810634b8809ac46ee0edc40290d19574af1e3aad1d`。Docker buildはcacheを利用したため、GitHub CIの実時間の代用にはしない。
+ローカルの最終Release buildは警告0・エラー0で成功。全テスト、Docker build、既存APIを含む25 POST smoke、圧縮の構造/stream/描画比較、日本語抽出/font、実Builderの描画比較を実行した。最終のレビュー反映後の全718テストが成功（失敗0・skip 0、3分34秒）。測定harnessの失敗記録改善後には容量categoryの5テストも再検証して成功。単独Release buildは0.86秒だった。検証imageのlocal digestは `sha256:d7862e089e2e380263cb32c885293d6b6fc72c3861e5237af61b5215cb98300d`。Docker buildはcacheを利用したため、GitHub CIの実時間の代用にはしない。
 
 PR BのGitHub CIは公開承認前のため未実行。PR A/#52後のmainのCI成功は基準の確認であり、PR BのCI成功とは区別する。公開後に両jobの成功・実時間・10分timeoutの余裕を読み戻して記録し、A/Bの全完了条件を満たしてからだけ`Closes #25`を使う。ローカルの実装・制限付き測定・セルフレビューを終えても、PR B全体の完了扱いは両CI成功まで保留する。merge・tag・deployは行わない。
 
 セルフレビューでは範囲、継承/復元、生成後の参照、容量予約/FSIZE、token/終了待ち/削除、固定エラー、CI依存と公開条件を確認した。生成後の不正属性が入力用422へ分類され得る点を固定500へ修正し、fault testを追加した。重大な未解決のローカル問題はなく、残る完了条件は公開後の両CIの確認と記録である。
+
+公開レビューの5指摘も反映した。失敗時の全中間file検査、後続endpointの正常完了時だけ送信/入力400検証の契約、JSON予算の明示引数、独立stage timer、削除失敗時の残りの削除試行と元例外の保持を追加した。正常処理後の後片付け失敗は固定500にし、job所有者のdisposeで回収する。追加のfault testを含む関連69テストが成功した。

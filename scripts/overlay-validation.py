@@ -189,12 +189,13 @@ def run_capacity_case(args, sdk, directory, evidence, concurrent):
     thread = threading.Thread(target=monitor)
     thread.start()
     try:
+        test_failure = None
         try:
             result = container.tests("FullyQualifiedName~MeasureRealBuilder_" + ("Single" if concurrent == 1 else "Concurrent"))
             print(result.stdout.decode())
         except subprocess.CalledProcessError as error:
             print(error.stdout.decode())
-            raise
+            test_failure = error
         finally:
             stop.set(); thread.join()
         assert not failures and sampled
@@ -203,13 +204,17 @@ def run_capacity_case(args, sdk, directory, evidence, concurrent):
         assert events["oom"] == events["oom_kill"] == 0
         evidence.update(memory_peak=int(container.exec("cat", "/sys/fs/cgroup/memory.peak").stdout),
                         tmpfs_peak_sampled=max(sampled), memory_events=events, samples=len(sampled),
-                        driver_memory_included=True, **container.stopped())
+                        driver_memory_included=True, tests_passed=test_failure is None, **container.stopped())
         assert max(sampled) <= 256 * MiB
         args.output.mkdir(parents=True, exist_ok=True)
         for name in (f"capacity-{concurrent}.json", "overlay.trx"):
-            (args.output / (f"capacity-{concurrent}.trx" if name == "overlay.trx" else name)).write_bytes(container.exec("cat", "/tmp/results/" + name).stdout)
+            data = container.exec("sh", "-c", f'if [ -f /tmp/results/{name} ]; then cat /tmp/results/{name}; fi').stdout
+            if data:
+                (args.output / (f"capacity-{concurrent}.trx" if name == "overlay.trx" else name)).write_bytes(data)
         (args.output / f"resources-{concurrent}.json").write_text(json.dumps(evidence, indent=2))
         print(json.dumps(evidence, indent=2))
+        if test_failure is not None:
+            raise test_failure
     finally:
         container.close()
 

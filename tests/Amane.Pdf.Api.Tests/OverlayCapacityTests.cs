@@ -111,10 +111,8 @@ public sealed class OverlayCapacityTests
                     throw;
                 }
                 watch.Stop();
-                Assert.IsTrue(watch.Elapsed.TotalSeconds <= 24, $"Builder exceeded 24 seconds: {watch.Elapsed.TotalSeconds:F3}");
                 var layer = stages.Single(stage => stage.Name == "draw").Bytes;
                 var budget = stages.Single(stage => stage.Name == "layer-budget").Bytes;
-                Assert.IsTrue(layer < budget && layer < 8 * 1048576);
                 CollectionAssert.AreEquivalent(new[] { job.Files.OutputPath }, Directory.GetFiles(job.Files.DirectoryPath));
                 File.Delete(job.Files.OutputPath);
                 Assert.AreEqual(0, Directory.GetFiles(job.Files.DirectoryPath).Length);
@@ -124,6 +122,12 @@ public sealed class OverlayCapacityTests
             Console.WriteLine(json);
             if (Environment.GetEnvironmentVariable("OVERLAY_CAPACITY_RESULTS") is { } output)
             { Directory.CreateDirectory(output); await File.WriteAllTextAsync(Path.Combine(output, $"capacity-{concurrent}.json"), json); }
+            // Persist failed timing/budget evidence too, after output cleanup.
+            foreach (var result in results)
+            {
+                Assert.IsTrue(result.seconds <= 24, $"Builder exceeded 24 seconds: {result.seconds:F3}");
+                Assert.IsTrue(result.layer < result.budget && result.layer < 8 * 1048576);
+            }
         }
         finally
         {

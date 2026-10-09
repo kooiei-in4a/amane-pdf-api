@@ -25,39 +25,39 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 11.6021835,
-            "layer": 4193554,
+            "seconds": 10.5294566,
+            "layer": 4193547,
             "budget": 8388608,
-            "remaining": 4195054,
+            "remaining": 4195061,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 1132.7318,
+                "Milliseconds": 1101.1847,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1591.5926,
+                "Milliseconds": 1409.991,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 1614.3057,
+                "Milliseconds": 16.3076,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 18.782,
+                "Milliseconds": 16.179,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 968.9564,
-                "Bytes": 4193554,
+                "Milliseconds": 931.8552,
+                "Bytes": 4193547,
                 "Objects": 0
               },
               {
@@ -68,43 +68,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 1638.0619,
+                "Milliseconds": 1596.4103,
                 "Bytes": 57028425,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1558.3791,
+                "Milliseconds": 1574.3286,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 1613.0262,
+                "Milliseconds": 46.3034,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 1826.9232,
+                "Milliseconds": 1116.752,
                 "Bytes": 56956089,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 1093.3155,
+                "Milliseconds": 1075.0617,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1668.9293,
+                "Milliseconds": 1624.1766,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 1684.4664,
+                "Milliseconds": 11.4067,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -124,39 +124,39 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 21.6762509,
-            "layer": 4193554,
+            "seconds": 21.2375381,
+            "layer": 4193556,
             "budget": 8388608,
-            "remaining": 4195054,
+            "remaining": 4195052,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 2161.2147,
+                "Milliseconds": 2175.4004,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3130.1802,
+                "Milliseconds": 3009.8269,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 3205.151,
+                "Milliseconds": 90.0321,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 86.9958,
+                "Milliseconds": 20.0267,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 2420.0014,
-                "Bytes": 4193554,
+                "Milliseconds": 2109.4085,
+                "Bytes": 4193556,
                 "Objects": 0
               },
               {
@@ -167,43 +167,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 3512.6378,
+                "Milliseconds": 3473.3551,
                 "Bytes": 57028425,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2976.4415,
+                "Milliseconds": 2919.3825,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 2988.9967,
+                "Milliseconds": 66.1749,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 2370.2523,
+                "Milliseconds": 3309.6267,
                 "Bytes": 56956089,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 2135.3226,
+                "Milliseconds": 2116.9765,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2775.9818,
+                "Milliseconds": 1932.2324,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 2786.3151,
+                "Milliseconds": 5.3818,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -218,38 +218,38 @@
           {
             "index": 1,
             "pages": 1000,
-            "seconds": 21.7529081,
+            "seconds": 20.36899,
             "layer": 4193554,
             "budget": 8388608,
             "remaining": 4195054,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 2220.0018,
+                "Milliseconds": 2090.8691,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3092.0589,
+                "Milliseconds": 3083.6344,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 3193.7035,
+                "Milliseconds": 30.2522,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 17.5583,
+                "Milliseconds": 67.7105,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 2404.884,
+                "Milliseconds": 2104.5945,
                 "Bytes": 4193554,
                 "Objects": 0
               },
@@ -261,43 +261,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 3511.2162,
+                "Milliseconds": 3413.0067,
                 "Bytes": 57028425,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2976.5891,
+                "Milliseconds": 3001.081,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 2989.3627,
+                "Milliseconds": 7.8248,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 2479.6528,
+                "Milliseconds": 2369.2582,
                 "Bytes": 56956089,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 2227.3996,
+                "Milliseconds": 1290.8366,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2699.3448,
+                "Milliseconds": 2830.1894,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 2708.9913,
+                "Milliseconds": 78.9904,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -320,7 +320,7 @@
         "supplementary_scalars": 0,
         "text_layout": "dense",
         "concurrent": 1,
-        "memory_peak": 443932672,
+        "memory_peak": 461598720,
         "tmpfs_peak_sampled": 114196480,
         "memory_events": {
           "low": 0,
@@ -331,8 +331,9 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 83,
+        "samples": 79,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       },
@@ -345,8 +346,8 @@
         "supplementary_scalars": 0,
         "text_layout": "dense",
         "concurrent": 2,
-        "memory_peak": 840994816,
-        "tmpfs_peak_sampled": 223989760,
+        "memory_peak": 846241792,
+        "tmpfs_peak_sampled": 227418112,
         "memory_events": {
           "low": 0,
           "high": 0,
@@ -358,6 +359,7 @@
         },
         "samples": 119,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       }
@@ -369,39 +371,39 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 10.6230651,
-            "layer": 4241093,
+            "seconds": 11.2155521,
+            "layer": 4241099,
             "budget": 8388608,
-            "remaining": 4147515,
+            "remaining": 4147509,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 1098.608,
+                "Milliseconds": 1107.1864,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1423.596,
+                "Milliseconds": 1439.2675,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 1444.6487,
+                "Milliseconds": 16.783,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 15.9557,
+                "Milliseconds": 15.6443,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 923.0274,
-                "Bytes": 4241093,
+                "Milliseconds": 940.5641,
+                "Bytes": 4241099,
                 "Objects": 0
               },
               {
@@ -412,43 +414,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 1614.2891,
+                "Milliseconds": 1630.904,
                 "Bytes": 57076470,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1584.4403,
+                "Milliseconds": 1557.9414,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 1612.9291,
+                "Milliseconds": 48.4535,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 1080.4985,
+                "Milliseconds": 1040.1413,
                 "Bytes": 57004134,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 1237.7216,
+                "Milliseconds": 1998.4486,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1569.5022,
+                "Milliseconds": 1398.8092,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 1585.9896,
+                "Milliseconds": 11.5351,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -468,39 +470,39 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 21.3418679,
-            "layer": 4241086,
+            "seconds": 22.334111,
+            "layer": 4241096,
             "budget": 8388608,
-            "remaining": 4147522,
+            "remaining": 4147512,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 2189.3829,
+                "Milliseconds": 2196.476,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3132.9917,
+                "Milliseconds": 3019.1385,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 3244.7673,
+                "Milliseconds": 92.3588,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 66.452,
+                "Milliseconds": 16.2099,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 2487.215,
-                "Bytes": 4241086,
+                "Milliseconds": 2199.8869,
+                "Bytes": 4241096,
                 "Objects": 0
               },
               {
@@ -511,43 +513,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 3710.6099,
+                "Milliseconds": 3403.8416,
                 "Bytes": 57076470,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2916.4528,
+                "Milliseconds": 3167.4563,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 2931.7543,
+                "Milliseconds": 7.4367,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 2286.8011,
+                "Milliseconds": 3116.8748,
                 "Bytes": 57004134,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 1596.1837,
+                "Milliseconds": 2275.992,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2798.584,
+                "Milliseconds": 2800.0278,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 2815.8232,
+                "Milliseconds": 6.4726,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -562,39 +564,39 @@
           {
             "index": 1,
             "pages": 1000,
-            "seconds": 22.1136208,
-            "layer": 4241086,
+            "seconds": 22.2956983,
+            "layer": 4241091,
             "budget": 8388608,
-            "remaining": 4147522,
+            "remaining": 4147517,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 2181.6598,
+                "Milliseconds": 2191.5415,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3134.416,
+                "Milliseconds": 3028.104,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 3230.5072,
+                "Milliseconds": 96.7628,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 18.9238,
+                "Milliseconds": 16.8357,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 2550.5912,
-                "Bytes": 4241086,
+                "Milliseconds": 2167.8171,
+                "Bytes": 4241091,
                 "Objects": 0
               },
               {
@@ -605,43 +607,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 3726.2293,
+                "Milliseconds": 3412.467,
                 "Bytes": 57076470,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2979.5619,
+                "Milliseconds": 3103.3076,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 2991.3778,
+                "Milliseconds": 13.0341,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 2994.1611,
+                "Milliseconds": 3176.193,
                 "Bytes": 57004134,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 2228.6489,
+                "Milliseconds": 2284.7068,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2181.6744,
+                "Milliseconds": 2741.9448,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 2191.3898,
+                "Milliseconds": 62.3332,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -664,7 +666,7 @@
         "supplementary_scalars": 313,
         "text_layout": "dense",
         "concurrent": 1,
-        "memory_peak": 444506112,
+        "memory_peak": 438337536,
         "tmpfs_peak_sampled": 114294784,
         "memory_events": {
           "low": 0,
@@ -675,8 +677,9 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 79,
+        "samples": 83,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       },
@@ -689,8 +692,8 @@
         "supplementary_scalars": 313,
         "text_layout": "dense",
         "concurrent": 2,
-        "memory_peak": 864555008,
-        "tmpfs_peak_sampled": 227614720,
+        "memory_peak": 891346944,
+        "tmpfs_peak_sampled": 228589568,
         "memory_events": {
           "low": 0,
           "high": 0,
@@ -700,8 +703,9 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 124,
+        "samples": 122,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       }
@@ -713,38 +717,231 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 10.6304799,
+            "seconds": 10.6844668,
+            "layer": 4248407,
+            "budget": 8388608,
+            "remaining": 4140201,
+            "stages": [
+              {
+                "Name": "validate-input",
+                "Milliseconds": 1094.25,
+                "Bytes": 52297734,
+                "Objects": 0
+              },
+              {
+                "Name": "metadata",
+                "Milliseconds": 1425.4441,
+                "Bytes": 33030150,
+                "Objects": 50000
+              },
+              {
+                "Name": "input-attributes",
+                "Milliseconds": 16.9753,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "blank",
+                "Milliseconds": 18.3774,
+                "Bytes": 121125,
+                "Objects": 0
+              },
+              {
+                "Name": "draw",
+                "Milliseconds": 1050.7369,
+                "Bytes": 4248407,
+                "Objects": 0
+              },
+              {
+                "Name": "layer-budget",
+                "Milliseconds": 0,
+                "Bytes": 8388608,
+                "Objects": 0
+              },
+              {
+                "Name": "overlay",
+                "Milliseconds": 1603.4441,
+                "Bytes": 57084846,
+                "Objects": 0
+              },
+              {
+                "Name": "metadata",
+                "Milliseconds": 1552.0185,
+                "Bytes": 34561982,
+                "Objects": 53007
+              },
+              {
+                "Name": "restore-attributes",
+                "Milliseconds": 23.9668,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "restore",
+                "Milliseconds": 1041.571,
+                "Bytes": 57012510,
+                "Objects": 0
+              },
+              {
+                "Name": "validate-pdf",
+                "Milliseconds": 1257.9608,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "metadata",
+                "Milliseconds": 1576.6057,
+                "Bytes": 34321646,
+                "Objects": 53007
+              },
+              {
+                "Name": "validate-output",
+                "Milliseconds": 13.0054,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "job-reserved-peak",
+                "Milliseconds": 0,
+                "Bytes": 122310656,
+                "Objects": 0
+              }
+            ]
+          }
+        ]
+      },
+      "capacity-2": {
+        "concurrent": 2,
+        "results": [
+          {
+            "index": 0,
+            "pages": 1000,
+            "seconds": 20.9996724,
+            "layer": 4248407,
+            "budget": 8388608,
+            "remaining": 4140201,
+            "stages": [
+              {
+                "Name": "validate-input",
+                "Milliseconds": 2179.9995,
+                "Bytes": 52297734,
+                "Objects": 0
+              },
+              {
+                "Name": "metadata",
+                "Milliseconds": 2792.9755,
+                "Bytes": 33030150,
+                "Objects": 50000
+              },
+              {
+                "Name": "input-attributes",
+                "Milliseconds": 21.1046,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "blank",
+                "Milliseconds": 247.3082,
+                "Bytes": 121125,
+                "Objects": 0
+              },
+              {
+                "Name": "draw",
+                "Milliseconds": 2237.1949,
+                "Bytes": 4248407,
+                "Objects": 0
+              },
+              {
+                "Name": "layer-budget",
+                "Milliseconds": 0,
+                "Bytes": 8388608,
+                "Objects": 0
+              },
+              {
+                "Name": "overlay",
+                "Milliseconds": 3387.3951,
+                "Bytes": 57084846,
+                "Objects": 0
+              },
+              {
+                "Name": "metadata",
+                "Milliseconds": 2910.9806,
+                "Bytes": 34561982,
+                "Objects": 53007
+              },
+              {
+                "Name": "restore-attributes",
+                "Milliseconds": 6.9075,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "restore",
+                "Milliseconds": 2281.2917,
+                "Bytes": 57012510,
+                "Objects": 0
+              },
+              {
+                "Name": "validate-pdf",
+                "Milliseconds": 2128.0014,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "metadata",
+                "Milliseconds": 2790.183,
+                "Bytes": 34321646,
+                "Objects": 53007
+              },
+              {
+                "Name": "validate-output",
+                "Milliseconds": 6.0653,
+                "Bytes": 0,
+                "Objects": 0
+              },
+              {
+                "Name": "job-reserved-peak",
+                "Milliseconds": 0,
+                "Bytes": 122310656,
+                "Objects": 0
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "pages": 1000,
+            "seconds": 21.7392945,
             "layer": 4248401,
             "budget": 8388608,
             "remaining": 4140207,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 1116.993,
+                "Milliseconds": 2201.521,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1447.8372,
+                "Milliseconds": 2997.5215,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 1472.4904,
+                "Milliseconds": 32.6448,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 20.1788,
+                "Milliseconds": 90.9527,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 1041.5729,
+                "Milliseconds": 2466.9784,
                 "Bytes": 4248401,
                 "Objects": 0
               },
@@ -756,236 +953,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 1617.0847,
+                "Milliseconds": 3389.3222,
                 "Bytes": 57084846,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1558.5421,
+                "Milliseconds": 2902.6218,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 1605.7173,
+                "Milliseconds": 8.1932,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 1047.2758,
+                "Milliseconds": 2282.0871,
                 "Bytes": 57012510,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 1105.5386,
+                "Milliseconds": 2122.9472,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1579.1221,
+                "Milliseconds": 3239.1255,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 1594.7115,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "job-reserved-peak",
-                "Milliseconds": 0,
-                "Bytes": 122310656,
-                "Objects": 0
-              }
-            ]
-          }
-        ]
-      },
-      "capacity-2": {
-        "concurrent": 2,
-        "results": [
-          {
-            "index": 0,
-            "pages": 1000,
-            "seconds": 22.6827033,
-            "layer": 4248393,
-            "budget": 8388608,
-            "remaining": 4140215,
-            "stages": [
-              {
-                "Name": "validate-input",
-                "Milliseconds": 2233.577,
-                "Bytes": 52297734,
-                "Objects": 0
-              },
-              {
-                "Name": "metadata",
-                "Milliseconds": 3002.1588,
-                "Bytes": 33030150,
-                "Objects": 50000
-              },
-              {
-                "Name": "input-attributes",
-                "Milliseconds": 3035.5385,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "blank",
-                "Milliseconds": 72.4503,
-                "Bytes": 121125,
-                "Objects": 0
-              },
-              {
-                "Name": "draw",
-                "Milliseconds": 3096.7113,
-                "Bytes": 4248393,
-                "Objects": 0
-              },
-              {
-                "Name": "layer-budget",
-                "Milliseconds": 0,
-                "Bytes": 8388608,
-                "Objects": 0
-              },
-              {
-                "Name": "overlay",
-                "Milliseconds": 3694.9919,
-                "Bytes": 57084846,
-                "Objects": 0
-              },
-              {
-                "Name": "metadata",
-                "Milliseconds": 3013.5107,
-                "Bytes": 34561982,
-                "Objects": 53007
-              },
-              {
-                "Name": "restore-attributes",
-                "Milliseconds": 3025.9374,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "restore",
-                "Milliseconds": 2474.0123,
-                "Bytes": 57012510,
-                "Objects": 0
-              },
-              {
-                "Name": "validate-pdf",
-                "Milliseconds": 2239.0594,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "metadata",
-                "Milliseconds": 2789.5607,
-                "Bytes": 34321646,
-                "Objects": 53007
-              },
-              {
-                "Name": "validate-output",
-                "Milliseconds": 2801.9061,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "job-reserved-peak",
-                "Milliseconds": 0,
-                "Bytes": 122310656,
-                "Objects": 0
-              }
-            ]
-          },
-          {
-            "index": 1,
-            "pages": 1000,
-            "seconds": 22.5061108,
-            "layer": 4248392,
-            "budget": 8388608,
-            "remaining": 4140216,
-            "stages": [
-              {
-                "Name": "validate-input",
-                "Milliseconds": 2224.1848,
-                "Bytes": 52297734,
-                "Objects": 0
-              },
-              {
-                "Name": "metadata",
-                "Milliseconds": 3001.8643,
-                "Bytes": 33030150,
-                "Objects": 50000
-              },
-              {
-                "Name": "input-attributes",
-                "Milliseconds": 3088.7903,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "blank",
-                "Milliseconds": 21.4009,
-                "Bytes": 121125,
-                "Objects": 0
-              },
-              {
-                "Name": "draw",
-                "Milliseconds": 3072.4985,
-                "Bytes": 4248392,
-                "Objects": 0
-              },
-              {
-                "Name": "layer-budget",
-                "Milliseconds": 0,
-                "Bytes": 8388608,
-                "Objects": 0
-              },
-              {
-                "Name": "overlay",
-                "Milliseconds": 3513.1877,
-                "Bytes": 57084846,
-                "Objects": 0
-              },
-              {
-                "Name": "metadata",
-                "Milliseconds": 3201.7936,
-                "Bytes": 34561982,
-                "Objects": 53007
-              },
-              {
-                "Name": "restore-attributes",
-                "Milliseconds": 3212.584,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "restore",
-                "Milliseconds": 2303.1565,
-                "Bytes": 57012510,
-                "Objects": 0
-              },
-              {
-                "Name": "validate-pdf",
-                "Milliseconds": 2261.9529,
-                "Bytes": 0,
-                "Objects": 0
-              },
-              {
-                "Name": "metadata",
-                "Milliseconds": 2743.9056,
-                "Bytes": 34321646,
-                "Objects": 53007
-              },
-              {
-                "Name": "validate-output",
-                "Milliseconds": 2807.7342,
+                "Milliseconds": 5.2625,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -1008,8 +1012,8 @@
         "supplementary_scalars": 0,
         "text_layout": "lines-tabs",
         "concurrent": 1,
-        "memory_peak": 440434688,
-        "tmpfs_peak_sampled": 113823744,
+        "memory_peak": 439484416,
+        "tmpfs_peak_sampled": 113827840,
         "memory_events": {
           "low": 0,
           "high": 0,
@@ -1019,8 +1023,9 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 79,
+        "samples": 80,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       },
@@ -1033,8 +1038,8 @@
         "supplementary_scalars": 0,
         "text_layout": "lines-tabs",
         "concurrent": 2,
-        "memory_peak": 853401600,
-        "tmpfs_peak_sampled": 222457856,
+        "memory_peak": 784678912,
+        "tmpfs_peak_sampled": 193671168,
         "memory_events": {
           "low": 0,
           "high": 0,
@@ -1044,8 +1049,9 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 126,
+        "samples": 119,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       }
@@ -1057,39 +1063,39 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 11.3230916,
-            "layer": 4295083,
+            "seconds": 10.692267,
+            "layer": 4295093,
             "budget": 8388608,
-            "remaining": 4093525,
+            "remaining": 4093515,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 1120.0016,
+                "Milliseconds": 1083.0014,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1438.2087,
+                "Milliseconds": 1434.0726,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 1463.0823,
+                "Milliseconds": 18.2501,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 20.0909,
+                "Milliseconds": 15.7369,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 1052.4438,
-                "Bytes": 4295083,
+                "Milliseconds": 1072.3402,
+                "Bytes": 4295093,
                 "Objects": 0
               },
               {
@@ -1100,43 +1106,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 1623.4099,
+                "Milliseconds": 1596.9737,
                 "Bytes": 57133009,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1582.0729,
+                "Milliseconds": 1574.5461,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 1612.0768,
+                "Milliseconds": 33.3743,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 1107.99,
+                "Milliseconds": 1071.6051,
                 "Bytes": 57060673,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 1803.9487,
+                "Milliseconds": 1212.8039,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1495.2748,
+                "Milliseconds": 1528.5277,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 1510.9685,
+                "Milliseconds": 12.4022,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -1156,39 +1162,39 @@
           {
             "index": 0,
             "pages": 1000,
-            "seconds": 22.3261421,
-            "layer": 4295096,
+            "seconds": 21.764494,
+            "layer": 4295084,
             "budget": 8388608,
-            "remaining": 4093512,
+            "remaining": 4093524,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 2094.8242,
+                "Milliseconds": 2155.3472,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3107.3067,
+                "Milliseconds": 3114.5884,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 3209.0397,
+                "Milliseconds": 31.2551,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 15.572,
+                "Milliseconds": 65.9687,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 2370.615,
-                "Bytes": 4295096,
+                "Milliseconds": 2601.2096,
+                "Bytes": 4295084,
                 "Objects": 0
               },
               {
@@ -1199,43 +1205,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 3505.4498,
+                "Milliseconds": 3499.994,
                 "Bytes": 57133009,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3662.4873,
+                "Milliseconds": 2916.8067,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 3693.2876,
+                "Milliseconds": 6.5627,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 2325.1603,
+                "Milliseconds": 2300.0714,
                 "Bytes": 57060673,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 2270.0568,
+                "Milliseconds": 2263.4484,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2816.8365,
+                "Milliseconds": 2745.3909,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 2833.0558,
+                "Milliseconds": 7.6518,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -1250,39 +1256,39 @@
           {
             "index": 1,
             "pages": 1000,
-            "seconds": 22.5414502,
-            "layer": 4295093,
+            "seconds": 21.7048856,
+            "layer": 4295087,
             "budget": 8388608,
-            "remaining": 4093515,
+            "remaining": 4093521,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 2190.1633,
+                "Milliseconds": 2177.7304,
                 "Bytes": 52297734,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 3005.1188,
+                "Milliseconds": 3100.4817,
                 "Bytes": 33030150,
                 "Objects": 50000
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 3099.6443,
+                "Milliseconds": 91.9462,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 16.5013,
+                "Milliseconds": 86.7217,
                 "Bytes": 121125,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 2375.6204,
-                "Bytes": 4295093,
+                "Milliseconds": 2511.3194,
+                "Bytes": 4295087,
                 "Objects": 0
               },
               {
@@ -1293,43 +1299,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 3532.495,
+                "Milliseconds": 3484.593,
                 "Bytes": 57133009,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 4070.3869,
+                "Milliseconds": 2821.5111,
                 "Bytes": 34561982,
                 "Objects": 53007
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 4082.8282,
+                "Milliseconds": 8.8218,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 2308.301,
+                "Milliseconds": 2298.1064,
                 "Bytes": 57060673,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 2275.3389,
+                "Milliseconds": 2270.7974,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 2650.1721,
+                "Milliseconds": 2837.4195,
                 "Bytes": 34321646,
                 "Objects": 53007
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 2660.4363,
+                "Milliseconds": 14.8055,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -1352,8 +1358,8 @@
         "supplementary_scalars": 313,
         "text_layout": "lines-tabs",
         "concurrent": 1,
-        "memory_peak": 444973056,
-        "tmpfs_peak_sampled": 114405376,
+        "memory_peak": 442011648,
+        "tmpfs_peak_sampled": 109256704,
         "memory_events": {
           "low": 0,
           "high": 0,
@@ -1363,8 +1369,9 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 84,
+        "samples": 79,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       },
@@ -1377,8 +1384,8 @@
         "supplementary_scalars": 313,
         "text_layout": "lines-tabs",
         "concurrent": 2,
-        "memory_peak": 819040256,
-        "tmpfs_peak_sampled": 227643392,
+        "memory_peak": 866549760,
+        "tmpfs_peak_sampled": 218918912,
         "memory_events": {
           "low": 0,
           "high": 0,
@@ -1388,11 +1395,23 @@
           "oom_group_kill": 0,
           "sock_throttled": 0
         },
-        "samples": 124,
+        "samples": 119,
         "driver_memory_included": true,
+        "tests_passed": true,
         "remaining_jobs": 0,
         "remaining_processes": 0
       }
     }
+  },
+  "timing_convention": "exclusive stage intervals; reset after metadata including parse and file deletion",
+  "isolation": "host full .NET suite and drawing comparison finished before the capacity matrix",
+  "excluded_probe": {
+    "concurrent": 2,
+    "reported_builder_seconds": 25.556,
+    "acceptance_seconds": 24,
+    "status": "failed",
+    "reason": "overlapped the host full .NET suite and drawing comparison",
+    "other_builder_seconds": "not saved",
+    "cgroup_resources": "not saved; harness subsequently changed to save failed timing/resource results"
   }
 }
