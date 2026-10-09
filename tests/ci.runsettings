@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RunSettings>
   <MSTest>
+    <!-- 環境変数などプロセス全体の状態を変更するテストや、容量・時間を他のテストから
+         隔離して測定する必要があるテストには [DoNotParallelize] を指定する。 -->
     <Parallelize>
+      <!-- 実時間の上限があるテストへの負荷を抑え、全テスト成功とCI短縮を実測した2並列を採用。
+           並列数を増やす場合は、時間上限を含む全テストの安定性を再確認する。 -->
       <Workers>2</Workers>
       <Scope>ClassLevel</Scope>
     </Parallelize>
