@@ -4,6 +4,8 @@
 
 以下はレビューを反映した実装案であり、アプリケーションへの導入はまだ行っていない。Issueには仕様と完了条件を置き、実装設計の正本はこのファイルに一本化する。Issue末尾の旧設計は削除し、このファイルの固定commitへ案内する。設計変更もこのファイルに反映して参照commitを更新する。infraとサイトは対象外とし、#46によるdeployの保留を維持する。
 
+この設計書はPR Aに含め、レビューを経てmainへ取り込む。`docs/issue-25-design` ブランチは、PR Aのmerge後にIssueの参照先をmainから到達できるcommitへ更新し、公開ファイルを読み戻して確認するまで残す。squash/rebaseで元の設計commitがmainへ引き継がれない場合も、参照先の移行前にブランチを削除しない。今回の修正では設計ブランチの新しいcommitへ参照を更新し、実装・mergeは行わない。
+
 ## 最新mainに合わせる変更
 
 2026-10-07の初期案から、次の扱いを採用する。
@@ -68,9 +70,11 @@ Linuxではpdfcpuの導入を必須にする。#25ではpdfcpuを使うendpoint�
 
 `GOMEMLIMIT` はGo runtimeのsoft limitであり、RSSの厳密な上限ではない。AS 1 GiBも仮想アドレス空間の制限である。物理メモリの判定には制限付きDockerでの実測を使う。[Go GC guide](https://go.dev/doc/gc-guide#Memory_limit)
 
-Programに起動全体の30秒deadlineを1つ作り、既存の `ProcessMemoryLimits.ValidateStartupAsync` と新しい `PdfcpuProcessor.ValidateStartupAsync` へ同じtokenを渡す。既存の自己テスト内のtimeoutも、この親deadlineを超えられないようにする。pdfcpuではversion、font一覧、固定の短い日本語を描く自己テスト、qpdf出力検査を行う。version/font一覧だけはそれぞれ4 KiB/64 KiBのbounded stdoutで比較し、上限超過は起動失敗にする。表示用にその内容をログへ出さない。
+Programに起動全体のdeadlineを1つ作る。これは**固定30秒**とし、HTTP処理用の `QpdfTimeoutSeconds` は使わず、新しい設定項目も追加しない。ApplicationStoppingと連動させた同じtokenを、既存の `ProcessMemoryLimits.ValidateStartupAsync` と新しい `PdfcpuProcessor.ValidateStartupAsync` へ渡す。既存の自己テスト内のtimeoutは維持するが、この親deadlineを超えられないようにする。pdfcpuではversion、font一覧、固定の短い日本語を描く自己テスト、qpdf出力検査を行う。version/font一覧だけはそれぞれ4 KiB/64 KiBのbounded stdoutで比較し、上限超過は起動失敗にする。表示用にその内容をログへ出さない。
 
 自己テストも0700のjobを使い、終了後に削除する。pdfcpuの失敗は専用の `PdfcpuStartupException` にまとめ、Programで既存のInvalidOperationExceptionより先にcatchし、「pdfcpu・日本語フォントの自己テストに失敗しました。」という別の固定メッセージとexit 1で終了する。qpdf/JPEGの既存メモリ自己テストのメッセージと、設定値不正のメッセージは維持する。stderr・内部path・inner exceptionはログに残さない。全Linuxテストでこの起動条件が必要になるため、CIだけでなくREADMEの開発手順にも同じinstallerと環境設定を示す。
+
+PR Aでは `PdfcpuProcessor.ValidateStartupAsync` を直接呼ぶ失敗テストで、専用例外の型・固定メッセージ・InnerExceptionがないこととjob削除を確認する。加えてWebApplicationFactoryのログを捕捉し、pdfcpuの起動失敗では専用の固定メッセージだけが記録され、既存のメモリ自己テストの失敗へ誤分類されないことを確認する。toolのstdout/stderrと内部pathがログへ出ないことも検査する。`factory.CreateClient()` がInvalidOperationExceptionを投げるだけでは、専用メッセージの検証を完了扱いにしない。
 
 起動のたびに自己テストを実行し、process全体のstatic cacheで省略しない。PR Aでは全テストの実行時間と起動回数を記録し、CIの10分timeoutに収まることを確認する。設計時に測った追加の自己テストの時間は末尾に記載する。
 
@@ -182,6 +186,10 @@ qpdfのmanualはoverlayを後段で処理することを説明しており、[12
 
 pdfcpuは書き込み失敗時に部分出力を削除する。FSIZE到達でも出力不在・exit 1になることがあり、サイズを観測できない失敗は500にする。stderrの文言だけでtoo-complexを推測しない。事前の容量予約による拒否と、実サイズで証明できる超過は422とし、この違いをfault testで固定する。FSIZEによるディスク容量の制限はどちらの場合にも有効である。
 
+この500の扱いを採る前提として、**この描画基盤を使う各APIの入力上限を最大にしても、生成レイヤーが8 MiBの上限およびそのjobで予約した実効PDF予算に届かないことを、PR Bの完了条件として実測で確認する**。後続のHTTP endpointは#25の対象外だが、各API向け描画modelの最大文字数・描画要素数・対象ページ数などは、PR Bの完了までに定めて共通処理の許可範囲に反映する。API未実装や入力上限未確定を理由に、この確認を省略しない。
+
+最大1,000ページと各入力上限を組み合わせ、日本語glyphの多様性、font subset、配置・寸法など出力サイズを増やす条件を含めて、最大条件を選んだ根拠、実測レイヤーbytes、実効予算、残りbytesを記録する。レイヤーが予算に届く、またはpdfcpuがFSIZEで失敗する組合せがあれば、入力上限を下げるか生成予算を見直して再測定し、条件を満たすまでPR Bを完了扱いにしない。30秒・job・tmpfs・同時2件の予算も同時に守る。後続APIが検証済みの入力上限を広げる場合は、そのAPIの実装で同じ検証をやり直す。
+
 処理の順序と削除時点を固定して、複数の大きいPDFを残し続けない。
 
 | 段階 | 残す大きいファイル | 次に削除するもの |
@@ -237,7 +245,7 @@ srcのファイルは `src/Amane.Pdf.Api/` 配下とする。qpdf書き出しhel
 | PR | 範囲と検証 |
 | --- | --- |
 | A | 取得script・lock・license/module一覧、Docker/CI、Pdfcpu設定、共有起動deadlineと専用エラー、PdfcpuProcessorと文字model・JSON予算、固定白紙による日本語smoke、README/security/notice。Release build・全テスト・起動時間・Docker描画を確認 |
-| B | Aを土台にPdfPageBoxes、Builder、復元規則、調整とoverlayの統合、OverlayCapacity、overlay用422、geometry/保持/境界/faultテスト、Poppler比較、既存test assemblyでの容量測定と記録。Release build・全テスト・既存API smoke・同時2件の上限検証を確認 |
+| B | Aを土台にPdfPageBoxes、Builder、復元規則、調整とoverlayの統合、OverlayCapacity、overlay用422、geometry/保持/境界/faultテスト、Poppler比較、既存test assemblyでの容量測定と記録。各API向け描画modelの入力上限を確定し、最大入力でもレイヤーが実効予算に届かないことを実測。Release build・全テスト・既存API smoke・同時2件の上限検証を確認 |
 
 AのprocessorはpathとJSON/PDF予算だけを受け取り、Bのcanvasやcapacityに依存させない。Aの自己テスト用白紙は固定の1ページとし、任意入力のページ属性解析はBで実装する。Aは `Refs #25`、BはAの完了を確認したうえで `Closes #25` とする。AだけではIssue全体を完了扱いにしない。merge・tag・deployはこの設計更新では行わない。
 
@@ -250,7 +258,8 @@ Popplerは.NETテストの必須toolに含めず、描画比較scriptの依存�
 | 検証 | 確認内容 |
 | --- | --- |
 | 取得 | binary/archive/TTF/licenseのchecksum不一致で非0。Dockerとhostが同じversion・fontを使用 |
-| 起動 | version違い、font/config欠落、読み取り不可、不正設定、不適合ASで待受前に失敗。固定logだけが残る |
+| license | pdfcpu・BIZ・Roboto、go.modのindirectを含む11 moduleと取得binaryのmodule一覧、Go runtime・標準ライブラリ・同梱資源を照合。必要なlicense全文と著作権表示、module一覧、noticeがrepositoryとfinal imageの両方にある |
+| 起動 | 固定30秒の共有deadline。version違い、font/config欠落、読み取り不可、不正設定、不適合ASで待受前に失敗。専用例外の直接テストとProgramのログ捕捉で専用固定メッセージ・内部情報非出力・job削除を確認 |
 | 実行request | `-c`、offline、GOMEMLIMIT、HOME/XDG、Go環境の上書き、working directory、AS/CORE/FSIZE/SIGXFSZが実processへ適用される。親の環境は変わらない |
 | 文字の受け渡し | 日本語、quote、改行、先頭 `-`、`,` がJSON経由で渡りargv/logに出ない。`%`は拒否、fontはJapaneseFont固定 |
 | 属性と復元 | 継承とoverride、間接配列/数値、null/default、合成後のParentが元の値を持つ場合の除去、値が失われた場合の直下への復元、UserUnit/TrimBox非継承、負/360超のRotate、循環・深さ・型・有限値・交差 |
@@ -258,6 +267,7 @@ Popplerは.NETテストの必須toolに含めず、描画比較scriptの依存�
 | 合成の順序と保持 | 調整JSONがoverlayより先に適用され、入力のobject番号で更新できること。元本文の表示位置、画像、しおり、Link、フォーム値・annotation、非対象ページ、ページ数、Box/Rotate/UserUnit、BleedBox/ArtBox |
 | 表示範囲外 | CropBox外の内容のstream残存と拡張後の非表示、TrimBox外かつCropBox内の内容の通常表示保持。情報除去として扱わない |
 | 境界 | object 50,000/50,001、対象ページ1,000/1,001、生成後object上限、JSON/生成物/FSIZE/jobの直前・同値・超過 |
+| 最大入力とレイヤー予算 | 各API向け描画modelの入力上限を最大にした組合せで、生成レイヤーが8 MiBと予約した実効PDF予算に届かないことを実測。最大条件の根拠とbytesの余裕を記録し、未達なら上限等を見直して再測定するまでPR Bを完了扱いにしない |
 | 故障 | exit 3を含む非0、126/127、空/破損/暗号化/warning出力、ページ数不一致、壊れたJSONを返さない |
 | lifecycle | 各stageでtimeout/cancel/app停止、親子processのkill・wait、job削除。将来のHTTP接続時にも共有枠の解放を検証 |
 
@@ -289,6 +299,8 @@ Release build、全テスト、Docker build、既存APIを含むsmoke、上記�
 同日のqpdf 12.3.2で、調整JSONとoverlayを同じ呼び出しへ統合した。Rotate 0/90/180/270とUserUnit 2を含む4ページがexit 0・check 0になり、元本文のForm Matrixと配置matrixの合成が単位行列になることを確認した。別の6ページfixtureではRotate 0/90/180/270/-90/630を使い、合成後に元の整数値へ復元した。
 
 検証用imageへPoppler 26.01.0を追加して72 dpi・RGB・CropBox表示で比較すると、空の描画レイヤーを合成した6ページは元PDFとpixel単位で一致した。fixtureのTrimBoxはCropBoxより小さく、TrimBox外かつCropBox内にも矩形を置いた。直接overlayした出力では各ページ1,200 RGB bytesが異なり、調整を統合した出力では一致した。
+
+このpixel比較は空のレイヤーで元本文が動かないことの確認であり、描画した文字の位置・向きのpixel比較はまだ実施していない。文字配置は行列計算と2026-10-07の目視による確認にとどまり、実際に文字を描いたレイヤーの描画比較はPR Bで行う。
 
 CropBox外に置いた矩形は、元PDFのCropBoxをMediaBoxへ拡張すると黒、合成後のPDFを同様に拡張すると白になった。同じ領域の `OUTSIDE` という合成文字列はForm stream内に残り、Popplerのpdftotextでも抽出された。通常表示の保持と、後から表示範囲を広げられない制約を別々に確認した。BleedBox/ArtBoxや注釈・フォームの全保持はPR Bのテストに残る。
 
