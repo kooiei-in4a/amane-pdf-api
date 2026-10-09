@@ -45,7 +45,7 @@ public sealed class PdfCompressTests
     [TestMethod]
     [DataRow(1600, 1200, "standard", 1600, 1200)]
     [DataRow(1600, 1200, "strong", 1200, 900)]
-    // 縮小率の境界となる長辺8064を保ち、短辺を小さくして変換の時間制限に余裕を持たせる。
+    // 両levelとも2/8に縮小される長辺8064を保ち、短辺を小さくして変換の時間制限に余裕を持たせる。
     // 短辺65の出力17は、8分の2への縮小時の端数切り上げも確認する。
     [DataRow(8064, 65, "standard", 2016, 17)]
     [DataRow(8064, 65, "strong", 2016, 17)]
