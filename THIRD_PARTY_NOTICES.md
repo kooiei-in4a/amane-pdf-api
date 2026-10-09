@@ -1,5 +1,31 @@
 # 第三者ソフトウェア
 
+## pdfcpu・日本語font・Go依存物
+
+pdfcpu [v0.16.1](https://github.com/pdfcpu/pdfcpu/tree/v0.16.1) は別プロセスで使用します。ライセンスはApache-2.0、原文とThe pdfcpu Authorsの著作権表示を `third_party/pdfcpu/` に保存します。内部のpkcs7（Andrew Smith、MIT）とlzw（The Go Authors、BSD-3-Clause）のlicenseも同梱します。
+
+日本語には[BIZ UDPゴシックv1.051](https://github.com/googlefonts/morisawa-biz-ud-gothic/tree/v1.051)（Morisawa、OFL-1.1）を使い、OFL原文と著作権表示を `BIZ-UDGothic-OFL.txt` に保持します。pdfcpuに同梱されたRoboto RegularはApache-2.0で、`Copyright 2011 Google Inc. All Rights Reserved.` とlicense全文を `Roboto-NOTICE.txt` / `Roboto-LICENSE.txt` に収録します。
+
+`third_party/pdfcpu-modules.json` は固定go.modのindirectを含む11 module、version、Go module checksum、licenseファイル、Linux binaryへの組込みの有無を記録します。Linux x86_64配布binaryの `go version -m` は9 moduleを示し、jsonschema-goとWindows用mousetrapは組み込まれていません。11件ともlicense原文・付属NOTICE/PATENTSを `third_party/pdfcpu/modules/` に保持します。
+
+| Module | Version | License |
+| --- | --- | --- |
+| github.com/clipperhouse/uax29/v2 | v2.7.0 | MIT |
+| github.com/google/jsonschema-go | v0.4.3 | MIT |
+| github.com/hhrutter/tiff | v1.0.7 | BSD-3-Clause（内部lzwの表示も収録） |
+| github.com/inconshreveable/mousetrap | v1.1.0 | Apache-2.0 |
+| github.com/mattn/go-runewidth | v0.0.30 | MIT |
+| github.com/spf13/cobra | v1.10.2 | Apache-2.0 |
+| github.com/spf13/pflag | v1.0.10 | BSD-3-Clause |
+| go.yaml.in/yaml/v3 | v3.0.5 | MIT / Apache-2.0（原文の両条件を保持） |
+| golang.org/x/crypto | v0.57.0 | BSD-3-Clause |
+| golang.org/x/image | v0.46.0 | BSD-3-Clause |
+| golang.org/x/text | v0.42.0 | BSD-3-Clause |
+
+配布binaryのGo runtime・標準ライブラリはGo 1.27.1、CGO_ENABLED=0です。GoのBSD-3-Clause全文、PATENTS、著作権表示とruntime vendorのlicenseを `Go-LICENSE.txt` / `Go-PATENTS.txt` / `Go-COPYRIGHTS.txt` / `go-runtime-vendor/` に収録します。pdfcpu側の同梱config・default certificate dataは同プロジェクトのApache-2.0表示とともに扱い、外部から起動時に取得しません。
+
+installerは上記すべてとmodule一覧、このnoticeをfinal imageの `/opt/amane-pdf/licenses/` にコピーします。`third_party/pdfcpu-licenses.sha256` とDocker smokeで原文の一致を検査します。更新時は固定Release・go.mod・binary metadata・各licenseを再照合してください。照合用Goと取得toolはruntimeへ追加しません。
+
 ## qpdf
 
 このプロジェクトはPDF処理にqpdfを使用します。

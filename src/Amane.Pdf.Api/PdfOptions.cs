@@ -17,6 +17,10 @@ public sealed class PdfOptions
     public long MaxRequestBytes => checked(MaxFileBytes + MultipartOverheadBytes);
     public long MaxMergeRequestBytes => checked(MaxMergeInputBytes + MultipartOverheadBytes);
     public string QpdfPath { get; set; } = "qpdf";
+    public string PdfcpuPath { get; set; } = "pdfcpu";
+    public string PdfcpuConfigDir { get; set; } = "";
+    public string PdfcpuMemoryLimit { get; set; } = "200MiB";
+    public long PdfcpuAddressSpaceLimitBytes { get; set; } = 1024 * 1024 * 1024;
     public string PrlimitPath { get; set; } = "/usr/bin/prlimit";
     public long QpdfAddressSpaceLimitBytes { get; set; } = 544 * 1024 * 1024;
     public string QpdfJpegMemory { get; set; } = "600M";

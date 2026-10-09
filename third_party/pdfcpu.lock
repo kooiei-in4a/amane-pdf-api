@@ -1,0 +1,25 @@
+{
+  "version": "0.16.1",
+  "platform": "linux-amd64",
+  "go_version": "go1.27.1",
+  "artifacts": [
+    {
+      "name": "pdfcpu_0.16.1_Linux_x86_64.tar.xz",
+      "url": "https://github.com/pdfcpu/pdfcpu/releases/download/v0.16.1/pdfcpu_0.16.1_Linux_x86_64.tar.xz",
+      "sha256": "757e57036e1da56b789d0243ba72b09be4f26b3ec88e781170896ac36ae04d51",
+      "member": "pdfcpu_0.16.1_Linux_x86_64/pdfcpu"
+    },
+    {
+      "name": "BIZUDGothic.zip",
+      "url": "https://github.com/googlefonts/morisawa-biz-ud-gothic/releases/download/v1.051/BIZUDGothic.zip",
+      "sha256": "30692df621b92df13b88f1360aed1ab6ae50de441bce751a396c6439045cd759",
+      "member": "BIZUDPGothic-Regular.ttf"
+    },
+    {
+      "name": "OFL.txt",
+      "url": "https://raw.githubusercontent.com/googlefonts/morisawa-biz-ud-gothic/v1.051/OFL.txt",
+      "sha256": "e753d7155d53c747d037a445e584c8ecfca6dd79846db610417e282a736b28bc"
+    }
+  ],
+  "font_sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673"
+}

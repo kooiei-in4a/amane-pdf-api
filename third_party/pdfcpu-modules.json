@@ -1,0 +1,110 @@
+{
+  "go_version": "go1.27.1",
+  "pdfcpu_version": "v0.16.1",
+  "modules": [
+    {
+      "path": "github.com/clipperhouse/uax29/v2",
+      "version": "v2.7.0",
+      "sum": "h1:+gs4oBZ2gPfVrKPthwbMzWZDaAFPGYK72F0NJv2v7Vk=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/github.com_clipperhouse_uax29_v2/LICENSE"
+      ]
+    },
+    {
+      "path": "github.com/google/jsonschema-go",
+      "version": "v0.4.3",
+      "sum": "h1:/DBOLZTfDow7pe2GmaJNhltueGTtDKICi8V8p+DQPd0=",
+      "in_linux_binary": false,
+      "license_files": [
+        "modules/github.com_google_jsonschema-go/LICENSE"
+      ]
+    },
+    {
+      "path": "github.com/hhrutter/tiff",
+      "version": "v1.0.7",
+      "sum": "h1:Oelnv46vb9gycPsotT0q1IoJ6Ywkzd77I1smgQvkP7g=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/github.com_hhrutter_tiff/LICENSE",
+        "modules/github.com_hhrutter_tiff/internal/lzw/LICENSE"
+      ]
+    },
+    {
+      "path": "github.com/inconshreveable/mousetrap",
+      "version": "v1.1.0",
+      "sum": "h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=",
+      "in_linux_binary": false,
+      "license_files": [
+        "modules/github.com_inconshreveable_mousetrap/LICENSE"
+      ]
+    },
+    {
+      "path": "github.com/mattn/go-runewidth",
+      "version": "v0.0.30",
+      "sum": "h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/github.com_mattn_go-runewidth/LICENSE"
+      ]
+    },
+    {
+      "path": "github.com/spf13/cobra",
+      "version": "v1.10.2",
+      "sum": "h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/github.com_spf13_cobra/LICENSE.txt"
+      ]
+    },
+    {
+      "path": "github.com/spf13/pflag",
+      "version": "v1.0.10",
+      "sum": "h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/github.com_spf13_pflag/LICENSE"
+      ]
+    },
+    {
+      "path": "go.yaml.in/yaml/v3",
+      "version": "v3.0.5",
+      "sum": "h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/go.yaml.in_yaml_v3/LICENSE",
+        "modules/go.yaml.in_yaml_v3/NOTICE"
+      ]
+    },
+    {
+      "path": "golang.org/x/crypto",
+      "version": "v0.57.0",
+      "sum": "h1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/golang.org_x_crypto/LICENSE",
+        "modules/golang.org_x_crypto/PATENTS"
+      ]
+    },
+    {
+      "path": "golang.org/x/image",
+      "version": "v0.46.0",
+      "sum": "h1:b1+oYj0Jbp6K5MDT4i4/eZpYlk3V8SJhhDKh6LBHAyQ=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/golang.org_x_image/LICENSE",
+        "modules/golang.org_x_image/PATENTS"
+      ]
+    },
+    {
+      "path": "golang.org/x/text",
+      "version": "v0.42.0",
+      "sum": "h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/golang.org_x_text/LICENSE",
+        "modules/golang.org_x_text/PATENTS"
+      ]
+    }
+  ]
+}

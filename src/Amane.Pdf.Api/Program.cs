@@ -9,11 +9,13 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
-        (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options))) &&
+        (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
+            PdfcpuProcessor.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
 builder.Services.AddSingleton<QpdfProcessor>();
+builder.Services.AddSingleton<PdfcpuProcessor>();
 builder.Services.AddRateLimiter(_ => { });
 builder.Services.AddOptions<RateLimiterOptions>().Configure<IOptions<PdfOptions>>((limiter, pdf) =>
 {
@@ -49,7 +51,16 @@ app.MapPost("/api/pdf/reorder", PdfPageSelectionEndpoints.ReorderAsync).RequireR
 try
 {
     var pdfOptions = app.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
-    await ProcessMemoryLimits.ValidateStartupAsync(pdfOptions, app.Lifetime.ApplicationStopping);
+    using var startupDeadline = CancellationTokenSource.CreateLinkedTokenSource(app.Lifetime.ApplicationStopping);
+    startupDeadline.CancelAfter(TimeSpan.FromSeconds(30));
+    await ProcessMemoryLimits.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+    await PdfcpuProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+}
+catch (PdfcpuStartupException)
+{
+    app.Logger.LogCritical("pdfcpu・日本語フォントの自己テストに失敗しました。");
+    await app.DisposeAsync();
+    return 1;
 }
 catch (OptionsValidationException)
 {
