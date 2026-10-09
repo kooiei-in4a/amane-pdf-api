@@ -483,8 +483,10 @@ export Pdf__PdfcpuConfigDir=/tmp/amane-pdf-tools/config
 ```bash
 dotnet restore
 dotnet build --configuration Release --no-restore
-dotnet test --configuration Release --no-build
+dotnet test --configuration Release --no-build --settings tests/ci.runsettings
 ```
+
+CIと同じ設定で、テストをクラス単位で最大2並列に実行します。同一クラス内のテストと、`[DoNotParallelize]` を指定したクラスは直列に実行します。設定を指定しない `dotnet test` は従来どおり直列実行です。
 
 ローカル起動:
 

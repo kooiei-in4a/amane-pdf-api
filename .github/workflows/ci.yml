@@ -62,7 +62,7 @@ jobs:
         run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release --no-build
+        run: dotnet test --configuration Release --no-build --settings tests/ci.runsettings
 
   docker:
     runs-on: ubuntu-26.04
