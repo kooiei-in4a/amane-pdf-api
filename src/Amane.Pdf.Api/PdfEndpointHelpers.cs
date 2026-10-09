@@ -66,6 +66,13 @@ internal static class PdfEndpointHelpers
             await Results.Problem(statusCode: 422, title: "このPDFは情報除去の処理上限を超えています。",
                 extensions: new Dictionary<string, object?> { ["reason"] = "too-complex" }).ExecuteAsync(context);
         }
+        catch (PdfOverlayInputException exception)
+        {
+            var complex = exception.Reason == PdfOverlayReason.TooComplex;
+            await Results.Problem(statusCode: 422,
+                title: complex ? "このPDFは描画の処理上限を超えています。" : "このPDFのページ属性は描画に対応していません。",
+                extensions: new Dictionary<string, object?> { ["reason"] = complex ? "too-complex" : "unsupported-pdf" }).ExecuteAsync(context);
+        }
         catch (PdfInputException)
         {
             await Results.Problem(statusCode: 422, title: "このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。").ExecuteAsync(context);

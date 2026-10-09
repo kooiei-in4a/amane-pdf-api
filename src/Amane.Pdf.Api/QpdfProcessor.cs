@@ -234,6 +234,25 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
             throw new InvalidOperationException("PDF processing failed.");
     }
 
+    internal async Task RunOverlayWriteAsync(TemporaryPdfFiles files, string[] arguments, string outputPath,
+        long budget, CancellationToken token)
+    {
+        using (TemporaryPdfFiles.CreatePrivateFile(outputPath)) { }
+        var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,
+            arguments, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
+            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory })
+            with { WorkingDirectory = files.DirectoryPath };
+        var result = await ExternalProcessRunner.RunAsync(request, token);
+        token.ThrowIfCancellationRequested();
+        if (result.ExitCode is 126 or 127) throw new InvalidOperationException(PdfOverlayBuilder.Failure);
+        var output = new FileInfo(outputPath);
+        if (output.Exists && output.Length > budget) throw PdfOverlayInputException.TooComplex();
+        if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
+            throw new InvalidOperationException(PdfOverlayBuilder.Failure);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(outputPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
     private async Task<(int ExitCode, byte[]? Output)> RunWithBoundedStdoutAsync(string[] arguments, int outputLimit,
         CancellationToken cancellationToken)
     {

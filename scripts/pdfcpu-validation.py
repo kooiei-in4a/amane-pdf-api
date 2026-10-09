@@ -24,4 +24,4 @@ with tempfile.TemporaryDirectory(prefix="amane-pdfcpu-render-") as temporary:
     fonts = subprocess.run(["pdffonts", str(path)], stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL, check=True, timeout=30).stdout.decode().splitlines()
     assert any("+BIZUDPGothic-Regular" in row and "yes yes yes" in row for row in fonts)
-print("Japanese extraction and embedded/subset/Unicode font: PASS (text position pixel comparison remains PR B)")
+print("Japanese extraction and embedded/subset/Unicode font: PASS (overlay pixels are checked by overlay-validation.py)")

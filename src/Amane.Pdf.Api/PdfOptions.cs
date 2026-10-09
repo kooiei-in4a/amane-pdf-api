@@ -11,6 +11,12 @@ public sealed class PdfOptions
     public long CleanJsonLimitBytes { get; set; } = 32 * 1024 * 1024;
     public long CleanOutputLimitBytes { get; set; } = 54 * 1024 * 1024;
     public long CleanJobLimitBytes { get; set; } = 124 * 1024 * 1024;
+    public long OverlayJsonLimitBytes { get; set; } = 32 * 1024 * 1024;
+    public long OverlayGeneratedLimitBytes { get; set; } = 8 * 1024 * 1024;
+    public long OverlayGeneratedJsonLimitBytes { get; set; } = 40 * 1024 * 1024;
+    public long OverlayOutputLimitBytes { get; set; } = 62 * 1024 * 1024;
+    public long OverlayJobLimitBytes { get; set; } = 124 * 1024 * 1024;
+    public int OverlayMaxPages { get; set; } = 1000;
     public int QpdfTimeoutSeconds { get; set; } = 30;
     public int MaxConcurrentProcesses { get; set; } = 2;
     public const int MultipartOverheadBytes = 64 * 1024;

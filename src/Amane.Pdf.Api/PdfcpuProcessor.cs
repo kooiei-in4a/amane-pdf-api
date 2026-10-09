@@ -11,6 +11,11 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
     internal const string JapaneseFont = "BIZUDPGothic-Regular";
     internal const string Version = "0.16.1";
     internal const long LayerFileLimitBytes = 8 * 1024 * 1024;
+    internal const int MaxTextLength = 128; // UTF-16 code units per element
+    internal const int MaxTextsPerPage = 4;
+    internal const int MaxTextElements = 4000;
+    internal const int MaxLineBreaks = 3;
+    internal const int MaxTabs = 3;
     private const string Failure = "PDF描画処理に失敗しました。";
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
     private readonly PdfOptions settings = options.Value;
@@ -44,6 +49,7 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
         await WriteLayerAsync(files.PdfcpuLayerJsonPath, layer, jsonBudget, token);
         var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
             ["create", files.PdfcpuLayerJsonPath, blankPath, outputPath], pdfBudget + 1), token);
+        if (result.ExitCode is 126 or 127) throw new InvalidOperationException(Failure);
         if (File.Exists(outputPath) && new FileInfo(outputPath).Length > pdfBudget)
             throw new PdfcpuCapacityException();
         if (result.ExitCode != 0 || !File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
@@ -101,6 +107,17 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
         if (layer.Pages.Count is < 1 or > 1000 ||
             Enumerable.Range(1, layer.Pages.Count).Any(page => !layer.Pages.ContainsKey(page)))
             throw new ArgumentException("描画ページが不正です。");
+        var elements = 0;
+        if (layer.PageSizes is { } sizes && (sizes.Count != layer.Pages.Count ||
+            sizes.Any(size => !double.IsFinite(size.Width) || !double.IsFinite(size.Height) ||
+                size.Width is <= 0 or > 14400 || size.Height is <= 0 or > 14400)))
+            throw new ArgumentException("描画寸法が不正です。");
+        foreach (var texts in layer.Pages.Values)
+        {
+            token.ThrowIfCancellationRequested();
+            if (texts.Count > MaxTextsPerPage || (elements += texts.Count) > MaxTextElements)
+                throw new ArgumentException("描画要素数が不正です。");
+        }
         // Check before each flush: no more than budget bytes enter the managed buffer
         // or private file. One text value is also bounded before JSON escaping.
         using var buffer = new LayerBuffer(budget);
@@ -119,6 +136,13 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             {
                 token.ThrowIfCancellationRequested();
                 writer.WriteStartObject(page.ToString(CultureInfo.InvariantCulture));
+                // create lays out against JSON geometry, not the existing blank's
+                // MediaBox. Explicit crop supplies arbitrary mixed page dimensions.
+                if (layer.PageSizes is { } pageSizes)
+                {
+                    var size = pageSizes[page - 1];
+                    writer.WriteString("crop", string.Create(CultureInfo.InvariantCulture, $"[0 0 {size.Width:R} {size.Height:R}]"));
+                }
                 writer.WriteStartObject("content");
                 writer.WriteStartArray("text");
                 foreach (var text in texts)
@@ -154,10 +178,12 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
 
     private static void ValidateText(PdfcpuText text, long budget)
     {
-        if (string.IsNullOrEmpty(text.Value) || text.Value.Contains('%') ||
+        if (string.IsNullOrEmpty(text.Value) || text.Value.Length > MaxTextLength || text.Value.Contains('%') ||
+            text.Value.Count(c => c == '\n') > MaxLineBreaks || text.Value.Count(c => c == '\t') > MaxTabs ||
+            text.Value.Any(c => char.IsControl(c) && c is not ('\n' or '\t')) ||
             text.Anchor is not (null or "tl" or "tc" or "tr" or "l" or "c" or "r" or "bl" or "bc" or "br") ||
             (text.Anchor is not null && (text.X != 0 || text.Y != 0)) ||
-            !double.IsFinite(text.FontSize) || text.FontSize is <= 0 or > 14400 ||
+            !double.IsFinite(text.FontSize) || text.FontSize is < 1 or > 14400 ||
             !double.IsFinite(text.Rotation) || text.Rotation is < -360 or > 360 ||
             new[] { text.X, text.Y, text.Dx, text.Dy }.Any(value => !double.IsFinite(value) || Math.Abs(value) > 14400) ||
             text.Color is null || text.Color.Length != 7 || text.Color[0] != '#' ||

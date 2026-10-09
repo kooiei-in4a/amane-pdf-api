@@ -10,12 +10,13 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
-            PdfcpuProcessor.IsValid(options))) &&
+            PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
 builder.Services.AddSingleton<QpdfProcessor>();
 builder.Services.AddSingleton<PdfcpuProcessor>();
+builder.Services.AddSingleton<PdfOverlayBuilder>();
 builder.Services.AddRateLimiter(_ => { });
 builder.Services.AddOptions<RateLimiterOptions>().Configure<IOptions<PdfOptions>>((limiter, pdf) =>
 {

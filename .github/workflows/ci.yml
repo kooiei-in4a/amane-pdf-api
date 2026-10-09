@@ -77,6 +77,14 @@ jobs:
       - name: Install PDF and CI-only rendering tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf poppler-utils python3-pil python3-numpy
 
+      - name: Setup .NET for the existing test harness
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build overlay drawing comparison harness
+        run: dotnet build --configuration Release
+
       - name: Docker build
         run: docker build -t amane-pdf-api:ci .
 
@@ -88,3 +96,6 @@ jobs:
 
       - name: Verify Japanese text extraction and embedded font (CI tools only)
         run: /usr/bin/python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
+
+      - name: Compare real overlay text and original rendering (CI tools only)
+        run: /usr/bin/python3 scripts/overlay-validation.py amane-pdf-api:ci --render

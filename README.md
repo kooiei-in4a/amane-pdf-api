@@ -341,6 +341,12 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
+| `Pdf__OverlayJsonLimitBytes` | `33554432`（32 MiB） | overlay入力metadataの上限。深さ64、間接object 50,000 |
+| `Pdf__OverlayGeneratedJsonLimitBytes` | `41943040`（40 MiB） | 合成後・最終metadataの上限。間接object 75,000 |
+| `Pdf__OverlayGeneratedLimitBytes` | `8388608`（8 MiB） | 白紙PDF・白紙/描画/更新JSON・描画レイヤーの各上限 |
+| `Pdf__OverlayOutputLimitBytes` | `65011712`（62 MiB） | overlaid/最終PDFの各上限。job残容量による実効予算も適用 |
+| `Pdf__OverlayJobLimitBytes` | `130023424`（124 MiB） | 入力、全中間物、出力、FSIZE sentinelを4 KiB単位で予約 |
+| `Pdf__OverlayMaxPages` | `1000` | 連続した対象ページの上限 |
 | `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.1の描画tool |
 | `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
 | `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
@@ -370,7 +376,9 @@ Linuxでは同じ経路で`/bin/true`と`qpdf --version`を起動して0終了�
 
 LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・font一覧・固定の短い日本語の実描画・qpdf検査・ページ数一致を確認します。既存のqpdf/JPEG検証と共有する起動deadlineは固定30秒で、`QpdfTimeoutSeconds`とは独立です。pdfcpu/font/configの不具合がある場合は、healthを含む全APIの待受を開始しません。専用の固定ログは「pdfcpu・日本語フォントの自己テストに失敗しました。」です。起動時の取得・font install・外向き通信は行いません。
 
-この変更は#25のPR Aの描画基盤です。新しい描画API、ページ属性の解析・合成・復元、overlay容量測定は未実装です。PR Bでは文字系（ページ番号・透かし・文字stamp）の入力上限を確定し、画像stamp・画像→PDFは#29/#26で別の入力上限と同じ予算検証を行います。[設計書](docs/pdfcpu-design.md)と[PR Aの検証記録](docs/pdfcpu-validation.md)を参照してください。
+Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。新しいHTTP endpointはありません。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
+
+文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、最大1,000対象ページです。各要素の改行LF・tabはそれぞれ3個までで、他の制御文字、不正なUTF-16、pdfcpuの置換文字`%`は拒否します。font sizeは1〜14,400 pt、座標・offsetは±14,400 pt、文字回転は±360度、fontは固定です。JSONの描画範囲へcanvasの物理寸法を渡してください。後続APIでこの範囲を広げる場合は最大入力の再検証が必要です。画像stamp・画像→PDFは#29/#26でbytes・画素数・生成物の上限を定め、同じ検証を行います。[設計書](docs/pdfcpu-design.md)、[PR A](docs/pdfcpu-validation.md)、[PR Bの検証記録](docs/overlay-validation.md)を参照してください。
 
 単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
 Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesのカウントを併用します。
@@ -517,10 +525,11 @@ docker build -t amane-pdf-api:ci .
 python3 scripts/docker-smoke.py amane-pdf-api:ci
 ```
 
-Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。文字の位置・向きのpixel比較はPR Bで追加します。
+Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。実Builderで描画した文字の位置・向きと、追加文字以外の元本文をPopplerで比較します。
 
 ```bash
 python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
+python3 scripts/overlay-validation.py amane-pdf-api:ci --render
 ```
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archive・元TTFはpdfcpuのruntime追加物に含めません。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。
@@ -564,3 +573,18 @@ PDFは外部から受け取る信用できない入力として扱います。
 このプロジェクトは Apache License 2.0 で公開します。
 
 PDF処理に使用するqpdfもApache License 2.0です。第三者ソフトウェアについては [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
+
+通常CIの2 jobは独立・各10分timeoutを維持します。docker jobの描画比較では既存test assemblyとSDK runnerをread-only mountし、製品imageへ追加しません。通常の全.NETテストに含まれるOverlayCapacity categoryは小さいfixtureの単独/同時2件の回帰検証です。上限規模の容量測定は手動の別検証です。
+
+```bash
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-bmp
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementary \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-all-glyphs
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --text-layout lines-tabs \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-bmp
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementary --text-layout lines-tabs \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-all
+```
+
+CPU 1、memory 1.5 GiB、swapなし、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privilegesで、実Builderを単独/同時2件測定します。入力配置・起動自己テストはtimer前、Builder開始から最終検査・中間物削除までが測定範囲です。最終出力とjobの削除も検査します。driverのメモリを含むcgroup peakとtmpfs観測最大を記録します。#46のdeploy保留を継続します。
