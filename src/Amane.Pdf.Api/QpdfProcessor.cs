@@ -116,9 +116,12 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         return await RunAsync(["--job-json-file=" + jobPath], cancellationToken);
     }
 
-    public async Task<int> GetPageCountAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
+    public Task<int> GetPageCountAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
+        => GetPageCountAsync(files.InputPath, cancellationToken);
+
+    internal async Task<int> GetPageCountAsync(string path, CancellationToken cancellationToken)
     {
-        var (exitCode, output) = await RunWithBoundedStdoutAsync(["--show-npages", files.InputPath], 64, cancellationToken);
+        var (exitCode, output) = await RunWithBoundedStdoutAsync(["--show-npages", path], 64, cancellationToken);
         if (exitCode == 3) throw new PdfInputException();
         if (exitCode != 0 || output is null) throw new InvalidOperationException("PDF page count failed.");
 
@@ -214,6 +217,21 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
     {
         var result = await ExternalProcessRunner.RunAsync(CreateRequest(arguments), cancellationToken);
         return result.ExitCode;
+    }
+
+    internal async Task RunCleanWriteAsync(string[] arguments, string outputPath, long sizeLimit, CancellationToken token)
+    {
+        var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,
+            arguments, options.Value.QpdfAddressSpaceLimitBytes, sizeLimit,
+            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory });
+        var result = await ExternalProcessRunner.RunAsync(request, token);
+        token.ThrowIfCancellationRequested();
+        if (result.ExitCode is 126 or 127) throw new InvalidOperationException("PDF processing failed.");
+        var output = new FileInfo(outputPath);
+        // Ignored SIGXFSZ can leave a truncated file even with exit 0.
+        if (output.Exists && output.Length >= sizeLimit) throw new PdfCleanTooComplexException();
+        if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
+            throw new InvalidOperationException("PDF processing failed.");
     }
 
     private async Task<(int ExitCode, byte[]? Output)> RunWithBoundedStdoutAsync(string[] arguments, int outputLimit,

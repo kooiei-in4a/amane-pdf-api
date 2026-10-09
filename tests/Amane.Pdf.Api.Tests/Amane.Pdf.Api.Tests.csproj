@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Amane.Pdf.Api/Amane.Pdf.Api.csproj" />
     <None Include="Fixtures/*.pdf" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -13,6 +13,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - `POST /api/pdf/unlock` による、正しいuser / owner passwordでの暗号化解除
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
 - Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
+- Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/split` によるPDF分割とZIP返却
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
@@ -45,6 +46,38 @@ API単体の実装とDocker / CIの実処理検証が完了しています。
 ソースコードは公開し、どのようにPDFを処理しているか確認できる状態にします。
 
 ## API
+
+### PDF情報除去（Linux）
+
+```text
+POST /api/pdf/clean
+Content-Type: multipart/form-data
+
+file      PDFファイル（1つ）
+```
+
+成功時は `200 OK`、`application/pdf`、固定名 `cleaned.pdf` で返します。query、password、追加のフォーム項目は受け付けません。暗号化されたPDF（開くpasswordが空でもowner制限があるものを含む）・破損・qpdfのwarningは共通422です。Linux以外ではendpointを登録しません。
+
+```bash
+curl --fail-with-body -F file=@input.pdf http://127.0.0.1:8080/api/pdf/clean -o cleaned.pdf
+```
+
+取り除くものは、ModDate以外の文書情報（Info）、catalogの文書XMP（Metadata）、NamesのEmbeddedFiles、添付注釈とそれに従属するPopup、全辞書の `/AF`・`/EF`・`/RF` です。他の注釈・タグから添付注釈が参照されていても、添付注釈辞書は `/Type`・`/Subtype`・`/Rect` だけに縮め、説明文や作成者を残しません。間接objectの対象Popupはnullにし、直接辞書のPopupは注釈配列から外します。
+
+出力の正常性・非暗号化・ページ数と、Info、文書XMP、添付一覧、埋め込みstream、対象キー・注釈の残存を検査し、失敗した場合は500で返します。更新処理だけを安全性の根拠にせず、部分的な成果物を成功として返しません。本文content streamを保持する処理ですが、すべての表示・インタラクションの保持を保証しません。
+
+次は残ります。
+
+- ModDate、trailer ID、本文・画像、画像EXIF、通常注釈の内容・作成者、フォーム値、JavaScript、ページmetadata、タグ構造。
+- 中身を失ったfilespecでも、RichMedia・GoToE等から参照が残れば `/F`・`/UF` 等のファイル名。リンク・アクションの外部ファイル名。
+- `/PieceInfo` 等のprivate application data。その内部のAF・EF・RFは取り除きますが、元アプリの編集dataなどが別の仕組みで残る場合があります。
+- PDFポートフォリオの `/Collection`。添付が空の状態で残る場合があります。
+
+埋め込み動画・RichMedia・GoToEリンクなどは動かなくなる場合があります。XMP宣言や添付XMLの除去により、PDF/Aの適合性とZUGFeRD / Factur-X等の電子インボイスの要件を維持しません。電子署名も無効になります。trailer IDによる追跡の可能性があり、匿名化やPDF全体の無害化を保証しません。
+
+共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは50,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdf出力がFSIZEと同じ長さでも安全側に拒否します。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
+
+入力DOMを破棄してからPDFを生成し、入力・更新JSON・job JSONを削除してから出力を検査します。2 jobで248 MiB以内の一時ファイル予算を確保し、tmpfs 256 MiBとmemory 1.5 GiB・swapなしを実行環境で維持してください。[検証記録](docs/clean-validation.md)は合成fixtureでの実測です。設定を増やす場合は容量・メモリ・時間を再計測してください。#46の公開条件の確認は別途必要です。
 
 ### PDF暗号化
 
@@ -302,6 +335,9 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__MaxSplitParts` | `100` | 分割数上限。設定範囲2〜500 |
 | `Pdf__MaxSplitOutputBytes` | `52428800`（50 MiB） | ZIP内PDFの実サイズ合計。MaxFileBytesから独立 |
 | `Pdf__MaxSplitJobBytes` | `130023424`（124 MiB） | splitの入力・ZIP・現在のパートの容量予算 |
+| `Pdf__CleanJsonLimitBytes` | `33554432`（32 MiB） | cleanの入力・更新・出力検査JSONの各上限。int.MaxValue以下 |
+| `Pdf__CleanOutputLimitBytes` | `56623104`（54 MiB） | cleanの最終PDF上限 |
+| `Pdf__CleanJobLimitBytes` | `130023424`（124 MiB） | cleanの一時ファイル割当合計。4 KiB単位の入力上限以上が必須 |
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
