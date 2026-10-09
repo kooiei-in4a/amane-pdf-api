@@ -486,6 +486,8 @@ dotnet build --configuration Release --no-restore
 dotnet test --configuration Release --no-build
 ```
 
+テストプロジェクトの `RunSettingsFilePath` が `tests/ci.runsettings` を既定で読み込むため、CIとローカルの `dotnet test` はどちらもクラス単位で最大2並列に実行します。同一クラス内のテストと、`[DoNotParallelize]` を指定したクラスは直列に実行します。プロセス全体の状態を変更するテストや、容量・時間を他のテストから隔離して測定する必要があるテストには、この属性を指定してください。
+
 ローカル起動:
 
 ```bash
