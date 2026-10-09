@@ -2,9 +2,9 @@
 
 2026-10-09 JST。対象はAPIリポジトリの [Issue #25](https://github.com/kooiei-in4a/amane-pdf-api/issues/25)、基準はmain `4590c8032759c521bb690b2f9692701d60fadfb5`。pdfcpuとBIZ UDPゴシックを導入し、APIが生成する描画レイヤーをqpdfで元のPDFへ合成する共通処理を用意する。新しいHTTP endpointは追加しない。ページ番号・透かし・電子印鑑・画像からのPDF作成は後続Issueで扱う。
 
-以下はレビューを反映した実装案であり、アプリケーションへの導入はまだ行っていない。Issueには仕様と完了条件を置き、実装設計の正本はこのファイルに一本化する。Issue末尾の旧設計は削除し、このファイルの固定commitへ案内する。設計変更もこのファイルに反映して参照commitを更新する。infraとサイトは対象外とし、#46によるdeployの保留を維持する。
+以下は#25をPR AとPR Bへ分けた実装設計である。PR Aでは取得・起動検証・文字描画の基盤を実装し、ページ属性・合成・復元・overlay容量測定はPR Bで実装する。PR Aの実施結果は `docs/pdfcpu-validation.md` に記録する。Issueには仕様と完了条件を置き、実装設計の正本はこのファイルに一本化する。Issue末尾の旧設計は削除し、このファイルの固定commitへ案内する。設計変更もこのファイルに反映して参照commitを更新する。infraとサイトは対象外とし、#46によるdeployの保留を維持する。
 
-この設計書はPR Aに含め、レビューを経てmainへ取り込む。`docs/issue-25-design` ブランチは、PR Aのmerge後にIssueの参照先をmainから到達できるcommitへ更新し、公開ファイルを読み戻して確認するまで残す。squash/rebaseで元の設計commitがmainへ引き継がれない場合も、参照先の移行前にブランチを削除しない。今回の修正では設計ブランチの新しいcommitへ参照を更新し、実装・mergeは行わない。
+この設計書はPR Aに含め、レビューを経てmainへ取り込む。`docs/issue-25-design` ブランチは、PR Aのmerge後にIssueの参照先をmainから到達できるcommitへ更新し、公開ファイルを読み戻して確認するまで残す。squash/rebaseで元の設計commitがmainへ引き継がれない場合も、参照先の移行前にブランチを削除しない。mainから到達できるcommitへの参照移行は、Humanのmerge承認後に行う。
 
 ## 最新mainに合わせる変更
 
@@ -105,7 +105,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf,
 
 `PdfcpuLayer` はページ番号をキーとする `pages → content → text[]` の型付きmodelとする。文字の `value`、`anchor` または位置、`dx` / `dy`、fontのsize・col、`rot` だけを入力modelに持たせる。font nameは自由入力にせず、JSON writerが常に `JapaneseFont` を書く。pdfcpuの任意JSON、URL、外部ファイル参照、画像取得、フォーム要素を透過させない。schemaは [v0.16.1のTextBox](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/textBox.go) と [Content](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/content.go) に合わせる。
 
-利用者の文字は0600のJSONにだけ書く。argvに載せない。`%` はpdfcpuの置換文字として扱われるため、利用者の文字に含まれる場合は生成前に拒否する。ページ番号は後続Issueで計算した数字そのものを渡す。文字数・描画要素数・サイズ・回転角・色・配置名は各APIの入力検証で制限し、共通処理でも有限値と許可した要素を確認する。画像stampやimportの利用者向け仕様は#29/#26で追加する。
+利用者の文字は0600のJSONにだけ書く。argvに載せない。`%` はpdfcpuの置換文字として扱われるため、利用者の文字に含まれる場合は生成前に拒否する。ページ番号は後続Issueで計算した数字そのものを渡す。文字数・描画要素数・サイズ・回転角・色・配置名は各APIの入力検証で制限し、共通処理でも有限値と許可した要素を確認する。画像stampやimportの利用者向け仕様は#29/#26で追加する。PR Bで確定する入力上限は文字系（ページ番号・透かし・文字stamp）を対象とする。画像stamp（#29）と画像→PDF（#26）は、アップロードbytes・画素数・レイヤーまたは生成PDFの予算を各Issueで定め、同じ最大入力・容量・時間検証を行う。文字系の8 MiB検証結果を画像系へ流用しない。
 
 pdfcpuのprocess requestは現在のfactoryで作り、`with { WorkingDirectory = files.DirectoryPath }` を設定する。引数の先頭は `-c <ConfigDir> --offline`。runnerは親の環境を引き継ぐため、pdfcpu requestで次を明示して上書きする。qpdf/JPEGや親の環境は変更しない。
 
@@ -186,9 +186,9 @@ qpdfのmanualはoverlayを後段で処理することを説明しており、[12
 
 pdfcpuは書き込み失敗時に部分出力を削除する。FSIZE到達でも出力不在・exit 1になることがあり、サイズを観測できない失敗は500にする。stderrの文言だけでtoo-complexを推測しない。事前の容量予約による拒否と、実サイズで証明できる超過は422とし、この違いをfault testで固定する。FSIZEによるディスク容量の制限はどちらの場合にも有効である。
 
-この500の扱いを採る前提として、**この描画基盤を使う各APIの入力上限を最大にしても、生成レイヤーが8 MiBの上限およびそのjobで予約した実効PDF予算に届かないことを、PR Bの完了条件として実測で確認する**。後続のHTTP endpointは#25の対象外だが、各API向け描画modelの最大文字数・描画要素数・対象ページ数などは、PR Bの完了までに定めて共通処理の許可範囲に反映する。API未実装や入力上限未確定を理由に、この確認を省略しない。
+この500の扱いを採る前提として、**この描画基盤を使う文字系APIの入力上限を最大にしても、生成レイヤーが8 MiBの上限およびそのjobで予約した実効PDF予算に届かないことを、PR Bの完了条件として実測で確認する**。後続のHTTP endpointは#25の対象外だが、文字系API向け描画modelの最大文字数・描画要素数・対象ページ数などは、PR Bの完了までに定めて共通処理の許可範囲に反映する。API未実装や入力上限未確定を理由に、この確認を省略しない。
 
-最大1,000ページと各入力上限を組み合わせ、日本語glyphの多様性、font subset、配置・寸法など出力サイズを増やす条件を含めて、最大条件を選んだ根拠、実測レイヤーbytes、実効予算、残りbytesを記録する。レイヤーが予算に届く、またはpdfcpuがFSIZEで失敗する組合せがあれば、入力上限を下げるか生成予算を見直して再測定し、条件を満たすまでPR Bを完了扱いにしない。30秒・job・tmpfs・同時2件の予算も同時に守る。後続APIが検証済みの入力上限を広げる場合は、そのAPIの実装で同じ検証をやり直す。
+最大1,000ページと文字系の各入力上限を組み合わせ、日本語glyphの多様性、font subset、配置・寸法など出力サイズを増やす条件を含めて、最大条件を選んだ根拠、実測レイヤーbytes、実効予算、残りbytesを記録する。レイヤーが予算に届く、またはpdfcpuがFSIZEで失敗する組合せがあれば、入力上限を下げるか生成予算を見直して再測定し、条件を満たすまでPR Bを完了扱いにしない。30秒・job・tmpfs・同時2件の予算も同時に守る。後続APIが検証済みの入力上限を広げる場合は、そのAPIの実装で同じ検証をやり直す。
 
 処理の順序と削除時点を固定して、複数の大きいPDFを残し続けない。
 
@@ -245,7 +245,7 @@ srcのファイルは `src/Amane.Pdf.Api/` 配下とする。qpdf書き出しhel
 | PR | 範囲と検証 |
 | --- | --- |
 | A | 取得script・lock・license/module一覧、Docker/CI、Pdfcpu設定、共有起動deadlineと専用エラー、PdfcpuProcessorと文字model・JSON予算、固定白紙による日本語smoke、README/security/notice。Release build・全テスト・起動時間・Docker描画を確認 |
-| B | Aを土台にPdfPageBoxes、Builder、復元規則、調整とoverlayの統合、OverlayCapacity、overlay用422、geometry/保持/境界/faultテスト、Poppler比較、既存test assemblyでの容量測定と記録。各API向け描画modelの入力上限を確定し、最大入力でもレイヤーが実効予算に届かないことを実測。Release build・全テスト・既存API smoke・同時2件の上限検証を確認 |
+| B | Aを土台にPdfPageBoxes、Builder、復元規則、調整とoverlayの統合、OverlayCapacity、overlay用422、geometry/保持/境界/faultテスト、Poppler比較、既存test assemblyでの容量測定と記録。文字系API向け描画modelの入力上限を確定し、最大入力でもレイヤーが実効予算に届かないことを実測。Release build・全テスト・既存API smoke・同時2件の上限検証を確認 |
 
 AのprocessorはpathとJSON/PDF予算だけを受け取り、Bのcanvasやcapacityに依存させない。Aの自己テスト用白紙は固定の1ページとし、任意入力のページ属性解析はBで実装する。Aは `Refs #25`、BはAの完了を確認したうえで `Closes #25` とする。AだけではIssue全体を完了扱いにしない。merge・tag・deployはこの設計更新では行わない。
 
@@ -267,7 +267,7 @@ Popplerは.NETテストの必須toolに含めず、描画比較scriptの依存�
 | 合成の順序と保持 | 調整JSONがoverlayより先に適用され、入力のobject番号で更新できること。元本文の表示位置、画像、しおり、Link、フォーム値・annotation、非対象ページ、ページ数、Box/Rotate/UserUnit、BleedBox/ArtBox |
 | 表示範囲外 | CropBox外の内容のstream残存と拡張後の非表示、TrimBox外かつCropBox内の内容の通常表示保持。情報除去として扱わない |
 | 境界 | object 50,000/50,001、対象ページ1,000/1,001、生成後object上限、JSON/生成物/FSIZE/jobの直前・同値・超過 |
-| 最大入力とレイヤー予算 | 各API向け描画modelの入力上限を最大にした組合せで、生成レイヤーが8 MiBと予約した実効PDF予算に届かないことを実測。最大条件の根拠とbytesの余裕を記録し、未達なら上限等を見直して再測定するまでPR Bを完了扱いにしない |
+| 最大入力とレイヤー予算 | 文字系API向け描画modelの入力上限を最大にした組合せで、生成レイヤーが8 MiBと予約した実効PDF予算に届かないことを実測。最大条件の根拠とbytesの余裕を記録し、未達なら上限等を見直して再測定するまでPR Bを完了扱いにしない |
 | 故障 | exit 3を含む非0、126/127、空/破損/暗号化/warning出力、ページ数不一致、壊れたJSONを返さない |
 | lifecycle | 各stageでtimeout/cancel/app停止、親子processのkill・wait、job削除。将来のHTTP接続時にも共有枠の解放を検証 |
 
