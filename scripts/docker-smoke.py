@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 import zlib
@@ -48,13 +49,14 @@ def multipart(file=None, password=PASSWORD, files=None):
 
 
 class ApiContainer:
-    def __init__(self, image, settings=(), isolated=False, memory_mib=1536):
+    def __init__(self, image, settings=(), isolated=False, memory_mib=1536, mounts=()):
         self.memory_mib = memory_mib
         self.name = "amane-pdf-smoke-" + uuid.uuid4().hex
         self.port = None
         self.image = image
         self.settings = settings
         self.isolated = isolated
+        self.mounts = mounts
         self.created = False
         self.post_count = 0
 
@@ -71,6 +73,8 @@ class ApiContainer:
             arguments += ["--publish", "127.0.0.1::8080"]
         for setting in self.settings:
             arguments += ["--env", setting]
+        for source, target in self.mounts:
+            arguments += ["--mount", f"type=bind,src={source},dst={target},readonly"]
         docker(*arguments, self.image)
         self.created = True
         if not self.isolated:
@@ -276,13 +280,72 @@ class ApiContainer:
 
 
 @contextlib.contextmanager
-def running_container(image, settings=(), isolated=False):
-    api = ApiContainer(image, settings, isolated)
+def running_container(image, settings=(), isolated=False, mounts=()):
+    api = ApiContainer(image, settings, isolated, mounts=mounts)
     try:
         api.start()
         yield api
     finally:
         api.close()
+
+
+@contextlib.contextmanager
+def request_failing_qpdf(image, isolated=False):
+    # Let all real startup checks finish before injecting a request-stage error.
+    with tempfile.TemporaryDirectory(prefix="amane-qpdf-fault-") as directory:
+        wrapper = Path(directory) / "qpdf"
+        wrapper.write_text('''#!/bin/sh
+for argument do last=$argument; done
+case "$last" in */pdfcpu-blank.pdf) exec qpdf "$@";; esac
+if [ "$1" = --version ] || [ -f "$(dirname "$last")/pdfcpu-layer.json" ]; then
+    exec qpdf "$@"
+fi
+exec /usr/bin/cat "$@"
+''')
+        wrapper.chmod(0o755)
+        with running_container(image, ("Pdf__QpdfPath=/validation/qpdf",), isolated,
+                               ((wrapper, "/validation/qpdf"),)) as api:
+            yield api
+
+
+def pdfcpu_smoke(api):
+    root = "/tmp/pdfcpu-smoke"
+    prefix = "/opt/amane-pdf"
+    api.exec("mkdir", "-m", "700", root)
+    environment = ["env", f"HOME={root}", f"XDG_CONFIG_HOME={root}", "GOMEMLIMIT=200MiB",
+                   "GOGC=100", "GODEBUG=", "GOMAXPROCS=1", "GOTRACEBACK=none"]
+    tool = [*environment, *LIMITED_EXEC, "--as=1073741824:1073741824", "--fsize=8388609:8388609", "--",
+            prefix + "/bin/pdfcpu", "-c", prefix + "/config", "--offline"]
+    assert "version: 0.16.1" in api.exec(*tool, "version").stdout.decode().splitlines()
+    assert b"BIZUDPGothic-Regular (" in api.exec(*tool, "fonts", "list").stdout
+    api.exec("sh", "-c", "test ! -w /opt/amane-pdf/config/pdfcpu/config.yml && "
+             "test ! -w /opt/amane-pdf/config/pdfcpu/fonts && "
+             "test ! -w /opt/amane-pdf/config/pdfcpu/fonts/BIZUDPGothic-Regular.gob")
+    assert api.exec("stat", "-c", "%u:%a", prefix + "/config/pdfcpu/config.yml").stdout.strip() == b"0:444"
+    repository = Path(__file__).resolve().parent.parent
+    license_paths, expected_hashes = [], []
+    for line in (repository / "third_party/pdfcpu-licenses.sha256").read_text().splitlines():
+        digest, path = line.split("  ", 1)
+        path = path.removeprefix("pdfcpu/")
+        license_paths.append(prefix + "/licenses/" + path)
+        expected_hashes.append(digest)
+    actual = api.exec("sha256sum", *license_paths).stdout.decode().splitlines()
+    assert [line.split()[0] for line in actual] == expected_hashes
+    assert api.exec("cat", prefix + "/licenses/THIRD_PARTY_NOTICES.md").stdout == (repository / "THIRD_PARTY_NOTICES.md").read_bytes()
+    fixtures = repository / "tests/Amane.Pdf.Api.Tests/Fixtures"
+    for name in ("pdfcpu-blank.json", "pdfcpu-layer.json"):
+        docker("exec", "-i", api.name, "sh", "-c", f"umask 077; cat > {root}/{name}", data=(fixtures / name).read_bytes())
+    api.exec("qpdf", "--json-input", root + "/pdfcpu-blank.json", root + "/blank.pdf")
+    api.exec(*tool, "create", root + "/pdfcpu-layer.json", root + "/blank.pdf", root + "/layer.pdf")
+    api.exec("qpdf", "--check", root + "/layer.pdf")
+    assert docker("exec", api.name, "qpdf", "--is-encrypted", root + "/layer.pdf", check=False).returncode == 2
+    assert api.exec("qpdf", "--show-npages", root + "/layer.pdf").stdout == b"1\n"
+    metadata = api.exec("qpdf", "--json=2", "--json-stream-data=none", "--decode-level=none", root + "/layer.pdf").stdout
+    assert b"/FontFile2" in metadata and b"/ToUnicode" in metadata and b"+BIZUDPGothic-Regular" in metadata
+    pdf = api.exec("cat", root + "/layer.pdf").stdout
+    api.exec("rm", "-rf", root)
+    print("Docker pdfcpu: locked version/Japanese draw/subset font/read-only config/licenses PASS", flush=True)
+    return pdf
 
 
 def flate_image_pdf():
@@ -409,7 +472,7 @@ def split_smoke(image):
     for limit, expected in ((total, 200), (total - 1, 422), (total - last + 128, 422)):
         with running_container(image, (f"Pdf__MaxSplitOutputBytes={limit}",), isolated=True) as api:
             split_request(api, fixture, expected)
-    with running_container(image, ("Pdf__QpdfPath=/usr/bin/cat",), isolated=True) as api:
+    with request_failing_qpdf(image, isolated=True) as api:
         split_request(api, fixture, 500)
     print("Docker split: Stored/pages/names/TZ/exact/exit0 overflow/real FSIZE/500/cleanup/health PASS", flush=True)
 
@@ -469,6 +532,11 @@ def compress_smoke(image):
 
 
 def main(image):
+    with running_container(image, isolated=True) as api:
+        pdfcpu_smoke(api)
+    for setting in ("Pdf__PdfcpuPath=/missing/pdfcpu", "Pdf__PdfcpuConfigDir=/missing/config",
+                    "Pdf__PdfcpuAddressSpaceLimitBytes=268435456"):
+        assert_startup_failure(image, (setting,), "pdfcpu・日本語フォントの自己テストに失敗しました。")
     clean_smoke(image)
     compress_smoke(image)
     split_smoke(image)
@@ -518,7 +586,7 @@ def main(image):
         api.protect(FIXTURE + b"X", expected=413, chunked=True)
         print("Docker E2E: exact file limit / Content-Length and chunked 413 PASS")
         post_count += api.post_count
-    with running_container(image, ("Pdf__QpdfPath=/usr/bin/cat",)) as api:
+    with request_failing_qpdf(image) as api:
         api.protect(FIXTURE, expected=500)
         print("Docker E2E: sanitized internal failure / cleanup PASS")
         post_count += api.post_count

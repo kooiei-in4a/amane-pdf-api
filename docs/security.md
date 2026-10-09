@@ -170,6 +170,18 @@ JSONは各32 MiB・深さ64、参照連鎖64、間接object 50,000、PDF出力54
 
 qpdfのファイル書込みは共通のSIGXFSZ無視・CORE=0・AS・JPEGMEMにFSIZEを加えます。cancel、126/127、実サイズがFSIZE以上、その他exit、JSONの順で判定し、exit 0でも切れたJSON/PDFや上限同値を専用422（too-complex）にします。入力checkの2/3は従来422、入力検証後の想定外exitは500です。stderrやJSONの内容から利用者向けエラーを作りません。ファイル名・PDF・JSON・プロセス出力をログやProblem Detailsへ記録しません。
 
+## pdfcpu描画基盤（Linux、#25 PR A）
+
+pdfcpu 0.16.1とBIZ UDPゴシックv1.051を公式Releaseから取得し、repositoryのlockにあるURL・SHA-256へ固定します。archiveから固定したmemberだけを取り出し、TTFとOFL、収録licenseもchecksumで検査します。取得・font installはbuild時に限定します。binaryは0555、設定とfont cacheは0444、dirは0555とし、final imageではrootが所有します。RobotoとGo依存物・runtimeのlicenseもimageへ残します。
+
+Linuxでは描画endpointが未追加でもpdfcpuの起動検証を必須にします。qpdf/JPEGと同じ起動tokenで、固定30秒以内にversion・日本語font・固定白紙への日本語描画・未暗号化・qpdf check・ページ数を確認します。不具合時はhealthを含む全APIの待受前に終了し、pdfcpu専用の固定メッセージだけで原因を通知します。tool出力・内部path・inner exceptionはログへ出しません。自己テストのjobも成功・失敗とも削除します。非Linuxではこの追加検証を行いません。
+
+共通処理はAPIが生成したjob内の白紙だけをpdfcpuへ渡します。利用者PDFの解析・overlayはPR Bのqpdf処理で追加します。描画modelは文字だけに限定し、任意JSON・font名・URL・画像・外部ファイル参照を受け付けません。fontはBIZUDPGothic-Regularに固定し、`%`、不正なUnicode、非有限数、不正な配置や色を生成前に拒否します。文字は0600のJSONだけに保存し、argvへ渡しません。jobは0700、pdfcpuの成功出力は検査前に0600へ揃えます。
+
+pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無視、prlimitのCORE=0・AS 1 GiB・FSIZE（PDF予算+1）で起動します。GOMEMLIMIT=200MiBはsoft limitで、RSSの上限保証ではありません。HOME/XDG_CONFIG_HOMEはjob内、GOGC=100・GODEBUG空・GOMAXPROCS=1・GOTRACEBACK=noneへ上書きします。`-c` とofflineを常に指定し、親の設定dir指定に依存しません。version/font stdoutの保持は4 KiB/64 KiBまで、通常stdout/stderrは破棄します。
+
+描画JSONとレイヤーPDFの初期上限は各8 MiBで、callerが予約したさらに小さい予算も適用します。JSONはprivate fileへ書く前に容量を検査し、出力サイズで証明できる超過は専用のcapacity例外でPR Bへ引き渡します。pdfcpuが部分出力を削除したFSIZE失敗など、出力不在の非0終了は固定の内部障害として扱います。この扱いの前提となる文字系APIの最大入力でレイヤー予算に届かない実測、全job容量、同時2件の24秒検証はPR Bの未完了条件です。画像系は#29/#26で上限を定めて同じ検証を行います。
+
 ## core dumpと公開条件
 
 FSIZE超過時のSIGXFSZの既定動作はcoreを伴う終了です。Linuxの共通起動経路でSIGXFSZをSIG_IGNへ設定してtoolへexecし、この終了を防ぎます。書込み上限はprlimitで維持します。qpdfは切れたJSONでもexit 0となり得るため、pages／metadataの実サイズが上限以上なら、同値を含めて既知のmetadata上限として画像処理を終了します。splitは従来どおりpartBudget+1のFSIZEと実サイズの比較で専用422を返します。

@@ -341,6 +341,10 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
+| `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.1の描画tool |
+| `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
+| `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
+| `Pdf__PdfcpuAddressSpaceLimitBytes` | `1073741824`（1 GiB） | pdfcpu専用RLIMIT_AS。qpdfと別の値 |
 | `Pdf__PrlimitPath` | `/usr/bin/prlimit` | Linuxの制限付き実行に使うprlimit |
 | `Pdf__QpdfAddressSpaceLimitBytes` | `570425344`（544 MiB） | Linuxでqpdfに適用するRLIMIT_AS。正のbytes値 |
 | `Pdf__QpdfJpegMemory` | `600M` | 全OSのqpdfに渡すJPEGMEM。正のASCII数字＋任意の`M`/`m`、30文字未満、単位換算後のsigned long overflowを拒否 |
@@ -363,6 +367,10 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 Linuxでは共通の起動経路を`/usr/bin/env --ignore-signal=XFSZ -- prlimit --core=0:0 --as=... [--fsize=...] -- tool args...`とし、FSIZE超過によるSIGXFSZを無視してcore生成を防ぎます。CORE=0は補助対策であり、単独ではpipe collectorへの受渡しを止めません。SIGSEGV／ABRT等の別signalによるcoreはこの対策の対象外です。shellは使わず、envとprlimitはexecで実toolへ置き換わります。
 Linuxでは同じ経路で`/bin/true`と`qpdf --version`を起動して0終了を確認し、失敗・timeoutならHTTP待受を開始せず終了します。env不在・オプション非対応でも無対策の経路へfallbackしません。ログには固定文言だけを出します。Linuxではdjpeg／cjpegも小さな画像を実際に変換し、-maxmemory／-maxscans／-strict／-scaleとAS／fsize付き起動を確認します。失敗時の固定ログは「PDF処理のメモリ制限の自己テストに失敗しました。」です。非LinuxではJPEGMEMだけを適用し、Linuxの制限と自己テストは適用しません。
 待ち行列は0です。ASP.NET Core標準Concurrency Limiterでbodyを読み始める前に処理枠を取得し、上限超過には503を返します。`GET /healthz`はこの制限の対象外です。
+
+LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・font一覧・固定の短い日本語の実描画・qpdf検査・ページ数一致を確認します。既存のqpdf/JPEG検証と共有する起動deadlineは固定30秒で、`QpdfTimeoutSeconds`とは独立です。pdfcpu/font/configの不具合がある場合は、healthを含む全APIの待受を開始しません。専用の固定ログは「pdfcpu・日本語フォントの自己テストに失敗しました。」です。起動時の取得・font install・外向き通信は行いません。
+
+この変更は#25のPR Aの描画基盤です。新しい描画API、ページ属性の解析・合成・復元、overlay容量測定は未実装です。PR Bでは文字系（ページ番号・透かし・文字stamp）の入力上限を確定し、画像stamp・画像→PDFは#29/#26で別の入力上限と同じ予算検証を行います。[設計書](docs/pdfcpu-design.md)と[PR Aの検証記録](docs/pdfcpu-validation.md)を参照してください。
 
 単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
 Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesのカウントを併用します。
@@ -450,10 +458,19 @@ Dockerfile
 - Linuxではprlimit（util-linux）と、`--ignore-signal=XFSZ`に対応する`/usr/bin/env`（通常はOSに同梱）
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Linuxではlibjpeg-turbo-progs（djpeg／cjpegと必要なオプション）
+- Linux x86_64ではpdfcpu 0.16.1とBIZ UDPゴシック（共有installerで取得。curl・Python 3が必要）
 - Docker（コンテナ確認を行う場合）
 - Python 3（Docker smoke test。追加package不要）
 
 ビルドとテスト:
+
+Linuxでは、未存在または空のprefixへ固定取得物を導入し、API起動と全テストに設定を渡してください。installerは管理外の既存ファイルを上書きしません。別architectureでは取得を明示的に失敗させます。
+
+```bash
+scripts/install-pdfcpu.sh /tmp/amane-pdf-tools
+export Pdf__PdfcpuPath=/tmp/amane-pdf-tools/bin/pdfcpu
+export Pdf__PdfcpuConfigDir=/tmp/amane-pdf-tools/config
+```
 
 ```bash
 dotnet restore
@@ -499,6 +516,14 @@ CIと同じ実コンテナsmoke test:
 docker build -t amane-pdf-api:ci .
 python3 scripts/docker-smoke.py amane-pdf-api:ci
 ```
+
+Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。文字の位置・向きのpixel比較はPR Bで追加します。
+
+```bash
+python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
+```
+
+CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archive・元TTFはpdfcpuのruntime追加物に含めません。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。
 
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。

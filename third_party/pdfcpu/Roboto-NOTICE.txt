@@ -1,0 +1,4 @@
+Roboto Regular
+Copyright 2011 Google Inc. All Rights Reserved.
+Licensed under the Apache License, Version 2.0.
+Source: pdfcpu v0.16.1 pkg/pdfcpu/model/resources/Roboto-Regular.ttf (font name table).

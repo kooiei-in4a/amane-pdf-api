@@ -1,0 +1,34 @@
+* Copyright (c) 1996-1998 John D. Polstra.  All rights reserved.
+* Copyright (c) 2001 David E. O'Brien
+Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
+Copyright (c) 2015-2020 The fiat-crypto Authors. All rights reserved.
+Copyright (c) 2015-2020 the fiat-crypto authors (see the AUTHORS file)
+Copyright (c) 2016 The Go Authors. All rights reserved.
+Copyright (c) 2017 The Go Authors. All rights reserved.
+Copyright (c) 2019 The Go Authors. All rights reserved.
+Copyright (c) 2021 The Go Authors. All rights reserved.
+Copyright 1984, 1987, 1989, 1992, 2000 by Stephen L. Moshier
+Copyright 2009 The Go Authors. All rights reserved.
+Copyright 2009,2010 The Go Authors. All rights reserved.
+Copyright 2009,2010,2020 The Go Authors. All rights reserved.
+Copyright 2009-2010 The Go Authors. All rights reserved.
+Copyright 2010 The Go Authors. All rights reserved.
+Copyright 2011 The Go Authors. All rights reserved.
+Copyright 2012 The Go Authors. All rights reserved.
+Copyright 2013 The Go Authors. All rights reserved.
+Copyright 2014 Google Inc. All Rights Reserved.
+Copyright 2014 The Go Authors. All rights reserved.
+Copyright 2015 The Go Authors. All rights reserved.
+Copyright 2016 The Go Authors. All rights reserved.
+Copyright 2017 The Go Authors. All rights reserved.
+Copyright 2018 The Go Authors. All rights reserved.
+Copyright 2019 The Go Authors. All rights reserved.
+Copyright 2020 The Go Authors. All rights reserved.
+Copyright 2021 The Go Authors. All rights reserved.
+Copyright 2022 The Go Authors. All rights reserved.
+Copyright 2023 The Go Authors. All rights reserved.
+Copyright 2024 The Go Authors. All rights reserved.
+Copyright 2025 The Go Authors. All rights reserved.
+Copyright 2026 The Go Authors. All rights reserved.
+Copyright © 1994-1999 Lucent Technologies Inc. All rights reserved.
