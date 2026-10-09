@@ -75,7 +75,7 @@ curl --fail-with-body -F file=@input.pdf http://127.0.0.1:8080/api/pdf/clean -o 
 
 埋め込み動画・RichMedia・GoToEリンクなどは動かなくなる場合があります。XMP宣言や添付XMLの除去により、PDF/Aの適合性とZUGFeRD / Factur-X等の電子インボイスの要件を維持しません。電子署名も無効になります。trailer IDによる追跡の可能性があり、匿名化やPDF全体の無害化を保証しません。
 
-共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは100,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdf出力がFSIZEと同じ長さでも安全側に拒否します。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
+共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは50,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdf出力がFSIZEと同じ長さでも安全側に拒否します。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
 
 入力DOMを破棄してからPDFを生成し、入力・更新JSON・job JSONを削除してから出力を検査します。2 jobで248 MiB以内の一時ファイル予算を確保し、tmpfs 256 MiBとmemory 1.5 GiB・swapなしを実行環境で維持してください。[検証記録](docs/clean-validation.md)は合成fixtureでの実測です。設定を増やす場合は容量・メモリ・時間を再計測してください。#46の公開条件の確認は別途必要です。
 

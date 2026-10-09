@@ -189,7 +189,7 @@ public sealed class PdfEmbeddedFileStripperTests
     }
 
     [TestMethod]
-    public void ReferenceCycleAndObjectLimit_AreTooComplex()
+    public void ReferenceCycle_IsTooComplex()
     {
         var graph = Graph();
         Objects(graph)["obj:11 0 R"] = new JsonObject { ["value"] = "12 0 R" };
@@ -197,11 +197,35 @@ public sealed class PdfEmbeddedFileStripperTests
         Value(graph, 5)["/Subtype"] = "11 0 R";
         using (var cyclic = PdfEmbeddedFileStripper.Parse(Encoding.UTF8.GetBytes(graph.ToJsonString())))
             Assert.Throws<PdfCleanTooComplexException>(() => new PdfEmbeddedFileStripper(cyclic));
+    }
+
+    [TestMethod]
+    [DataRow(50_000, false)]
+    [DataRow(50_001, true)]
+    public void ObjectLimit_AcceptsExactBoundaryAndRejectsOneMore(int count, bool tooComplex)
+    {
         var objects = new Dictionary<string, object>();
-        for (var number = 1; number <= 100_001; number++) objects[$"obj:{number} 0 R"] = new { value = (object?)null };
+        objects["obj:1 0 R"] = new { value = new Dictionary<string, object> { ["/Type"] = "/Catalog" } };
+        for (var number = 2; number <= count; number++) objects[$"obj:{number} 0 R"] = new { value = (object?)null };
         objects["trailer"] = new { value = new Dictionary<string, object> { ["/Root"] = "1 0 R" } };
-        using var over = PdfEmbeddedFileStripper.Parse(JsonSerializer.SerializeToUtf8Bytes(new { qpdf = new object[] { new { jsonversion = 2 }, objects } }));
-        Assert.Throws<PdfCleanTooComplexException>(() => new PdfEmbeddedFileStripper(over));
+        using var document = PdfEmbeddedFileStripper.Parse(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            qpdf = new object[] { new { jsonversion = 2 }, objects },
+            attachments = new Dictionary<string, object>()
+        }));
+        if (tooComplex)
+        {
+            Assert.Throws<PdfCleanTooComplexException>(() => new PdfEmbeddedFileStripper(document));
+            Assert.Throws<PdfCleanTooComplexException>(() => PdfEmbeddedFileStripper.Verify(document, 0));
+        }
+        else
+        {
+            var stripper = new PdfEmbeddedFileStripper(document);
+            using var update = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(update)) stripper.Strip(writer);
+            Assert.IsFalse(stripper.HasChanges);
+            PdfEmbeddedFileStripper.Verify(document, stripper.RetainedPopupCount);
+        }
     }
 
     [TestMethod]
@@ -230,7 +254,7 @@ public sealed class PdfEmbeddedFileStripperTests
     [TestMethod]
     [DataRow(5000, false)]
     [DataRow(5000, true)]
-    [DataRow(20000, true)]
+    [DataRow(15000, true)]
     public void ManyPagesAndAnnotations_StripAndVerifyFinishWithinFiveSeconds(int pages, bool af)
     {
         var bytes = ManyPages(pages, af);

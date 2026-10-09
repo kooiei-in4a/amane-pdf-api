@@ -166,7 +166,7 @@ cleanも共有のアップロード・30秒のdeadline・concurrency枠・送信
 
 出力では正常性、非暗号化、同じページ数、InfoのModDate以外、catalog Metadata、EmbeddedFiles、空のattachments、全AF / EF / RF、EmbeddedFile stream、許可リスト以外の添付注釈キー、Annots内の対象注釈を検査します。入力と出力で同じ関数により直接辞書・間接object・間接Subtypeを含めたPopup件数を数え、出力が入力の通常Popup数を超えないことも確認します。入力のobject番号は出力へ持ち越しません。残存と検査不能は500です。
 
-JSONは各32 MiB・深さ64、参照連鎖64、間接object 100,000、PDF出力54 MiB、job 124 MiBが初期値です。1 jobの入力から出力検査までを4096 bytes単位で予約し、実サイズへ縮め、削除後に解放します。.NETの更新・job JSONもwrite前に上限を検査します。入力DOMと不要ファイルを破棄してから次のqpdfを起動し、複数DOMを同時保持しません。2 job 248 MiBだけでメモリ成立を判断せず、tmpfsも含めたcgroupの実測を[検証記録](clean-validation.md)に残します。
+JSONは各32 MiB・深さ64、参照連鎖64、間接object 50,000、PDF出力54 MiB、job 124 MiBが初期値です。1 jobの入力から出力検査までを4096 bytes単位で予約し、実サイズへ縮め、削除後に解放します。.NETの更新・job JSONもwrite前に上限を検査します。入力DOMと不要ファイルを破棄してから次のqpdfを起動し、複数DOMを同時保持しません。2 job 248 MiBだけでメモリ成立を判断せず、tmpfsも含めたcgroupの実測を[検証記録](clean-validation.md)に残します。
 
 qpdfのファイル書込みは共通のSIGXFSZ無視・CORE=0・AS・JPEGMEMにFSIZEを加えます。cancel、126/127、実サイズがFSIZE以上、その他exit、JSONの順で判定し、exit 0でも切れたJSON/PDFや上限同値を専用422（too-complex）にします。入力checkの2/3は従来422、入力検証後の想定外exitは500です。stderrやJSONの内容から利用者向けエラーを作りません。ファイル名・PDF・JSON・プロセス出力をログやProblem Detailsへ記録しません。
 

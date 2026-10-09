@@ -64,7 +64,7 @@ internal sealed class PdfEmbeddedFileStripper
                 if (!entry.Name.StartsWith("obj:", StringComparison.Ordinal) ||
                     PdfObjectRef.Parse(entry.Name[4..]) is not { } reference || !references.TryAdd(reference, entry.Value))
                     throw InvalidMetadata();
-                if (references.Count > 100_000) throw new PdfCleanTooComplexException();
+                if (references.Count > 50_000) throw new PdfCleanTooComplexException();
             }
             Collect(Content(entry.Value));
         }
