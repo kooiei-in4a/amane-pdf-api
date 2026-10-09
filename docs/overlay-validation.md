@@ -99,14 +99,23 @@ qpdfの非0/126/127・出力不在/空/破損/暗号化/warning・ページ数�
 
 入力metadata、白紙、描画、overlay、復元、最終検査の6段階でcancel/timeout/app停止を注入した18ケースで、親子processの終了待ちとjob削除を検査した。Linuxの必須tool不足をInconclusiveへ変換しない。Popplerは専用scriptとdocker jobだけの依存とし、通常の.NETテストには要求しない。
 
-## 通常CI・ローカル検証・公開待ち
+## 通常CIと完了検証
 
 通常CIは独立した`build-test`と`docker`の2 job、各10分timeoutを維持する。build-testはRelease全テストと小さいfixtureのOverlayCapacity回帰検証。dockerは製品image build、既存API smoke、圧縮描画比較、日本語抽出/font、実Builderの文字・元本文の描画比較を行う。上限規模4条件の手動cgroup測定は通常CIへ入れない。
 
-ローカルの最終Release buildは警告0・エラー0で成功。全テスト、Docker build、既存APIを含む25 POST smoke、圧縮の構造/stream/描画比較、日本語抽出/font、実Builderの描画比較を実行した。最終のレビュー反映後の全718テストが成功（失敗0・skip 0、3分34秒）。測定harnessの失敗記録改善後には容量categoryの5テストも再検証して成功。単独Release buildは0.86秒だった。検証imageのlocal digestは `sha256:d7862e089e2e380263cb32c885293d6b6fc72c3861e5237af61b5215cb98300d`。Docker buildはcacheを利用したため、GitHub CIの実時間の代用にはしない。
+ローカルの最終Release buildは警告0・エラー0で成功。全テスト、Docker build、既存APIを含む25 POST smoke、圧縮の構造/stream/描画比較、日本語抽出/font、実Builderの描画比較を実行した。レビュー反映後の全718テストが成功（失敗0・skip 0、3分34秒）。測定harnessの失敗記録改善後には容量categoryの5テストも再検証して成功。単独Release buildは0.86秒だった。検証imageのlocal digestは `sha256:d7862e089e2e380263cb32c885293d6b6fc72c3861e5237af61b5215cb98300d`。Docker buildはcacheを利用したため、GitHub CIの実時間の代用にはしない。
 
-PR BのGitHub CIは公開承認前のため未実行。PR A/#52後のmainのCI成功は基準の確認であり、PR BのCI成功とは区別する。公開後に両jobの成功・実時間・10分timeoutの余裕を読み戻して記録し、A/Bの全完了条件を満たしてからだけ`Closes #25`を使う。ローカルの実装・制限付き測定・セルフレビューを終えても、PR B全体の完了扱いは両CI成功まで保留する。merge・tag・deployは行わない。
+[PR #53](https://github.com/kooiei-in4a/amane-pdf-api/pull/53) の実装head `365b75fbcd20f436a0916f61e90e6d11ce17744d` に対する [CI run 37891855189](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/37891855189) は両job成功。build-testのRelease buildは警告0・エラー0、全718テスト成功（失敗0・skip 0、テスト自体3分6秒）。dockerは既存API smoke・圧縮描画比較・日本語抽出/font・実Builderの2テストとPoppler比較をすべて成功した。
 
-セルフレビューでは範囲、継承/復元、生成後の参照、容量予約/FSIZE、token/終了待ち/削除、固定エラー、CI依存と公開条件を確認した。生成後の不正属性が入力用422へ分類され得る点を固定500へ修正し、fault testを追加した。重大な未解決のローカル問題はなく、残る完了条件は公開後の両CIの確認と記録である。
+| job | 開始 / 終了 UTC | 実時間 | 10分timeoutまでの余裕 |
+| --- | --- | ---: | ---: |
+| build-test | 06:06:56 / 06:10:46 | 3分50秒 | 6分10秒 |
+| docker | 06:06:58 / 06:09:38 | 2分40秒 | 7分20秒 |
+
+run全体は06:06:53〜06:10:46の3分53秒。独立した2 jobが並行で走り、各10分timeoutを維持している。dockerへ追加した.NET準備は1秒、harness buildは22秒、実overlay描画比較は5秒だった。workflowへ追加のdependency cacheは導入していない。時刻と秒数はGitHub APIのjob/step timestampから求め、ローカルのcacheありDocker build時間やPR A/#52後のmainの結果で代用していない。
+
+公開した `954f88e` とレビュー反映後 `365b75f` の設計書を固定commitリンクから読み戻し、確定値を確認した。Issue #25へ仕様・実測・正本の参照を反映し、OPENを維持する。A/Bの完了条件を確認してPR本文を `Closes #25` とする。CI結果を記録する変更は文書のみで、PR最新headの両checkも確認する。merge・tag・deployは行わず、#46のdeploy保留を継続する。
+
+セルフレビューでは範囲、継承/復元、生成後の参照、容量予約/FSIZE、token/終了待ち/削除、固定エラー、CI依存と公開条件を確認した。生成後の不正属性が入力用422へ分類され得る点を固定500へ修正し、fault testを追加した。重大な未解決の問題はなく、実装headの両CI確認と結果の記録も完了した。
 
 公開レビューの5指摘も反映した。失敗時の全中間file検査、後続endpointの正常完了時だけ送信/入力400検証の契約、JSON予算の明示引数、独立stage timer、削除失敗時の残りの削除試行と元例外の保持を追加した。正常処理後の後片付け失敗は固定500にし、job所有者のdisposeで回収する。追加のfault testを含む関連69テストが成功した。

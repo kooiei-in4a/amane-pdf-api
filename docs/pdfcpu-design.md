@@ -345,4 +345,4 @@ mainの生成箇所はPdfTestContext 189、WebApplicationFactoryの直接利用5
 
 この設計で着手する際は、PR Aで起動・描画の基盤を導入し、PR Bで統合した合成と復元の実toolテストを固定して、上限規模の測定で制限値を確定する。
 
-PR Bの実装・実測・描画比較の結果と未検証項目は [overlay-validation.md](overlay-validation.md) を参照する。PR公開後に両CI jobの実時間と10分timeoutの余裕を追記し、A/Bの全条件を満たした場合だけCloses #25を使う。#46によるdeploy保留、merge/tag/deployを行わない方針は維持する。
+PR Bの実装・実測・描画比較の結果と未検証項目は [overlay-validation.md](overlay-validation.md) を参照する。PR #53の実装headで両CI jobが成功し、実時間と10分timeoutの余裕を検証記録へ反映した。A/Bの全条件を確認したうえでCloses #25を使う。#46によるdeploy保留、merge/tag/deployを行わない方針は維持する。
