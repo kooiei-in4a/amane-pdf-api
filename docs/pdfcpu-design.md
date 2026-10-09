@@ -1,8 +1,8 @@
 # pdfcpuと日本語フォントの実装設計
 
-2026-10-09 JST。対象はAPIリポジトリの [Issue #25](https://github.com/kooiei-in4a/amane-pdf-api/issues/25)、基準はmain `4590c8032759c521bb690b2f9692701d60fadfb5`。pdfcpuとBIZ UDPゴシックを導入し、APIが生成する描画レイヤーをqpdfで元のPDFへ合成する共通処理を用意する。新しいHTTP endpointは追加しない。ページ番号・透かし・電子印鑑・画像からのPDF作成は後続Issueで扱う。
+2026-10-09 JST。対象はAPIリポジトリの [Issue #25](https://github.com/kooiei-in4a/amane-pdf-api/issues/25)、PR Bの基準はmain `77e8a8caf96bfb124032a331fa7eb77674fd0743`。pdfcpuとBIZ UDPゴシックを導入し、APIが生成する描画レイヤーをqpdfで元のPDFへ合成する共通処理を用意する。新しいHTTP endpointは追加しない。ページ番号・透かし・電子印鑑・画像からのPDF作成は後続Issueで扱う。
 
-以下は#25をPR AとPR Bへ分けた実装設計である。PR Aでは取得・起動検証・文字描画の基盤を実装し、ページ属性・合成・復元・overlay容量測定はPR Bで実装する。PR Aの実施結果は `docs/pdfcpu-validation.md` に記録する。Issueには仕様と完了条件を置き、実装設計の正本はこのファイルに一本化する。Issue末尾の旧設計は削除し、このファイルの固定commitへ案内する。設計変更もこのファイルに反映して参照commitを更新する。infraとサイトは対象外とし、#46によるdeployの保留を維持する。
+以下は#25をPR AとPR Bへ分けた実装設計である。PR Aでは取得・起動検証・文字描画の基盤を実装し、ページ属性・合成・復元・overlay容量測定はPR Bに含める。実装済みの挙動と手動測定結果は `docs/overlay-validation.md` に記録する。PR Aの実施結果は `docs/pdfcpu-validation.md` に記録する。Issueには仕様と完了条件を置き、実装設計の正本はこのファイルに一本化する。Issue末尾の旧設計は削除し、このファイルの固定commitへ案内する。設計変更もこのファイルに反映して参照commitを更新する。infraとサイトは対象外とし、#46によるdeployの保留を維持する。
 
 この設計書はPR Aに含め、レビューを経てmainへ取り込む。`docs/issue-25-design` ブランチは、PR Aのmerge後にIssueの参照先をmainから到達できるcommitへ更新し、公開ファイルを読み戻して確認するまで残す。squash/rebaseで元の設計commitがmainへ引き継がれない場合も、参照先の移行前にブランチを削除しない。mainから到達できるcommitへの参照移行は、Humanのmerge承認後に行う。
 
@@ -103,9 +103,11 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf,
 
 `OverlayCanvas` は白紙path、レイヤー出力path、ページごとの表示寸法、JSONとPDFそれぞれの書き込み予算を持つ小さいrecordとする。描画JSONの固定pathは `TemporaryPdfFiles.PdfcpuLayerJsonPath` としてPR Aで追加する。Builderがdrawの前にJSONとPDFの両方を予約し、drawの後に実サイズを照合する。drawはDIから得たPdfcpuProcessorへcanvasのpathと予算を渡す。同じjob内の生成済みpathだけを使い、容量を制限しない任意の書き込みは許さない。レイヤーに元のPDFを使うことは禁止する。PdfcpuProcessorはBuilderやOverlayCapacityへ依存しない。
 
+後続endpointはBuildAsyncが正常完了した場合だけ出力を返す。最終検査等の失敗でoutput.pdfが残っても送信せず、既存のjob所有者が成功・失敗ともjobをdisposeする。文字modelの利用者入力はBuild前に検証して400へ変換する必要がある。draw内のArgumentExceptionを現行helperへそのまま渡すと内部契約違反の500になるため、endpointでの入力検証と内部エラーを区別する。
+
 `PdfcpuLayer` はページ番号をキーとする `pages → content → text[]` の型付きmodelとする。文字の `value`、`anchor` または位置、`dx` / `dy`、fontのsize・col、`rot` だけを入力modelに持たせる。font nameは自由入力にせず、JSON writerが常に `JapaneseFont` を書く。pdfcpuの任意JSON、URL、外部ファイル参照、画像取得、フォーム要素を透過させない。schemaは [v0.16.1のTextBox](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/textBox.go) と [Content](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/content.go) に合わせる。
 
-利用者の文字は0600のJSONにだけ書く。argvに載せない。`%` はpdfcpuの置換文字として扱われるため、利用者の文字に含まれる場合は生成前に拒否する。ページ番号は後続Issueで計算した数字そのものを渡す。文字数・描画要素数・サイズ・回転角・色・配置名は各APIの入力検証で制限し、共通処理でも有限値と許可した要素を確認する。画像stampやimportの利用者向け仕様は#29/#26で追加する。PR Bで確定する入力上限は文字系（ページ番号・透かし・文字stamp）を対象とする。画像stamp（#29）と画像→PDF（#26）は、アップロードbytes・画素数・レイヤーまたは生成PDFの予算を各Issueで定め、同じ最大入力・容量・時間検証を行う。文字系の8 MiB検証結果を画像系へ流用しない。
+利用者の文字は0600のJSONにだけ書く。argvに載せない。`%` はpdfcpuの置換文字として扱われるため、利用者の文字に含まれる場合は生成前に拒否する。ページ番号は後続Issueで計算した数字そのものを渡す。文字数・描画要素数・サイズ・回転角・色・配置名は共通処理で制限する。1要素128 UTF-16単位、1ページ4要素、全体4,000要素、対象1,000ページ、font size 1〜14,400 pt、座標/offset ±14,400 pt、文字回転 ±360度である。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16・`%`は拒否する。後続APIもこの範囲内で入力検証する。画像stampやimportの利用者向け仕様は#29/#26で追加する。PR Bで確定する入力上限は文字系（ページ番号・透かし・文字stamp）を対象とする。画像stamp（#29）と画像→PDF（#26）は、アップロードbytes・画素数・レイヤーまたは生成PDFの予算を各Issueで定め、同じ最大入力・容量・時間検証を行う。文字系の8 MiB検証結果を画像系へ流用しない。
 
 pdfcpuのprocess requestは現在のfactoryで作り、`with { WorkingDirectory = files.DirectoryPath }` を設定する。引数の先頭は `-c <ConfigDir> --offline`。runnerは親の環境を引き継ぐため、pdfcpu requestで次を明示して上書きする。qpdf/JPEGや親の環境は変更しない。
 
@@ -124,15 +126,15 @@ pdfcpuは既存の出力pathを拒否する。JSONは `CreatePrivateFile` で作
 
 ## ページ属性の取得
 
-`PdfPageBoxes` はqpdf JSON v2の `pages` と `qpdf` を1回の呼び出しで取得する。`--json-stream-data=none --decode-level=none` を指定し、stream本文を.NETへ取り込まない。入力は先に `ValidateAsync` とページ数検査を通す。
+`PdfPageBoxes` はqpdf JSON v2の `pages`・`qpdf`・`encrypt` を1回の呼び出しで取得する。`--json-stream-data=none --decode-level=none` を指定し、stream本文を.NETへ取り込まない。入力は先に `ValidateAsync` を通す。ページ数はこのmetadataから取得し、暗号化flagも照合する。最終出力にも同じmetadataを使い、別途 `--check` exit 0を必須とする。
 
 JSON bytes・深さ・object数を制限し、参照はobject番号とgenerationを含む完全なkeyで索引化する。値の参照連鎖とParent連鎖に深さ上限32・循環検出を設ける。長いループでもtokenを確認する。qpdfのJSON形式が壊れている場合は500、有効なqpdf JSON内の未対応ページ属性は422とする。
 
 MediaBoxは必須、CropBoxの省略/nullはMediaBox、Rotateの省略/nullは0。これらは各属性を独立にParentから解決する。UserUnitの省略/nullは1、TrimBoxの省略/nullはCropBoxであり、Parentの値を使わない。この継承範囲は [qpdf 12.3.2のgetAttribute](https://github.com/qpdf/qpdf/blob/v12.3.2/libqpdf/QPDFPageObjectHelper.cc) と合わせる。
 
-Boxは4つの有限数、正の幅・高さを要求する。実効CropBoxはMediaBoxとの交差とし、交差が空ならunsupported-pdf。逆転したBoxや範囲外の数値を勝手に修正しない。UserUnitの対応範囲は0より大きく75,000以下の有限数、Rotateは整数で90の倍数とし、配置計算用には0/90/180/270へ正規化する。qpdf 12.3.2の配置処理は `/Rotate -90` や `630` をそのまま渡すと0相当で扱うため、Box調整JSONでも正規化は必須である。復元用には正規化前の整数値も保存する。物理寸法は実効CropBoxの幅・高さにUserUnitを掛け、90/270なら入れ替える。計算後の各辺が有限かつ0より大きく14,400 pt以下であることを要求し、範囲外はunsupported-pdfにする。巨大ページの対応拡張は実測後に別途判断する。
+Boxは4つの有限数、正の幅・高さを要求する。実効CropBoxはMediaBoxとの交差とし、交差が空ならunsupported-pdf。逆転したBoxや範囲外の数値を勝手に修正しない。UserUnitの対応範囲は0より大きく75,000以下の有限数、Rotateはsigned 32-bit整数で90の倍数とし、配置計算用には0/90/180/270へ正規化する。qpdf 12.3.2の配置処理は `/Rotate -90` や `630` をそのまま渡すと0相当で扱うため、Box調整JSONでも正規化は必須である。復元用には正規化前の整数値も保存する。物理寸法は実効CropBoxの幅・高さにUserUnitを掛け、90/270なら入れ替える。計算後の各辺が有限かつ0より大きく14,400 pt以下であることを要求し、範囲外はunsupported-pdfにする。巨大ページの対応拡張は実測後に別途判断する。
 
-元のページ直下のMediaBox・CropBox・TrimBox・Rotateについて、キーの有無、null、解決後の値と元の実効値を保存する。UserUnit・BleedBox・ArtBoxの比較用実効値も保存するが、これらのキーは更新しない。復元時の参照先object番号は書き換えで変わるため、古い参照文字列を出力PDFへコピーしない。必要なBox値は意味が同じ直接配列へ復元する。元のバイナリやobject番号の保持は約束しない。DOMから得たJsonElementをdispose後まで保持せず、属性は小さい数値modelへ移す。ページ辞書の更新JSONはDOMが有効な間に書き終える。
+元のページ直下のMediaBox・CropBox・TrimBox・Rotateについて、有効な直下値と省略/nullを区別し、解決後の値と元の実効値を保存する。UserUnit・BleedBox・ArtBoxの比較用実効値も保存するが、これらのキーは更新しない。復元時の参照先object番号は書き換えで変わるため、古い参照文字列を出力PDFへコピーしない。必要なBox値は意味が同じ直接配列へ復元する。元のバイナリやobject番号の保持は約束しない。DOMから得たJsonElementをdispose後まで保持せず、属性は小さい数値modelへ移す。ページ辞書の更新JSONはDOMが有効な間に書き終える。
 
 MediaBox・CropBox・Rotateの復元規則は次の1つに統一する。入力に有効な直下値があった場合は、解決した元の直下値を戻す。直下値がなかったかnullだった場合は、調整で追加したキーを除いた候補辞書を作り、**合成後のParent連鎖とPDFの既定値で元の実効値が得られる場合だけ**キーを除去する。一致しなければ元の実効値を直下へ書く。元のnullやキーの有無より、元の実効値の保持を優先する。
 
@@ -178,7 +180,25 @@ qpdfのmanualはoverlayを後段で処理することを説明しており、[12
 | 処理全体 | 既存の共有30秒 |
 | API同時実行 | 既存の2、待ちqueue 0 |
 
-生成後はレイヤー由来のobjectが増えるため、入力と別のobject上限を設ける。32 MiB制限も常に適用する。上記のJSON・PDF・job上限と対象ページ数をoverlay用設定として追加し、object数・深さ・描画modelの許可範囲は共通処理の定数にまとめる。cleanやcompressの設定を流用しない。
+生成後はレイヤー由来のobjectが増えるため、入力と別のobject上限を設ける。入力32 MiB、生成後40 MiBの制限も常に適用する。以下の確定JSON・PDF・job上限と対象ページ数をoverlay用設定として追加し、object数・深さ・描画modelの許可範囲は共通処理の定数にまとめる。cleanやcompressの設定を流用しない。
+
+### PR Bで確定した値と変更
+
+初期案の入力・object・対象ページ・8 MiB生成物・124 MiB/job・30秒・同時2件は維持した。上限規模で生成後metadataが32 MiBを超え、overlaidが54 MiBを超えたため、生成後metadataを40 MiB、overlaid/最終PDFを62 MiBへ変更した。入力metadataは32 MiBのままである。設定値はこの実測範囲を超えて広げられず、入力は既存MaxFileBytesと50 MiBの小さい方を使う。より小さい予算ではtoo-complexで拒否する。
+
+| 項目 | 確定値 |
+| --- | ---: |
+| 入力PDF / 入力metadata | 50 MiB / 32 MiB |
+| 合成後・最終metadata | 各40 MiB |
+| 入力 / 生成後object | 50,000 / 75,000 |
+| JSON / 参照・Parent深さ | 64 / 32 |
+| 対象ページ / 描画要素 | 1,000 / 1ページ4、全体4,000 |
+| 1文字要素 / font size | 128 UTF-16単位 / 1〜14,400 pt |
+| 白紙PDF・白紙/描画/更新JSON・レイヤー | 各8 MiB |
+| overlaid / 最終PDF | 各62 MiB |
+| job / deadline / concurrency | 124 MiB / 30秒 / 2、queue 0 |
+
+pdfcpu createは入力白紙のMediaBoxを描画の配置計算へ自動反映しない。`PdfcpuLayer.PageSizes`へcanvasの物理寸法を渡し、writerがページのcropを `[0 0 width height]` の固定形式で生成する。これにより混在寸法のanchor/座標計算がA4へ固定される問題を防ぐ。任意JSONや利用者指定のcrop文字列は受けない。
 
 `OverlayCapacity` とbounded managed streamを追加する。現在のCleanCapacityの割当計算を参考に、4 KiBへ切り上げた容量をpathごとに予約し、入力・JSON・生成物・外部tool出力をすべて数える。clean固有の例外を返す既存型は流用せず、全機能に及ぶcapacityの再設計も行わない。
 
@@ -300,9 +320,9 @@ Release build、全テスト、Docker build、既存APIを含むsmoke、上記�
 
 検証用imageへPoppler 26.01.0を追加して72 dpi・RGB・CropBox表示で比較すると、空の描画レイヤーを合成した6ページは元PDFとpixel単位で一致した。fixtureのTrimBoxはCropBoxより小さく、TrimBox外かつCropBox内にも矩形を置いた。直接overlayした出力では各ページ1,200 RGB bytesが異なり、調整を統合した出力では一致した。
 
-このpixel比較は空のレイヤーで元本文が動かないことの確認であり、描画した文字の位置・向きのpixel比較はまだ実施していない。文字配置は行列計算と2026-10-07の目視による確認にとどまり、実際に文字を描いたレイヤーの描画比較はPR Bで行う。
+設計段階のこのpixel比較は空レイヤーによる確認だった。PR Bでは実際の日本語・Latin文字レイヤーの位置・向きと、追加領域以外の元本文を比較した。結果は [PR B検証記録](overlay-validation.md) に記載する。
 
-CropBox外に置いた矩形は、元PDFのCropBoxをMediaBoxへ拡張すると黒、合成後のPDFを同様に拡張すると白になった。同じ領域の `OUTSIDE` という合成文字列はForm stream内に残り、Popplerのpdftotextでも抽出された。通常表示の保持と、後から表示範囲を広げられない制約を別々に確認した。BleedBox/ArtBoxや注釈・フォームの全保持はPR Bのテストに残る。
+CropBox外に置いた矩形は、元PDFのCropBoxをMediaBoxへ拡張すると黒、合成後のPDFを同様に拡張すると白になった。同じ領域の `OUTSIDE` という合成文字列はForm stream内に残り、Popplerのpdftotextでも抽出された。通常表示の保持と、後から表示範囲を広げられない制約を別々に確認した。設計段階ではBleedBox/ArtBoxや注釈・フォームの保持が未検証だった。PR Bでは属性・画像stream・しおり宛先・Link・Widget/フォーム値の構造検査と通常表示の比較を実施した。
 
 継承MediaBox/CropBox/Rotateを持つfixtureでは、合成後のParentが元の値を保持している場合に調整キーを除去してcheckを通した。Parentから値が失われた状況も合成fixtureへ部分更新で作り、元のMediaBox/CropBoxをページ直下へ復元してcheckと実効値一致を通した。
 
@@ -324,3 +344,5 @@ CropBox外に置いた矩形は、元PDFのCropBoxをMediaBoxへ拡張すると�
 mainの生成箇所はPdfTestContext 189、WebApplicationFactoryの直接利用5の合計194か所だった。ただしDataRow等によって1か所が複数回実行されるため、194は全suiteの起動回数ではない。この値は追加するprocess処理の試作時間であり、現在のqpdf/JPEG自己テスト、WebApplicationFactoryの構築、.NET process開始、全suiteの所要時間を含まない。PR Aで実装後の全suiteの起動回数と前後の実時間を記録する。
 
 この設計で着手する際は、PR Aで起動・描画の基盤を導入し、PR Bで統合した合成と復元の実toolテストを固定して、上限規模の測定で制限値を確定する。
+
+PR Bの実装・実測・描画比較の結果と未検証項目は [overlay-validation.md](overlay-validation.md) を参照する。PR #53の実装headで両CI jobが成功し、実時間と10分timeoutの余裕を検証記録へ反映した。A/Bの全条件を確認したうえでCloses #25を使う。#46によるdeploy保留、merge/tag/deployを行わない方針は維持する。

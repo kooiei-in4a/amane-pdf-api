@@ -63,6 +63,11 @@ public sealed class PdfcpuProcessorTests
     [DataRow("font-size")]
     [DataRow("nan")]
     [DataRow("color")]
+    [DataRow("length")]
+    [DataRow("small-font")]
+    [DataRow("lines")]
+    [DataRow("tabs")]
+    [DataRow("control")]
     public async Task InvalidText_IsRejectedWithoutCallingPdfcpu(string invalid)
     {
         if (!OperatingSystem.IsLinux()) return;
@@ -75,11 +80,32 @@ public sealed class PdfcpuProcessorTests
             "anchor-and-position" => new PdfcpuText("text", X: 1),
             "font-size" => new PdfcpuText("text", FontSize: 0),
             "nan" => new PdfcpuText("text", Rotation: double.NaN),
+            "length" => new PdfcpuText(new string('語', PdfcpuProcessor.MaxTextLength + 1)),
+            "small-font" => new PdfcpuText("text", FontSize: 0.5),
+            "lines" => new PdfcpuText("a\nb\nc\nd\ne"),
+            "tabs" => new PdfcpuText("a\tb\tc\td\te"),
+            "control" => new PdfcpuText("a\0b"),
             _ => new PdfcpuText("text", Color: "file:/secret")
         };
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => job.CreateAsync(text));
         Assert.IsFalse(File.Exists(job.Files.PdfcpuLayerJsonPath));
         Assert.IsFalse(File.Exists(job.Files.OutputPath));
+    }
+
+    [TestMethod]
+    public async Task TextAndPerPageElementBoundaries_AreCheckedBeforeDrawing()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var exact = new Job();
+        await exact.CreateAsync(new(new string('語', PdfcpuProcessor.MaxTextLength)));
+        using var job = new Job(); await job.BlankAsync();
+        var processor = new PdfcpuProcessor(Options.Create(job.Options));
+        var model = new PdfcpuLayer(new Dictionary<int, IReadOnlyList<PdfcpuText>> {
+            [1] = Enumerable.Repeat(new PdfcpuText("日本語"), PdfcpuProcessor.MaxTextsPerPage + 1).ToArray() });
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => processor.CreateAsync(job.Files, model, job.Blank,
+            job.Files.OutputPath, 8388608, 8388608, default));
+        Assert.IsFalse(File.Exists(job.Files.OutputPath));
+        Assert.IsFalse(File.Exists(job.Files.PdfcpuLayerJsonPath));
     }
 
     [TestMethod]

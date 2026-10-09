@@ -170,17 +170,25 @@ JSONは各32 MiB・深さ64、参照連鎖64、間接object 50,000、PDF出力54
 
 qpdfのファイル書込みは共通のSIGXFSZ無視・CORE=0・AS・JPEGMEMにFSIZEを加えます。cancel、126/127、実サイズがFSIZE以上、その他exit、JSONの順で判定し、exit 0でも切れたJSON/PDFや上限同値を専用422（too-complex）にします。入力checkの2/3は従来422、入力検証後の想定外exitは500です。stderrやJSONの内容から利用者向けエラーを作りません。ファイル名・PDF・JSON・プロセス出力をログやProblem Detailsへ記録しません。
 
-## pdfcpu描画基盤（Linux、#25 PR A）
+## pdfcpuとoverlay描画基盤（Linux、#25）
 
 pdfcpu 0.16.1とBIZ UDPゴシックv1.051を公式Releaseから取得し、repositoryのlockにあるURL・SHA-256へ固定します。archiveから固定したmemberだけを取り出し、TTFとOFL、収録licenseもchecksumで検査します。取得・font installはbuild時に限定します。binaryは0555、設定とfont cacheは0444、dirは0555とし、final imageではrootが所有します。RobotoとGo依存物・runtimeのlicenseもimageへ残します。
 
 Linuxでは描画endpointが未追加でもpdfcpuの起動検証を必須にします。qpdf/JPEGと同じ起動tokenで、固定30秒以内にversion・日本語font・固定白紙への日本語描画・未暗号化・qpdf check・ページ数を確認します。不具合時はhealthを含む全APIの待受前に終了し、pdfcpu専用の固定メッセージだけで原因を通知します。tool出力・内部path・inner exceptionはログへ出しません。自己テストのjobも成功・失敗とも削除します。非Linuxではこの追加検証を行いません。
 
-共通処理はAPIが生成したjob内の白紙だけをpdfcpuへ渡します。利用者PDFの解析・overlayはPR Bのqpdf処理で追加します。描画modelは文字だけに限定し、任意JSON・font名・URL・画像・外部ファイル参照を受け付けません。fontはBIZUDPGothic-Regularに固定し、`%`、不正なUnicode、非有限数、不正な配置や色を生成前に拒否します。文字は0600のJSONだけに保存し、argvへ渡しません。jobは0700、pdfcpuの成功出力は検査前に0600へ揃えます。
+共通処理はAPIが生成したjob内の白紙だけをpdfcpuへ渡します。利用者PDFの検証・属性解析・overlayはqpdfだけで行います。描画modelは文字だけに限定し、任意JSON・font名・URL・画像・外部ファイル参照を受け付けません。fontはBIZUDPGothic-Regularに固定し、`%`、不正なUnicode、非有限数、不正な配置や色を生成前に拒否します。文字は0600のJSONだけに保存し、argvへ渡しません。jobは0700、pdfcpuの成功出力は検査前に0600へ揃えます。
 
 pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無視、prlimitのCORE=0・AS 1 GiB・FSIZE（PDF予算+1）で起動します。GOMEMLIMIT=200MiBはsoft limitで、RSSの上限保証ではありません。HOME/XDG_CONFIG_HOMEはjob内、GOGC=100・GODEBUG空・GOMAXPROCS=1・GOTRACEBACK=noneへ上書きします。`-c` とofflineを常に指定し、親の設定dir指定に依存しません。version/font stdoutの保持は4 KiB/64 KiBまで、通常stdout/stderrは破棄します。
 
-描画JSONとレイヤーPDFの初期上限は各8 MiBで、callerが予約したさらに小さい予算も適用します。JSONはprivate fileへ書く前に容量を検査し、出力サイズで証明できる超過は専用のcapacity例外でPR Bへ引き渡します。pdfcpuが部分出力を削除したFSIZE失敗など、出力不在の非0終了は固定の内部障害として扱います。この扱いの前提となる文字系APIの最大入力でレイヤー予算に届かない実測、全job容量、同時2件の24秒検証はPR Bの未完了条件です。画像系は#29/#26で上限を定めて同じ検証を行います。
+文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、対象1,000ページまでです。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16・`%`は生成前に拒否します。font size 1〜14,400 pt、有限の座標/offset ±14,400 pt、文字回転 ±360度、色は#RRGGBB、配置は許可した9 anchorまたは座標に限定します。ページ寸法はAPIのcanvasから渡し、JSONのcropで描画計算へ反映します。利用者のBox文字列は透過させません。
+
+入力PDF 50 MiB、入力metadata 32 MiB/50,000 object、合成後/最終metadata 40 MiB/75,000 object、JSON深さ64、参照/Parent連鎖32を上限とします。循環・深さ・各容量の超過はoverlay専用422 too-complex、対応範囲外のBox/Rotate/UserUnit/物理寸法はunsupported-pdfです。壊れたtool JSON、無効な生成PDF、出力不在・空・exit 3を含む非0終了は固定500です。126/127を容量超過として扱いません。pdfcpuが部分出力を削除したexit 1も、stderrだけで容量超過と推測しません。
+
+OverlayCapacityは全fileを4 KiBへ切り上げて書込み前に予約し、外部writerのFSIZE budget+1のsentinelも数えます。生成JSON/白紙/レイヤーは各8 MiB、overlaid/最終PDFは各62 MiB、jobは124 MiBが確定値です。各fileにはjob残容量から求めた実効予算も適用し、実サイズへ予約を縮め、削除後に解放します。入力DOMをdisposeし中間物を削除して次のprocessへ進み、同じ呼出し元tokenで共有30秒・同時2件/queue 0を維持します。clean固有の設定/例外は流用しません。
+
+MediaBox/CropBox/Rotateは継承、UserUnit/TrimBoxは非継承で解決します。実効CropBoxはMediaBoxとの交差、Rotateは90の倍数、UserUnitは0より大きく75,000以下、表示上の物理各辺は0より大きく14,400 pt以下です。対象ページのBoxを揃えてRotateを正規化した更新とoverlayを同じqpdfで行います。合成後の辞書とParentを再取得し、現在のContents/Resources等を保持してBoxと元の整数Rotateを復元します。入力参照番号はコピーしません。最終PDFの非暗号化、check exit 0、ページ数、属性、UserUnit/BleedBox/ArtBoxを検査します。
+
+CropBox外の本文はForm BBoxで表示されなくなり、後でCropBoxを広げても表示されません。元のstreamや文字抽出には残り得るため、黒塗りや情報除去として扱いません。通常表示・非対象ページの保持は実文字レイヤーのPoppler比較で確認します。最大文字入力のレイヤー余裕、同時2件の各24秒以内・OOM 0・job/tmpfs予算・残存job/process 0の実測は[PR B検証記録](overlay-validation.md)へ記録します。driverのメモリもcgroup peakへ含まれます。通常CIと手動測定を区別し、文字上限を広げる場合は再測定します。画像系は#29/#26でbytes・画素数・生成物の上限を定めて同じ検証を行い、文字の結果を流用しません。
 
 ## core dumpと公開条件
 
