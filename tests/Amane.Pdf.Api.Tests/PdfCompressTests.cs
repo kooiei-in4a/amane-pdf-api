@@ -43,11 +43,14 @@ public sealed class PdfCompressTests
     }
 
     [TestMethod]
-    [DataRow(1600, 1200, "standard", 1600)]
-    [DataRow(1600, 1200, "strong", 1200)]
-    [DataRow(8064, 6048, "standard", 2016)]
-    [DataRow(8064, 6048, "strong", 2016)]
-    public async Task CeilScale_NoEnlargement_AndLevelsCanHaveSameResolution(int width, int height, string level, int expected)
+    [DataRow(1600, 1200, "standard", 1600, 1200)]
+    [DataRow(1600, 1200, "strong", 1200, 900)]
+    // 両levelとも2/8に縮小される長辺8064を保ち、短辺を小さくして変換の時間制限に余裕を持たせる。
+    // 短辺65の出力17は、8分の2への縮小時の端数切り上げも確認する。
+    [DataRow(8064, 65, "standard", 2016, 17)]
+    [DataRow(8064, 65, "strong", 2016, 17)]
+    public async Task CeilScale_NoEnlargement_AndLevelsCanHaveSameResolution(int width, int height, string level,
+        int expectedWidth, int expectedHeight)
     {
         if (!Linux()) return;
         await using var test = new PdfTestContext();
@@ -56,7 +59,9 @@ public sealed class PdfCompressTests
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
         var json = await InspectAsync(test, await response.Content.ReadAsByteArrayAsync());
-        Assert.AreEqual(expected, json.GetProperty("pages")[0].GetProperty("images")[0].GetProperty("width").GetInt32());
+        var image = json.GetProperty("pages")[0].GetProperty("images")[0];
+        Assert.AreEqual(expectedWidth, image.GetProperty("width").GetInt32());
+        Assert.AreEqual(expectedHeight, image.GetProperty("height").GetInt32());
         test.AssertClean();
     }
 
