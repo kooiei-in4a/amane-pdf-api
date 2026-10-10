@@ -219,6 +219,44 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         return result.ExitCode;
     }
 
+    internal async Task CheckImagePdfAsync(TemporaryPdfFiles files, string path, int pages, long budget,
+        CancellationToken token)
+    {
+        async Task<ExternalProcessResult> Check(string[] args, int? stdout = null) =>
+            await ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath,
+                options.Value.QpdfPath, args, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
+                new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory }, stdout)
+                with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, token);
+        if ((await Check(["--is-encrypted", path])).ExitCode != 2 ||
+            (await Check(["--check", path])).ExitCode != 0)
+            throw new InvalidOperationException("Generated image PDF is invalid.");
+        var count = await Check(["--show-npages", path], 32);
+        if (count.ExitCode != 0 || count.Stdout is null ||
+            !int.TryParse(System.Text.Encoding.ASCII.GetString(count.Stdout).Trim(),
+                System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var actual) ||
+            actual != pages) throw new InvalidOperationException("Generated image page count is invalid.");
+    }
+
+    internal async Task MergeImagePagesAsync(TemporaryPdfFiles files, IReadOnlyList<string> pages, long budget,
+        CancellationToken token)
+    {
+        var arguments = new List<string> { "--empty", "--pages" };
+        foreach (var page in pages) arguments.AddRange([page, "1"]);
+        var output = Path.GetFullPath(files.OutputPath);
+        arguments.AddRange(["--", output]);
+        using (TemporaryPdfFiles.CreatePrivateFile(output)) { }
+        var result = await ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath,
+            options.Value.QpdfPath, arguments, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
+            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory })
+            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, token);
+        token.ThrowIfCancellationRequested();
+        if (result.ExitCode is 126 or 127 or < 0 or >= 128) throw new InvalidOperationException("Image PDF merge failed.");
+        if (new FileInfo(output).Length > budget) throw PdfImageInputException.Capacity();
+        if (result.ExitCode != 0 || new FileInfo(output).Length == 0)
+            throw new InvalidOperationException("Image PDF merge failed.");
+        await CheckImagePdfAsync(files, output, pages.Count, budget, token);
+    }
+
     internal async Task RunCleanWriteAsync(string[] arguments, string outputPath, long sizeLimit, CancellationToken token)
     {
         var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,

@@ -106,3 +106,6 @@ jobs:
 
       - name: Compare real overlay text and original rendering (CI tools only)
         run: /usr/bin/python3 scripts/overlay-validation.py amane-pdf-api:ci --render
+
+      - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
+        run: /usr/bin/python3 scripts/from-images-validation.py amane-pdf-api:ci

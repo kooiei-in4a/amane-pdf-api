@@ -24,6 +24,16 @@ public sealed class TemporaryPdfFiles : IDisposable
         return Path.Combine(DirectoryPath, $"input-{index:D4}.pdf");
     }
 
+    internal string ImagePath(int index, string kind)
+    {
+        if (index is < 1 or > 100) throw new ArgumentOutOfRangeException(nameof(index));
+        if (kind is not ("upload.bin" or "normalized.jpg" or "normalized.png" or "decoded.pnm" or "encoded.jpg" or "page.pdf"))
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        var parts = kind.Split('.');
+        return Path.Combine(Path.GetFullPath(DirectoryPath), string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{parts[0]}-{index:D4}.{parts[1]}"));
+    }
+
     public TemporaryPdfFiles(string root)
     {
         DirectoryPath = Path.Combine(root, Convert.ToHexString(RandomNumberGenerator.GetBytes(16)));
