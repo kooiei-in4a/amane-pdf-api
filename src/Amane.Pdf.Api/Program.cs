@@ -10,7 +10,7 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
-            PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options))) &&
+            PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
@@ -41,6 +41,7 @@ if (OperatingSystem.IsLinux())
 {
     app.MapPost("/api/pdf/compress", PdfCompressEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/clean", PdfCleanEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/from-images", PdfFromImagesEndpoint.HandleAsync).RequireRateLimiting("pdf");
 }
 app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/split", PdfSplitEndpoint.HandleAsync).RequireRateLimiting("pdf");
@@ -56,6 +57,13 @@ try
     startupDeadline.CancelAfter(TimeSpan.FromSeconds(30));
     await ProcessMemoryLimits.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
     await PdfcpuProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+    await PdfFromImagesProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+}
+catch (PdfImagesStartupException)
+{
+    app.Logger.LogCritical("画像からPDFへの変換の自己テストに失敗しました。");
+    await app.DisposeAsync();
+    return 1;
 }
 catch (PdfcpuStartupException)
 {

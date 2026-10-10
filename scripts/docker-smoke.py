@@ -295,16 +295,13 @@ def request_failing_qpdf(image, isolated=False):
     with tempfile.TemporaryDirectory(prefix="amane-qpdf-fault-") as directory:
         wrapper = Path(directory) / "qpdf"
         wrapper.write_text('''#!/bin/sh
-for argument do last=$argument; done
-case "$last" in */pdfcpu-blank.pdf) exec qpdf "$@";; esac
-if [ "$1" = --version ] || [ -f "$(dirname "$last")/pdfcpu-layer.json" ]; then
-    exec qpdf "$@"
-fi
+if [ ! -f /tmp/request-fault-enabled ]; then exec qpdf "$@"; fi
 exec /usr/bin/cat "$@"
 ''')
         wrapper.chmod(0o755)
         with running_container(image, ("Pdf__QpdfPath=/validation/qpdf",), isolated,
                                ((wrapper, "/validation/qpdf"),)) as api:
+            api.exec("touch", "/tmp/request-fault-enabled")
             yield api
 
 

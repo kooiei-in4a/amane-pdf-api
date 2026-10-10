@@ -13,11 +13,22 @@ public static class MultipartPdfUpload
     public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
         => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
 
-    public static async Task<IReadOnlyList<string>> ReadMergeFilesAsync(HttpRequest request, TemporaryPdfFiles files,
+    public static Task<IReadOnlyList<string>> ReadMergeFilesAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, CancellationToken cancellationToken)
+        => ReadMultipleAsync(request, options, 2, options.MaxMergeFiles, options.MaxMergeInputBytes,
+            options.MaxMergeRequestBytes, files.MergeInputPath, cancellationToken);
+
+    internal static Task<IReadOnlyList<string>> ReadImageFilesAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken token)
+        => ReadMultipleAsync(request, options, 1, options.MaxImageFiles, options.MaxImageInputBytes,
+            options.MaxImageRequestBytes, index => files.ImagePath(index, "upload.bin"), token);
+
+    private static async Task<IReadOnlyList<string>> ReadMultipleAsync(HttpRequest request, PdfOptions options,
+        int minimum, int maximum, long totalLimit, long requestLimit, Func<int, string> makePath,
+        CancellationToken cancellationToken)
     {
         var boundary = ReadBoundary(request);
-        using var body = new SizeLimitedReadStream(request.Body, options.MaxMergeRequestBytes);
+        using var body = new SizeLimitedReadStream(request.Body, requestLimit);
         var reader = new MultipartReader(boundary, body);
         var paths = new List<string>();
         var buffer = new byte[64 * 1024];
@@ -30,15 +41,15 @@ public static class MultipartPdfUpload
             if (name != "file" || !isFile)
                 throw new BadHttpRequestException("Unexpected multipart field.");
             // Reject the N+1 part before creating or writing another temporary file.
-            if (paths.Count >= options.MaxMergeFiles)
+            if (paths.Count >= maximum)
                 throw new BadHttpRequestException("PDF file count limit exceeded.");
 
-            var path = files.MergeInputPath(paths.Count + 1);
-            var remaining = Math.Min(options.MaxFileBytes, options.MaxMergeInputBytes - total);
+            var path = makePath(paths.Count + 1);
+            var remaining = Math.Min(options.MaxFileBytes, totalLimit - total);
             total += await CopyFileAsync(section.Body, path, remaining, buffer, cancellationToken);
             paths.Add(path);
         }
-        if (paths.Count < 2) throw new BadHttpRequestException("At least two PDF files are required.");
+        if (paths.Count < minimum) throw new BadHttpRequestException("Required file count not met.");
         // Count an optional MIME epilogue before starting any qpdf process.
         while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
         return paths;

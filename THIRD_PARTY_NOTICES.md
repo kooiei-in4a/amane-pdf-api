@@ -47,9 +47,9 @@ Linuxではqpdfのメモリ制限にprlimitを使用します。
 
 prlimitはベースOSに元から含まれるユーティリティを別プロセスとして実行します。APIコードへリンクしません。Docker smokeでcopyrightファイルの存在を確認します。
 
-## libjpeg-turbo（djpeg／cjpegとJPEGライブラリ）
+## libjpeg-turbo（djpeg／cjpeg／jpegtranとJPEGライブラリ）
 
-LinuxのJPEG画像縮小・再圧縮に `libjpeg-turbo-progs` のdjpeg／cjpegを別プロセスとして使用します。APIコードへ新しい画像ライブラリをリンクしません。runtimeのqpdfの依存として既に導入されていた `libjpeg-turbo8` はqpdf等が使うlibjpeg互換ライブラリです。今回 `libjpeg-turbo-progs` とともに追加される `libturbojpeg0` はTurboJPEG APIの共有ライブラリで、APTの依存として同梱されます。APIはTurboJPEG APIを直接呼びません。
+LinuxのJPEG画像縮小・再圧縮に `libjpeg-turbo-progs` のdjpeg／cjpeg、画像→PDFの向き補正・metadata除去に同じパッケージのjpegtranを別プロセスとして使用します。APIコードへ新しい画像ライブラリをリンクしません。runtimeのqpdfの依存として既に導入されていた `libjpeg-turbo8` はqpdf等が使うlibjpeg互換ライブラリです。今回 `libjpeg-turbo-progs` とともに追加される `libturbojpeg0` はTurboJPEG APIの共有ライブラリで、APTの依存として同梱されます。APIはTurboJPEG APIを直接呼びません。
 
 - 公式Repository: https://github.com/libjpeg-turbo/libjpeg-turbo
 - ライセンス構成: IJG、BSD-3-Clause、zlib（各ファイルの条件は配布物を参照）

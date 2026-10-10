@@ -13,7 +13,8 @@ internal static class PdfEndpointHelpers
         Func<TemporaryPdfFiles, CancellationToken, Task> processAsync,
         long? maxRequestBytes = null,
         Action<HttpResponse>? onSend = null,
-        string contentType = "application/pdf")
+        string contentType = "application/pdf",
+        bool images = false)
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         try
@@ -31,7 +32,8 @@ internal static class PdfEndpointHelpers
             }
             catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested && !stopping.IsCancellationRequested)
             {
-                await Results.Problem(statusCode: 504, title: "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
+                await Results.Problem(statusCode: 504, title: images
+                    ? "画像からPDFへの変換が制限時間を超過しました。" : "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
                 return;
             }
             catch (OperationCanceledException) when (stopping.IsCancellationRequested)
@@ -40,6 +42,18 @@ internal static class PdfEndpointHelpers
                 return;
             }
             await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
+        }
+        catch (PdfImageInputException exception)
+        {
+            var (title, reason) = exception.Reason switch
+            {
+                PdfImageReason.Empty => ("空の画像は処理できません。", (string?)null),
+                PdfImageReason.Unsupported => ("この画像は処理できません。JPEG・PNGの形式、破損や画像の大きさを確認してください。", "unsupported-image"),
+                PdfImageReason.Capacity => ("画像から作るPDFまたは一時領域の容量上限を超過しました。画像を小さくするか枚数を減らしてください。", "output-too-large"),
+                _ => throw new InvalidOperationException("Unknown image reason.")
+            };
+            await Results.Problem(statusCode: 422, title: title, extensions: reason is null ? null :
+                new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
         }
         catch (PdfUnlockException exception)
         {
@@ -85,7 +99,8 @@ internal static class PdfEndpointHelpers
         {
             var tooLarge = exception.StatusCode == 413;
             await Results.Problem(statusCode: tooLarge ? 413 : 400,
-                title: tooLarge ? "PDFまたはリクエストのサイズ上限を超過しました。" : "リクエストの形式が不正です。").ExecuteAsync(context);
+                title: tooLarge ? (images ? "画像またはリクエストのサイズ上限を超過しました。" :
+                    "PDFまたはリクエストのサイズ上限を超過しました。") : "リクエストの形式が不正です。").ExecuteAsync(context);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {

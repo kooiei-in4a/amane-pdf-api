@@ -14,6 +14,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
 - Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
 - Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
+- Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/split` によるPDF分割とZIP返却
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
@@ -27,7 +28,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - PDF 50 MiB / qpdf処理30秒 / 同時2処理 / 待ち行列0の制限
 - 実qpdfを使った自動テスト、Docker build、実コンテナE2Eを含むGitHub Actions
 
-API単体の実装とDocker / CIの実処理検証が完了しています。
+API単体の実装とDockerでの実処理検証を行っています。CIの結果は各PRで確認してください。
 
 `amane-tools-site` との接続は別Repositoryの責務です。
 
@@ -46,6 +47,42 @@ API単体の実装とDocker / CIの実処理検証が完了しています。
 ソースコードは公開し、どのようにPDFを処理しているか確認できる状態にします。
 
 ## API
+
+### 画像からPDF（Linux）
+
+```bash
+curl --fail-with-body 'http://localhost:8080/api/pdf/from-images?quality=standard' \
+  -F 'file=@first.jpg' -F 'file=@second.png' --output images.pdf
+```
+
+`quality=standard` または `quality=original` を1つ指定してください。multipartの`file`を1〜30枚受け付け、アップロード順に1画像1ページのPDFを返します。JPEG・静止PNGを内容から判定し、拡張子・MIME・元ファイル名は使用しません。GIF・WebP・HEIC・APNG・CMYK JPEGは対象外です。成功時は200、`application/pdf`、固定名`images.pdf`です。
+
+向き補正後の幅が高さ以上なら横A4、それ以外は縦A4です。余白は上下左右10 mm以上、画像を中央に配置して縦横比を保ちます。JPEGのEXIF Orientation 1〜8を反映します。PNGのEXIF Orientationは反映しません。
+
+| quality | JPEG | PNG |
+| --- | --- | --- |
+| `standard` | 長辺2339 pxを目安にdjpegの1/8刻みで縮小し、quality 80・4:2:0で再圧縮 | サイズを変えず透過を保持 |
+| `original` | 縮小・再量子化せずjpegtranで係数を保持 | standardと同じ処理 |
+
+standardの縮小率は、長辺Lが2339以下なら8/8、それ以外は`clamp(floor(2339×8/L), 1, 8)/8`です。20,000 pxなら2,500 pxとなり、1/8より小さくは縮小しません。両qualityともJPEGの向き補正で完全なMCUに満たない端が切り落とされることがあります。グレーは8 px単位、カラーは元のsampling（standardは16 px単位）です。必要な軸が1 MCU未満の場合は422になります。transposeは端を切り落とさないため極小画像でも受け付けます。
+
+JPEGのEXIF・GPS・コメント・ICC・末尾データを除き、生成されたJFIFのdensityを単位なしの1×1に統一します。PNGはCRCと構造を検査し、IHDR・PLTE・tRNS・IDAT・IENDだけを書き直して渡します。テキスト・EXIF・ICC・gammaなどは除去します。ICC等の除去で色の見え方が変わることがあります。PNGを内部でJPEGへ自動変換することはありません。
+
+入力は単一fileの上限と合計50 MiB、画像1枚は50,000,000画素が受付上限です。PNGはデコード作業量の見積りにも上限があり、50 MPすべての変換成功を保証するものではありません。標準設定で12 MPのRGBA PNG（4000×3000と3000×4000、低・高entropy）を同時2件で検証しています。**PNGはPDFにすると大きくなることがあります。** 出力上限に届く場合はJPEGへ変換する、画像を小さくする、枚数を減らす方法を案内してください。
+
+生成ページPDFの実サイズ合計と最終PDFはそれぞれ54 MiB以下、jobは4 KiB丸め・補助1 MiBを含め124 MiB以下です。元uploadは正規化検査の成功後、import前に削除します。画像の検査・変換・全ページのimport・結合・出力検査を合わせてアップロード後30秒、既存APIと共通の同時2枠・待ち行列0です。部分PDFは返しません。
+
+| status / reason | 条件 |
+| --- | --- |
+| 400 | quality・field・枚数・multipartが不正 |
+| 413 | 単一画像・入力合計・リクエスト全量の上限超過 |
+| 422 / reasonなし | 空の画像 |
+| 422 / `unsupported-image` | 非対応形式・破損・画素数/PNG見積り上限・通常の変換失敗 |
+| 422 / `output-too-large` | 台帳不足、残った生成物で確認できる容量超過 |
+| 500 | 起動失敗・異常終了・managed I/O障害・成功終了後の不正な生成物・qpdfの検査/結合失敗 |
+| 503 / 504 | 共通実行枠不足 / 全処理の期限超過 |
+
+pdfcpuが部分出力を削除した場合など、ファイルの実サイズから容量超過を確認できない通常エラーは`unsupported-image`です。stderrの文言から原因を推測しません。[Docker検証記録](docs/from-images-validation.md)に測定条件とサイトへの引き継ぎを記載しています。
 
 ### PDF情報除去（Linux）
 
@@ -329,7 +366,19 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 
 | 環境変数 | 初期値 | 意味 |
 | --- | --- | --- |
-| `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込むPDFの最大bytes |
+| `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込む単一file（PDF・画像）の最大bytes |
+| `Pdf__MaxImageFiles` | `30` | from-imagesの画像枚数。1〜100 |
+| `Pdf__MaxImageInputBytes` | `52428800`（50 MiB） | 画像入力合計の最大bytes。正、50 MiB以下 |
+| `Pdf__MaxUploadImagePixels` | `50000000` | 画像1枚の受付画素数。正、50 MP以下 |
+| `Pdf__ImageOutputLimitBytes` | `56623104`（54 MiB） | 生成ページPDF合計・最終PDFそれぞれの上限。正、54 MiB以下 |
+| `Pdf__ImageJobLimitBytes` | `130023424`（124 MiB） | 全upload・中間物・出力・補助1 MiB・sentinelの割当上限 |
+| `Pdf__ImagePnmLimitBytes` | `25165824`（24 MiB） | standard JPEGのPNM上限。正、24 MiB以下 |
+| `Pdf__ImagePngWorkingLimitBytes` | `335544320`（320 MiB） | PNGの作業量見積り上限。Go soft limitやRSSとは異なる値 |
+| `Pdf__JpegtranPath` | `jpegtran` | 画像の向き補正・metadata除去用tool |
+| `Pdf__ImageDjpegAddressSpaceLimitBytes` | `402653184`（384 MiB） | 画像endpointのdjpeg専用AS。64 MiBより大きく384 MiB以下 |
+| `Pdf__ImageDjpegMaxMemoryMegabytes` | `320` | djpegのmaxmemory。1〜320の10進MB、ASから64 MiBを残す |
+| `Pdf__ImageJpegtranAddressSpaceLimitBytes` | `402653184`（384 MiB） | jpegtran専用AS。同じ範囲 |
+| `Pdf__ImageJpegtranMaxMemoryMegabytes` | `320` | jpegtran専用maxmemory。同じ範囲・余裕の検証を適用 |
 | `Pdf__MaxMergeFiles` | `10` | mergeの最大ファイル数。設定可能な範囲は2〜10 |
 | `Pdf__MaxMergeInputBytes` | `52428800`（50 MiB） | 実際に読み込むmerge入力PDF合計の最大bytes |
 | `Pdf__MaxSplitParts` | `100` | 分割数上限。設定範囲2〜500 |
@@ -355,7 +404,7 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__QpdfAddressSpaceLimitBytes` | `570425344`（544 MiB） | Linuxでqpdfに適用するRLIMIT_AS。正のbytes値 |
 | `Pdf__QpdfJpegMemory` | `600M` | 全OSのqpdfに渡すJPEGMEM。正のASCII数字＋任意の`M`/`m`、30文字未満、単位換算後のsigned long overflowを拒否 |
 | `Pdf__DjpegPath` / `Pdf__CjpegPath` | `djpeg` / `cjpeg` | LinuxのJPEG変換実行ファイル |
-| `Pdf__JpegAddressSpaceLimitBytes` | `67108864`（64 MiB） | djpeg／cjpegのRLIMIT_AS |
+| `Pdf__JpegAddressSpaceLimitBytes` | `67108864`（64 MiB） | compressのdjpegと全cjpegのRLIMIT_AS |
 | `Pdf__CompressJobLimitBytes` | `130023424`（124 MiB） | job全体のファイル割当上限 |
 | `Pdf__CompressPnmLimitBytes` | `25165824`（24 MiB） | 縮小後PNMの安全上限 |
 | `Pdf__CompressMaxPixels` | `100000000` | 画像一枚の画素数上限 |
@@ -376,11 +425,15 @@ Linuxでは同じ経路で`/bin/true`と`qpdf --version`を起動して0終了�
 
 LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・font一覧・固定の短い日本語の実描画・qpdf検査・ページ数一致を確認します。既存のqpdf/JPEG検証と共有する起動deadlineは固定30秒で、`QpdfTimeoutSeconds`とは独立です。pdfcpu/font/configの不具合がある場合は、healthを含む全APIの待受を開始しません。専用の固定ログは「pdfcpu・日本語フォントの自己テストに失敗しました。」です。起動時の取得・font install・外向き通信は行いません。
 
+同じ30秒の起動deadline内で、画像用djpeg・cjpeg・jpegtran・pdfcpu importの実変換とqpdf検査も行います。小さなEXIF回転JPEGを両qualityで、RGBA PNGをoriginalで変換します。失敗時は「画像からPDFへの変換の自己テストに失敗しました。」の固定ログで待受を開始せず終了します。画像用maxmemoryの320Mは約305.18 MiBで、AS 384 MiBから約78.82 MiBを残します。AS 320 MiBへ下げるなら268Mが上限です。
+
+PNG見積りは`2×正規化PNG bytes + 幅×高さ×(16 bitなら24、それ以外は12) + 64 MiB`です。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
+
 Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。新しいHTTP endpointはありません。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
 
-文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、最大1,000対象ページです。各要素の改行LF・tabはそれぞれ3個までで、他の制御文字、不正なUTF-16、pdfcpuの置換文字`%`は拒否します。font sizeは1〜14,400 pt、座標・offsetは±14,400 pt、文字回転は±360度、fontは固定です。JSONの描画範囲へcanvasの物理寸法を渡してください。後続APIでこの範囲を広げる場合は最大入力の再検証が必要です。画像stamp・画像→PDFは#29/#26でbytes・画素数・生成物の上限を定め、同じ検証を行います。[設計書](docs/pdfcpu-design.md)、[PR A](docs/pdfcpu-validation.md)、[PR Bの検証記録](docs/overlay-validation.md)を参照してください。
+文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、最大1,000対象ページです。各要素の改行LF・tabはそれぞれ3個までで、他の制御文字、不正なUTF-16、pdfcpuの置換文字`%`は拒否します。font sizeは1〜14,400 pt、座標・offsetは±14,400 pt、文字回転は±360度、fontは固定です。JSONの描画範囲へcanvasの物理寸法を渡してください。後続APIでこの範囲を広げる場合は最大入力の再検証が必要です。画像→PDFは文字系の8 MiB予算と分離し、[画像用の検証記録](docs/from-images-validation.md)にbytes・画素数・生成物の測定を記載します。画像stampは#29で別途検証します。[設計書](docs/pdfcpu-design.md)、[PR A](docs/pdfcpu-validation.md)、[PR Bの検証記録](docs/overlay-validation.md)を参照してください。
 
-単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeでは入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
+単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeとfrom-imagesではそれぞれ入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
 Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesのカウントを併用します。
 MultipartReaderでPDFを直接一時ファイルへストリーム保存し、上限を超える1 byteを検出したら保存を停止します。フォームの全量bufferや二重の一時保存は行いません。
 passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で拒否します。
@@ -388,7 +441,7 @@ passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で�
 mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
 
 30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
-暗号化、解除、最適化、圧縮、結合、分割、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
+暗号化、解除、最適化、圧縮、情報除去、画像からPDF、結合、分割、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
 merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 1.5 GiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
 ファイルサイズが50 MiB以内でも、大きな画像のデコードやqpdfのbufferが上限に達すると422になり得ます。破損、警告、処理上限超過をstderrで区別しません。全qpdf呼び出し（unlockの各probe・出力検証、64 bytesのページ数取得を含む）へ同じ制限を適用します。出力検証の失敗は500です。
