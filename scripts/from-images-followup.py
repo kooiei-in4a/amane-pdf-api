@@ -1,0 +1,411 @@
+#!/usr/bin/env python3
+"""#59: 合成PNG/JPEGと既存PDF処理の配置前容量測定（通常CIとは別）。"""
+import argparse
+import concurrent.futures
+from datetime import datetime, timezone
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import platform
+import struct
+import threading
+import time
+import zlib
+
+import numpy as np
+import PIL
+from PIL import Image, ImageFile
+
+ROOT = Path(__file__).resolve().parent.parent
+MIB = 1048576
+TOOLS = ("qpdf", "pdfcpu", "prlimit", "djpeg", "cjpeg", "jpegtran")
+
+
+def load(name, filename):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / filename)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+images = load("images", "from-images-validation.py")
+smoke = images.smoke
+compress = load("compress", "compress-validation.py")
+
+
+def digest(path):
+    with path.open("rb") as source:
+        return hashlib.file_digest(source, "sha256").hexdigest()
+
+
+def save(path, value):
+    # Interrupted runs keep every completed measurement. A new run gets a new directory.
+    temporary = path.with_suffix(path.suffix + ".new")
+    temporary.write_text(json.dumps(value, indent=2) + "\n")
+    temporary.replace(path)
+
+
+def png(path, width, height, depth, color, alpha, high, seed):
+    """PNGを直接書き、Pillowによる16 bit RGB/alphaの8 bit化を避ける。"""
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[color]
+    rng = np.random.default_rng(seed)
+    maximum = (1 << depth) - 1
+    encoder = zlib.compressobj(6)
+    with path.open("wb") as output:
+        def chunk(kind, data):
+            output.write(struct.pack(">I", len(data)) + kind + data)
+            output.write(struct.pack(">I", zlib.crc32(kind + data)))
+        output.write(b"\x89PNG\r\n\x1a\n")
+        chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, depth, color, 0, 0, 0))
+        if color == 3:
+            palette = np.random.default_rng(seed + 1).integers(0, 256, (256, 3), dtype=np.uint8)
+            palette[0] = [70, 100, 200]
+            chunk(b"PLTE", palette.tobytes())
+            if alpha:
+                transparency = np.arange(256, dtype=np.uint8)
+                transparency[0] = 128
+                chunk(b"tRNS", transparency.tobytes())
+        elif alpha and color in (0, 2):
+            chunk(b"tRNS", struct.pack(">" + "H" * channels, *([maximum // 4] * channels)))
+        for row in range(height):
+            if high:
+                pixels = rng.integers(0, maximum + 1, (width, channels), dtype=np.uint16 if depth == 16 else np.uint8)
+            else:
+                values = ([70, 100, 200, 128] if color == 6 else [100, 128] if color == 4
+                          else [70, 100, 200] if color == 2 else [0] if color == 3 else [100])
+                pixels = np.tile(np.array(values, dtype=np.uint16 if depth == 16 else np.uint8), (width, 1))
+                if depth == 16:
+                    pixels *= 257
+                # Give tRNS fixtures transparent and opaque regions, even at low entropy.
+                if alpha and color in (0, 2) and row < height // 2:
+                    pixels[:] = maximum // 4
+            raw = pixels.astype(">u2" if depth == 16 else "u1").tobytes()
+            encoded = encoder.compress(b"\0" + raw)
+            if encoded:
+                chunk(b"IDAT", encoded)
+        encoded = encoder.flush()
+        if encoded:
+            chunk(b"IDAT", encoded)
+        chunk(b"IEND", b"")
+
+
+def generate(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    cases = []
+    def add(name, path, **details):
+        record = dict(name=name, file=path.name, bytes=path.stat().st_size, sha256=digest(path), **details)
+        if details.get("format") == "png":
+            record["png_working_bytes"] = (2 * record["bytes"] + details["width"] * details["height"] *
+                                           (24 if details["depth"] == 16 else 12) + 64 * MIB)
+            record["expected"] = 200 if record["png_working_bytes"] <= 320 * MIB else 422
+            record["expected_reason"] = None if record["expected"] == 200 else "unsupported-image"
+        else:
+            record.update(expected=200, expected_reason=None)
+        assert record["bytes"] <= 50 * MIB
+        cases.append(record)
+        print(name, record["bytes"], record.get("png_working_bytes"), flush=True)
+    # Near the 320 MiB estimate: low entropy is limited by pixel count; high
+    # entropy also counts compressed bytes. RGBA16 high is near the upload cap.
+    formats = [("gray16", 16, 0, False, 2385), ("gray16-trns", 16, 0, True, 2385),
+               ("rgb16", 16, 2, False, 1860), ("rgb16-trns", 16, 2, True, 1860),
+               ("grayalpha16", 16, 4, True, 2090), ("rgba16", 16, 6, True, 1600),
+               ("palette8", 8, 3, False, 4775), ("palette8-trns", 8, 3, True, 4775)]
+    for index, (label, depth, color, alpha, high_height) in enumerate(formats):
+        for high in (False, True):
+            width, height = 4000, high_height if high else (2788 if depth == 16 else 5570)
+            name = label + ("-high" if high else "-low")
+            path = directory / (name + ".png")
+            seed = 5900 + index
+            png(path, width, height, depth, color, alpha, high, seed)
+            add(name, path, format="png", width=width, height=height, depth=depth, color=color,
+                alpha=alpha, entropy="high" if high else "low", seed=seed)
+    # Bracket the working limit with adjacent heights using the actual PNG size.
+    for label, depth, color, high, initial_height, seed in (
+            ("rgba16-boundary", 16, 6, False, 2795, 5990),
+            ("palette8-trns-boundary", 8, 3, True, 4790, 5991)):
+        path = directory / (label + "-below.png")
+        height = initial_height
+        while True:
+            png(path, 4000, height, depth, color, True, high, seed)
+            estimate = 2 * path.stat().st_size + 4000 * height * (24 if depth == 16 else 12) + 64 * MIB
+            if estimate > 320 * MIB:
+                height -= 1
+                continue
+            above = directory / (label + "-above.png")
+            png(above, 4000, height + 1, depth, color, True, high, seed)
+            above_estimate = 2 * above.stat().st_size + 4000 * (height + 1) * (24 if depth == 16 else 12) + 64 * MIB
+            if above_estimate <= 320 * MIB:
+                height += 1
+                continue
+            for suffix, target, h in (("below", path, height), ("above", above, height + 1)):
+                add(label + "-" + suffix, target, format="png", width=4000, height=h,
+                    depth=depth, color=color, alpha=True, entropy="high" if high else "low", seed=seed)
+            break
+    # Recheck the design's mandatory 12 MP RGBA acceptance cases with new inputs.
+    for portrait in (False, True):
+        w, h = (3000, 4000) if portrait else (4000, 3000)
+        name = "rgba8-12mp-high-" + ("portrait" if portrait else "landscape")
+        path = directory / (name + ".png")
+        png(path, w, h, 8, 6, True, True, 5980)
+        add(name, path, format="png", width=w, height=h, depth=8, color=6, alpha=True, entropy="high", seed=5980)
+    ImageFile.MAXBLOCK = 192 * MIB
+    # Flat color isolates coefficient memory (not an all-photo time bound).
+    for progressive in (False, True):
+        for orientation in (1, 6):
+            name = "jpeg48-444-" + ("progressive" if progressive else "baseline") + f"-o{orientation}"
+            path = directory / (name + ".jpg")
+            exif = Image.Exif(); exif[274] = orientation
+            Image.new("RGB", (8064, 6048), (90, 140, 200)).save(
+                path, quality=90, subsampling=0, progressive=progressive, exif=exif)
+            add(name, path, format="jpeg", width=8064, height=6048, progressive=progressive,
+                orientation=orientation, subsampling="4:4:4", entropy="flat", qualities=["standard"])
+    path = directory / "jpeg-near50.jpg"
+    source = Image.fromarray(np.random.default_rng(5960).integers(0, 256, (3800, 4500, 3), dtype=np.uint8))
+    source.save(path, quality=100, subsampling=0, optimize=True)
+    assert 47 * MIB < path.stat().st_size < 50 * MIB
+    add("jpeg-near50", path, format="jpeg", width=4500, height=3800, entropy="high", seed=5960,
+        subsampling="4:4:4", qualities=["standard", "original"])
+    pdf_path = directory / "compress-near50.pdf"
+    pdf_path.write_bytes(compress.image_pdf(path.read_bytes(), 4500, 3800))
+    images.command("qpdf", "--check", str(pdf_path))
+    add("compress-near50", pdf_path, format="pdf", width=4500, height=3800, entropy="high", seed=5960)
+    save(directory / "manifest.json", dict(generator_sha256=digest(Path(__file__)),
+        versions=dict(python=platform.python_version(), pillow=PIL.__version__, numpy=np.__version__, zlib=zlib.ZLIB_RUNTIME_VERSION),
+        cases=cases))
+
+
+class Monitor(images.Monitor):
+    def loop(self):
+        while not self.stop.wait(.02):
+            try:
+                stats = os.statvfs(self.root / "tmp")
+                jobs = [job for job in (self.root / "tmp/amane-pdf-api").glob("*") if job.is_dir()]
+                values = dict(tmpfs_bytes=(stats.f_blocks - stats.f_bfree) * stats.f_frsize, jobs=len(jobs))
+                values["job_bytes_single"] = max((sum(p.stat().st_blocks * 512 for p in job.rglob("*") if p.is_file())
+                                                   for job in jobs), default=0)
+                active = 0
+                for pid in (self.cg / "cgroup.procs").read_text().split():
+                    proc = Path("/proc") / pid
+                    name = (proc / "comm").read_text().strip()
+                    if name not in TOOLS:
+                        continue
+                    active += 1
+                    status = (proc / "status").read_text()
+                    for prefix, label in (("VmHWM:", "rss"), ("VmSize:", "vms")):
+                        line = next((line for line in status.splitlines() if line.startswith(prefix)), None)
+                        if line:
+                            values[name + "_" + label + "_bytes"] = int(line.split()[1]) * 1024
+                    record = self.processes.setdefault(pid, dict(tool=name, first=time.monotonic(), last=0))
+                    record["last"] = time.monotonic()
+                    for key, prefix in (("as", "Max address space"), ("fsize", "Max file size"), ("core", "Max core file size")):
+                        line = next(line for line in (proc / "limits").read_text().splitlines() if line.startswith(prefix))
+                        limit = line[len(prefix):].split()[0]
+                        # prlimit can be sampled before it has applied limits; record tools only.
+                        if name != "prlimit":
+                            assert limit != "unlimited" and (key != "core" or limit == "0")
+                            values[name + "_" + key] = int(limit)
+                values["active_tools"] = active
+                for key, value in values.items():
+                    self.peak[key] = max(value, self.peak.get(key, 0))
+                self.samples += 1
+            except (FileNotFoundError, ProcessLookupError):
+                pass
+            except Exception as error:
+                self.error = error
+                break
+
+    def finish(self):
+        self.stop.set(); self.thread.join()
+        self.peak.update(memory_peak=int((self.cg / "memory.peak").read_text()), samples=self.samples,
+            memory_events={k: int(v) for k, v in (line.split() for line in (self.cg / "memory.events").read_text().splitlines())},
+            monitor_error=None if self.error is None else str(self.error),
+            tool_seconds_sampled={name: round(sum(p["last"] - p["first"] for p in self.processes.values() if p["tool"] == name), 3)
+                                  for name in TOOLS})
+        return self.peak
+
+
+def send(api, directory, case, operation, setting, barrier):
+    data = (directory / case["file"]).read_bytes()
+    body, content_type = smoke.multipart(password=None, files=[data])
+    endpoint = "/api/pdf/from-images?quality=" + setting if operation == "from-images" else "/api/pdf/compress?level=" + setting
+    barrier.wait(timeout=30)
+    start = time.monotonic()
+    status, headers, result = api.request("POST", endpoint, body, content_type)
+    evidence = dict(operation=operation, setting=setting, input_bytes=len(data), input_sha256=case["sha256"],
+                    status=status, reason=None, output_bytes=0, seconds=round(time.monotonic() - start, 3),
+                    media_type=headers.get("Content-Type", ""), disposition=headers.get("Content-Disposition"))
+    if status == 200:
+        evidence.update(output_bytes=len(result), output_sha256=hashlib.sha256(result).hexdigest())
+        if operation == "compress":
+            evidence["recompressed"] = int(headers["X-Pdf-Images-Recompressed"])
+    else:
+        problem = json.loads(result)
+        evidence["reason"] = problem.get("reason")
+        assert not any(word in result for word in (b"/tmp/", b"stack", b"qpdf", b"jpegtran", b"pdfcpu"))
+    return evidence, result
+
+
+def validate_pdf(output, case, operation, setting, directory):
+    path = directory / "validation.pdf"
+    path.write_bytes(output)
+    try:
+        document = images.inspect_pdf(path)
+        assert len(document["pages"]) == 1
+        image = document["pages"][0]["images"][0]
+        if operation == "from-images":
+            images.verify_layout(path, document)
+            if case["format"] == "png":
+                assert (image["width"], image["height"]) == (case["width"], case["height"])
+                dictionary = document["qpdf"][1]["obj:" + image["object"]]["stream"]["dict"]
+                assert ("/SMask" in dictionary) == case["alpha"]
+            elif case.get("orientation"):
+                width, height = case["width"], case["height"]
+                numerator = max(1, min(8, 2339 * 8 // max(width, height)))
+                width = (width * numerator + 7) // 8
+                height = (height * numerator + 7) // 8
+                if case["orientation"] == 6:
+                    width, height = height // 16 * 16, width
+                assert (image["width"], image["height"]) == (width, height)
+        return dict(qpdf_check=True, pages=1, image_width=image["width"], image_height=image["height"])
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def run_case(args, specs, label, settings=()):
+    row = dict(name=label, concurrent=len(specs), settings=list(settings), requests=[], validation_errors=[])
+    with smoke.running_container(args.image, settings=settings, isolated=True) as api:
+        inspected = json.loads(smoke.docker("inspect", api.name).stdout)[0]
+        config = inspected["HostConfig"]
+        row["container"] = dict(image_id=inspected["Image"], non_root=True, readonly=config["ReadonlyRootfs"],
+            network=config["NetworkMode"], memory=config["Memory"], memory_swap=config["MemorySwap"],
+            nano_cpus=config["NanoCpus"], tmpfs=config["Tmpfs"], cap_drop=config["CapDrop"], security_opt=config["SecurityOpt"])
+        monitor = Monitor(api)
+        monitor.thread = threading.Thread(target=monitor.loop); monitor.thread.start()
+        values = []
+        try:
+            barrier = threading.Barrier(len(specs))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(specs)) as pool:
+                futures = [pool.submit(send, api, args.fixtures, case, operation, setting, barrier)
+                           for case, operation, setting, expected in specs]
+                for future in futures:
+                    try:
+                        values.append(future.result())
+                    except Exception as error:
+                        values.append((dict(transport_error=str(error)), b""))
+        finally:
+            row.update(monitor.finish())
+        row["requests"] = [evidence for evidence, _ in values]
+        for (case, operation, setting, expected), (evidence, output) in zip(specs, values):
+            evidence["expected_status"] = expected
+            evidence["expected_reason"] = case["expected_reason"] if expected == 422 else None
+            try:
+                assert evidence.get("status") == expected, (case["name"], expected, evidence)
+                assert evidence["reason"] == evidence["expected_reason"]
+                if expected == 200:
+                    assert evidence["media_type"] == "application/pdf" and output.startswith(b"%PDF-")
+                    assert len(output) <= 54 * MIB
+                    filename = "images.pdf" if operation == "from-images" else "compressed.pdf"
+                    assert "filename=" + filename in evidence["disposition"]
+                    evidence["pdf_validation"] = validate_pdf(output, case, operation, setting, args.output)
+                else:
+                    assert evidence["media_type"].startswith("application/problem+json")
+                    assert evidence["disposition"] is None and not output.startswith(b"%PDF-")
+            except Exception as error:
+                row["validation_errors"].append(str(error) or type(error).__name__)
+        try:
+            api.assert_clean()
+            row["remaining_jobs"] = []
+        except Exception as error:
+            row["remaining_jobs"] = api.exec("find", "/tmp/amane-pdf-api", "-mindepth", "1").stdout.decode().splitlines()
+            row["validation_errors"].append(str(error) or "cleanup failed")
+        row["remaining_tools"] = [name for name in api.exec("ps", "-eo", "comm").stdout.decode().splitlines() if name in TOOLS]
+        row["health_after"] = api.request("GET", "/healthz")[0]
+        # Existing PDF behavior remains usable after large conversions/rejections/deadlines.
+        try:
+            api.rotate(smoke.FIXTURE)
+            row["rotate_after"] = 200
+        except Exception as error:
+            row["validation_errors"].append(str(error) or "rotate failed")
+        if row["memory_events"]["oom"] or row["memory_events"]["oom_kill"] or row["monitor_error"]:
+            row["validation_errors"].append("OOM or monitor failure")
+        if not row["samples"] or row["remaining_tools"] or row["health_after"] != 200:
+            row["validation_errors"].append("measurement/cleanup/health failure")
+        if row.get("job_bytes_single", 0) > 124 * MIB or row.get("tmpfs_bytes", 0) >= 256 * MIB:
+            row["validation_errors"].append("temporary storage budget exceeded")
+        if len(specs) == 2 and all(spec[3] == 200 for spec in specs) and row.get("jobs", 0) < 2:
+            row["validation_errors"].append("two overlapping jobs were not observed")
+    save(args.output / (label + ".json"), row)
+    print(label, [r.get("status") for r in row["requests"]], round(row["memory_peak"] / MIB, 2),
+          round(row.get("tmpfs_bytes", 0) / MIB, 2), row["validation_errors"], flush=True)
+    return row
+
+
+def capacity(args):
+    assert os.geteuid() == 0, "Use sudo to read the validation containers' /proc/cgroup."
+    manifest = json.loads((args.fixtures / "manifest.json").read_text())
+    cases = {case["name"]: case for case in manifest["cases"]}
+    for case in cases.values():
+        assert digest(args.fixtures / case["file"]) == case["sha256"], case["name"]
+    args.output.mkdir(parents=True, exist_ok=True)
+    image_info = json.loads(smoke.docker("image", "inspect", args.image).stdout)[0]
+    with smoke.running_container(args.image, isolated=True) as api:
+        versions = {name: api.exec(*command).stdout.decode().strip() for name, command in
+                    (("dotnet", ("dotnet", "--list-runtimes")), ("qpdf", ("qpdf", "--version")),
+                     ("pdfcpu", ("/opt/amane-pdf/bin/pdfcpu", "version")), ("os", ("cat", "/etc/os-release")),
+                     ("packages", ("dpkg-query", "-W", "libjpeg-turbo-progs", "util-linux", "coreutils")))}
+    save(args.output / "environment.json", dict(measured_at_utc=datetime.now(timezone.utc).isoformat(),
+        target_sha=args.target_sha, image_id=image_info["Id"], image_digests=image_info["RepoDigests"],
+        scripts={name: digest(ROOT / "scripts" / name) for name in
+                 ("from-images-followup.py", "from-images-validation.py", "docker-smoke.py", "compress-validation.py")},
+        fixture_manifest=manifest, host_kernel=platform.release(), tool_versions=versions,
+        driver=dict(python=platform.python_version(), pillow=PIL.__version__, numpy=np.__version__),
+        sampling_seconds=.02, http_seconds_include_upload_and_download=True,
+        default_processing_deadline_seconds=30))
+    rows = []
+    selected = set(args.cases or cases)
+    for case in cases.values():
+        if case["name"] not in selected or case["format"] == "pdf":
+            continue
+        for quality in args.qualities:
+            if quality not in case.get("qualities", args.qualities):
+                continue
+            for count in args.concurrencies:
+                specs = [(case, "from-images", quality, case["expected"])] * count
+                rows.append(run_case(args, specs, f"{case['name']}-{quality}-{count}"))
+    if args.mixed:
+        for name in ("rgba8-12mp-high-landscape", "rgba16-high", "palette8-trns-high", "jpeg-near50"):
+            for quality in args.qualities:
+                for level in ("standard", "strong"):
+                    specs = [(cases[name], "from-images", quality, 200), (cases["compress-near50"], "compress", level, 200)]
+                    rows.append(run_case(args, specs, f"mixed-{name}-{quality}-{level}"))
+    if args.timeout_check:
+        for quality in args.qualities:
+            rows.append(run_case(args, [(cases["jpeg-near50"], "from-images", quality, 504)],
+                                 f"deadline-{quality}", settings=("Pdf__QpdfTimeoutSeconds=1",)))
+    assert rows, "No cases selected."
+    failures = [row["name"] for row in rows if row["validation_errors"]]
+    print("Completed", len(rows), "measurements; failures:", failures, flush=True)
+    assert not failures, failures
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("image", nargs="?")
+    parser.add_argument("--generate-only", action="store_true")
+    parser.add_argument("--fixtures", type=Path, default=Path("/tmp/issue59-fixtures"))
+    parser.add_argument("--output", type=Path, default=Path("/tmp/issue59-results"))
+    parser.add_argument("--target-sha")
+    parser.add_argument("--cases", nargs="+")
+    parser.add_argument("--qualities", nargs="+", choices=("standard", "original"), default=["standard", "original"])
+    parser.add_argument("--concurrencies", nargs="+", type=int, choices=(1, 2), default=[1, 2])
+    parser.add_argument("--mixed", action="store_true")
+    parser.add_argument("--timeout-check", action="store_true")
+    args = parser.parse_args()
+    if args.generate_only:
+        generate(args.fixtures)
+    else:
+        if not args.image or not args.target_sha:
+            parser.error("image and --target-sha are required for measurements")
+        capacity(args)
