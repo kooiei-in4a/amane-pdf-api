@@ -1,0 +1,18 @@
+{
+  "status": "探索の追加計画。製品設定の変更と採用はKooの判断後。",
+  "source_sha": "c3b4c9d3d0c77a3c1a0ba53e0fdfe2bf2a040259",
+  "image_id": "sha256:51e71b30fc8d893429cc542572df7a76fdf48ed173e766de0c33c905503e9b29",
+  "address_space_candidates_mib": [1120, 1536],
+  "address_space_reserve_mib": 64,
+  "repetitions": 30,
+  "acceptance": [
+    "前の測定計画と同じ合格基準を維持する。候補ASと候補AS−64 MiBの両方で、Adam7各型の境界直下と必須12 MPの各入力を30回連続実行し、失敗0。",
+    "少数回の成功で最小ASを確定しない。ASごとの試行数・失敗数・連続成功数・失敗の種別を保存し、観測VmSizeとの差を余裕としない。",
+    "候補ASと64 MiB低いASで、最悪のAdam7同士・Adam7とcompressを同時に処理する。各組み合わせを30回繰り返す。",
+    "HTTPはすべて期待どおり200。部分PDF・構造不正・診断情報露出・OOM/oom_kill・残存job/tool・health/後続rotate異常は0。",
+    "cgroupのkernel peakが1536 MiBの90%未満、一時容量256 MiB未満、job 124 MiB以下、出力54 MiB以下。任意入力の保証にしない。"
+  ],
+  "container": {"cpu": 1, "memory_mib": 1536, "memory_swap_total_mib": 1536, "tmpfs_mib": 256, "network": "none", "readonly": true, "nonroot": true, "concurrent_requests": 2},
+  "pdfcpu": {"gomemlimit": "200MiB", "gogc": "100", "gomaxprocs": "1", "gotraceback": "none", "core_bytes": 0, "fsize_bytes": 56623105},
+  "reason": "1152 MiBでは全60入力の1800回が画像前の初期化で失敗。1280 MiBの64 MiB下の1216 MiBでも全1800回が失敗した。versionのみでも1152/1216で初期化失敗を確認した。1088 MiBの1800回は成功しており、ASを増やせば安定するという仮定を置かず、低い帯域1120と大きい帯域1536を追加評価する。versionの3回確認は原因探索であり合格判定に用いない。"
+}

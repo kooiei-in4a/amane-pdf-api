@@ -145,19 +145,19 @@ def generate(args):
                 width, height = (3000, 4000) if portrait else (4000, 3000)
                 add(f"{'adam7' if interlace else 'plain'}-rgba8-12mp-{'high' if high else 'low'}-{'portrait' if portrait else 'landscape'}",
                     width, height, 8, 6, True, high, 5980, interlace)
-    manifest = dict(generator_sha256=m.digest(Path(__file__)), plan_sha256=m.digest(PLAN),
+    manifest = dict(generator_sha256=m.digest(Path(__file__)), plan_sha256=m.digest(args.plan),
         versions=dict(python=platform.python_version(), numpy=np.__version__, zlib=zlib.ZLIB_RUNTIME_VERSION), cases=cases)
     m.save(args.fixtures / "manifest.json", manifest)
 
 
 def environment(args, manifest):
-    plan = json.loads(PLAN.read_text())
+    plan = json.loads(args.plan.read_text())
     info = json.loads(m.smoke.docker("image", "inspect", args.image).stdout)[0]
     assert info["Id"] == plan["image_id"]
     for case in manifest["cases"]:
         assert m.digest(args.fixtures / case["file"]) == case["sha256"]
     m.save(args.output / "environment.json", dict(measured_at_utc=datetime.now(timezone.utc).isoformat(),
-        plan=plan, plan_sha256=m.digest(PLAN), image_id=info["Id"], fixture_manifest=manifest,
+        plan=plan, plan_sha256=m.digest(args.plan), image_id=info["Id"], fixture_manifest=manifest,
         driver_sha256=m.digest(Path(__file__)), followup_sha256=m.digest(Path(m.__file__)), host_kernel=platform.release()))
     return plan
 
@@ -294,6 +294,21 @@ def http_batch(args, cases, specs, as_mib):
     return row
 
 
+def checked_http_batch(args, cases, specs, as_mib):
+    try:
+        return http_batch(args, cases, specs, as_mib)
+    except AssertionError as error:
+        if str(error) != "Docker health check failed.":
+            raise
+        # The container context already removes failed startup containers.
+        # Keep this separate from an HTTP result: no request was sent.
+        label = "startup-" + "-".join(case["name"] + "-" + setting for case, _, setting in specs) + f"-as{as_mib}"
+        m.save(args.output / (label + ".json"), dict(name=label, address_space_mib=as_mib,
+            startup_failed=True, http_requests_sent=0, qualified=False, completed=False,
+            note="コンテナの起動検証に失敗し、HTTP要求は送っていない。候補は不合格。"))
+        raise
+
+
 def measure(args):
     assert os.geteuid() == 0, "Use sudo for validation-container /proc/cgroup."
     assert not args.output.exists() or not any(args.output.iterdir()), "Use a fresh result directory."
@@ -320,9 +335,9 @@ def measure(args):
                 for quality in ("standard", "original"):
                     if args.compress_fixture:
                         for level in ("standard", "strong"):
-                            http_batch(args, cases, [(case, "from-images", quality), (source, "compress", level)], as_mib)
+                            checked_http_batch(args, cases, [(case, "from-images", quality), (source, "compress", level)], as_mib)
                     else:
-                        http_batch(args, cases, [(case, "from-images", quality)] * 2, as_mib)
+                        checked_http_batch(args, cases, [(case, "from-images", quality)] * 2, as_mib)
         return
     for as_mib in args.address_spaces:
         for case in cases:
@@ -340,6 +355,7 @@ if __name__ == "__main__":
     parser.add_argument("--repetitions", type=int, default=30)
     parser.add_argument("--http", action="store_true")
     parser.add_argument("--compress-fixture", type=Path)
+    parser.add_argument("--plan", type=Path, default=PLAN)
     args = parser.parse_args()
     if args.generate_only:
         generate(args)
