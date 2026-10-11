@@ -1,8 +1,34 @@
+using System.Text.Json;
+
 namespace Amane.Pdf.Api.Tests;
 
 [TestClass]
 public sealed class PngSanitizerTests
 {
+    public static IEnumerable<object[]> WorkingVectors()
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "Fixtures", "png-working-vectors.json")));
+        foreach (var row in document.RootElement.GetProperty("cases").EnumerateArray())
+            yield return [row.GetProperty("name").GetString()!, row.GetProperty("width").GetInt32(),
+                row.GetProperty("height").GetInt32(), row.GetProperty("depth").GetInt32(),
+                row.GetProperty("color").GetInt32(), row.GetProperty("transparency").GetBoolean(),
+                row.GetProperty("encoded_bytes").GetInt64(), row.GetProperty("working_bytes").GetInt64(),
+                row.GetProperty("accepted").GetBoolean()];
+    }
+
+    [TestMethod]
+    [DynamicData(nameof(WorkingVectors))]
+    public void WorkingEstimate_MatchesSharedVectorsAndDefaultAdmission(string name, int width, int height,
+        int depth, int color, bool transparency, long encoded, long expected, bool accepted)
+    {
+        var estimate = PngSanitizer.WorkingBytes(width, height, depth, color, transparency, encoded);
+        Assert.AreEqual(expected, estimate, name);
+        var options = new PdfOptions();
+        Assert.AreEqual(320 * 1048576L, options.ImagePngWorkingLimitBytes);
+        Assert.AreEqual(accepted, estimate <= options.ImagePngWorkingLimitBytes, name);
+    }
+
     [TestMethod]
     [DataRow(8, 6, false, 16, 24)]
     [DataRow(16, 0, false, 16, 24)]

@@ -1,5 +1,6 @@
 """容量測定driverの応答証拠と境界探索の回帰テスト。"""
 import importlib.util
+import json
 from pathlib import Path
 import tempfile
 import threading
@@ -11,6 +12,35 @@ spec.loader.exec_module(m)
 
 
 class DriverTests(unittest.TestCase):
+    def test_working_estimate_matches_shared_vectors_and_default_admission(self):
+        source = m.ROOT / "tests/Amane.Pdf.Api.Tests/Fixtures/png-working-vectors.json"
+        vectors = json.loads(source.read_text())
+        self.assertEqual(320 * m.MIB, vectors["working_limit_bytes"])
+        for row in vectors["cases"]:
+            with self.subTest(name=row["name"]):
+                estimate = m.working_bytes(row["width"], row["height"], row["depth"], row["color"],
+                    row["transparency"], row["encoded_bytes"])
+                self.assertEqual(row["working_bytes"], estimate)
+                self.assertEqual(row["accepted"], estimate <= vectors["working_limit_bytes"])
+
+    def test_adam7_generator_preserves_decoded_pixels(self):
+        spec = importlib.util.spec_from_file_location("as_validation", Path(__file__).with_name("from-images-as-validation.py"))
+        driver = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(driver)
+        with tempfile.TemporaryDirectory() as directory:
+            for depth, color, alpha in ((1, 0, False), (2, 0, True), (4, 3, True), (8, 0, True),
+                    (8, 2, True), (8, 4, True), (8, 6, True), (16, 0, False), (16, 2, False), (16, 6, True)):
+                with self.subTest(depth=depth, color=color):
+                    data = driver.pixels(20, 17, depth, color, alpha, True, 59)
+                    decoded = []
+                    for interlace in (False, True):
+                        path = Path(directory) / "fixture.png"
+                        driver.write_png(path, data, depth, color, alpha, 59, interlace)
+                        with m.Image.open(path) as image:
+                            self.assertEqual((20, 17), image.size)
+                            decoded.append(m.np.array(image.convert("RGBA") if depth != 16 or color != 0 else image))
+                    m.np.testing.assert_array_equal(decoded[0], decoded[1])
+
     def test_non_json_error_keeps_http_evidence(self):
         class Api:
             def request(self, *args):
