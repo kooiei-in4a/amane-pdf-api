@@ -70,7 +70,7 @@ JPEGのEXIF・GPS・コメント・ICC・末尾データを除き、生成され
 
 入力は単一fileの上限と合計50 MiB、画像1枚は50,000,000画素が受付上限です。受付上限内でも、メモリ・時間・出力容量の制限によりJPEG・PNGの変換が成功するとは限りません。大きい4:4:4 JPEGで回転・反転が必要な場合、`original`はメモリ制限により422 `unsupported-image`になることがあります。この場合は「標準」で再度試すか、画像を小さくしてください。`standard`でも任意の画像の成功は保証しません。対応範囲と測定条件は[検証記録](docs/from-images-validation.md#大きい444-jpegの既知の制約)を参照してください。
 
-PNGはデコード作業量の見積りにも上限があります。標準設定で12 MPのRGBA PNG（4000×3000と3000×4000、低・高entropy）を同時2件で検証しています。**PNGはPDFにすると大きくなることがあります。** 出力上限に届く場合はJPEGへ変換する、画像を小さくする、枚数を減らす方法を案内してください。
+PNGはデコード作業量の見積りにも上限があります。標準設定で12 MPのRGBA PNG（4000×3000と3000×4000、低・高entropy）を同時2件で検証しています。8 bitカラーは約12.2 MP、16 bitカラー・透過付きグレーは単色でも約5.6 MPを超えると拒否され、複雑な画像はさらに小さくても制限にかかります。16 bitカラーの受付範囲は以前より狭くなっています。透過なしの16 bitグレーは別の見積りを使います。画像を小さくするか、利用者側で8 bit PNG/JPEGへ保存し直してください。PNGでは画質を「標準」に変えるだけでは解消しません。[追加検証記録](docs/from-images-followup-validation.md)に条件を記載しています。**PNGはPDFにすると大きくなることがあります。** 出力上限に届く場合はJPEGへ変換する、画像を小さくする、枚数を減らす方法を案内してください。
 
 生成ページPDFの実サイズ合計と最終PDFはそれぞれ54 MiB以下、jobは4 KiB丸め・補助1 MiBを含め124 MiB以下です。元uploadは正規化検査の成功後、import前に削除します。画像の検査・変換・全ページのimport・結合・出力検査を合わせてアップロード後30秒、既存APIと共通の同時2枠・待ち行列0です。部分PDFは返しません。
 
@@ -429,7 +429,7 @@ LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・f
 
 同じ30秒の起動deadline内で、画像用djpeg・cjpeg・jpegtran・pdfcpu importの実変換とqpdf検査も行います。小さなEXIF回転JPEGを両qualityで、RGBA PNGをoriginalで変換します。失敗時は「画像からPDFへの変換の自己テストに失敗しました。」の固定ログで待受を開始せず終了します。画像用maxmemoryの320Mは約305.18 MiBで、AS 384 MiBから約78.82 MiBを残します。AS 320 MiBへ下げるなら268Mが上限です。
 
-PNG見積りは`2×正規化PNG bytes + 幅×高さ×(16 bitなら48、それ以外は12) + 64 MiB`です。16 bitの係数は[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の大画像測定で24から48へ見直しました。16 bitの受付範囲は狭くなり、低複雑度でも約5.6 MPが見積り上の上限です。入力bytesも数えるため、高複雑度ではさらに小さくなります。画像を小さくするか、利用者側で8 bit PNG/JPEGへ保存し直して再送してください。見積り以内のすべての画像の変換成功を保証するものではありません。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
+PNG見積りは`64 MiB + 2×正規化PNG bytes + 画素数×係数`が基本です。16 bitはGoデコーダの展開チャネル数×サンプル幅2 bytes×6で、透過なしグレーは12、カラーと透過付きグレーは48です。8 bit以下の非パレット・カラー/透過付きグレーは係数14に加え、`64 MiB + 画素数×22`以上を予約します。その他は係数12です。圧縮bufferの成長を含む#59の実測に基づく受付見積りで、RSS/ASの上界でも変換成功の保証でもありません。型別の境界とpdfcpuの1 GiB ASに対する余裕は[追加検証記録](docs/from-images-followup-validation.md)を参照してください。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
 
 Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。新しいHTTP endpointはありません。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
 

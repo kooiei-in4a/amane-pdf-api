@@ -122,16 +122,29 @@ internal static class PngSanitizer
             }
             if (kind == "IDAT") seenData = true;
             if (kind != "IEND") continue;
-            if (WorkingBytes(width, height, depth, written) > workingLimit) throw PdfImageInputException.Unsupported();
+            if (WorkingBytes(width, height, depth, color, seenTransparency, written) > workingLimit)
+                throw PdfImageInputException.Unsupported();
             return new(width, height, color is 0 or 4 ? 1 : 3, Png: true, BitDepth: depth);
         }
     }
 
-    internal static long WorkingBytes(int width, int height, int depth, long encoded) =>
-        // 16-bit RGB/alpha retains wider pixels and growing compression buffers.
-        // #59 measured failures below the old estimate at the existing 1 GiB AS.
-        // This is an admission estimate, not a bound on RSS or virtual memory.
-        checked(2 * encoded + (long)width * height * (depth == 16 ? 48 : 12) + 64 * 1048576);
+    internal static long WorkingBytes(int width, int height, int depth, int color, bool transparency, long encoded)
+    {
+        // Go decodes opaque gray to one channel, but RGB and gray+tRNS/alpha
+        // to four channels. Palette PNG uses a separate indexed import path.
+        var channels = color == 0 && !transparency ? 1 : 4;
+        var sampleBytes = depth == 16 ? 2 : 1;
+        var coefficient = depth == 16 ? 6 * channels * sampleBytes
+            : color != 3 && channels == 4 ? 14 : 12;
+        var pixels = checked((long)width * height);
+        var estimate = checked(2 * encoded + pixels * coefficient);
+        // #59 also reproduced 8-bit RGB/RGBA allocation failures at 13–14.8 MP
+        // under 1 GiB AS. Compressed bytes alone miss compression-buffer growth.
+        if (depth != 16 && color != 3 && channels == 4)
+            estimate = Math.Max(estimate, checked(pixels * 22));
+        // Admission estimate, not an RSS/virtual-memory bound or success guarantee.
+        return checked(estimate + 64 * 1048576);
+    }
 
     internal static uint UpdateCrc(uint crc, ReadOnlySpan<byte> bytes)
     {

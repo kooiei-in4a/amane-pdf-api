@@ -76,6 +76,27 @@ public sealed class PngSanitizerTests
         });
     }
 
+    [TestMethod]
+    public async Task Gray16_TransparencyRequiresTheExpandedDecoderBudget()
+    {
+        var gray = FromImagesFixtures.Png(64, 48, 16, 0, metadata: false);
+        byte[] transparent = [.. gray[..33], .. FromImagesFixtures.Chunk("tRNS", [96, 0]), .. gray[33..]];
+        await WithFiles(async (input, output) =>
+        {
+            const long working = 64 * 1048576 + 64 * 48 * 30;
+            await File.WriteAllBytesAsync(input, gray);
+            await PngSanitizer.WriteAsync(input, output, 1048576, 50_000_000, working, CancellationToken.None);
+            foreach (var source in new[] { transparent, FromImagesFixtures.Png(64, 48, 16, 4) })
+            {
+                File.Delete(output);
+                await File.WriteAllBytesAsync(input, source);
+                var error = await Assert.ThrowsAsync<PdfImageInputException>(() => PngSanitizer.WriteAsync(
+                    input, output, 1048576, 50_000_000, working, CancellationToken.None));
+                Assert.AreEqual(PdfImageReason.Unsupported, error.Reason);
+            }
+        });
+    }
+
     private static async Task WithFiles(Func<string, string, Task> action)
     {
         var root = Path.Combine(Path.GetTempPath(), "amane-png-" + Guid.NewGuid().ToString("N"));
