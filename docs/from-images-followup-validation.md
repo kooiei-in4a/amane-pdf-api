@@ -55,6 +55,8 @@ driverは次も確認する。
 | 画像とcompressの混在 | 36件200・4件422 | 3.917 | 465.48 | 146.95 | 800.44 | 21.83% |
 | PNG見積り超過（混在を除く） | 78件422 | 1.275 | 196.19 | 162.06 | 起動0回 | — |
 
+**混在行の注記:** `review_final`の混在20条件（`final`・`baseline`は各16条件）は監視停止によりtmpfs・job容量・tool関連の観測値が不完全で、HTTP・cgroup peak・OOM・cleanupの判定は有効だが、案Aで再測定したのはAdam7＋compressのみで、約47.7 MiB JPEG＋compressの完全な観測は未取得である。
+
 この表以外に約47.7 MiB JPEGの単独/同時2件を両qualityで6要求測り、すべて200だった。表の各列の最大は同じ測定とは限らない。混在のcompressは20要求すべてでJPEGを1件再圧縮した。PNGの見積り超過は単独/同時2件の78要求と混在の4要求すべてでpdfcpuの起動0回をassertした。成功画像190要求では起動190回だった。
 
 | 約48 MP JPEGの条件 | 単独HTTP秒 | 同時2件の遅い方のHTTP秒 | 同時2件cgroup peak MiB |
