@@ -5,6 +5,8 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("followup", Path(__file__).with_name("from-images-followup.py"))
 m = importlib.util.module_from_spec(spec)
@@ -12,6 +14,22 @@ spec.loader.exec_module(m)
 
 
 class DriverTests(unittest.TestCase):
+    def test_startup_failure_keeps_non_http_evidence(self):
+        spec = importlib.util.spec_from_file_location("as_validation", Path(__file__).with_name("from-images-as-validation.py"))
+        driver = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(driver)
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(output=Path(directory))
+            case = {"name": "synthetic"}
+            with patch.object(driver, "http_batch", side_effect=AssertionError("Docker health check failed.")):
+                with self.assertRaisesRegex(AssertionError, "Docker health check failed"):
+                    driver.checked_http_batch(args, [], [(case, "from-images", "original")], 1152)
+            row = json.loads(next(args.output.glob("startup-*.json")).read_text())
+        self.assertTrue(row["startup_failed"])
+        self.assertEqual(0, row["http_requests_sent"])
+        self.assertFalse(row["qualified"])
+        self.assertNotIn("status", row)
+
     def test_working_estimate_matches_shared_vectors_and_default_admission(self):
         source = m.ROOT / "tests/Amane.Pdf.Api.Tests/Fixtures/png-working-vectors.json"
         vectors = json.loads(source.read_text())
