@@ -266,6 +266,9 @@ def http_batch(args, cases, specs, as_mib):
                     success=not errors, validation_errors=errors))
                 m.save(args.output / (label + ".json"), dict(name=label, address_space_mib=as_mib,
                     trials=trials, summary=summary(trials), completed=False))
+                # Large response bodies belong to this trial only. Retaining
+                # them until the next two uploads/replies raises driver RSS.
+                del values, futures, output
         finally:
             metrics = monitor.finish()
         invocations = len(api.exec("cat", "/tmp/capacity-pdfcpu-invocations").stdout)
@@ -332,7 +335,7 @@ def measure(args):
             assert m.digest(destination) == source["sha256"]
         for as_mib in args.address_spaces:
             for case in cases:
-                for quality in ("standard", "original"):
+                for quality in args.qualities:
                     if args.compress_fixture:
                         for level in ("standard", "strong"):
                             checked_http_batch(args, cases, [(case, "from-images", quality), (source, "compress", level)], as_mib)
@@ -356,6 +359,7 @@ if __name__ == "__main__":
     parser.add_argument("--http", action="store_true")
     parser.add_argument("--compress-fixture", type=Path)
     parser.add_argument("--plan", type=Path, default=PLAN)
+    parser.add_argument("--qualities", nargs="+", choices=("standard", "original"), default=["standard", "original"])
     args = parser.parse_args()
     if args.generate_only:
         generate(args)
