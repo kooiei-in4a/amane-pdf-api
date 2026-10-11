@@ -1,0 +1,3621 @@
+{
+  "date": "2026-10-10 UTC",
+  "baseline": "2bea882b2e3fd6e92cca57c33f7e66c10f588030",
+  "platform": "Linux x86_64, 4096-byte allocation blocks",
+  "tools": {
+    "qpdf": "12.3.2",
+    "pdfcpu": "0.16.1",
+    "libjpeg-turbo": "2.1.5",
+    "dotnet-runtime": "10.0.12"
+  },
+  "limits": {
+    "cpu": 1,
+    "memory_bytes": 1610612736,
+    "swap_bytes": 0,
+    "tmpfs_bytes": 268435456,
+    "job_bytes": 130023424,
+    "deadline_seconds": 30,
+    "queue": 0,
+    "non_root": true,
+    "read_only": true,
+    "network": "none",
+    "cap_drop": "ALL",
+    "no_new_privileges": true
+  },
+  "http_resources": [
+    {
+      "name": "jpeg-6000x4000-baseline",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 375630,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.28,
+          "output_bytes": 21145,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 10502144,
+      "job_bytes_single": 10502144,
+      "djpeg_rss_bytes": 2543616,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 10125530,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 12242944,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "qpdf_rss_bytes": 19005440,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 62550016,
+      "samples": 13,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.0,
+        "cjpeg": 0.0,
+        "jpegtran": 0,
+        "pdfcpu": 0,
+        "qpdf": 0.0
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-baseline",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 375630,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.439,
+          "output_bytes": 21145,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 0.438,
+          "output_bytes": 21145,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 21004288,
+      "job_bytes_single": 10502144,
+      "djpeg_rss_bytes": 2465792,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 10125530,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 12013568,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 12480512,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 23298048,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 74133504,
+      "samples": 21,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.0,
+        "cjpeg": 0.127,
+        "jpegtran": 0.0,
+        "pdfcpu": 0,
+        "qpdf": 0.169
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-progressive",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 211612,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.363,
+          "output_bytes": 21145,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 10338304,
+      "job_bytes_single": 10338304,
+      "djpeg_rss_bytes": 74428416,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 10125530,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 11489280,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "qpdf_rss_bytes": 16703488,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 112873472,
+      "samples": 17,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.104,
+        "cjpeg": 0.0,
+        "jpegtran": 0,
+        "pdfcpu": 0,
+        "qpdf": 0.0
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-progressive",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 211612,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.61,
+          "output_bytes": 21145,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 0.61,
+          "output_bytes": 21145,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 20676608,
+      "job_bytes_single": 10338304,
+      "djpeg_rss_bytes": 74391552,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 10125530,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 12013568,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 12525568,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 20811776,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 201474048,
+      "samples": 29,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.383,
+        "cjpeg": 0.085,
+        "jpegtran": 0.0,
+        "pdfcpu": 0,
+        "qpdf": 0.063
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-baseline",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 762678,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.255,
+          "output_bytes": 19219,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 9912320,
+      "job_bytes_single": 9912320,
+      "djpeg_rss_bytes": 2539520,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 9145106,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 8318976,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 11558912,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 16125952,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 50237440,
+      "samples": 12,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.0,
+        "cjpeg": 0.0,
+        "jpegtran": 0.0,
+        "pdfcpu": 0,
+        "qpdf": 0.0
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-baseline",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 762678,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.416,
+          "output_bytes": 19219,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 0.416,
+          "output_bytes": 19219,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 19845120,
+      "job_bytes_single": 9932800,
+      "djpeg_rss_bytes": 2523136,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 9145106,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 8998912,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 11513856,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 21950464,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 68378624,
+      "samples": 19,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.0,
+        "cjpeg": 0.042,
+        "jpegtran": 0.0,
+        "pdfcpu": 0,
+        "qpdf": 0.191
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-progressive",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 429493,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.445,
+          "output_bytes": 19219,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 9576448,
+      "job_bytes_single": 9576448,
+      "djpeg_rss_bytes": 148901888,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 9145106,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 6451200,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 11546624,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 12095488,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 14336000,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 187248640,
+      "samples": 21,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.187,
+        "cjpeg": 0.0,
+        "jpegtran": 0.0,
+        "pdfcpu": 0.0,
+        "qpdf": 0.0
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-progressive",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 429493,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.809,
+          "output_bytes": 19219,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 0.809,
+          "output_bytes": 19219,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 19152896,
+      "job_bytes_single": 9576448,
+      "djpeg_rss_bytes": 148750336,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 9145106,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 3403776,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "qpdf_rss_bytes": 22134784,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 349270016,
+      "samples": 37,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.806,
+        "cjpeg": 0.042,
+        "jpegtran": 0,
+        "pdfcpu": 0,
+        "qpdf": 0.042
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-low",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 53115,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.782,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 196608,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 197693440,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76562432,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 216993792,
+      "samples": 37,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.373,
+        "qpdf": 0.188
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-low",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 53115,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.41,
+          "output_bytes": 95283,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.418,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 393216,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 197296128,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76173312,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 393822208,
+      "samples": 66,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.464,
+        "qpdf": 0.83
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-low",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 53115,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.751,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 196608,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 184537088,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76468224,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 204034048,
+      "samples": 36,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.352,
+        "qpdf": 0.166
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-low",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 53115,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.44,
+          "output_bytes": 95283,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.443,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 393216,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 184836096,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76238848,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 380514304,
+      "samples": 68,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.443,
+        "qpdf": 0.805
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-high",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 48019553,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.552,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 96043008,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 216563712,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112447488,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 321363968,
+      "samples": 75,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.476,
+        "qpdf": 0.271
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-high",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 48019553,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.723,
+          "output_bytes": 48004880,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 2.9,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 192036864,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 217128960,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112562176,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 552378368,
+      "samples": 135,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 2.078,
+        "qpdf": 1.277
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-high",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 48019553,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.793,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 96043008,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 216121344,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112472064,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 324440064,
+      "samples": 86,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.498,
+        "qpdf": 0.272
+      }
+    },
+    {
+      "name": "png-4000x3000-rgba-high",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 48019553,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.943,
+          "output_bytes": 48004880,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 3.019,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 192053248,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 217128960,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112406528,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 562671616,
+      "samples": 140,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.97,
+        "qpdf": 1.408
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-low",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 56256,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.767,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 196608,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 197775360,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76177408,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 218193920,
+      "samples": 36,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.376,
+        "qpdf": 0.168
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-low",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 56256,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.482,
+          "output_bytes": 95283,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.481,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 393216,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 197496832,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76464128,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 407179264,
+      "samples": 69,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.535,
+        "qpdf": 0.848
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-low",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 56256,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.765,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 196608,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 197775360,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76455936,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 216821760,
+      "samples": 36,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.374,
+        "qpdf": 0.167
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-low",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 56256,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.416,
+          "output_bytes": 95283,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.481,
+          "output_bytes": 95283,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 393216,
+      "job_bytes_single": 196608,
+      "pdfcpu_rss_bytes": 197689344,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 76558336,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 406528000,
+      "samples": 70,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.467,
+        "qpdf": 0.829
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-high",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 48020570,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.513,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 96026624,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 217083904,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112455680,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 321945600,
+      "samples": 73,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.498,
+        "qpdf": 0.271
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-high",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 48020570,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.873,
+          "output_bytes": 48004880,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 2.998,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 192053248,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 216879104,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112455680,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 572403712,
+      "samples": 140,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 2.103,
+        "qpdf": 1.41
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-high",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 48020570,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.557,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 96026624,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 216993792,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112418816,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 321085440,
+      "samples": 74,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.479,
+        "qpdf": 0.292
+      }
+    },
+    {
+      "name": "png-3000x4000-rgba-high",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 48020570,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.986,
+          "output_bytes": 48004880,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 3.098,
+          "output_bytes": 48004880,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 192053248,
+      "job_bytes_single": 96026624,
+      "pdfcpu_rss_bytes": 215142400,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 112431104,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 562327552,
+      "samples": 143,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 2.118,
+        "qpdf": 1.442
+      }
+    },
+    {
+      "name": "jpeg-near-50mib",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 51435821,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.877,
+          "output_bytes": 51436805,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 102875136,
+      "job_bytes_single": 102875136,
+      "jpegtran_rss_bytes": 108101632,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 131047424,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 168009728,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 300548096,
+      "samples": 137,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.896,
+        "pdfcpu": 0.083,
+        "qpdf": 0.94
+      }
+    },
+    {
+      "name": "jpeg-near-50mib",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 51435821,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 5.751,
+          "output_bytes": 51436805,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 5.656,
+          "output_bytes": 51436805,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 205750272,
+      "job_bytes_single": 102875136,
+      "jpegtran_rss_bytes": 108122112,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 130928640,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 167956480,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 558850048,
+      "samples": 263,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 3.715,
+        "pdfcpu": 0.383,
+        "qpdf": 4.143
+      }
+    },
+    {
+      "name": "gradient",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 366645,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.847,
+          "output_bytes": 2513522,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 5029888,
+      "job_bytes_single": 5029888,
+      "pdfcpu_rss_bytes": 145453056,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 78962688,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 169521152,
+      "samples": 41,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.417,
+        "qpdf": 0.188
+      }
+    },
+    {
+      "name": "gradient",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 366645,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.756,
+          "output_bytes": 2513522,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.72,
+          "output_bytes": 2513522,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 10059776,
+      "job_bytes_single": 5029888,
+      "pdfcpu_rss_bytes": 145584128,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 78761984,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 305684480,
+      "samples": 83,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.908,
+        "qpdf": 0.888
+      }
+    },
+    {
+      "name": "gradient",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 366645,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.875,
+          "output_bytes": 2513522,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 5029888,
+      "job_bytes_single": 5029888,
+      "pdfcpu_rss_bytes": 145326080,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 78778368,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 167366656,
+      "samples": 42,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 0.458,
+        "qpdf": 0.167
+      }
+    },
+    {
+      "name": "gradient",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 366645,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.667,
+          "output_bytes": 2513522,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.666,
+          "output_bytes": 2513522,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 10059776,
+      "job_bytes_single": 5029888,
+      "pdfcpu_rss_bytes": 145993728,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 78761984,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 306262016,
+      "samples": 79,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 1.866,
+        "qpdf": 0.739
+      }
+    },
+    {
+      "name": "photo-pair",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 29018785,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 4.158,
+          "output_bytes": 49377530,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 98766848,
+      "job_bytes_single": 98766848,
+      "pdfcpu_rss_bytes": 206995456,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 130617344,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 294297600,
+      "samples": 200,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 2.663,
+        "qpdf": 0.77
+      }
+    },
+    {
+      "name": "photo-pair",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 29018785,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 8.696,
+          "output_bytes": 49377530,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 8.551,
+          "output_bytes": 49377530,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 197533696,
+      "job_bytes_single": 98766848,
+      "pdfcpu_rss_bytes": 206884864,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134418432,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 530759680,
+      "samples": 407,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 11.433,
+        "qpdf": 3.611
+      }
+    },
+    {
+      "name": "photo-pair",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 29018785,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 4.157,
+          "output_bytes": 49377530,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 98766848,
+      "job_bytes_single": 98766848,
+      "pdfcpu_rss_bytes": 206618624,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134422528,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 294125568,
+      "samples": 199,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 2.666,
+        "qpdf": 0.814
+      }
+    },
+    {
+      "name": "photo-pair",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 29018785,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 8.585,
+          "output_bytes": 49377530,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 8.669,
+          "output_bytes": 49377530,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 197533696,
+      "job_bytes_single": 98766848,
+      "pdfcpu_rss_bytes": 206204928,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134422528,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 530542592,
+      "samples": 408,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 11.38,
+        "qpdf": 3.472
+      }
+    },
+    {
+      "name": "photo-mixed",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 29761060,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 5.191,
+          "output_bytes": 51911577,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 103837696,
+      "job_bytes_single": 103837696,
+      "pdfcpu_rss_bytes": 207056896,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134422528,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "djpeg_rss_bytes": 2580480,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 10125530,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 6955008,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 10457088,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "memory_peak": 295743488,
+      "samples": 248,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.021,
+        "cjpeg": 0.0,
+        "jpegtran": 0.0,
+        "pdfcpu": 3.126,
+        "qpdf": 0.98
+      }
+    },
+    {
+      "name": "photo-mixed",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 29761060,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 10.633,
+          "output_bytes": 51911577,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 10.518,
+          "output_bytes": 51911577,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 207675392,
+      "job_bytes_single": 103837696,
+      "pdfcpu_rss_bytes": 206663680,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134197248,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "djpeg_rss_bytes": 2560000,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 10125530,
+      "djpeg_core": 0,
+      "jpegtran_rss_bytes": 12484608,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "cjpeg_rss_bytes": 8785920,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "memory_peak": 533549056,
+      "samples": 498,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.086,
+        "cjpeg": 0.042,
+        "jpegtran": 0.0,
+        "pdfcpu": 13.238,
+        "qpdf": 4.834
+      }
+    },
+    {
+      "name": "photo-mixed",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 29761060,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 5.352,
+          "output_bytes": 52032323,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 104079360,
+      "job_bytes_single": 104079360,
+      "pdfcpu_rss_bytes": 206864384,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134455296,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "jpegtran_rss_bytes": 74346496,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "memory_peak": 293277696,
+      "samples": 255,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.063,
+        "pdfcpu": 3.197,
+        "qpdf": 1.189
+      }
+    },
+    {
+      "name": "photo-mixed",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 29761060,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 10.918,
+          "output_bytes": 52032323,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 11.027,
+          "output_bytes": 52032323,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 208158720,
+      "job_bytes_single": 104079360,
+      "pdfcpu_rss_bytes": 207060992,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 134037504,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "jpegtran_rss_bytes": 74375168,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "memory_peak": 535674880,
+      "samples": 516,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.275,
+        "pdfcpu": 13.528,
+        "qpdf": 5.25
+      }
+    },
+    {
+      "name": "photo-over-output",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 43536278,
+      "requests": [
+        {
+          "status": 422,
+          "seconds": 5.251,
+          "output_bytes": 0,
+          "reason": "unsupported-image"
+        }
+      ],
+      "tmpfs_bytes": 78409728,
+      "job_bytes_single": 78409728,
+      "pdfcpu_rss_bytes": 206733312,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 101085184,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 306483200,
+      "samples": 254,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 4.126,
+        "qpdf": 0.376
+      }
+    },
+    {
+      "name": "photo-over-output",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 43536278,
+      "requests": [
+        {
+          "status": 422,
+          "seconds": 10.925,
+          "output_bytes": 0,
+          "reason": "unsupported-image"
+        },
+        {
+          "status": 422,
+          "seconds": 10.883,
+          "output_bytes": 0,
+          "reason": "unsupported-image"
+        }
+      ],
+      "tmpfs_bytes": 156819456,
+      "job_bytes_single": 78409728,
+      "pdfcpu_rss_bytes": 206876672,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 100896768,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 572145664,
+      "samples": 516,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 17.601,
+        "qpdf": 1.57
+      }
+    },
+    {
+      "name": "photo-over-output",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 43536278,
+      "requests": [
+        {
+          "status": 422,
+          "seconds": 5.299,
+          "output_bytes": 0,
+          "reason": "unsupported-image"
+        }
+      ],
+      "tmpfs_bytes": 78426112,
+      "job_bytes_single": 78409728,
+      "pdfcpu_rss_bytes": 206733312,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 101253120,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 308101120,
+      "samples": 256,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 4.212,
+        "qpdf": 0.376
+      }
+    },
+    {
+      "name": "photo-over-output",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 43536278,
+      "requests": [
+        {
+          "status": 422,
+          "seconds": 10.567,
+          "output_bytes": 0,
+          "reason": "unsupported-image"
+        },
+        {
+          "status": 422,
+          "seconds": 10.586,
+          "output_bytes": 0,
+          "reason": "unsupported-image"
+        }
+      ],
+      "tmpfs_bytes": 156819456,
+      "job_bytes_single": 78409728,
+      "pdfcpu_rss_bytes": 207187968,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 101195776,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 570933248,
+      "samples": 501,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0,
+        "pdfcpu": 17.362,
+        "qpdf": 1.7
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-baseline",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 375630,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.469,
+          "output_bytes": 141892,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 520192,
+      "job_bytes_single": 520192,
+      "jpegtran_rss_bytes": 74321920,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 83980288,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 108789760,
+      "samples": 22,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.042,
+        "pdfcpu": 0,
+        "qpdf": 0.167
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-baseline",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 375630,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.972,
+          "output_bytes": 141892,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 0.973,
+          "output_bytes": 141892,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 1040384,
+      "job_bytes_single": 520192,
+      "jpegtran_rss_bytes": 74305536,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 83697664,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 186671104,
+      "samples": 45,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.295,
+        "pdfcpu": 0,
+        "qpdf": 0.96
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-progressive",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 211612,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.555,
+          "output_bytes": 141892,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 356352,
+      "job_bytes_single": 356352,
+      "jpegtran_rss_bytes": 74362880,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 12664832,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 83931136,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 108986368,
+      "samples": 26,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.104,
+        "pdfcpu": 0.0,
+        "qpdf": 0.209
+      }
+    },
+    {
+      "name": "jpeg-6000x4000-progressive",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 211612,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.067,
+          "output_bytes": 141892,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.067,
+          "output_bytes": 141892,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 614400,
+      "job_bytes_single": 356352,
+      "jpegtran_rss_bytes": 74362880,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 83939328,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 184975360,
+      "samples": 50,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.55,
+        "pdfcpu": 0,
+        "qpdf": 0.871
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-baseline",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 762678,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.855,
+          "output_bytes": 287035,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 1052672,
+      "job_bytes_single": 1052672,
+      "jpegtran_rss_bytes": 148770816,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 208637952,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 234749952,
+      "samples": 41,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.125,
+        "pdfcpu": 0,
+        "qpdf": 0.478
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-baseline",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 762678,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.622,
+          "output_bytes": 287035,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.622,
+          "output_bytes": 287035,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 2105344,
+      "job_bytes_single": 1052672,
+      "jpegtran_rss_bytes": 148762624,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 208842752,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 438390784,
+      "samples": 76,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.508,
+        "pdfcpu": 0,
+        "qpdf": 2.153
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-progressive",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 429493,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.949,
+          "output_bytes": 287035,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 716800,
+      "job_bytes_single": 716800,
+      "jpegtran_rss_bytes": 148828160,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 208924672,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 234115072,
+      "samples": 45,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.229,
+        "pdfcpu": 0,
+        "qpdf": 0.459
+      }
+    },
+    {
+      "name": "jpeg-8064x6048-progressive",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 429493,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.872,
+          "output_bytes": 287035,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 1.872,
+          "output_bytes": 287035,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 1433600,
+      "job_bytes_single": 716800,
+      "jpegtran_rss_bytes": 148725760,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 9490432,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 208773120,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 438480896,
+      "samples": 88,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.956,
+        "pdfcpu": 0.084,
+        "qpdf": 2.113
+      }
+    },
+    {
+      "name": "jpeg-48mp-progressive-rotate90",
+      "quality": "standard",
+      "concurrent": 1,
+      "input_bytes": 429529,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.46,
+          "output_bytes": 19030,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 9596928,
+      "job_bytes_single": 9576448,
+      "djpeg_rss_bytes": 148856832,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 9145106,
+      "djpeg_core": 0,
+      "jpegtran_rss_bytes": 20746240,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 10510336,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 14249984,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 186580992,
+      "samples": 22,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.188,
+        "cjpeg": 0,
+        "jpegtran": 0.0,
+        "pdfcpu": 0.0,
+        "qpdf": 0.0
+      }
+    },
+    {
+      "name": "jpeg-48mp-progressive-rotate90",
+      "quality": "standard",
+      "concurrent": 2,
+      "input_bytes": 429529,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 0.83,
+          "output_bytes": 19030,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 0.83,
+          "output_bytes": 19030,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 19152896,
+      "job_bytes_single": 9576448,
+      "djpeg_rss_bytes": 148926464,
+      "djpeg_as": 402653184,
+      "djpeg_fsize": 9145106,
+      "djpeg_core": 0,
+      "cjpeg_rss_bytes": 12288,
+      "cjpeg_as": 67108864,
+      "cjpeg_fsize": 56623105,
+      "cjpeg_core": 0,
+      "jpegtran_rss_bytes": 18636800,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 18804736,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 345063424,
+      "samples": 38,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0.807,
+        "cjpeg": 0.063,
+        "jpegtran": 0.0,
+        "pdfcpu": 0,
+        "qpdf": 0.0
+      }
+    },
+    {
+      "name": "jpeg-48mp-progressive-rotate90",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 429529,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 1.091,
+          "output_bytes": 287035,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 716800,
+      "job_bytes_single": 716800,
+      "jpegtran_rss_bytes": 295059456,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "qpdf_rss_bytes": 159256576,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 324333568,
+      "samples": 52,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 0.438,
+        "pdfcpu": 0,
+        "qpdf": 0.415
+      }
+    },
+    {
+      "name": "jpeg-48mp-progressive-rotate90",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 429529,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.096,
+          "output_bytes": 287035,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 2.096,
+          "output_bytes": 287035,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 1433600,
+      "job_bytes_single": 716800,
+      "jpegtran_rss_bytes": 295108608,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 10231808,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 159166464,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 624381952,
+      "samples": 98,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 1.763,
+        "pdfcpu": 0.084,
+        "qpdf": 1.876
+      }
+    },
+    {
+      "name": "jpeg-near-50mib-rotate90",
+      "quality": "original",
+      "concurrent": 1,
+      "input_bytes": 51435857,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 2.956,
+          "output_bytes": 51332541,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 102772736,
+      "job_bytes_single": 102772736,
+      "jpegtran_rss_bytes": 213594112,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 130945024,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 208519168,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 346963968,
+      "samples": 141,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 1.097,
+        "pdfcpu": 0.084,
+        "qpdf": 0.935
+      }
+    },
+    {
+      "name": "jpeg-near-50mib-rotate90",
+      "quality": "original",
+      "concurrent": 2,
+      "input_bytes": 51435857,
+      "requests": [
+        {
+          "status": 200,
+          "seconds": 5.447,
+          "output_bytes": 51332541,
+          "reason": null
+        },
+        {
+          "status": 200,
+          "seconds": 5.573,
+          "output_bytes": 51332541,
+          "reason": null
+        }
+      ],
+      "tmpfs_bytes": 205545472,
+      "job_bytes_single": 102772736,
+      "jpegtran_rss_bytes": 213647360,
+      "jpegtran_as": 402653184,
+      "jpegtran_fsize": 56623105,
+      "jpegtran_core": 0,
+      "pdfcpu_rss_bytes": 130977792,
+      "pdfcpu_as": 1073741824,
+      "pdfcpu_fsize": 56623105,
+      "pdfcpu_core": 0,
+      "qpdf_rss_bytes": 208093184,
+      "qpdf_as": 570425344,
+      "qpdf_fsize": 56623105,
+      "qpdf_core": 0,
+      "memory_peak": 628961280,
+      "samples": 259,
+      "memory_events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0,
+        "sock_throttled": 0
+      },
+      "tool_seconds_sampled": {
+        "djpeg": 0,
+        "cjpeg": 0,
+        "jpegtran": 4.04,
+        "pdfcpu": 0.381,
+        "qpdf": 3.952
+      }
+    }
+  ],
+  "single_processor_reservations": [
+    {
+      "Name": "jpeg-6000x4000-baseline",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.2316901,
+      "reserved_peak": 68177920,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 375630,
+          "ReservedPeak": 1425408
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 20168,
+          "ReservedPeak": 68177920
+        },
+        {
+          "Name": "page",
+          "Bytes": 21224,
+          "ReservedPeak": 68177920
+        },
+        {
+          "Name": "final",
+          "Bytes": 21145,
+          "ReservedPeak": 68177920
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-6000x4000-progressive",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.283318,
+      "reserved_peak": 68014080,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 211612,
+          "ReservedPeak": 1261568
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 20168,
+          "ReservedPeak": 68014080
+        },
+        {
+          "Name": "page",
+          "Bytes": 21224,
+          "ReservedPeak": 68014080
+        },
+        {
+          "Name": "final",
+          "Bytes": 21145,
+          "ReservedPeak": 68014080
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-8064x6048-baseline",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.2049233,
+      "reserved_peak": 67588096,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 762678,
+          "ReservedPeak": 1814528
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 18242,
+          "ReservedPeak": 67588096
+        },
+        {
+          "Name": "page",
+          "Bytes": 19298,
+          "ReservedPeak": 67588096
+        },
+        {
+          "Name": "final",
+          "Bytes": 19219,
+          "ReservedPeak": 67588096
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-8064x6048-progressive",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.3955103,
+      "reserved_peak": 67252224,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 429493,
+          "ReservedPeak": 1478656
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 18242,
+          "ReservedPeak": 67252224
+        },
+        {
+          "Name": "page",
+          "Bytes": 19298,
+          "ReservedPeak": 67252224
+        },
+        {
+          "Name": "final",
+          "Bytes": 19219,
+          "ReservedPeak": 67252224
+        }
+      ]
+    },
+    {
+      "Name": "png-4000x3000-rgba-low",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.7025552,
+      "reserved_peak": 57774080,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 53115,
+          "ReservedPeak": 1101824
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 53115,
+          "ReservedPeak": 1155072
+        },
+        {
+          "Name": "page",
+          "Bytes": 95345,
+          "ReservedPeak": 57729024
+        },
+        {
+          "Name": "final",
+          "Bytes": 95283,
+          "ReservedPeak": 57774080
+        }
+      ]
+    },
+    {
+      "Name": "png-4000x3000-rgba-low",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.7126652,
+      "reserved_peak": 57774080,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 53115,
+          "ReservedPeak": 1101824
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 53115,
+          "ReservedPeak": 1155072
+        },
+        {
+          "Name": "page",
+          "Bytes": 95345,
+          "ReservedPeak": 57729024
+        },
+        {
+          "Name": "final",
+          "Bytes": 95283,
+          "ReservedPeak": 57774080
+        }
+      ]
+    },
+    {
+      "Name": "png-4000x3000-rgba-high",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.4052213,
+      "reserved_peak": 105697280,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 48019553,
+          "ReservedPeak": 49070080
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 48019553,
+          "ReservedPeak": 97091584
+        },
+        {
+          "Name": "page",
+          "Bytes": 48004953,
+          "ReservedPeak": 105697280
+        },
+        {
+          "Name": "final",
+          "Bytes": 48004880,
+          "ReservedPeak": 105697280
+        }
+      ]
+    },
+    {
+      "Name": "png-4000x3000-rgba-high",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.1390659,
+      "reserved_peak": 105697280,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 48019553,
+          "ReservedPeak": 49070080
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 48019553,
+          "ReservedPeak": 97091584
+        },
+        {
+          "Name": "page",
+          "Bytes": 48004953,
+          "ReservedPeak": 105697280
+        },
+        {
+          "Name": "final",
+          "Bytes": 48004880,
+          "ReservedPeak": 105697280
+        }
+      ]
+    },
+    {
+      "Name": "png-3000x4000-rgba-low",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.7284433,
+      "reserved_peak": 57774080,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 56256,
+          "ReservedPeak": 1105920
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 56256,
+          "ReservedPeak": 1163264
+        },
+        {
+          "Name": "page",
+          "Bytes": 95345,
+          "ReservedPeak": 57733120
+        },
+        {
+          "Name": "final",
+          "Bytes": 95283,
+          "ReservedPeak": 57774080
+        }
+      ]
+    },
+    {
+      "Name": "png-3000x4000-rgba-low",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.683815,
+      "reserved_peak": 57774080,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 56256,
+          "ReservedPeak": 1105920
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 56256,
+          "ReservedPeak": 1163264
+        },
+        {
+          "Name": "page",
+          "Bytes": 95345,
+          "ReservedPeak": 57733120
+        },
+        {
+          "Name": "final",
+          "Bytes": 95283,
+          "ReservedPeak": 57774080
+        }
+      ]
+    },
+    {
+      "Name": "png-3000x4000-rgba-high",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.8819506,
+      "reserved_peak": 105697280,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 48020570,
+          "ReservedPeak": 49070080
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 48020570,
+          "ReservedPeak": 97091584
+        },
+        {
+          "Name": "page",
+          "Bytes": 48004953,
+          "ReservedPeak": 105697280
+        },
+        {
+          "Name": "final",
+          "Bytes": 48004880,
+          "ReservedPeak": 105697280
+        }
+      ]
+    },
+    {
+      "Name": "png-3000x4000-rgba-high",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.0865277,
+      "reserved_peak": 105697280,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 48020570,
+          "ReservedPeak": 49070080
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 48020570,
+          "ReservedPeak": 97091584
+        },
+        {
+          "Name": "page",
+          "Bytes": 48004953,
+          "ReservedPeak": 105697280
+        },
+        {
+          "Name": "final",
+          "Bytes": 48004880,
+          "ReservedPeak": 105697280
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-near-50mib",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 3.8339584,
+      "reserved_peak": 109113344,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 51435821,
+          "ReservedPeak": 52486144
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 51435821,
+          "ReservedPeak": 109113344
+        },
+        {
+          "Name": "page",
+          "Bytes": 51436904,
+          "ReservedPeak": 109113344
+        },
+        {
+          "Name": "final",
+          "Bytes": 51436805,
+          "ReservedPeak": 109113344
+        }
+      ]
+    },
+    {
+      "Name": "gradient",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.5993766,
+      "reserved_peak": 60190720,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 366645,
+          "ReservedPeak": 1417216
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 366645,
+          "ReservedPeak": 1785856
+        },
+        {
+          "Name": "page",
+          "Bytes": 2513611,
+          "ReservedPeak": 58044416
+        },
+        {
+          "Name": "final",
+          "Bytes": 2513522,
+          "ReservedPeak": 60190720
+        }
+      ]
+    },
+    {
+      "Name": "gradient",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.5130583,
+      "reserved_peak": 60190720,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 366645,
+          "ReservedPeak": 1417216
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 366645,
+          "ReservedPeak": 1785856
+        },
+        {
+          "Name": "page",
+          "Bytes": 2513611,
+          "ReservedPeak": 58044416
+        },
+        {
+          "Name": "final",
+          "Bytes": 2513522,
+          "ReservedPeak": 60190720
+        }
+      ]
+    },
+    {
+      "Name": "photo-pair",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 5.120517,
+      "reserved_peak": 107061248,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 29018785,
+          "ReservedPeak": 30072832
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 44593152
+        },
+        {
+          "Name": "page",
+          "Bytes": 24637512,
+          "ReservedPeak": 86700032
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14501292,
+          "ReservedPeak": 86700032
+        },
+        {
+          "Name": "page",
+          "Bytes": 24740532,
+          "ReservedPeak": 86700032
+        },
+        {
+          "Name": "final",
+          "Bytes": 49377530,
+          "ReservedPeak": 107061248
+        }
+      ]
+    },
+    {
+      "Name": "photo-pair",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 3.9120701,
+      "reserved_peak": 107061248,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 29018785,
+          "ReservedPeak": 30072832
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 44593152
+        },
+        {
+          "Name": "page",
+          "Bytes": 24637512,
+          "ReservedPeak": 86700032
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14501292,
+          "ReservedPeak": 86700032
+        },
+        {
+          "Name": "page",
+          "Bytes": 24740532,
+          "ReservedPeak": 86700032
+        },
+        {
+          "Name": "final",
+          "Bytes": 49377530,
+          "ReservedPeak": 107061248
+        }
+      ]
+    },
+    {
+      "Name": "photo-mixed",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 4.7085012,
+      "reserved_peak": 120078336,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 29761060,
+          "ReservedPeak": 30818304
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 45338624
+        },
+        {
+          "Name": "page",
+          "Bytes": 24637512,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14501292,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "page",
+          "Bytes": 24740532,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 366645,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "page",
+          "Bytes": 2513611,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 20168,
+          "ReservedPeak": 120078336
+        },
+        {
+          "Name": "page",
+          "Bytes": 21224,
+          "ReservedPeak": 120078336
+        },
+        {
+          "Name": "final",
+          "Bytes": 51911577,
+          "ReservedPeak": 120078336
+        }
+      ]
+    },
+    {
+      "Name": "photo-mixed",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 4.9117799,
+      "reserved_peak": 109953024,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 29761060,
+          "ReservedPeak": 30818304
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 45338624
+        },
+        {
+          "Name": "page",
+          "Bytes": 24637512,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14501292,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "page",
+          "Bytes": 24740532,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 366645,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "page",
+          "Bytes": 2513611,
+          "ReservedPeak": 87445504
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 140913,
+          "ReservedPeak": 109953024
+        },
+        {
+          "Name": "page",
+          "Bytes": 141981,
+          "ReservedPeak": 109953024
+        },
+        {
+          "Name": "final",
+          "Bytes": 52032323,
+          "ReservedPeak": 109953024
+        }
+      ]
+    },
+    {
+      "Name": "photo-over-output",
+      "Quality": "standard",
+      "status": 422,
+      "reason": "Unsupported",
+      "seconds": 4.8238643,
+      "reserved_peak": 101220352,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 43536278,
+          "ReservedPeak": 44593152
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 59113472
+        },
+        {
+          "Name": "page",
+          "Bytes": 24637512,
+          "ReservedPeak": 101220352
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14501292,
+          "ReservedPeak": 101220352
+        },
+        {
+          "Name": "page",
+          "Bytes": 24740532,
+          "ReservedPeak": 101220352
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 101220352
+        }
+      ]
+    },
+    {
+      "Name": "photo-over-output",
+      "Quality": "original",
+      "status": 422,
+      "reason": "Unsupported",
+      "seconds": 4.8352045,
+      "reserved_peak": 101220352,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 43536278,
+          "ReservedPeak": 44593152
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 59113472
+        },
+        {
+          "Name": "page",
+          "Bytes": 24637512,
+          "ReservedPeak": 101220352
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14501292,
+          "ReservedPeak": 101220352
+        },
+        {
+          "Name": "page",
+          "Bytes": 24740532,
+          "ReservedPeak": 101220352
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 14517493,
+          "ReservedPeak": 101220352
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-6000x4000-baseline",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.4402084,
+      "reserved_peak": 58052608,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 375630,
+          "ReservedPeak": 1425408
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 140913,
+          "ReservedPeak": 58052608
+        },
+        {
+          "Name": "page",
+          "Bytes": 141981,
+          "ReservedPeak": 58052608
+        },
+        {
+          "Name": "final",
+          "Bytes": 141892,
+          "ReservedPeak": 58052608
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-6000x4000-progressive",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.4808104,
+      "reserved_peak": 57888768,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 211612,
+          "ReservedPeak": 1261568
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 140913,
+          "ReservedPeak": 57888768
+        },
+        {
+          "Name": "page",
+          "Bytes": 141981,
+          "ReservedPeak": 57888768
+        },
+        {
+          "Name": "final",
+          "Bytes": 141892,
+          "ReservedPeak": 57888768
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-8064x6048-baseline",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.7589456,
+      "reserved_peak": 58441728,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 762678,
+          "ReservedPeak": 1814528
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 286056,
+          "ReservedPeak": 58441728
+        },
+        {
+          "Name": "page",
+          "Bytes": 287124,
+          "ReservedPeak": 58441728
+        },
+        {
+          "Name": "final",
+          "Bytes": 287035,
+          "ReservedPeak": 58441728
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-8064x6048-progressive",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.8625736,
+      "reserved_peak": 58105856,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 429493,
+          "ReservedPeak": 1478656
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 286056,
+          "ReservedPeak": 58105856
+        },
+        {
+          "Name": "page",
+          "Bytes": 287124,
+          "ReservedPeak": 58105856
+        },
+        {
+          "Name": "final",
+          "Bytes": 287035,
+          "ReservedPeak": 58105856
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-48mp-progressive-rotate90",
+      "Quality": "standard",
+      "status": 200,
+      "reason": null,
+      "seconds": 0.4027369,
+      "reserved_peak": 67252224,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 429529,
+          "ReservedPeak": 1478656
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 18053,
+          "ReservedPeak": 67252224
+        },
+        {
+          "Name": "page",
+          "Bytes": 19109,
+          "ReservedPeak": 67252224
+        },
+        {
+          "Name": "final",
+          "Bytes": 19030,
+          "ReservedPeak": 67252224
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-48mp-progressive-rotate90",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 1.0339483,
+      "reserved_peak": 58105856,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 429529,
+          "ReservedPeak": 1478656
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 286056,
+          "ReservedPeak": 58105856
+        },
+        {
+          "Name": "page",
+          "Bytes": 287124,
+          "ReservedPeak": 58105856
+        },
+        {
+          "Name": "final",
+          "Bytes": 287035,
+          "ReservedPeak": 58105856
+        }
+      ]
+    },
+    {
+      "Name": "jpeg-near-50mib-rotate90",
+      "Quality": "original",
+      "status": 200,
+      "reason": null,
+      "seconds": 2.3249143,
+      "reserved_peak": 109113344,
+      "stages": [
+        {
+          "Name": "uploads",
+          "Bytes": 51435857,
+          "ReservedPeak": 52486144
+        },
+        {
+          "Name": "normalized",
+          "Bytes": 51331557,
+          "ReservedPeak": 109113344
+        },
+        {
+          "Name": "page",
+          "Bytes": 51332640,
+          "ReservedPeak": 109113344
+        },
+        {
+          "Name": "final",
+          "Bytes": 51332541,
+          "ReservedPeak": 109113344
+        }
+      ]
+    }
+  ]
+}

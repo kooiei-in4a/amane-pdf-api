@@ -76,6 +76,23 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             with { WorkingDirectory = files.DirectoryPath };
     }
 
+    internal async Task ImportImageAsync(TemporaryPdfFiles files, string imagePath, ImageInfo image,
+        string outputPath, long budget, CancellationToken token)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        RequireJobPath(files, imagePath); RequireJobPath(files, outputPath);
+        if (budget is <= 0 or > 54 * 1048576 || File.Exists(outputPath) ||
+            Path.GetFullPath(imagePath) == Path.GetFullPath(outputPath) ||
+            Path.GetExtension(imagePath) != (image.Png ? ".png" : ".jpg") ||
+            new FileInfo(imagePath).Length <= 0 || image.Width <= 0 || image.Height <= 0)
+            throw new ArgumentException("Image import arguments are invalid.");
+        // import appends to existing PDFs: its output must not be pre-created.
+        var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
+            ["import", "--", ImagePageLayout.For(image).Description, outputPath, imagePath], budget + 1), token);
+        JpegNormalizer.CheckResult(result, outputPath, budget, token);
+        File.SetUnixFileMode(outputPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
     private Task<ExternalProcessResult> QpdfAsync(TemporaryPdfFiles files, string[] arguments,
         CancellationToken token, int? stdoutLimit = null)
         => ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(settings.PrlimitPath,

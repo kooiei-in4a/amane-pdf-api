@@ -148,6 +148,18 @@ job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM
 
 標準条件はmemory 1.5 GiB・swapなし・CPU 1・tmpfs 256 MiB・同時2・non-root・read-only・network noneです。2×124 MiBのjobに8 MiBのtmpfs余裕を残します。tmpfsもcgroup memoryへ含まれるので、ファイルの容量式だけで成立を判断しません。上限は設定可能な安全境界であり、拡大するときはREADMEのメモリ式・tmpfs式と実測を見直します。Webシステムのプラン別サイズ・回数制限はサイト側の責務です。[圧縮の実測記録](compress-validation.md)は対象fixtureでの確認であり、任意の入力の成功を保証しません。
 
+## 画像からPDFの生成（Linux）
+
+from-imagesは拡張子・MIME・元ファイル名を参照せず、内容がJPEGまたは静止PNGの画像を1〜30枚、合計50 MiBまで受け付けます。既存のstreaming multipart、共通実行枠、アップロード後30秒のdeadline、Runnerのkill tree・wait・drainとjob削除を使用します。未知field、quality、画像数、単一file・入力合計・request全量（epilogueを含む）の制限を検査します。
+
+JPEGは8 bit・1/3成分に限り、全体を上限付きで走査するJpegHeaderとstrict decoderを組み合わせます。最初のSOSまでの最初のExif APP1だけから、境界と型を検査したIFD0 Orientationを読みます。不正な値・重複は1にし、GPS等へ再帰しません。jpegtranはcopy none・strict・optimize・maxscans 100を固定し、必要な回転/反転/trimだけをAPIが選びます。生成JPEGは全scanを再検査してAPP/COM/末尾データの残存を拒否し、固定長JFIF densityを書き直します。
+
+PNGは64 KiB bufferでCRC・IHDR・chunk名・長さ・順序・PLTE/tRNS・連続IDAT・IENDを検査し、5種類の許可chunkだけを書き直します。APNG・未知critical chunkを拒否し、デコードは.NETで行いません。見積り320 MiBと画素数50 MPを併用し、固定版pdfcpuのデコード失敗は通常の422に分類します。PNGのmetadataを除去しても、pdfcpuでPDF化したときのサイズ増大は防げないため、出力とjobの容量制限を別に適用します。
+
+jobはupload・正規化画像・PNM・JPEG・全生成ページ・最終PDFと補助1 MiBを4 KiB単位で予約します。外部出力は予算Bの1 byte先までFSIZEを許可し、その丸めも予約して、実サイズがBを超えれば成功終了でも専用422にします。削除が成功するまで容量を解放しません。正規化直後に元uploadを削除し、importに必要な二重保持をなくします。pdfcpu importは既存PDFへ追記するため、生成ページのpathを事前作成せず、0700 jobで守って成功後に0600へ変更します。ページごとと最終PDFをqpdfで検査し、検査/結合失敗は500です。部分PDFは返しません。
+
+画像用djpegとjpegtranはAS 384 MiB・maxmemory 320Mを独立設定し、maxmemory ≤ AS − 64 MiBを検証します。compressのdjpegと全cjpegのAS 64 MiBは維持します。起動時のJPEG両quality・PNGの実変換は、既存の全自己テストと固定30秒のdeadlineを共有し、省略しません。PNGの見積り、Go soft limit、RSSは異なる尺度として扱います。通常CIでは小画像の構造・privacy・描画を、[手動Docker測定](from-images-validation.md)では大画像の単独/同時2件と容量を確認します。既存の#46の公開条件は維持します。
+
 ## PDF分割とZIPの破棄
 
 splitは入力検査・ページ数取得後に2〜設定上限の計画を確定し、元PDFから1パートずつ生成・検査します。qpdfの出力先はAPIが作る0700のjob内の0600ファイルです。ZIPへ128 KiB bufferでコピーし、パートのhandleを閉じて削除できた後に容量を解放します。入力・作成中ZIP・パートの同時存在を4 KiB単位で管理します。最初にZIP余裕1 MiBとFSIZEの1 byte検出用4 KiBを予約し、パートとZIPコピーの重複に残予算の半分を使います。Linuxでは共通AS/JPEGMEMに加えてpartBudget+1のFSIZEを適用し、実出力がpartBudgetを超えればexit 0でも専用422とします。126/127は常に500、予算以内の3は共通422、その他の非0は500です。生成PDFの検証失敗は500です。stderrの解析でENOSPCを422へ変換しません。
