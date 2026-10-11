@@ -429,7 +429,7 @@ LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・f
 
 同じ30秒の起動deadline内で、画像用djpeg・cjpeg・jpegtran・pdfcpu importの実変換とqpdf検査も行います。小さなEXIF回転JPEGを両qualityで、RGBA PNGをoriginalで変換します。失敗時は「画像からPDFへの変換の自己テストに失敗しました。」の固定ログで待受を開始せず終了します。画像用maxmemoryの320Mは約305.18 MiBで、AS 384 MiBから約78.82 MiBを残します。AS 320 MiBへ下げるなら268Mが上限です。
 
-PNG見積りは`64 MiB + 2×正規化PNG bytes + 画素数×係数`が基本です。16 bitはGoデコーダの展開チャネル数×サンプル幅2 bytes×6で、透過なしグレーは12、カラーと透過付きグレーは48です。8 bit以下の非パレット・カラー/透過付きグレーは係数14に加え、`64 MiB + 画素数×22`以上と見積もります。その他は係数12です。圧縮bufferの成長を含む#59の実測に基づく受付見積りで、RSS/ASの上界でも変換成功の保証でもありません。型別の境界とpdfcpuの1 GiB ASに対する余裕は[追加検証記録](docs/from-images-followup-validation.md)を参照してください。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
+PNG見積りは`64 MiB + 2×正規化PNG bytes + 画素数×係数`が基本です。16 bitはGoデコーダの展開チャネル数×サンプル幅2 bytes×6で、透過なしグレーは12、カラーと透過付きグレーは48です。8 bit以下の非パレット・カラー/透過付きグレーは係数14に加え、`64 MiB + 画素数×22`以上と見積もります。その他は係数12です。圧縮bufferの成長を含む#59の実測に基づく受付見積りで、RSS/ASの上界でも変換成功の保証でもありません。型別の境界は[追加検証記録](docs/from-images-followup-validation.md)、AS別の失敗率は[反復検証](docs/from-images-as-validation.md)を参照してください。現在の製品ASは共通1 GiBで、取込専用1136 MiBの案はKooの判断待ちです。ASは仮想アドレス空間の上限で、コンテナの物理メモリ上限とは別です。Go soft limit 200MiBは超過による強制停止を保証しません。採用時はoverlayと取込の設定を分け、IsValidと起動検証を更新します。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
 
 Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。新しいHTTP endpointはありません。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
 

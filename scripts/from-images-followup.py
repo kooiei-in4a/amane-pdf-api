@@ -272,11 +272,9 @@ class Monitor(images.Monitor):
             monitor_error=None if self.error is None else str(self.error),
             tool_seconds_sampled={name: round(sum(p["last"] - p["first"] for p in self.processes.values() if p["tool"] == name), 3)
                                   for name in TOOLS})
-        self.peak["tool_address_space_headroom"] = {
-            name: dict(limit_bytes=self.peak[name + "_as"], vms_peak_bytes=self.peak[name + "_vms_bytes"],
-                unused_bytes=self.peak[name + "_as"] - self.peak[name + "_vms_bytes"],
-                unused_percent=round(100 * (1 - self.peak[name + "_vms_bytes"] / self.peak[name + "_as"]), 2))
-            for name in TOOLS if name + "_as" in self.peak and name + "_vms_bytes" in self.peak}
+        # VmSize is sampled and includes runtime reservations. Its distance
+        # from RLIMIT_AS is not the usable AS reserve; compare repeated failure
+        # rates at explicit AS values instead (from-images-as-validation.py).
         return self.peak
 
 

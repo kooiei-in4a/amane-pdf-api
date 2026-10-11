@@ -1,6 +1,6 @@
 # 画像からPDFの配置前容量検証（#59）
 
-> **訂正・再レビュー中:** 観測VmSizeとAS上限の差を「AS余裕2.89%」とした説明を撤回する。VmSizeはGoの予約とサンプリングの影響を受け、実際の必要ASを示さない。12 MPのAdam7 PNGでは、見積り内でも非決定的な422が報告された。下記は非interlaceの履歴であり、#59の完了・配置判断には使わない。[AS別反復の計画](from-images-as-plan.json)で合格基準を先に決め、製品設定を変更せずに再測定する。#46・サイト#41へ更新済みとした記載も誤りだったため、先に注意書きを反映した。
+> **訂正・再レビュー中:** 観測VmSizeとAS上限の差を「AS余裕2.89%」とした説明を撤回する。VmSizeはGoの予約とサンプリングの影響を受け、実際の必要ASを示さない。12 MPのAdam7 PNGでは、見積り内でも非決定的な422が報告された。下記は非interlaceの履歴であり、#59の完了・配置判断には使わない。[AS別の反復検証](from-images-as-validation.md)で、測定前に決めた基準と1136/1072 MiBの最新結果を記録した。製品ASの変更と採用はKooの判断待ちである。#46・サイト#41へ更新済みとした記載も誤りだったため、再測定前に注意書きを反映した。
 
 2026-10-11 JST。[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の画像処理とcompressの混在、16 bit・パレットPNG、standardの約48 MP・4:4:4 JPEGを合成データで測る。PR #61のレビューを受け、8 bit RGB/RGBAの境界も追加した。実機配置・公開と[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認は別作業である。
 
