@@ -84,6 +84,9 @@ jobs:
       - name: Install PDF and CI-only rendering tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf poppler-utils python3-pil python3-numpy
 
+      - name: Verify capacity measurement driver
+        run: /usr/bin/python3 scripts/from-images-followup-test.py
+
       - name: Setup .NET for the existing test harness
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:

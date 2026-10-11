@@ -70,6 +70,56 @@ public sealed class PdfFromImagesTests
     }
 
     [TestMethod]
+    [DataRow("standard", 2)]
+    [DataRow("original", 2)]
+    [DataRow("standard", 6)]
+    [DataRow("original", 6)]
+    public async Task SixteenBitPng_RejectsInsufficientWorkingBudgetBeforeImport(string quality, int color)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var source = FromImagesFixtures.Png(64, 48, 16, color);
+        // Between the old and revised estimates: the old admission check would
+        // reach the deliberately missing tool and return 500 instead of 422.
+        options.ImagePngWorkingLimitBytes = 64 * 1048576 + 64 * 48 * 36 + 2 * source.Length;
+        var pdfcpu = options.PdfcpuPath;
+        options.PdfcpuPath = "/missing/pdfcpu";
+        using (var form = PdfTestContext.MergeForm(source))
+            await Problem(test, form, "?quality=" + quality, 422, "unsupported-image");
+        options.PdfcpuPath = pdfcpu;
+        using var eightBit = PdfTestContext.MergeForm(FromImagesFixtures.Png(64, 48, 8, color));
+        using var response = await test.Client.PostAsync("/api/pdf/from-images?quality=" + quality, eightBit);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("standard", 2)]
+    [DataRow("original", 2)]
+    [DataRow("standard", 6)]
+    [DataRow("original", 6)]
+    public async Task EightBitColorPng_RejectsBeforeImportWhileOpaqueGray16RemainsAccepted(string quality, int color)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var source = FromImagesFixtures.Png(64, 48, 8, color);
+        options.ImagePngWorkingLimitBytes = 64 * 1048576 + 64 * 48 * 18 + 2 * source.Length;
+        var pdfcpu = options.PdfcpuPath;
+        options.PdfcpuPath = "/missing/pdfcpu";
+        using (var form = PdfTestContext.MergeForm(source))
+            await Problem(test, form, "?quality=" + quality, 422, "unsupported-image");
+        options.PdfcpuPath = pdfcpu;
+        using var gray = PdfTestContext.MergeForm(FromImagesFixtures.Png(64, 48, 16, 0));
+        using var response = await test.Client.PostAsync("/api/pdf/from-images?quality=" + quality, gray);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task Errors_AreFixedProblemsWithoutLeakingMetadataPathsOrToolOutput()
     {
         if (!OperatingSystem.IsLinux()) return;

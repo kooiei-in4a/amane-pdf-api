@@ -154,7 +154,7 @@ from-imagesは拡張子・MIME・元ファイル名を参照せず、内容がJP
 
 JPEGは8 bit・1/3成分に限り、全体を上限付きで走査するJpegHeaderとstrict decoderを組み合わせます。最初のSOSまでの最初のExif APP1だけから、境界と型を検査したIFD0 Orientationを読みます。不正な値・重複は1にし、GPS等へ再帰しません。jpegtranはcopy none・strict・optimize・maxscans 100を固定し、必要な回転/反転/trimだけをAPIが選びます。生成JPEGは全scanを再検査してAPP/COM/末尾データの残存を拒否し、固定長JFIF densityを書き直します。
 
-PNGは64 KiB bufferでCRC・IHDR・chunk名・長さ・順序・PLTE/tRNS・連続IDAT・IENDを検査し、5種類の許可chunkだけを書き直します。APNG・未知critical chunkを拒否し、デコードは.NETで行いません。見積り320 MiBと画素数50 MPを併用し、固定版pdfcpuのデコード失敗は通常の422に分類します。PNGのmetadataを除去しても、pdfcpuでPDF化したときのサイズ増大は防げないため、出力とjobの容量制限を別に適用します。
+PNGは64 KiB bufferでCRC・IHDR・chunk名・長さ・順序・PLTE/tRNS・連続IDAT・IENDを検査し、5種類の許可chunkだけを書き直します。APNG・未知critical chunkを拒否し、デコードは.NETで行いません。見積り320 MiBと画素数50 MPを併用し、固定版pdfcpuのデコード失敗は通常の422に分類します。16 bitの画素係数は展開チャネル数×2 bytes×6とし、透過なしグレーは12、カラー/透過付きグレーは48です。8 bit以下の非パレット・カラー/透過付きグレーは係数14と画素数×22の下限を併用し、その他は12を維持します。Adam7はpassごとの画像を持つため、展開画像1枚分（画素数×展開サンプルbytes）を加えます。現在の製品AS 1 GiB・Go soft limit 200MiB・コンテナmemoryを維持し、見積り超過をimport前に422で拒否します。[追加検証記録](from-images-followup-validation.md)に型別の境界、[AS別反復検証](from-images-as-validation.md)に失敗率と、採用しなかった取込専用AS案を記載します。見積りはRSS/ASの上界の証明ではありません。PNGのmetadataを除去しても、pdfcpuでPDF化したときのサイズ増大は防げないため、出力とjobの容量制限を別に適用します。
 
 jobはupload・正規化画像・PNM・JPEG・全生成ページ・最終PDFと補助1 MiBを4 KiB単位で予約します。外部出力は予算Bの1 byte先までFSIZEを許可し、その丸めも予約して、実サイズがBを超えれば成功終了でも専用422にします。削除が成功するまで容量を解放しません。正規化直後に元uploadを削除し、importに必要な二重保持をなくします。pdfcpu importは既存PDFへ追記するため、生成ページのpathを事前作成せず、0700 jobで守って成功後に0600へ変更します。ページごとと最終PDFをqpdfで検査し、検査/結合失敗は500です。部分PDFは返しません。
 
@@ -190,7 +190,7 @@ Linuxでは描画endpointが未追加でもpdfcpuの起動検証を必須にし�
 
 共通処理はAPIが生成したjob内の白紙だけをpdfcpuへ渡します。利用者PDFの検証・属性解析・overlayはqpdfだけで行います。描画modelは文字だけに限定し、任意JSON・font名・URL・画像・外部ファイル参照を受け付けません。fontはBIZUDPGothic-Regularに固定し、`%`、不正なUnicode、非有限数、不正な配置や色を生成前に拒否します。文字は0600のJSONだけに保存し、argvへ渡しません。jobは0700、pdfcpuの成功出力は検査前に0600へ揃えます。
 
-pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無視、prlimitのCORE=0・AS 1 GiB・FSIZE（PDF予算+1）で起動します。GOMEMLIMIT=200MiBはsoft limitで、RSSの上限保証ではありません。HOME/XDG_CONFIG_HOMEはjob内、GOGC=100・GODEBUG空・GOMAXPROCS=1・GOTRACEBACK=noneへ上書きします。`-c` とofflineを常に指定し、親の設定dir指定に依存しません。version/font stdoutの保持は4 KiB/64 KiBまで、通常stdout/stderrは破棄します。
+pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無視、prlimitのCORE=0・AS 1 GiB・FSIZE（PDF予算+1）で起動します。ASは仮想アドレス空間の上限で、コンテナの物理メモリ上限とは別です。GOMEMLIMIT=200MiBはsoft limitで、超過しても強制停止する上限ではなく、RSSの上限保証でもありません。取込・overlayとも共通AS 1 GiBを維持します。固定Go runtimeではASと成功率が単調でないため（[AS別の反復検証](from-images-as-validation.md)）、pdfcpu更新時はAS 1 GiBで境界入力を再検証します。HOME/XDG_CONFIG_HOMEはjob内、GOGC=100・GODEBUG空・GOMAXPROCS=1・GOTRACEBACK=noneへ上書きします。`-c` とofflineを常に指定し、親の設定dir指定に依存しません。version/font stdoutの保持は4 KiB/64 KiBまで、通常stdout/stderrは破棄します。
 
 文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、対象1,000ページまでです。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16・`%`は生成前に拒否します。font size 1〜14,400 pt、有限の座標/offset ±14,400 pt、文字回転 ±360度、色は#RRGGBB、配置は許可した9 anchorまたは座標に限定します。ページ寸法はAPIのcanvasから渡し、JSONのcropで描画計算へ反映します。利用者のBox文字列は透過させません。
 
