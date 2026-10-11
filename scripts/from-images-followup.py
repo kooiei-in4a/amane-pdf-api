@@ -353,6 +353,7 @@ def run_case(args, specs, label, settings=()):
 
 def capacity(args):
     assert os.geteuid() == 0, "Use sudo to read the validation containers' /proc/cgroup."
+    assert not args.output.exists() or not any(args.output.iterdir()), "Use a fresh output directory for each run."
     manifest = json.loads((args.fixtures / "manifest.json").read_text())
     cases = {case["name"]: case for case in manifest["cases"]}
     for case in cases.values():
@@ -390,9 +391,11 @@ def capacity(args):
                     specs = [(cases[name], "from-images", quality, 200), (cases["compress-near50"], "compress", level, 200)]
                     rows.append(run_case(args, specs, f"mixed-{name}-{quality}-{level}"))
     if args.timeout_check:
-        for quality in args.qualities:
-            rows.append(run_case(args, [(cases["jpeg-near50"], "from-images", quality, 504)],
-                                 f"deadline-{quality}", settings=("Pdf__QpdfTimeoutSeconds=1",)))
+        # A one-second deadline is incompatible with the positive compress soft
+        # deadline. Use two/one seconds and the deliberately slow lossless input.
+        rows.append(run_case(args, [(cases["jpeg-near50"], "from-images", "original", 504)],
+                             "deadline-original", settings=("Pdf__QpdfTimeoutSeconds=2",
+                                                            "Pdf__CompressSoftTimeoutSeconds=1")))
     assert rows, "No cases selected."
     failures = [row["name"] for row in rows if row["validation_errors"]]
     print("Completed", len(rows), "measurements; failures:", failures, flush=True)
