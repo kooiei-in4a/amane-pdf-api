@@ -1,108 +1,64 @@
-# PNG取込のAS別反復検証（#59、2026-10-11 UTC）
+# PNG見積りと同時処理の検証（#59、案A）
 
-## 採用した方針（案A、2026-10-11 Koo判断）
+## 採用方針と利用者への影響
 
-取込専用ASは採用せず、取込・overlay共通のAS 1 GiBを維持する。Adam7はpassごとの画像を持つため、PNG見積りに展開画像1枚分（画素数×展開サンプルbytes。パレット・透過なしグレーは1チャネル、その他は4チャネル）を加え、超過はimport前に422とする。設定の分離・`IsValid`・起動経路の変更は不要になった。
+2026-10-11、Kooの案A判断により、取込・overlay共通のAS（仮想アドレス空間）1 GiBを維持する。Adam7ではPNG見積りへ展開画像1枚分を追加し、上限320 MiB超過をimport前に422 `unsupported-image`で拒否する。取込専用AS・設定の分離・IsValid・起動経路の変更は行わない。
 
-1136 MiB案を採らない理由は、Go初期化が全失敗する境界の16 MiB手前だったためである。同じimageでASを変えて`version`と12 MP非interlaceのimportを各3回試すと、1148 MiBまでは成功し、1152/1184/1216 MiBは`version`も失敗、1280/1344 MiBは`version`だけ成功、1536 MiB以上は両方成功した。境界の位置は固定Go runtimeの予約配置に依存し、pdfcpu・Go・kernelの更新で動き得る。下の候補表はこの判断の根拠として残す。
+正規化PNG bytesをB、画素数をPとする。非interlaceの式は[型別の検証記録](from-images-followup-validation.md)を参照する。Adam7はその式へ`P × 展開サンプルbytes`を加える。パレット/透過なしグレーは1チャネル、その他は4チャネル、16 bitは1サンプル2 bytes、8 bit以下は1 byteとして見積もる。
 
-### 案Aの結果（AS 1024 MiB）
+- 必須成功対象は**非interlace**の12 MP RGBA8（4000×3000/3000×4000、低・高複雑度、両quality）。
+- **Adam7**の12 MP RGBA8は低・高複雑度とも見積り超過で、変換を始める前に422となる。PNGのquality変更だけでは解消しない。
+- Adam7の受付上限は、8 bitカラー/透過付きグレー約10.3 MP、16 bitカラー/透過付きグレーは低複雑度でも約4.8 MP、パレット/透過なしグレー8は低複雑度で約20.6 MP。実encoded bytesにより狭まり、任意入力の成功保証ではない。
 
-[結果](from-images-adam7-estimate-results.json)に入力のSHA-256・寸法・見積り・試行数・cgroup peakを保存した。
+ASは物理メモリ上限と異なる。Go soft limit 200MiBは超過しても強制停止する上限ではない。観測VmSizeとASの差（非interlaceの旧測定では約30 MiB）は**使用できるAS余裕ではない**。固定binary・固定ASの反復成功を根拠とし、pdfcpu/Go/runtime更新時は同じ受付境界で反復検証し直す。
 
-- 新しい見積りの境界直下にあるAdam7全26型×低/高複雑度の52入力と、非interlace 12 MP RGBA8の4入力を、製品と同じAS 1024 MiBで各30回、計1680回取り込んだ。失敗0、OOM/oom_kill 0。各入力は1行高い隣接入力が見積りを超えることも確認した。
-- Adam7の受付は、8 bitのカラー・透過付きグレーが約10.3 MP、16 bitのカラー・透過付きグレーが低複雑度約4.8 MP、パレット・透過なしグレー8が約20.6 MP。12 MPのAdam7 RGBA8（低・高複雑度の縦横4入力）は見積り超過となる。
-- 見積り変更後のimage（`3157ada`）でHTTPを確認した。8入力×両quality×単独/同時2件の32条件・48要求で200が36件、422 `unsupported-image`が12件。422はすべてpdfcpu起動0回、cgroup peak最大530.9 MiB、PDF検査・後片付け・health/rotateは正常だった。
-- 「候補−64 MiB」の基準は案Aに適用しない。ASと成功率が単調でないため下側の余裕は意味のある指標にならず、非interlace 12 MP RGBA8は960 MiBで失敗する既存の状態でもある。根拠は固定binaryのAS 1024 MiBでの反復成功であり、pdfcpu更新時は同じ境界入力で再検証する。
+## 案Aで完了した検証
 
-## 測定前の合格基準
+[結果要約](from-images-adam7-estimate-results.json)にimage ID・driver/generator hash・入力寸法/bytes/hash・見積り・試行数・cgroup peakを保存した。製品コードは`3157adafbb22914bd9de1ebf18f1ddcf127bd6f7`、HTTP image IDは`sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e`。
 
-[初回計画](from-images-as-plan.json)を`fda21d8`で記録してから測定した。候補1152/1280 MiBが不合格となった後も基準を維持し、[追加候補の計画](from-images-as-next-plan.json)を各候補の測定前に記録した。
+- 新境界のAdam7全26型×低/高複雑度52入力と、非interlace 12 MP RGBA8の4入力を、AS 1024 MiBで各30回、計1680回直接取り込み、失敗0・OOMなしだった。直接試験は前回と同じ固定pdfcpu imageを使い、HTTPでは見積り変更済みimageを使った。境界の52入力は、1行高い隣接入力が見積りを超えることも確認した。
+- HTTPは8入力×両quality×単独/同時2件の32条件・48要求。200が36件、422が12件。422はすべてpdfcpu起動0回、PDF構造・配置・透過・cleanup・health/rotate正常、cgroup最大530.9 MiBだった。この試験は各同時条件30回の反復・compress混在ではない。
+- C#/Python共用159ベクタで標準320 MiB、パレット/透過なしグレー8の係数12、透過グレーの22P下限、Adam7の隣接境界と必須12 MPを固定する。小さなsanitizerテストはinterlaceだけを変えた入力が見積りを超えることを確かめる。大画像のデコードは手動測定と区別する。
+- 案AのRelease buildは警告/エラー0、920テスト成功・失敗/skip 0、Python回帰5件成功。head `95b8cea`の[CI](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/38121405501)でもRelease build/test・Docker build/全smoke成功。
 
-- 候補ASと候補−64 MiBの両方で、各入力30回連続・失敗0。
-- 最悪のAdam7同士、Adam7とcompressを、両AS・両quality・compress両levelで各30組処理する。
-- HTTP/PDF構造・配置・寸法・透過・ヘッダー・後片付けが正常。OOM/oom_kill、残存job/tool、health/後続rotateの失敗は0。
-- cgroupのkernel peakは1536 MiBの90%未満。tmpfs 256 MiB未満、job 124 MiB以下、出力54 MiB以下。
+## 同時処理の追加反復計画（測定前に記録）
 
-ASの余裕の根拠は「64 MiB低いASでも各入力30回失敗0」である。必要最小ASを確定した結果でも、任意入力で64 MiBを使える保証でもない。20 msのVmSize/RSS観測は診断値だけとして残し、上限との差をAS余裕へ換算しない。
+2026-10-11、Kooの「進めてください」により、案AのASを維持した追加検証を行う。事前基準は次のとおり。製品imageと下記3入力のSHA-256を固定し、既存の約47.7 MiB高複雑度JPEG入りPDFをcompress入力に使う。
 
-## 入力と測定条件
+| 組み合わせ | 条件数 | 各条件の反復 | 予定要求数 |
+| --- | ---: | ---: | ---: |
+| Adam7高複雑度RGBA8境界直下 ×2（両quality） | 2 | 30組 | 120 |
+| 非interlace高複雑度12 MP RGBA8縦横それぞれ ×2（両quality） | 4 | 30組 | 240 |
+| Adam7高複雑度RGBA8境界直下 + compress（両quality×両level） | 4 | 30組 | 240 |
 
-Adam7の26型それぞれ低・高複雑度、合計52入力を、作業量上限320 MiBの直下で生成した。幅4000 pxで実際のencoded bytesを使い、1行高い隣接入力が上限を超えることも確認し、両側の寸法・bytes・SHA-256・見積りを保存した。
+合計10条件・300組・600要求をすべて200とし、失敗0を要求する。API起動は条件ごとに新しいコンテナ。CPU 1、物理メモリ1536 MiB・追加swapなし、tmpfs 256 MiB、non-root/read-only/network none、cap-drop ALL/no-new-privileges、共通同時2件を維持する。pdfcpu AS 1024 MiB、GOMEMLIMIT=200MiB、GOGC=100、GOMAXPROCS=1、CORE=0、出力FSIZE=54 MiB+1は製品と同じにする。
 
-- RGB8/tRNS、RGBA8、グレー8/tRNS、グレー+alpha8。
-- グレー16/tRNS、RGB16/tRNS、グレー+alpha16、RGBA16。
-- パレット8（透過あり/なし）。グレーとパレットの1/2/4 bit（各透過あり/なし）。
+HTTP/PDF構造・A4/余白・寸法/透過・成功ヘッダーが正常、各組のcleanup、各条件後のhealth/rotate 200、両jobの重なり、画像要求数とpdfcpu exec数の一致、compressのJPEG各1件再圧縮を確認する。OOM/oom_kill・残存job/tool・診断情報露出は0、cgroupのkernel peakは1536 MiBの90%未満、tmpfs 256 MiB未満、単一job 124 MiB以下、出力54 MiB以下を要求する。HTTP時間はアップロード・受信を含み、内部30秒期限との差を保証された余裕としない。
 
-必須12 MP RGBA8は4000×3000と3000×4000、低・高複雑度、非interlace/Adam7の8入力を追加し、合計60入力とした。高複雑度の非interlace入力は前回の固定入力とhashが一致する。小さい画像では独立したPillowデコードで非interlaceとAdam7の画素一致を確認する。CIの共有ベクタは大画像の容量測定の代わりにしない。
+結果は完了後に追記する。tmpfs/job/toolは20 msの観測値、cgroup peakはkernel値である。新しいASを採用する測定ではないため、旧AS候補の「候補−64 MiB」条件を今回の合格条件にはしない。旧条件を満たしたと報告したり、固定ASの成功だけで必要最小ASやAS余裕を確定したりしない。
 
-製品コードは`c3b4c9d3d0c77a3c1a0ba53e0fdfe2bf2a040259`、Docker image IDは`sha256:51e71b30fc8d893429cc542572df7a76fdf48ed173e766de0c33c905503e9b29`。固定imageの実出力は.NET 10.0.12、qpdf 12.3.2、pdfcpu 0.16.1（Go 1.27.1）、libjpeg-turbo 2.1.5である。生成側はPython 3.14.4、NumPy 2.3.5、zlib 1.3.1。完全な版と各driver/hashは生データを参照する。
+## 再現手順
 
-各条件は新しいnon-root/read-only/network noneコンテナ、CPU 1、memory/MemorySwap合計1536 MiB（追加swapなし）、tmpfs 256 MiB、cap-drop ALL、no-new-privilegesで測る。pdfcpuはGOMEMLIMIT=200MiB、GOGC=100、GOMAXPROCS=1、GODEBUG空、GOTRACEBACK=none、private HOME、CORE=0、FSIZE=54 MiB+1を使う。成功PDFはAS 544 MiBのqpdfでも構造検査する。
+Pillow/NumPy/qpdf/Dockerが必要。hostのAppArmorがqpdfの拡張子なしraw出力を拒否する場合は、既存CIと同じqpdf配布バイナリの一時コピーをPATHに指定する。hostのAppArmor設定は変更しない。fixture/result dirは新しくする。
 
-直接取込は毎回新しいpdfcpu processを起動する。HTTP測定では既存製品の共用AS設定を一時的に候補値へ変え、read-only wrapperがimport以外を1 GiBへ戻す。overlay・version/font確認へ候補ASを広げない。固定1 byteのexec記録を起動時検証後に消し、画像要求数とpdfcpu起動数の一致をassertする。このwrapperは測定コンテナだけにbind mountし、製品へ追加していない。
-
-## AS別の失敗率
-
-| AS MiB | 入力範囲 | 失敗 / 実行 | 判定 |
-| ---: | --- | ---: | --- |
-| 960 | Adam7 RGBA8境界・Adam7/非interlace 12 MP高複雑度横 | 75 / 90 | 不合格、各入力30回 |
-| 1024 | 同上 | 8 / 90 | Adam7の2入力は各4/30、非interlaceは0/30 |
-| 1056 | Adam7 RGBA8境界・12 MP高複雑度縦横 | 18 / 90 | 各6/30、1120候補の−64 MiB条件が不合格 |
-| 1072 | 全60入力 | 0 / 1800 | 1136候補の−64 MiB、全入力30回連続成功 |
-| 1088 | 全60入力 | 0 / 1800 | 1152候補の−64 MiBだけは成功 |
-| 1120 | Adam7 RGBA8境界・12 MP高複雑度縦横 | 0 / 90 | 全型検証へ進めず。1056で不合格 |
-| 1136 | 全60入力 | 0 / 1800 | 全入力30回連続成功 |
-| 1152 | 全60入力 | 1800 / 1800 | Go初期化で失敗。HTTP起動時検証も失敗 |
-| 1216 | 全60入力 | 1800 / 1800 | Go初期化で失敗。1280候補の−64 MiB条件が不合格 |
-| 1280 | 保存済み44入力（未完了3条件を含む） | 1281 / 1281 | 不合格が判明したため中断。全60入力の完了とは扱わない |
-
-ASと成功率は単調ではなかった。画像なしのversionも1152/1216 MiBでは各3回とも初期化に失敗し、1024/1088/1280 MiBでは成功した。versionの3回試験は原因を探る補助試験で、採用判定へ合算しない。固定Go runtimeの予約・割当てが関係することは示唆されるが、詳しい因果を確定したとは扱わない。1536 MiB候補の全型測定は、1136候補が基準を満たしたため実施していない。
-
-## 最悪入力の同時2件
-
-1072/1136 MiBの両方で次を各30組測定した。qualityはstandard/original、compressはstandard/strongの全組み合わせを含む。圧縮の入力は前回の固定seed高複雑度4:4:4 JPEGを埋め込んだ約47.7 MiB PDFで、SHA-256一致を確認した。
-
-| 組み合わせ | 条件数 | 要求数（すべて200） | 最大HTTP秒 | cgroup peak MiB | tmpfs観測peak MiB |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Adam7 12 MP高複雑度RGBA8横 ×2 | 4 | 240 | 4.745 | 625.836 | 183.332 |
-| Adam7 高複雑度RGBA8境界直下 ×2 | 4 | 240 | 5.298 | 636.160 | 186.316 |
-| Adam7 12 MP高複雑度RGBA8横 + compress | 8 | 480 | 4.460 | 538.770 | 139.320 |
-
-全960要求、pdfcpu起動720回、compress240回のJPEG各1件再圧縮が成功した。両jobの重なり、PDF構造・A4/余白・PNG寸法/SMask・成功ヘッダー、各組終了後のcleanup、各条件終了後のhealth/rotate 200を確認した。500/503/504、部分PDF・構造不正・診断情報露出、OOM/oom_kill、残存job/toolは0。
-
-最大単一job観測93.133/124 MiB、出力46.529/54 MiB。cgroupピークは1072 MiB条件で630.055 MiB、1136 MiB条件で636.160 MiBだった。最大値の条件は列ごとに異なる。HTTP時間はアップロード・応答受信を含み、内部30秒deadlineとの差を保証された余裕にしない。tmpfs/job/toolは20 msの観測値で、cgroup peakはkernel値である。
-
-途中で測定driverがexit 137となった1136 MiB・12 MP×2・originalの1条件は20組までの記録を保存し、合格件数から除外した。APIコンテナはOOMKilled=false、memory.eventsのOOM/oom_kill 0、health 200、残存jobなしだった。driver終了の原因は未確定である。driverが応答bodyを次の試行まで保持しないようにし、新しいコンテナで同じ条件を30組取り直して成功した。上表は取り直した完了条件だけを含む。
-
-## 生データと再現
-
-[集約記録](from-images-as-results.json)にenvironment、plan、入力manifest、各条件のsummaryとmetricsを保存し、[試行記録](from-images-as-trials.jsonl)に1行1試行で保存した。HTTPの1試行は同時2要求である。各条件の`trial_line_start`/`trial_lines`は1-basedで、JSONLの完全なSHA-256も集約記録へ保存した。直接取込の失敗・候補中断・旧HTTP測定・driver中断は別phaseへ保存し、採用候補の成功件数へ混ぜない。PDF/PNG本体・stderr本文・秘密情報はcommitしない。
-
-初回生成は測定機能追加前の試作版を使ったため、その完全なsourceを集約記録の`original_generation_source`へchecksum付きで保存した（SHA-256 `ad68e9dfd57ce50a70ee1a0cbae86cd269a7de096b55f934218077c9705f26f7`）。生成の由来だけに使い、測定実装の証拠とは扱わない。commit `fda21d8`のdriver（SHA-256 `9dd0be50ad5a9836ac89253efc4e4dcda59c74b28aa6fb0fbe7e9997e4f3cd2c`）で全60入力を生成し直し、隣接境界を含む全case metadataが一致した。直接/HTTP測定は各environmentのdriver hashに対応し、途中のstartup失敗記録と最終1条件のdriver修正も区別できる。
-
-固定SHAの製品imageを使う。新しく構築したimage IDが変わった場合は、保存済みplanのIDだけを書き換えて同一結果と扱わず、新しい環境・planとして記録する。現行driverで再現する例は次のとおり（Pillow/NumPy/qpdf/Dockerが必要）。fixture/result dirは毎回新しくする。
+生成は`from-images-as-validation.py --generate-only`を使う。直接試験はmanifestの期待200の56入力だけを選び、旧AS探索用planを案Aの合格計画として使わない。新image ID・製品SHA・AS 1024 MiB・反復30・上記基準を含む案A用planを指定する。追加HTTP試験も同じplanを使う。
 
 ```bash
-python3 scripts/from-images-followup.py --generate-only --fixtures /tmp/issue59-plain-reproduce
-python3 scripts/from-images-as-validation.py --generate-only --fixtures /tmp/issue59-adam7-reproduce
-sudo python3 scripts/from-images-as-validation.py --plan docs/from-images-as-next-plan.json \
-  --fixtures /tmp/issue59-adam7-reproduce --output /tmp/issue59-as-direct-reproduce \
-  --address-spaces 1072 1136
-sudo python3 scripts/from-images-as-validation.py --plan docs/from-images-as-next-plan.json \
-  --fixtures /tmp/issue59-adam7-reproduce --output /tmp/issue59-as-pairs-reproduce \
-  --address-spaces 1072 1136 --http \
-  --cases adam7-rgba8-12mp-high-landscape adam7-rgba8-high-boundary
-sudo python3 scripts/from-images-as-validation.py --plan docs/from-images-as-next-plan.json \
-  --fixtures /tmp/issue59-adam7-reproduce --output /tmp/issue59-as-mixed-reproduce \
-  --address-spaces 1072 1136 --http --cases adam7-rgba8-12mp-high-landscape \
-  --compress-fixture /tmp/issue59-plain-reproduce/manifest.json
+python3 scripts/from-images-as-validation.py --generate-only --fixtures /tmp/issue59-plan-a-fixtures
+sudo python3 scripts/from-images-as-validation.py amane-pdf-api:pr61-adam7 \
+  --plan /tmp/issue59-plan-a-plan.json --fixtures /tmp/issue59-plan-a-fixtures \
+  --output /tmp/issue59-plan-a-pairs --address-spaces 1024 --http \
+  --cases adam7-rgba8-high-boundary plain-rgba8-12mp-high-landscape plain-rgba8-12mp-high-portrait
+sudo python3 scripts/from-images-as-validation.py amane-pdf-api:pr61-adam7 \
+  --plan /tmp/issue59-plan-a-plan.json --fixtures /tmp/issue59-plan-a-fixtures \
+  --output /tmp/issue59-plan-a-mixed --address-spaces 1024 --http \
+  --cases adam7-rgba8-high-boundary --compress-fixture /tmp/issue59-review-final-fixtures/manifest.json
 ```
 
-## CIに固定した項目
+## 旧測定の履歴と配置前条件
 
-C#とPythonが同じ固定159ベクタを読み、正確な作業量bytesと標準320 MiBの受付判定を検査する。12 MPの縦横・低高複雑度、パレット/透過なしグレー8の係数12、透過付きグレー8と1/2/4 bitの22P下限、Adam7全型の隣接境界（案Aの見積り）を含む。小さいencoded値でも係数12/22Pを識別するベクタがある。sanitizerのテストで、同じ画素のPNGがinterlaceだけで見積りを超えることも確認する。
+[旧AS探索の文書（固定commit）](https://github.com/kooiei-in4a/amane-pdf-api/blob/ec5d4ab00e2e8a0d65e2b0871dc30c8864316b5d/docs/from-images-as-validation.md)、[集約データ](from-images-as-results.json)、[全試行](from-images-as-trials.jsonl)、計画JSON 2件は履歴として残す。旧モデル/別ASでの3600回取込・960要求を案Aの成功件数へ合算しない。
 
-案A（`3157ada`）でRelease build警告/エラー0、全920 .NETテスト成功、失敗/skip 0（3分24秒）、driver回帰5件も成功した。それ以前の記録として、GitHub CIはhead `5b3a7ac`の[実行38117119157](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/38117119157)でRelease build/test・Docker build/全smoke成功を確認した。TRX `/tmp/issue59-as-test-results/issue59-as-vectors-all.trx`はローカル記録であり、CI成果物と区別する。以後のheadのCI状態はPRで確認する。
+1136 MiB案は採らなかった。同じ固定Go binaryでは1152/1216 MiBでversionを含む初期化失敗があり、AS増加と成功率は単調ではなかった。1136 MiBで成功した事実は残すが、16 MiB先の失敗帯域からの距離も将来の安定性を保証しない。案AはASを維持して受付範囲を狭める選択である。
 
-現在の製品AS 1 GiBでも非interlaceの前回測定は成功したが、Adam7の非決定的失敗が残る。今回の成功は固定binary・合成入力・測定環境で宣言した反復基準を満たす根拠であり、未採用の設定が配置済みになったことを意味しない。
+合成入力の成功を任意入力や別infra条件へ一般化しない。#46のcollector確認・infraのCORE=0/容量条件整合、Humanのmerge・配置承認は別途必要で、追加検証完了だけでは配置保留を解除しない。
