@@ -37,7 +37,7 @@ class DriverTests(unittest.TestCase):
         for row in vectors["cases"]:
             with self.subTest(name=row["name"]):
                 estimate = m.working_bytes(row["width"], row["height"], row["depth"], row["color"],
-                    row["transparency"], row["encoded_bytes"])
+                    row["transparency"], row["encoded_bytes"], row["interlace"] == 1)
                 self.assertEqual(row["working_bytes"], estimate)
                 self.assertEqual(row["accepted"], estimate <= vectors["working_limit_bytes"])
 

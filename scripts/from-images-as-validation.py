@@ -89,7 +89,7 @@ def generate(args):
         path = args.fixtures / (name + ".png")
         data = pixels(width, height, depth, color, alpha, high, seed)
         write_png(path, data, depth, color, alpha, seed, interlace)
-        estimate = m.working_bytes(width, height, depth, color, alpha, path.stat().st_size)
+        estimate = m.working_bytes(width, height, depth, color, alpha, path.stat().st_size, interlace)
         if boundary:
             # Use actual Adam7 size. Correct the analytical starting height and
             # retain an adjacent rejected input as evidence of the exact boundary.
@@ -101,13 +101,13 @@ def generate(args):
                     height += 1
                 data = pixels(width, height, depth, color, alpha, high, seed)
                 write_png(path, data, depth, color, alpha, seed, interlace)
-                following = m.working_bytes(width, height, depth, color, alpha, path.stat().st_size)
+                following = m.working_bytes(width, height, depth, color, alpha, path.stat().st_size, interlace)
                 if estimate <= 320 * MIB < following:
                     above = dict(height=height, bytes=path.stat().st_size, sha256=m.digest(path), png_working_bytes=following)
                     height -= 1
                     data = pixels(width, height, depth, color, alpha, high, seed)
                     write_png(path, data, depth, color, alpha, seed, interlace)
-                    estimate = m.working_bytes(width, height, depth, color, alpha, path.stat().st_size)
+                    estimate = m.working_bytes(width, height, depth, color, alpha, path.stat().st_size, interlace)
                     assert estimate <= 320 * MIB
                     break
                 estimate = following
@@ -115,11 +115,14 @@ def generate(args):
                 raise AssertionError("Boundary search did not converge: " + name)
         else:
             above = None
-        assert path.stat().st_size <= 50 * MIB and estimate <= 320 * MIB
+        # Fixed 12 MP inputs may exceed the estimate (Adam7 RGBA8): they must be rejected before import.
+        assert path.stat().st_size <= 50 * MIB and (estimate <= 320 * MIB or not boundary)
+        expected = 200 if estimate <= 320 * MIB else 422
         case = dict(name=name, file=path.name, format="png", width=width, height=height, depth=depth,
             color=color, alpha=alpha, entropy="high" if high else "low", seed=seed, interlace=int(interlace),
             bytes=path.stat().st_size, sha256=m.digest(path), pixel_sha256=hashlib.sha256(data.tobytes()).hexdigest(),
-            png_working_bytes=estimate, expected=200, expected_reason=None, adjacent_above=above)
+            png_working_bytes=estimate, expected=expected,
+            expected_reason=None if expected == 200 else "unsupported-image", adjacent_above=above)
         cases.append(case)
         print(name, height, case["bytes"], round(estimate / MIB, 3), flush=True)
     formats = [("rgb8", 8, 2, False), ("rgb8-trns", 8, 2, True), ("rgba8", 8, 6, True),
@@ -136,6 +139,7 @@ def generate(args):
             coefficient = 6 * channels * 2 if depth == 16 else 14 if color != 3 and channels == 4 else 12
             bpp = depth * {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[color] / 8 if high else 0
             per_pixel = max(coefficient + 2 * bpp, 22 if depth != 16 and color != 3 and channels == 4 else 0)
+            per_pixel += (2 if depth == 16 else 1) * (1 if color == 3 else channels)
             height = int(256 * MIB / per_pixel / 4000) - 2
             add(f"adam7-{label}-{'high' if high else 'low'}-boundary", 4000, height,
                 depth, color, alpha, high, 6200 + index, True, boundary=True)

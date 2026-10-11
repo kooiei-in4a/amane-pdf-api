@@ -33,7 +33,7 @@ internal static class PngSanitizer
         }
         await Write(signature);
         var header = new byte[8]; var trailer = new byte[4]; var buffer = new byte[64 * 1024];
-        var width = 0; var height = 0; var depth = 0; var color = 0; var palette = 0;
+        var width = 0; var height = 0; var depth = 0; var color = 0; var palette = 0; var interlaced = false;
         var seenHeader = false; var seenPalette = false; var seenTransparency = false;
         var seenData = false; var endedData = false;
         while (true)
@@ -99,7 +99,7 @@ internal static class PngSanitizer
                 var h = BinaryPrimitives.ReadUInt32BigEndian(small!.AsSpan(4));
                 if (w is 0 or > int.MaxValue || h is 0 or > int.MaxValue || checked((long)w * h) > pixelLimit)
                     throw PdfImageInputException.Unsupported();
-                width = (int)w; height = (int)h; depth = small![8]; color = small[9];
+                width = (int)w; height = (int)h; depth = small![8]; color = small[9]; interlaced = small[12] == 1;
                 var validDepth = color switch
                 {
                     0 => depth is 1 or 2 or 4 or 8 or 16,
@@ -122,13 +122,14 @@ internal static class PngSanitizer
             }
             if (kind == "IDAT") seenData = true;
             if (kind != "IEND") continue;
-            if (WorkingBytes(width, height, depth, color, seenTransparency, written) > workingLimit)
+            if (WorkingBytes(width, height, depth, color, seenTransparency, interlaced, written) > workingLimit)
                 throw PdfImageInputException.Unsupported();
             return new(width, height, color is 0 or 4 ? 1 : 3, Png: true, BitDepth: depth);
         }
     }
 
-    internal static long WorkingBytes(int width, int height, int depth, int color, bool transparency, long encoded)
+    internal static long WorkingBytes(int width, int height, int depth, int color, bool transparency,
+        bool interlaced, long encoded)
     {
         // Go decodes opaque gray to one channel, but RGB and gray+tRNS/alpha
         // to four channels. Palette PNG uses a separate indexed import path.
@@ -142,6 +143,11 @@ internal static class PngSanitizer
         // under 1 GiB AS. Compressed bytes alone miss compression-buffer growth.
         if (depth != 16 && color != 3 && channels == 4)
             estimate = Math.Max(estimate, checked(pixels * 22));
+        // Adam7 decodes each pass into its own image before merging. #59 saw
+        // nondeterministic import failures under 1 GiB AS, so reserve one more
+        // decoded image (palette and opaque gray decode to one channel).
+        if (interlaced)
+            estimate = checked(estimate + pixels * sampleBytes * (color == 3 ? 1 : channels));
         // Admission estimate, not an RSS/virtual-memory bound or success guarantee.
         return checked(estimate + 64 * 1048576);
     }

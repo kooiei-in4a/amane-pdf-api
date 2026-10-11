@@ -13,16 +13,17 @@ public sealed class PngSanitizerTests
             yield return [row.GetProperty("name").GetString()!, row.GetProperty("width").GetInt32(),
                 row.GetProperty("height").GetInt32(), row.GetProperty("depth").GetInt32(),
                 row.GetProperty("color").GetInt32(), row.GetProperty("transparency").GetBoolean(),
-                row.GetProperty("encoded_bytes").GetInt64(), row.GetProperty("working_bytes").GetInt64(),
+                row.GetProperty("interlace").GetInt32() == 1, row.GetProperty("encoded_bytes").GetInt64(), row.GetProperty("working_bytes").GetInt64(),
                 row.GetProperty("accepted").GetBoolean()];
     }
 
     [TestMethod]
     [DynamicData(nameof(WorkingVectors))]
     public void WorkingEstimate_MatchesSharedVectorsAndDefaultAdmission(string name, int width, int height,
-        int depth, int color, bool transparency, long encoded, long expected, bool accepted)
+        int depth, int color, bool transparency, bool interlace, long encoded, long expected,
+        bool accepted)
     {
-        var estimate = PngSanitizer.WorkingBytes(width, height, depth, color, transparency, encoded);
+        var estimate = PngSanitizer.WorkingBytes(width, height, depth, color, transparency, interlace, encoded);
         Assert.AreEqual(expected, estimate, name);
         var options = new PdfOptions();
         Assert.AreEqual(320 * 1048576L, options.ImagePngWorkingLimitBytes);
@@ -120,6 +121,26 @@ public sealed class PngSanitizerTests
                     input, output, 1048576, 50_000_000, working, CancellationToken.None));
                 Assert.AreEqual(PdfImageReason.Unsupported, error.Reason);
             }
+        });
+    }
+
+    [TestMethod]
+    public async Task Adam7_ReservesAnotherDecodedImage()
+    {
+        var plain = FromImagesFixtures.Png(64, 48, 8, 6, metadata: false);
+        // Only the estimate is checked here; the sanitizer does not decode pixel data.
+        byte[] interlaced = [.. plain[..8], .. FromImagesFixtures.Chunk("IHDR", [.. plain[16..28], 1]), .. plain[33..]];
+        const long pixels = 64 * 48;
+        var working = 64 * 1048576 + Math.Max(2L * plain.Length + 14 * pixels, 22 * pixels) + 2 * pixels;
+        await WithFiles(async (input, output) =>
+        {
+            await File.WriteAllBytesAsync(input, plain);
+            await PngSanitizer.WriteAsync(input, output, 1048576, 50_000_000, working, CancellationToken.None);
+            File.Delete(output);
+            await File.WriteAllBytesAsync(input, interlaced);
+            var error = await Assert.ThrowsAsync<PdfImageInputException>(() => PngSanitizer.WriteAsync(
+                input, output, 1048576, 50_000_000, working, CancellationToken.None));
+            Assert.AreEqual(PdfImageReason.Unsupported, error.Reason);
         });
     }
 

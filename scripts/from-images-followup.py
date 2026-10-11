@@ -98,13 +98,16 @@ def png(path, width, height, depth, color, alpha, high, seed):
         chunk(b"IEND", b"")
 
 
-def working_bytes(width, height, depth, color, alpha, encoded):
+def working_bytes(width, height, depth, color, alpha, encoded, interlace=False):
     # Gray+tRNS and gray+alpha expand to four decoder channels too.
     channels = 1 if color == 0 and not alpha else 4
     coefficient = 6 * channels * 2 if depth == 16 else (14 if color != 3 and channels == 4 else 12)
     estimate = 2 * encoded + width * height * coefficient
     if depth != 16 and color != 3 and channels == 4:
         estimate = max(estimate, width * height * 22)
+    if interlace:
+        # Adam7 pass images: one more decoded image (palette decodes to one channel).
+        estimate += width * height * (2 if depth == 16 else 1) * (1 if color == 3 else channels)
     return estimate + 64 * MIB
 
 
