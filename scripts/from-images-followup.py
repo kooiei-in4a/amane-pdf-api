@@ -264,8 +264,13 @@ class Monitor(images.Monitor):
                         # prlimit can be sampled before it has applied limits; record tools only.
                         if name != "prlimit":
                             if key == "fsize" and limit == "unlimited":
-                                arguments = (proc / "cmdline").read_bytes().rstrip(b"\0").split(b"\0")
-                                assert stdout_only_qpdf(name, arguments), f"pid={pid} tool={name} fsize=unlimited"
+                                command = (proc / "cmdline").read_bytes()
+                                if not command:
+                                    # A process can exit between comm/limits and cmdline.
+                                    raise ProcessLookupError()
+                                arguments = command.rstrip(b"\0").split(b"\0")
+                                assert stdout_only_qpdf(name, arguments), \
+                                    f"pid={pid} tool={name} fsize=unlimited argc={len(arguments)}"
                                 values["qpdf_inspection_unlimited_fsize_observed"] = 1
                                 continue
                             assert limit != "unlimited" and (key != "core" or limit == "0"), \

@@ -14,6 +14,33 @@ spec.loader.exec_module(m)
 
 
 class DriverTests(unittest.TestCase):
+    def test_monitor_handles_qpdf_inspection_exit_and_rejects_unlimited_writer(self):
+        for command, expected_error, expected_samples in (
+                (b"", False, 0),
+                (b"qpdf\0--check\0input.pdf\0", False, 1),
+                (b"qpdf\0input.pdf\0output.pdf\0", True, 0)):
+            with self.subTest(command=command), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "tmp/amane-pdf-api").mkdir(parents=True)
+                (root / "cgroup.procs").write_text("7\n")
+                proc = root / "proc/7"
+                proc.mkdir(parents=True)
+                (proc / "comm").write_text("qpdf\n")
+                (proc / "status").write_text("")
+                (proc / "limits").write_text("Max address space 570425344 570425344 bytes\n"
+                    "Max file size unlimited unlimited bytes\nMax core file size 0 0 bytes\n")
+                (proc / "cmdline").write_bytes(command)
+                monitor = m.Monitor.__new__(m.Monitor)
+                monitor.root = monitor.cg = root
+                waits = iter((False, True))
+                monitor.stop = SimpleNamespace(wait=lambda _: next(waits))
+                monitor.peak, monitor.processes = {}, {}
+                monitor.samples, monitor.error = 0, None
+                with patch.object(m, "Path", return_value=root / "proc"):
+                    monitor.loop()
+                self.assertEqual(expected_error, monitor.error is not None)
+                self.assertEqual(expected_samples, monitor.samples)
+
     def test_only_read_only_qpdf_commands_allow_unlimited_fsize(self):
         for flag in (b"--check", b"--is-encrypted", b"--requires-password", b"--show-npages"):
             self.assertTrue(m.stdout_only_qpdf("qpdf", [b"/usr/bin/qpdf", flag, b"input.pdf"]))

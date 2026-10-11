@@ -1,0 +1,2344 @@
+{
+  "note": "案A・共通AS 1024 MiBでの追加同時反復。旧AS候補と初回HTTP48要求へ合算しない。",
+  "source_sha": "3157adafbb22914bd9de1ebf18f1ddcf127bd6f7",
+  "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+  "pdfcpu_sha256": "4ecc03cf86bab501ae1b8353ddc764177d85db015b616df1d539a3ae1f469f3d",
+  "pdfcpu_identity_note": "旧imageと新imageのpdfcpuをread-onlyコンテナでsha256sumし、同一であることを確認。",
+  "excluded_runs": [
+    {
+      "directory": "issue59-plan-a-http-mixed",
+      "reason": "monitor_errorが空文字のまま監視停止。HTTPとkernel memory.peakは残るが、観測が不完全なため全4条件を除外。"
+    },
+    {
+      "directory": "issue59-plan-a-http-mixed-recheck",
+      "reason": "監視エラーの具体化でqpdf --checkの意図されたFSIZEなしが原因と確認。1条件後に中断し、合格件数から全て除外。"
+    },
+    {
+      "directory": "issue59-plan-a-http-mixed-final",
+      "reason": "終了直後のqpdfの空cmdlineを監視失敗と誤判定。2条件後に中断し、合格件数から全て除外。"
+    }
+  ],
+  "plan": {
+    "status": "案A・AS 1024 MiBの同時処理計画。測定前に文書commit済み。",
+    "source_sha": "3157adafbb22914bd9de1ebf18f1ddcf127bd6f7",
+    "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+    "predeclared_plan_git_sha": "051e972580a9f644aa63aad4814b504ea6a0c0c1",
+    "validation_document_sha256": "d6ea9e22ff3ebfc32ce634941d554a3624b6446df4f3565601687ab70c5324b7",
+    "address_spaces_mib": [
+      1024
+    ],
+    "repetitions": 30,
+    "cases": [
+      "adam7-rgba8-high-boundary",
+      "plain-rgba8-12mp-high-landscape",
+      "plain-rgba8-12mp-high-portrait"
+    ],
+    "acceptance": [
+      "全10条件で各30組・600要求すべて200。失敗0。両quality・compress両level。",
+      "PDF構造・配置・寸法・SMask・ヘッダー・cleanup・health/rotate正常。pdfcpu exec数一致。compressはJPEG1件再圧縮。",
+      "OOM/oom_killなし。cgroup peak1536 MiBの90%未満、tmpfs256 MiB未満、job124 MiB以下、出力54 MiB以下。"
+    ],
+    "container": {
+      "cpu": 1,
+      "memory_mib": 1536,
+      "memory_swap_total_mib": 1536,
+      "tmpfs_mib": 256,
+      "concurrent_requests": 2,
+      "network": "none",
+      "readonly": true,
+      "nonroot": true
+    },
+    "pdfcpu": {
+      "address_space_mib": 1024,
+      "gomemlimit": "200MiB",
+      "gogc": 100,
+      "gomaxprocs": 1,
+      "core_bytes": 0,
+      "fsize_bytes": 56623105
+    },
+    "note": "既存ASを維持する測定であり、AS候補−64 MiBの条件は今回の合格基準にしない。"
+  },
+  "fixture_manifest": {
+    "generator_sha256": "b694797ddf94bf261e9d831c3fff2e245672ae0d3deb5bafe360289133dac3f3",
+    "plan_sha256": "7e383e021cfb254499ad407496ae37ed6feb5835c7a7d3fd689b2b12caedb3bd",
+    "versions": {
+      "python": "3.14.4",
+      "numpy": "2.3.5",
+      "zlib": "1.3.1"
+    },
+    "cases": [
+      {
+        "name": "adam7-rgba8-high-boundary",
+        "file": "adam7-rgba8-high-boundary.png",
+        "format": "png",
+        "width": 4000,
+        "height": 2580,
+        "depth": 8,
+        "color": 6,
+        "alpha": true,
+        "entropy": "high",
+        "seed": 6202,
+        "interlace": 1,
+        "bytes": 41327724,
+        "sha256": "7713b05ac39bb8db95920867ca855370df82cef5d1a5dd2293a6976ff7819948",
+        "pixel_sha256": "cd1ef68e97ae9d969874a23299f46a5cfb17859a70f4a6a0cd72d709c0c5b401",
+        "png_working_bytes": 335524312,
+        "expected": 200,
+        "expected_reason": null,
+        "adjacent_above": {
+          "height": 2581,
+          "bytes": 41343744,
+          "sha256": "acfde8a72cc756a1e5ca6d5e0266d370d5098fd959424c90457715a4dc6e9a27",
+          "png_working_bytes": 335628352
+        }
+      },
+      {
+        "name": "plain-rgba8-12mp-high-landscape",
+        "file": "plain-rgba8-12mp-high-landscape.png",
+        "format": "png",
+        "width": 4000,
+        "height": 3000,
+        "depth": 8,
+        "color": 6,
+        "alpha": true,
+        "entropy": "high",
+        "seed": 5980,
+        "interlace": 0,
+        "bytes": 48052856,
+        "sha256": "4b4246f461e119ceca84b5a69a7406ca40fe4e6559f46a2aedec108b2f485bbe",
+        "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+        "png_working_bytes": 331214576,
+        "expected": 200,
+        "expected_reason": null,
+        "adjacent_above": null
+      },
+      {
+        "name": "plain-rgba8-12mp-high-portrait",
+        "file": "plain-rgba8-12mp-high-portrait.png",
+        "format": "png",
+        "width": 3000,
+        "height": 4000,
+        "depth": 8,
+        "color": 6,
+        "alpha": true,
+        "entropy": "high",
+        "seed": 5980,
+        "interlace": 0,
+        "bytes": 48053856,
+        "sha256": "1051830642502be44c96d6facf0ecf735c3edd2022e581cb58ea8b19edff65a9",
+        "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+        "png_working_bytes": 331216576,
+        "expected": 200,
+        "expected_reason": null,
+        "adjacent_above": null
+      }
+    ],
+    "source_manifest_sha256": "c505d985d519666dac626ccf9e20dc4372f232d236faf0b7279a271d7a9cc9c2",
+    "selection_note": "案Aの固定60入力のうち追加同時反復に使う3入力だけを選んだ。画像を生成し直していない。"
+  },
+  "compress_fixture": {
+    "name": "compress-near50",
+    "file": "compress-near50.pdf",
+    "bytes": 49967909,
+    "sha256": "fbe6579a3bc5cffa7a28d625d399679ecfb0ad7dac44d6ed0b07b45ecbe5b343",
+    "format": "pdf",
+    "width": 4500,
+    "height": 3800,
+    "entropy": "high",
+    "seed": 5960,
+    "expected": 200,
+    "expected_reason": null
+  },
+  "tool_versions": {
+    "dotnet": "Microsoft.AspNetCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.AspNetCore.App]\nMicrosoft.NETCore.App 10.0.12 [/usr/share/dotnet/shared/Microsoft.NETCore.App]",
+    "qpdf": "qpdf version 12.3.2\nRun qpdf --copyright to see copyright and license information.",
+    "pdfcpu": "version: 0.16.1\n commit: 2f7a89a0\n   date: 2026-10-04 14:23:58 UTC\n     go: go1.27.1",
+    "os": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo",
+    "packages": "coreutils\t9.5-1ubuntu2+0.0.0~ubuntu25\nlibjpeg-turbo-progs\t2.1.5-4ubuntu4\nutil-linux\t2.41.3-3ubuntu2.2"
+  },
+  "environments": [
+    {
+      "measured_at_utc": "2026-10-11T07:38:54.795477+00:00",
+      "plan": {
+        "status": "案A・AS 1024 MiBの同時処理計画。測定前に文書commit済み。",
+        "source_sha": "3157adafbb22914bd9de1ebf18f1ddcf127bd6f7",
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "predeclared_plan_git_sha": "051e972580a9f644aa63aad4814b504ea6a0c0c1",
+        "validation_document_sha256": "d6ea9e22ff3ebfc32ce634941d554a3624b6446df4f3565601687ab70c5324b7",
+        "address_spaces_mib": [
+          1024
+        ],
+        "repetitions": 30,
+        "cases": [
+          "adam7-rgba8-high-boundary",
+          "plain-rgba8-12mp-high-landscape",
+          "plain-rgba8-12mp-high-portrait"
+        ],
+        "acceptance": [
+          "全10条件で各30組・600要求すべて200。失敗0。両quality・compress両level。",
+          "PDF構造・配置・寸法・SMask・ヘッダー・cleanup・health/rotate正常。pdfcpu exec数一致。compressはJPEG1件再圧縮。",
+          "OOM/oom_killなし。cgroup peak1536 MiBの90%未満、tmpfs256 MiB未満、job124 MiB以下、出力54 MiB以下。"
+        ],
+        "container": {
+          "cpu": 1,
+          "memory_mib": 1536,
+          "memory_swap_total_mib": 1536,
+          "tmpfs_mib": 256,
+          "concurrent_requests": 2,
+          "network": "none",
+          "readonly": true,
+          "nonroot": true
+        },
+        "pdfcpu": {
+          "address_space_mib": 1024,
+          "gomemlimit": "200MiB",
+          "gogc": 100,
+          "gomaxprocs": 1,
+          "core_bytes": 0,
+          "fsize_bytes": 56623105
+        },
+        "note": "既存ASを維持する測定であり、AS候補−64 MiBの条件は今回の合格基準にしない。"
+      },
+      "plan_sha256": "581a8d504ffd2d26ec861e20ad667126a174f81fbb2c8c3bc02c85d2db004b3f",
+      "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+      "fixture_manifest": {
+        "generator_sha256": "b694797ddf94bf261e9d831c3fff2e245672ae0d3deb5bafe360289133dac3f3",
+        "plan_sha256": "7e383e021cfb254499ad407496ae37ed6feb5835c7a7d3fd689b2b12caedb3bd",
+        "versions": {
+          "python": "3.14.4",
+          "numpy": "2.3.5",
+          "zlib": "1.3.1"
+        },
+        "cases": [
+          {
+            "name": "adam7-rgba8-high-boundary",
+            "file": "adam7-rgba8-high-boundary.png",
+            "format": "png",
+            "width": 4000,
+            "height": 2580,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 6202,
+            "interlace": 1,
+            "bytes": 41327724,
+            "sha256": "7713b05ac39bb8db95920867ca855370df82cef5d1a5dd2293a6976ff7819948",
+            "pixel_sha256": "cd1ef68e97ae9d969874a23299f46a5cfb17859a70f4a6a0cd72d709c0c5b401",
+            "png_working_bytes": 335524312,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": {
+              "height": 2581,
+              "bytes": 41343744,
+              "sha256": "acfde8a72cc756a1e5ca6d5e0266d370d5098fd959424c90457715a4dc6e9a27",
+              "png_working_bytes": 335628352
+            }
+          },
+          {
+            "name": "plain-rgba8-12mp-high-landscape",
+            "file": "plain-rgba8-12mp-high-landscape.png",
+            "format": "png",
+            "width": 4000,
+            "height": 3000,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 5980,
+            "interlace": 0,
+            "bytes": 48052856,
+            "sha256": "4b4246f461e119ceca84b5a69a7406ca40fe4e6559f46a2aedec108b2f485bbe",
+            "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+            "png_working_bytes": 331214576,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": null
+          },
+          {
+            "name": "plain-rgba8-12mp-high-portrait",
+            "file": "plain-rgba8-12mp-high-portrait.png",
+            "format": "png",
+            "width": 3000,
+            "height": 4000,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 5980,
+            "interlace": 0,
+            "bytes": 48053856,
+            "sha256": "1051830642502be44c96d6facf0ecf735c3edd2022e581cb58ea8b19edff65a9",
+            "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+            "png_working_bytes": 331216576,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": null
+          }
+        ],
+        "source_manifest_sha256": "c505d985d519666dac626ccf9e20dc4372f232d236faf0b7279a271d7a9cc9c2",
+        "selection_note": "案Aの固定60入力のうち追加同時反復に使う3入力だけを選んだ。画像を生成し直していない。"
+      },
+      "driver_sha256": "b694797ddf94bf261e9d831c3fff2e245672ae0d3deb5bafe360289133dac3f3",
+      "followup_sha256": "abc296f7a6def09ea7218f2cf14bc934a1b18f22abae0e8effe72ff2cee74d34",
+      "host_kernel": "7.0.0-38-generic",
+      "result_directory": "issue59-plan-a-http-adam7",
+      "measurement_wrapper_sha256": "2ce12eadbaf7bb5953d3d016c4af3d78dd3ec76ca4461acfe5e938b1250e2287"
+    },
+    {
+      "measured_at_utc": "2026-10-11T07:38:58.183215+00:00",
+      "plan": {
+        "status": "案A・AS 1024 MiBの同時処理計画。測定前に文書commit済み。",
+        "source_sha": "3157adafbb22914bd9de1ebf18f1ddcf127bd6f7",
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "predeclared_plan_git_sha": "051e972580a9f644aa63aad4814b504ea6a0c0c1",
+        "validation_document_sha256": "d6ea9e22ff3ebfc32ce634941d554a3624b6446df4f3565601687ab70c5324b7",
+        "address_spaces_mib": [
+          1024
+        ],
+        "repetitions": 30,
+        "cases": [
+          "adam7-rgba8-high-boundary",
+          "plain-rgba8-12mp-high-landscape",
+          "plain-rgba8-12mp-high-portrait"
+        ],
+        "acceptance": [
+          "全10条件で各30組・600要求すべて200。失敗0。両quality・compress両level。",
+          "PDF構造・配置・寸法・SMask・ヘッダー・cleanup・health/rotate正常。pdfcpu exec数一致。compressはJPEG1件再圧縮。",
+          "OOM/oom_killなし。cgroup peak1536 MiBの90%未満、tmpfs256 MiB未満、job124 MiB以下、出力54 MiB以下。"
+        ],
+        "container": {
+          "cpu": 1,
+          "memory_mib": 1536,
+          "memory_swap_total_mib": 1536,
+          "tmpfs_mib": 256,
+          "concurrent_requests": 2,
+          "network": "none",
+          "readonly": true,
+          "nonroot": true
+        },
+        "pdfcpu": {
+          "address_space_mib": 1024,
+          "gomemlimit": "200MiB",
+          "gogc": 100,
+          "gomaxprocs": 1,
+          "core_bytes": 0,
+          "fsize_bytes": 56623105
+        },
+        "note": "既存ASを維持する測定であり、AS候補−64 MiBの条件は今回の合格基準にしない。"
+      },
+      "plan_sha256": "581a8d504ffd2d26ec861e20ad667126a174f81fbb2c8c3bc02c85d2db004b3f",
+      "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+      "fixture_manifest": {
+        "generator_sha256": "b694797ddf94bf261e9d831c3fff2e245672ae0d3deb5bafe360289133dac3f3",
+        "plan_sha256": "7e383e021cfb254499ad407496ae37ed6feb5835c7a7d3fd689b2b12caedb3bd",
+        "versions": {
+          "python": "3.14.4",
+          "numpy": "2.3.5",
+          "zlib": "1.3.1"
+        },
+        "cases": [
+          {
+            "name": "adam7-rgba8-high-boundary",
+            "file": "adam7-rgba8-high-boundary.png",
+            "format": "png",
+            "width": 4000,
+            "height": 2580,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 6202,
+            "interlace": 1,
+            "bytes": 41327724,
+            "sha256": "7713b05ac39bb8db95920867ca855370df82cef5d1a5dd2293a6976ff7819948",
+            "pixel_sha256": "cd1ef68e97ae9d969874a23299f46a5cfb17859a70f4a6a0cd72d709c0c5b401",
+            "png_working_bytes": 335524312,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": {
+              "height": 2581,
+              "bytes": 41343744,
+              "sha256": "acfde8a72cc756a1e5ca6d5e0266d370d5098fd959424c90457715a4dc6e9a27",
+              "png_working_bytes": 335628352
+            }
+          },
+          {
+            "name": "plain-rgba8-12mp-high-landscape",
+            "file": "plain-rgba8-12mp-high-landscape.png",
+            "format": "png",
+            "width": 4000,
+            "height": 3000,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 5980,
+            "interlace": 0,
+            "bytes": 48052856,
+            "sha256": "4b4246f461e119ceca84b5a69a7406ca40fe4e6559f46a2aedec108b2f485bbe",
+            "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+            "png_working_bytes": 331214576,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": null
+          },
+          {
+            "name": "plain-rgba8-12mp-high-portrait",
+            "file": "plain-rgba8-12mp-high-portrait.png",
+            "format": "png",
+            "width": 3000,
+            "height": 4000,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 5980,
+            "interlace": 0,
+            "bytes": 48053856,
+            "sha256": "1051830642502be44c96d6facf0ecf735c3edd2022e581cb58ea8b19edff65a9",
+            "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+            "png_working_bytes": 331216576,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": null
+          }
+        ],
+        "source_manifest_sha256": "c505d985d519666dac626ccf9e20dc4372f232d236faf0b7279a271d7a9cc9c2",
+        "selection_note": "案Aの固定60入力のうち追加同時反復に使う3入力だけを選んだ。画像を生成し直していない。"
+      },
+      "driver_sha256": "b694797ddf94bf261e9d831c3fff2e245672ae0d3deb5bafe360289133dac3f3",
+      "followup_sha256": "abc296f7a6def09ea7218f2cf14bc934a1b18f22abae0e8effe72ff2cee74d34",
+      "host_kernel": "7.0.0-38-generic",
+      "result_directory": "issue59-plan-a-http-plain",
+      "measurement_wrapper_sha256": "2ce12eadbaf7bb5953d3d016c4af3d78dd3ec76ca4461acfe5e938b1250e2287"
+    },
+    {
+      "measured_at_utc": "2026-10-11T07:57:16.978005+00:00",
+      "plan": {
+        "status": "案A・AS 1024 MiBの同時処理計画。測定前に文書commit済み。",
+        "source_sha": "3157adafbb22914bd9de1ebf18f1ddcf127bd6f7",
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "predeclared_plan_git_sha": "051e972580a9f644aa63aad4814b504ea6a0c0c1",
+        "validation_document_sha256": "d6ea9e22ff3ebfc32ce634941d554a3624b6446df4f3565601687ab70c5324b7",
+        "address_spaces_mib": [
+          1024
+        ],
+        "repetitions": 30,
+        "cases": [
+          "adam7-rgba8-high-boundary",
+          "plain-rgba8-12mp-high-landscape",
+          "plain-rgba8-12mp-high-portrait"
+        ],
+        "acceptance": [
+          "全10条件で各30組・600要求すべて200。失敗0。両quality・compress両level。",
+          "PDF構造・配置・寸法・SMask・ヘッダー・cleanup・health/rotate正常。pdfcpu exec数一致。compressはJPEG1件再圧縮。",
+          "OOM/oom_killなし。cgroup peak1536 MiBの90%未満、tmpfs256 MiB未満、job124 MiB以下、出力54 MiB以下。"
+        ],
+        "container": {
+          "cpu": 1,
+          "memory_mib": 1536,
+          "memory_swap_total_mib": 1536,
+          "tmpfs_mib": 256,
+          "concurrent_requests": 2,
+          "network": "none",
+          "readonly": true,
+          "nonroot": true
+        },
+        "pdfcpu": {
+          "address_space_mib": 1024,
+          "gomemlimit": "200MiB",
+          "gogc": 100,
+          "gomaxprocs": 1,
+          "core_bytes": 0,
+          "fsize_bytes": 56623105
+        },
+        "note": "既存ASを維持する測定であり、AS候補−64 MiBの条件は今回の合格基準にしない。"
+      },
+      "plan_sha256": "581a8d504ffd2d26ec861e20ad667126a174f81fbb2c8c3bc02c85d2db004b3f",
+      "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+      "fixture_manifest": {
+        "generator_sha256": "b694797ddf94bf261e9d831c3fff2e245672ae0d3deb5bafe360289133dac3f3",
+        "plan_sha256": "7e383e021cfb254499ad407496ae37ed6feb5835c7a7d3fd689b2b12caedb3bd",
+        "versions": {
+          "python": "3.14.4",
+          "numpy": "2.3.5",
+          "zlib": "1.3.1"
+        },
+        "cases": [
+          {
+            "name": "adam7-rgba8-high-boundary",
+            "file": "adam7-rgba8-high-boundary.png",
+            "format": "png",
+            "width": 4000,
+            "height": 2580,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 6202,
+            "interlace": 1,
+            "bytes": 41327724,
+            "sha256": "7713b05ac39bb8db95920867ca855370df82cef5d1a5dd2293a6976ff7819948",
+            "pixel_sha256": "cd1ef68e97ae9d969874a23299f46a5cfb17859a70f4a6a0cd72d709c0c5b401",
+            "png_working_bytes": 335524312,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": {
+              "height": 2581,
+              "bytes": 41343744,
+              "sha256": "acfde8a72cc756a1e5ca6d5e0266d370d5098fd959424c90457715a4dc6e9a27",
+              "png_working_bytes": 335628352
+            }
+          },
+          {
+            "name": "plain-rgba8-12mp-high-landscape",
+            "file": "plain-rgba8-12mp-high-landscape.png",
+            "format": "png",
+            "width": 4000,
+            "height": 3000,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 5980,
+            "interlace": 0,
+            "bytes": 48052856,
+            "sha256": "4b4246f461e119ceca84b5a69a7406ca40fe4e6559f46a2aedec108b2f485bbe",
+            "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+            "png_working_bytes": 331214576,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": null
+          },
+          {
+            "name": "plain-rgba8-12mp-high-portrait",
+            "file": "plain-rgba8-12mp-high-portrait.png",
+            "format": "png",
+            "width": 3000,
+            "height": 4000,
+            "depth": 8,
+            "color": 6,
+            "alpha": true,
+            "entropy": "high",
+            "seed": 5980,
+            "interlace": 0,
+            "bytes": 48053856,
+            "sha256": "1051830642502be44c96d6facf0ecf735c3edd2022e581cb58ea8b19edff65a9",
+            "pixel_sha256": "62ff4a5fe5e4d5a5c3f79cc30c47a32192737967a0bfa932770027af38f4c03a",
+            "png_working_bytes": 331216576,
+            "expected": 200,
+            "expected_reason": null,
+            "adjacent_above": null
+          }
+        ],
+        "source_manifest_sha256": "c505d985d519666dac626ccf9e20dc4372f232d236faf0b7279a271d7a9cc9c2",
+        "selection_note": "案Aの固定60入力のうち追加同時反復に使う3入力だけを選んだ。画像を生成し直していない。"
+      },
+      "driver_sha256": "31b8093fcfc79110292c43ff8ed28d24b520b1dc803396ee1cda4af21ce5fb0b",
+      "followup_sha256": "c9373e5eaeb07fd8255b0f414ae1b9933d08297ea61b42bfdcc78ac74114194f",
+      "host_kernel": "7.0.0-38-generic",
+      "result_directory": "issue59-plan-a-http-mixed-verified",
+      "measurement_wrapper_sha256": "2ce12eadbaf7bb5953d3d016c4af3d78dd3ec76ca4461acfe5e938b1250e2287"
+    }
+  ],
+  "summary": {
+    "conditions": 10,
+    "paired_trials": 300,
+    "requests": 600,
+    "failures": 0,
+    "pdfcpu_invocations": 480,
+    "compress_requests": 120,
+    "peaks": {
+      "memory_peak": 639447040,
+      "tmpfs_bytes": 196993024,
+      "job_bytes_single": 114409472
+    },
+    "output_bytes_max": 48004880,
+    "http_seconds_max": 3.402,
+    "cgroup_unused_bytes": 971165696,
+    "cgroup_unused_percent": 60.29790242513021
+  },
+  "rows": [
+    {
+      "name": "http-adam7-rgba8-high-boundary-from-images-original-adam7-rgba8-high-boundary-from-images-original-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 165236736,
+        "jobs": 2,
+        "job_bytes_single": 82616320,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217141248,
+        "pdfcpu_vms_bytes": 1043103744,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 73781248,
+        "qpdf_vms_bytes": 99897344,
+        "qpdf_as": 570425344,
+        "qpdf_fsize": 56623105,
+        "qpdf_core": 0,
+        "prlimit_rss_bytes": 1761280,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 557936640,
+        "samples": 4035,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 28.812,
+          "pdfcpu": 45.778,
+          "prlimit": 2.565,
+          "djpeg": 0,
+          "cjpeg": 0,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 60,
+      "expected_pdfcpu_invocations": 60,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-adam7/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-adam7-rgba8-high-boundary-from-images-original-adam7-rgba8-high-boundary-from-images-original-as1024.json",
+      "trial_line_start": 1,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-adam7-rgba8-high-boundary-from-images-standard-adam7-rgba8-high-boundary-from-images-standard-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 165236736,
+        "jobs": 2,
+        "job_bytes_single": 82616320,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217317376,
+        "pdfcpu_vms_bytes": 1042116608,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 73781248,
+        "qpdf_vms_bytes": 99897344,
+        "qpdf_as": 570425344,
+        "qpdf_fsize": 56623105,
+        "qpdf_core": 0,
+        "prlimit_rss_bytes": 1617920,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 605736960,
+        "samples": 4094,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 31.487,
+          "pdfcpu": 46.608,
+          "prlimit": 2.479,
+          "djpeg": 0,
+          "cjpeg": 0,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 60,
+      "expected_pdfcpu_invocations": 60,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-adam7/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-adam7-rgba8-high-boundary-from-images-standard-adam7-rgba8-high-boundary-from-images-standard-as1024.json",
+      "trial_line_start": 31,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-plain-rgba8-12mp-high-landscape-from-images-original-plain-rgba8-12mp-high-landscape-from-images-original-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 192122880,
+        "jobs": 2,
+        "job_bytes_single": 96108544,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217276416,
+        "pdfcpu_vms_bytes": 1042186240,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 112377856,
+        "qpdf_vms_bytes": 155267072,
+        "qpdf_as": 570425344,
+        "qpdf_fsize": 56623105,
+        "qpdf_core": 0,
+        "prlimit_rss_bytes": 1720320,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 639447040,
+        "samples": 4707,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 39.726,
+          "pdfcpu": 50.808,
+          "prlimit": 1.818,
+          "djpeg": 0,
+          "cjpeg": 0,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 60,
+      "expected_pdfcpu_invocations": 60,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-plain/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-plain-rgba8-12mp-high-landscape-from-images-original-plain-rgba8-12mp-high-landscape-from-images-original-as1024.json",
+      "trial_line_start": 61,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-plain-rgba8-12mp-high-landscape-from-images-standard-plain-rgba8-12mp-high-landscape-from-images-standard-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 192122880,
+        "jobs": 2,
+        "job_bytes_single": 96067584,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 232968192,
+        "pdfcpu_vms_bytes": 1042182144,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 112377856,
+        "qpdf_vms_bytes": 155267072,
+        "qpdf_as": 570425344,
+        "qpdf_fsize": 56623105,
+        "qpdf_core": 0,
+        "prlimit_rss_bytes": 1826816,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 599072768,
+        "samples": 4808,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 42.465,
+          "pdfcpu": 51.097,
+          "prlimit": 4.821,
+          "djpeg": 0,
+          "cjpeg": 0,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 60,
+      "expected_pdfcpu_invocations": 60,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-plain/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-plain-rgba8-12mp-high-landscape-from-images-standard-plain-rgba8-12mp-high-landscape-from-images-standard-as1024.json",
+      "trial_line_start": 91,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-plain-rgba8-12mp-high-portrait-from-images-original-plain-rgba8-12mp-high-portrait-from-images-original-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 192122880,
+        "jobs": 2,
+        "job_bytes_single": 96108544,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217309184,
+        "pdfcpu_vms_bytes": 1042907136,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 112369664,
+        "qpdf_vms_bytes": 155267072,
+        "qpdf_as": 570425344,
+        "qpdf_fsize": 56623105,
+        "qpdf_core": 0,
+        "prlimit_rss_bytes": 1814528,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 621805568,
+        "samples": 4613,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 38.452,
+          "pdfcpu": 50.294,
+          "prlimit": 1.683,
+          "djpeg": 0,
+          "cjpeg": 0,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 60,
+      "expected_pdfcpu_invocations": 60,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-plain/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-plain-rgba8-12mp-high-portrait-from-images-original-plain-rgba8-12mp-high-portrait-from-images-original-as1024.json",
+      "trial_line_start": 121,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-plain-rgba8-12mp-high-portrait-from-images-standard-plain-rgba8-12mp-high-portrait-from-images-standard-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 192122880,
+        "jobs": 2,
+        "job_bytes_single": 96059392,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217313280,
+        "pdfcpu_vms_bytes": 1043234816,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 112377856,
+        "qpdf_vms_bytes": 155267072,
+        "qpdf_as": 570425344,
+        "qpdf_fsize": 56623105,
+        "qpdf_core": 0,
+        "prlimit_rss_bytes": 1822720,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 602734592,
+        "samples": 4639,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 38.84,
+          "pdfcpu": 49.746,
+          "prlimit": 2.782,
+          "djpeg": 0,
+          "cjpeg": 0,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 60,
+      "expected_pdfcpu_invocations": 60,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-plain/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-plain-rgba8-12mp-high-portrait-from-images-standard-plain-rgba8-12mp-high-portrait-from-images-standard-as1024.json",
+      "trial_line_start": 151,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-adam7-rgba8-high-boundary-from-images-original-compress-near50-compress-standard-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 196988928,
+        "jobs": 2,
+        "job_bytes_single": 114409472,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217157632,
+        "pdfcpu_vms_bytes": 1042055168,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 164921344,
+        "qpdf_vms_bytes": 201486336,
+        "qpdf_as": 570425344,
+        "qpdf_inspection_unlimited_fsize_observed": 1,
+        "qpdf_core": 0,
+        "qpdf_fsize": 56623105,
+        "djpeg_rss_bytes": 2535424,
+        "djpeg_vms_bytes": 3477504,
+        "djpeg_as": 67108864,
+        "djpeg_fsize": 12825529,
+        "djpeg_core": 0,
+        "cjpeg_rss_bytes": 15466496,
+        "cjpeg_vms_bytes": 16388096,
+        "cjpeg_as": 67108864,
+        "cjpeg_fsize": 17248256,
+        "cjpeg_core": 0,
+        "prlimit_rss_bytes": 1826816,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 542289920,
+        "samples": 3840,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 43.66,
+          "pdfcpu": 21.283,
+          "prlimit": 1.355,
+          "djpeg": 14.16,
+          "cjpeg": 1.157,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 30,
+      "expected_pdfcpu_invocations": 30,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-mixed-verified/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-adam7-rgba8-high-boundary-from-images-original-compress-near50-compress-standard-as1024.json",
+      "trial_line_start": 181,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-adam7-rgba8-high-boundary-from-images-original-compress-near50-compress-strong-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 190238720,
+        "jobs": 2,
+        "job_bytes_single": 107663360,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 217317376,
+        "pdfcpu_vms_bytes": 1043169280,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 164892672,
+        "qpdf_vms_bytes": 201486336,
+        "qpdf_as": 570425344,
+        "qpdf_inspection_unlimited_fsize_observed": 1,
+        "qpdf_core": 0,
+        "qpdf_fsize": 56623105,
+        "djpeg_rss_bytes": 2478080,
+        "djpeg_vms_bytes": 3477504,
+        "djpeg_as": 67108864,
+        "djpeg_fsize": 7216729,
+        "djpeg_core": 0,
+        "cjpeg_rss_bytes": 9875456,
+        "cjpeg_vms_bytes": 10829824,
+        "cjpeg_as": 67108864,
+        "cjpeg_fsize": 22859776,
+        "cjpeg_core": 0,
+        "prlimit_rss_bytes": 1835008,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 547033088,
+        "samples": 3713,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 42.488,
+          "pdfcpu": 22.176,
+          "prlimit": 1.898,
+          "djpeg": 14.487,
+          "cjpeg": 0.256,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 30,
+      "expected_pdfcpu_invocations": 30,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-mixed-verified/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-adam7-rgba8-high-boundary-from-images-original-compress-near50-compress-strong-as1024.json",
+      "trial_line_start": 211,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-adam7-rgba8-high-boundary-from-images-standard-compress-near50-compress-standard-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 196993024,
+        "jobs": 2,
+        "job_bytes_single": 114409472,
+        "active_tools": 2,
+        "pdfcpu_rss_bytes": 216993792,
+        "pdfcpu_vms_bytes": 1042051072,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 164921344,
+        "qpdf_vms_bytes": 201486336,
+        "qpdf_as": 570425344,
+        "qpdf_inspection_unlimited_fsize_observed": 1,
+        "qpdf_core": 0,
+        "qpdf_fsize": 56623105,
+        "djpeg_rss_bytes": 2498560,
+        "djpeg_vms_bytes": 3477504,
+        "djpeg_as": 67108864,
+        "djpeg_fsize": 12825529,
+        "djpeg_core": 0,
+        "cjpeg_rss_bytes": 15458304,
+        "cjpeg_vms_bytes": 16388096,
+        "cjpeg_as": 67108864,
+        "cjpeg_fsize": 17248256,
+        "cjpeg_core": 0,
+        "prlimit_rss_bytes": 1830912,
+        "prlimit_vms_bytes": 3002368,
+        "memory_peak": 545304576,
+        "samples": 3906,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 44.602,
+          "pdfcpu": 21.028,
+          "prlimit": 3.196,
+          "djpeg": 14.57,
+          "cjpeg": 1.245,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 30,
+      "expected_pdfcpu_invocations": 30,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-mixed-verified/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-adam7-rgba8-high-boundary-from-images-standard-compress-near50-compress-standard-as1024.json",
+      "trial_line_start": 241,
+      "trial_lines": 30
+    },
+    {
+      "name": "http-adam7-rgba8-high-boundary-from-images-standard-compress-near50-compress-strong-as1024",
+      "address_space_mib": 1024,
+      "summary": {
+        "trials": 30,
+        "failures": 0,
+        "failure_fraction": 0.0,
+        "trailing_consecutive_successes": 30
+      },
+      "metrics": {
+        "tmpfs_bytes": 190238720,
+        "jobs": 2,
+        "job_bytes_single": 107659264,
+        "active_tools": 2,
+        "prlimit_rss_bytes": 1814528,
+        "prlimit_vms_bytes": 3002368,
+        "pdfcpu_rss_bytes": 216600576,
+        "pdfcpu_vms_bytes": 1042051072,
+        "pdfcpu_as": 1073741824,
+        "pdfcpu_fsize": 56623105,
+        "pdfcpu_core": 0,
+        "qpdf_rss_bytes": 164921344,
+        "qpdf_vms_bytes": 201486336,
+        "qpdf_as": 570425344,
+        "qpdf_inspection_unlimited_fsize_observed": 1,
+        "qpdf_core": 0,
+        "qpdf_fsize": 56623105,
+        "djpeg_rss_bytes": 2478080,
+        "djpeg_vms_bytes": 3477504,
+        "djpeg_as": 67108864,
+        "djpeg_fsize": 7216729,
+        "djpeg_core": 0,
+        "cjpeg_rss_bytes": 9887744,
+        "cjpeg_vms_bytes": 10829824,
+        "cjpeg_as": 67108864,
+        "cjpeg_fsize": 22859776,
+        "cjpeg_core": 0,
+        "memory_peak": 552558592,
+        "samples": 3790,
+        "memory_events": {
+          "low": 0,
+          "high": 0,
+          "max": 0,
+          "oom": 0,
+          "oom_kill": 0,
+          "oom_group_kill": 0,
+          "sock_throttled": 0
+        },
+        "monitor_error": null,
+        "tool_seconds_sampled": {
+          "qpdf": 41.287,
+          "pdfcpu": 21.034,
+          "prlimit": 7.332,
+          "djpeg": 13.922,
+          "cjpeg": 0.218,
+          "jpegtran": 0
+        }
+      },
+      "pdfcpu_invocations": 30,
+      "expected_pdfcpu_invocations": 30,
+      "remaining_jobs": [],
+      "remaining_tools": [],
+      "health_after": 200,
+      "rotate_after": 200,
+      "validation_errors": [],
+      "container": {
+        "image_id": "sha256:ba797f1a79dd232eb9360f34510b221150d179e6f2111c5d666dab3e39b7f79e",
+        "host_config": {
+          "Binds": null,
+          "ContainerIDFile": "",
+          "LogConfig": {
+            "Type": "json-file",
+            "Config": {
+              "max-file": "3",
+              "max-size": "10m"
+            }
+          },
+          "NetworkMode": "none",
+          "PortBindings": {},
+          "RestartPolicy": {
+            "Name": "no",
+            "MaximumRetryCount": 0
+          },
+          "AutoRemove": false,
+          "VolumeDriver": "",
+          "VolumesFrom": null,
+          "ConsoleSize": [
+            0,
+            0
+          ],
+          "CapAdd": null,
+          "CapDrop": [
+            "ALL"
+          ],
+          "CgroupnsMode": "private",
+          "Dns": null,
+          "DnsOptions": [],
+          "DnsSearch": [],
+          "ExtraHosts": null,
+          "GroupAdd": null,
+          "IpcMode": "private",
+          "Cgroup": "",
+          "Links": null,
+          "OomScoreAdj": 0,
+          "PidMode": "",
+          "Privileged": false,
+          "PublishAllPorts": false,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": [
+            "no-new-privileges=true"
+          ],
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=256m"
+          },
+          "UTSMode": "",
+          "UsernsMode": "",
+          "ShmSize": 67108864,
+          "Runtime": "runc",
+          "Isolation": "",
+          "CpuShares": 0,
+          "Memory": 1610612736,
+          "NanoCpus": 1000000000,
+          "CgroupParent": "",
+          "BlkioWeight": 0,
+          "BlkioWeightDevice": [],
+          "BlkioDeviceReadBps": [],
+          "BlkioDeviceWriteBps": [],
+          "BlkioDeviceReadIOps": [],
+          "BlkioDeviceWriteIOps": [],
+          "CpuPeriod": 0,
+          "CpuQuota": 0,
+          "CpuRealtimePeriod": 0,
+          "CpuRealtimeRuntime": 0,
+          "CpusetCpus": "",
+          "CpusetMems": "",
+          "Devices": [],
+          "DeviceCgroupRules": null,
+          "DeviceRequests": null,
+          "MemoryReservation": 0,
+          "MemorySwap": 1610612736,
+          "MemorySwappiness": null,
+          "OomKillDisable": null,
+          "PidsLimit": null,
+          "Ulimits": null,
+          "CpuCount": 0,
+          "CpuPercent": 0,
+          "IOMaximumIOps": 0,
+          "IOMaximumBandwidth": 0,
+          "Mounts": [
+            {
+              "Type": "bind",
+              "Source": "/tmp/issue59-plan-a-http-mixed-verified/pdfcpu-import-as.sh",
+              "Target": "/as-tools/pdfcpu",
+              "ReadOnly": true
+            }
+          ],
+          "MaskedPaths": [
+            "/proc/acpi",
+            "/proc/asound",
+            "/proc/interrupts",
+            "/proc/kcore",
+            "/proc/keys",
+            "/proc/latency_stats",
+            "/proc/sched_debug",
+            "/proc/scsi",
+            "/proc/timer_list",
+            "/proc/timer_stats",
+            "/sys/devices/virtual/powercap",
+            "/sys/firmware"
+          ],
+          "ReadonlyPaths": [
+            "/proc/bus",
+            "/proc/fs",
+            "/proc/irq",
+            "/proc/sys",
+            "/proc/sysrq-trigger"
+          ]
+        }
+      },
+      "completed": true,
+      "result_file": "http-adam7-rgba8-high-boundary-from-images-standard-compress-near50-compress-strong-as1024.json",
+      "trial_line_start": 271,
+      "trial_lines": 30
+    }
+  ],
+  "trials": {
+    "file": "from-images-adam7-concurrency-trials.jsonl",
+    "lines": 300,
+    "sha256": "a2edb8207b7724e5da01bfee8f7f236511f381c799919f6d5417d7dc54aba04c",
+    "note": "1行は同時2要求の1試行。各条件のtrial_line_startは1-based。PDF・stderr本文は保存しない。"
+  }
+}
