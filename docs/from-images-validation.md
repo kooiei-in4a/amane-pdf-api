@@ -14,6 +14,23 @@ Dockerの通常CIには`scripts/from-images-validation.py IMAGE`を追加しま�
 
 ローカルではRelease build（警告0）、既存APIを含む全745件と、その後追加したケースを含む関連31件のテストが成功しました。既存Docker E2Eも成功しています。PRのCI結果はGitHub Actionsで別途確認します。
 
+## GPS除去の追加検証（2026-10-11 JST）
+
+レビュー指摘を受け、有効なGPS IFDと撮影日時・機種・メーカーを含む合成JPEGを追加しました。実写真や個人の位置情報は使用していません。
+
+- .NETの追加2ケースは両qualityでHTTP APIを呼び、Orientation 6の48×64への補正、PDFの正常性、出力PDF・全抽出ストリーム・展開したQDFでのExifと撮影情報の非残存、ログ非露出、job削除を確認しました。
+- Dockerの通常検証も、全8方向×両qualityの入力にGPS IFD・Exif IFDの撮影日時・機種を含めました。Pillowで入力のIFDと座標・日時を読み直してから実HTTPへ渡し、出力PDF・展開QDF・抽出JPEGにExifや撮影情報が残らないこと、従来のA4・余白・順序・描画・JFIF・透過を確認しました。
+- Release buildは警告0・エラー0、全751テスト（追加2件を含む）とDockerの構造・描画検証は成功しました。大画像の容量測定は再実施していません。
+
+ホストでの初回の全体テストは751件中717件が成功し、既存圧縮テスト34件が失敗しました。`/usr/bin/qpdf`に適用されるAppArmorの`/etc/apparmor.d/qpdf`は画像抽出先の拡張子を許可していません。既存CIの「Prepare host qpdf」と同様に、同じパッケージの実行ファイルを検証専用の一時ディレクトリへコピーしてPATHと`Pdf__QpdfPath`に指定すると、切り分け対象の5ケースと、続く全751件が成功しました。AppArmor設定や製品コードは変更していません。
+
+実行は`dotnet build --configuration Release --no-restore`と`dotnet test --configuration Release --no-build`です。pdfcpuは既存の`scripts/install-pdfcpu.sh`で検証用の一時ディレクトリへ導入し、`Pdf__PdfcpuPath`と`Pdf__PdfcpuConfigDir`を指定しました。全体テストのTRXは検証ホストの`/tmp/amane-pdf-pr58-test-results-20261011/privacy-review.trx`、ログは`/tmp/amane-pdf-pr58-full-test.log`です。一時ファイルであり、長期保存やGitHubのCI成果物ではありません。
+
+```text
+Passed!  - Failed:     0, Passed:   751, Skipped:     0, Total:   751, Duration: 3 m 9 s - Amane.Pdf.Api.Tests.dll (net10.0)
+from-images: A4/10mm/order/all orientations/JFIF/privacy/alpha/rendering PASS
+```
+
 ## 手動Docker測定
 
 固定版pdfcpu 0.16.1、qpdf 12.3.2、libjpeg-turbo 2.1.5、.NET runtime 10.0.12、Linux x86_64・4 KiB割当で実施しました。CPU 1、memory 1.5 GiB、swapなし、tmpfs /tmp 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privilegesです。画像APIの設定は上書きしていません。
@@ -41,6 +58,47 @@ Dockerの通常CIには`scripts/from-images-validation.py IMAGE`を追加しま�
 PNGの写真風fixtureはseed 2603のRGBノイズをGaussianBlur(2)でぼかしたもので、横/縦の12 MP画像です。単独の正規化PNGは13.845 / 13.830 MiB、ページPDFは23.496 / 23.594 MiBでした。PDFの画像はpredictorなしFlateとなり、最終PDFは入力合計の約1.7倍です。今回のグラデーションは0.350→2.397 MiB（約6.9倍）でした。Issueの前段probeとはfixtureが異なるため、9.1倍の値と直接比較しません。
 
 写真風PNG 3枚の3ページ目では、残り約6.9 MiBのFSIZE予算でpdfcpuが通常エラー終了し、部分出力を削除しました。実サイズで容量超過を証明できないため、設計どおり`unsupported-image`で返しました。stderrから`output-too-large`へ推測しません。
+
+## PRレビューから提供された追加測定
+
+2026-10-11 JSTにKooからこの作業へ提供された[PR #58](https://github.com/kooiei-in4a/amane-pdf-api/pull/58)のレビュー報告です。この節の数値はレビュー担当者の測定報告として記録し、上の28条件・84要求や[既存のJSON記録](from-images-capacity-results.json)へ合算しません。この文書追記で同じ大画像の測定を再実施したものではありません。
+
+報告による実行条件は、PRブランチから作成したDockerイメージ、CPU 1・memory 1.5 GiBです。測定したコミットSHA・イメージのダイジェスト・実行日時・入力のハッシュ値・生ログ・全コンテナ設定・時間の測定区間は報告から確認できていません。この追記の基準はPRの`5e5becaa14af4a282da7a38b6bd5dacb57687d44`ですが、報告の測定対象SHAとして断定しません。
+
+### 大きい4:4:4 JPEGの既知の制約
+
+| 入力・向き補正 | standard | original |
+| --- | --- | --- |
+| 8064×6048、約48 MP、4:4:4、Orientation 1 | 200 | 200 |
+| 同、Orientation 6（90度回転） | 200 | 422 `unsupported-image` |
+| 約48 MP、4:2:0、baseline / progressive、回転あり・なし | 200 | 200 |
+| 6000×4000、24 MP、4:4:4 / 4:2:0 | 200 | 200 |
+
+レビューはoriginalの約48 MP・4:4:4・回転時の失敗をjpegtranのメモリ制限として確認しています。[設計§11](https://github.com/kooiei-in4a/amane-pdf-api/issues/26)でも、同じ寸法・4:4:4の単独toolによる90度回転はAS 384 MiB / maxmemory 320Mで失敗しています。誤った向きのPDFや500を返すのではなく、通常の変換不能として422で終了する挙動です。回転・反転全般や任意の画像の成功範囲をこの測定だけで確定しません。
+
+コードと上限は変更せず、READMEとサイトへの引き継ぎへ制約を記載します。この制約を製品仕様として受け入れる判断とPRのマージは、Kooの判断待ちです。50 MPはJPEG・PNGの受付検査の上限で、変換成功の保証ではありません。
+
+### 30枚の測定報告
+
+12 MPの写真風JPEG・Orientation 6を30枚使用したとの報告です。
+
+| 入力合計 | quality | 単独の秒数 | 同時2件の秒数 |
+| --- | --- | ---: | ---: |
+| 約32.7 MiB | standard | 5.2 | 10.5 |
+| 約32.7 MiB | original | 9.4 | 18.9 |
+| 約48.8 MiB | original | 10.4 | 21.3 |
+
+報告上はすべて200で、処理後のhealthも正常でした。同時2件の秒数が各要求の最大値か全体の経過時間か、アップロード・受信を含むかは未確認です。21.3秒をAPIの内部30秒deadlineの残り時間へ直接換算せず、本番CPUでの処理時間や任意の30枚の成功保証として扱いません。遅い実行環境では504になる可能性があります。
+
+### 設計§10に対する未確認項目
+
+次の上限規模の測定結果は、既存記録と今回のレビュー報告から確認できていません。
+
+- 画像からPDFと既存PDF処理を組み合わせた同時2要求。
+- 16 bit・パレットPNGの容量、メモリ、時間の測定。小さい入力の機能テストとは区別します。
+- standardの4:4:4 JPEGについて、再現手順と生の容量・時間記録。上の約48 MPの成功報告だけでは設計の測定記録を満たしません。
+
+30枚も数値の報告はありますが、再現可能な生の測定記録の回収は未完了です。これらの未確認項目を残したまま、設計§10の検証をすべて完了したとは記載しません。
 
 ## 容量台帳の実測
 
@@ -75,6 +133,10 @@ hostにPillow・NumPy・qpdf・Popplerと.NET SDKが必要です。大fixtureと
 
 ## サイトと運用への引き継ぎ
 
-[amane-tools-site #41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)では、JPEG/PNG・1〜30枚・順序・qualityを案内し、50 MPがPNGすべての成功保証ではないことを明記してください。JPEGは両qualityで端が切り落とされること、ICC除去で色が変わり得ること、PNGはPDF化で大きくなるためJPEG化・縮小・枚数削減が有効なことも対象です。GIF/WebP/HEIC/APNGをサーバーで変換しません。
+[amane-tools-site #41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)では、JPEG/PNG・1〜30枚・順序・qualityを案内し、50 MPがJPEG・PNGすべての成功保証ではないことを明記してください。JPEGは両qualityで端が切り落とされること、ICC除去で色が変わり得ること、PNGはPDF化で大きくなるためJPEG化・縮小・枚数削減が有効なことも対象です。GIF/WebP/HEIC/APNGをサーバーで変換しません。
+
+大きい4:4:4 JPEGで向き補正が必要な場合、originalでは422 `unsupported-image`になることがあります。「この画像を変換できませんでした。『標準』で再度試すか、画像を小さくしてください。」のように、形式以外の変換不能にも対応する案内を用意してください。standardでの再試行は利用者が選択し、自動切り替えは行いません。PNGではqualityの処理が共通なので、標準への切り替えだけで解決するとは案内しません。内部tool名・メモリ設定は利用者の画面へ表示する必要はありません。
+
+本追記はAPIリポジトリ内の引き継ぎです。サイト#41のIssue本文・コードは変更していません。
 
 PNG/JPEG/EXIF・元ファイル名・path・tool出力はログ/Problem Detailsに出しません。日次枠の返却は既存方針に沿って400と確認済み422 `output-too-large`だけを対象とし、空画像や`unsupported-image`へ広げません。API deploy後にサイトを公開する順序を維持します。[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認とinfra容量条件の整合は別作業で、この実装・測定ではdeploy保留を解除しません。

@@ -28,6 +28,59 @@ internal static class FromImagesFixtures
         var padding = late ? Segment(0xe2, new byte[65530]) : [];
         return [.. jpeg[..2], .. padding, .. exif, .. Segment(0xfe, "private-image-marker"u8.ToArray()), .. jpeg[2..]];
     }
+    internal static readonly string[] PrivateExifText =
+        ["private-camera-maker", "private-camera-model", "2001:02:03 04:05:06"];
+    internal static byte[] GpsCoordinates
+    {
+        get
+        {
+            var bytes = new byte[48];
+            uint[] values = [37, 1, 12, 1, 34, 1, 141, 1, 56, 1, 7, 1];
+            for (var i = 0; i < values.Length; i++)
+                BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(i * 4), values[i]);
+            return bytes;
+        }
+    }
+    internal static byte[] ExifWithGps(byte[] jpeg)
+    {
+        // 合成値だけを使う、有効なlittle-endian TIFF。IFD0→Exif IFD/GPS IFDを持つ。
+        const int exifIfd = 74, gpsIfd = 92, gpsData = 158;
+        var maker = Encoding.ASCII.GetBytes(PrivateExifText[0] + "\0");
+        var model = Encoding.ASCII.GetBytes(PrivateExifText[1] + "\0");
+        var date = Encoding.ASCII.GetBytes(PrivateExifText[2] + "\0");
+        var makerOffset = gpsData + GpsCoordinates.Length;
+        var modelOffset = makerOffset + maker.Length;
+        var dateOffset = modelOffset + model.Length;
+        var tiff = new byte[dateOffset + date.Length];
+        "II"u8.CopyTo(tiff);
+        BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(2), 42);
+        BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(4), 8);
+        void Count(int offset, ushort count) => BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(offset), count);
+        void Entry(int offset, ushort tag, ushort type, uint count, uint value)
+        {
+            BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(offset), tag);
+            BinaryPrimitives.WriteUInt16LittleEndian(tiff.AsSpan(offset + 2), type);
+            BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(offset + 4), count);
+            BinaryPrimitives.WriteUInt32LittleEndian(tiff.AsSpan(offset + 8), value);
+        }
+        Count(8, 5);
+        Entry(10, 0x010f, 2, (uint)maker.Length, (uint)makerOffset); // Make
+        Entry(22, 0x0110, 2, (uint)model.Length, (uint)modelOffset); // Model
+        Entry(34, 0x0112, 3, 1, 6); // Orientation
+        Entry(46, 0x8769, 4, 1, exifIfd);
+        Entry(58, 0x8825, 4, 1, gpsIfd);
+        Count(exifIfd, 1);
+        Entry(exifIfd + 2, 0x9003, 2, (uint)date.Length, (uint)dateOffset); // DateTimeOriginal
+        Count(gpsIfd, 5);
+        Entry(gpsIfd + 2, 0, 1, 4, 0x00000302); // GPSVersionID 2.3.0.0
+        Entry(gpsIfd + 14, 1, 2, 2, 'N');
+        Entry(gpsIfd + 26, 2, 5, 3, gpsData); // GPSLatitude
+        Entry(gpsIfd + 38, 3, 2, 2, 'E');
+        Entry(gpsIfd + 50, 4, 5, 3, gpsData + 24); // GPSLongitude
+        GpsCoordinates.CopyTo(tiff, gpsData);
+        maker.CopyTo(tiff, makerOffset); model.CopyTo(tiff, modelOffset); date.CopyTo(tiff, dateOffset);
+        return [.. jpeg[..2], .. Segment(0xe1, [.. "Exif\0\0"u8, .. tiff]), .. jpeg[2..]];
+    }
     internal static byte[] Chunk(string kind, byte[] payload)
     {
         using var stream = new MemoryStream();

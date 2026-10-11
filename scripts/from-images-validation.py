@@ -58,11 +58,33 @@ def small_jpeg(orientation):
                              ((0, 24, 31, 47), (20, 20, 220)), ((32, 24, 63, 47), (220, 180, 20))):
         draw.rectangle(rectangle, fill=color)
     exif = Image.Exif(); exif[274] = orientation; exif[315] = "private-image-marker"
+    # 合成の撮影情報。実際に有効なGPS IFDを持つ入力で除去を検証する。
+    exif[271] = "private-camera-maker"; exif[272] = "private-camera-model"
+    exif[34665] = {36867: "2001:02:03 04:05:06"}
+    exif[34853] = {0: b"\x02\x03\x00\x00", 1: "N", 2: (37.0, 12.0, 34.0),
+                   3: "E", 4: (141.0, 56.0, 7.0)}
     output = io.BytesIO()
     image.save(output, "JPEG", quality=95, subsampling=2, dpi=(300, 300), exif=exif)
     # An APP1 after more than 64 KiB of other markers must still be read.
     data = output.getvalue()
-    return data[:2] + b"\xff\xe2" + struct.pack(">H", 65532) + b"P" * 65530 + data[2:] + b"private-image-marker"
+    data = data[:2] + b"\xff\xe2" + struct.pack(">H", 65532) + b"P" * 65530 + data[2:] + b"private-image-marker"
+    parsed = Image.open(io.BytesIO(data)).getexif()
+    assert parsed[274] == orientation and parsed[271] == "private-camera-maker"
+    assert parsed[272] == "private-camera-model"
+    assert parsed.get_ifd(34665)[36867] == "2001:02:03 04:05:06"
+    gps = parsed.get_ifd(34853)
+    assert gps[1] == "N" and gps[3] == "E"
+    assert tuple(gps[2]) == (37, 12, 34) and tuple(gps[4]) == (141, 56, 7)
+    return data
+
+
+def assert_private_metadata_absent(data):
+    for marker in (b"private-image-marker", b"private-camera-maker", b"private-camera-model",
+                   b"2001:02:03 04:05:06", b"Exif\0\0"):
+        assert marker not in data, "撮影情報が出力に残っています。"
+    # TIFFのbyte orderにかかわらず、入力の緯度・経度の有理数配列が残らない。
+    for order in ("<", ">"):
+        assert struct.pack(order + "12I", 37, 1, 12, 1, 34, 1, 141, 1, 56, 1, 7, 1) not in data
 
 
 def inspect_pdf(path):
@@ -107,7 +129,10 @@ def render(image):
                 metadata = inspect_pdf(path)
                 assert len(metadata["pages"]) == 8
                 verify_layout(path, metadata)
-                assert b"private-image-marker" not in pdf
+                assert_private_metadata_absent(pdf)
+                expanded = directory / (quality + "-qdf.pdf")
+                command("qpdf", "--qdf", "--object-streams=disable", "--stream-data=uncompress", str(path), str(expanded))
+                assert_private_metadata_absent(expanded.read_bytes())
                 command("pdftoppm", "-r", "72", "-png", str(path), str(directory / quality))
                 for i, source in enumerate(inputs, 1):
                     expected = np.array(ImageOps.exif_transpose(Image.open(io.BytesIO(source))).convert("RGB"))
@@ -124,6 +149,8 @@ def render(image):
                         assert np.max(np.abs(actual[y, x].astype(int) - reference)) <= 8, (quality, i, fx, fy, actual[y, x].tolist(), reference.tolist())
                     stream_id = page["images"][0]["object"].split()[0]
                     jpeg = command("qpdf", "--show-object=" + stream_id, "--raw-stream-data", str(path)).stdout
+                    assert_private_metadata_absent(jpeg)
+                    assert not Image.open(io.BytesIO(jpeg)).getexif(), "抽出JPEGのExifが空ではありません。"
                     assert jpeg[2:4] == b"\xff\xe0" and jpeg[6:11] == b"JFIF\0"
                     assert jpeg[13:18] == b"\x00\x00\x01\x00\x01", "JFIF density must be normalized"
             # PNG alpha and its declared dimensions survive both qualities.
