@@ -12,7 +12,7 @@ Linuxの`POST /api/pdf/from-images?quality=standard|original`を追加しまし�
 
 Dockerの通常CIには`scripts/from-images-validation.py IMAGE`を追加しました。Popplerは検証hostだけで使い、全8方向のJPEG両qualityを色付き領域の位置で照合し、qpdfのMediaBox・描画matrixを0.01 pt以内で照合します。JFIF density 1×1、元EXIF/末尾データの非残存、PNG SMaskと白地へのalpha合成も確認します。JPEG再圧縮・decoder色変換の差として、色付き領域の各channelは8/255以内を許可します。runtimeの追加パッケージはありません。
 
-ローカルではRelease build（警告0）、既存APIを含む全745件と、その後追加したケースを含む関連31件のテストが成功しました。既存Docker E2Eも成功しています。PRのCI結果はGitHub Actionsで別途確認します。
+初回実装時のローカル記録では、Release build（警告0）、既存APIを含む全745件と、その後追加したケースを含む関連31件のテストが成功しました。既存Docker E2Eも成功しています。この時点ではPRのCI結果は別途確認予定でした。これらは初回の記録で、PR #58の最終テスト件数・CI結果は下の「PR #58の最終CI確認」を参照してください。
 
 ## GPS除去の追加検証（2026-10-11 JST）
 
@@ -30,6 +30,12 @@ Dockerの通常CIには`scripts/from-images-validation.py IMAGE`を追加しま�
 Passed!  - Failed:     0, Passed:   751, Skipped:     0, Total:   751, Duration: 3 m 9 s - Amane.Pdf.Api.Tests.dll (net10.0)
 from-images: A4/10mm/order/all orientations/JFIF/privacy/alpha/rendering PASS
 ```
+
+### PR #58の最終CI確認（2026-10-11 JST）
+
+最終コミット`3a66f027fb8f71137d8b9a000ba33298a1f016a0`の[GitHub Actions](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/38100000315)は、build-test・dockerとも成功しました。build-testのTestログを直接確認し、全751件成功・失敗0・スキップ0、所要3分20秒でした。上の3分9秒はローカル実行で、このCI時間とは区別します。
+
+初回コミット`5e5becaa14af4a282da7a38b6bd5dacb57687d44`の[CI](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/38072480647)は749件、GPSの追加2件を含む最終版は751件です。初回ローカルの745件・関連31件は当時の記録として保持し、最終結果と混ぜません。PR #58はマージコミット`3108103099f4b59de2b0e7510eb1ed8946e65098`でmainへ入りました。このCI確認は容量の未測定項目の完了を意味しません。
 
 ## 手動Docker測定
 
@@ -122,6 +128,8 @@ PNGの写真風fixtureはseed 2603のRGBノイズをGaussianBlur(2)でぼかし�
 
 30枚も数値の報告はありますが、再現可能な生の測定記録の回収は未完了です。これらの未確認項目を残したまま、設計§10の検証をすべて完了したとは記載しません。
 
+2026-10-11 JSTに追跡用の[Issue #59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)を作成し、[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)の画像からPDFを含む新版の配置前確認から参照するようにしました。再現手順・生データ・容量余裕の判定を#59に残し、不足があれば実装・設定を見直して再検証します。設計§5の16 bit・パレットPNGを含む見積り係数・余裕の検証は未完了であり、4:4:4 JPEGの制約受け入れとPR #58のマージ承認を、この検証を省略する承認として扱いません。
+
 ## 容量台帳の実測
 
 HTTP測定と別に、検証専用の.NETハーネスから同じProcessorをDocker内で単独実行して予約peakを取得しました。製品imageにハーネスは追加しません。callbackは内部methodの測定用で、本番endpointは指定せず、ログにも出しません。upload・正規化画像・各ページ・最終PDFの実bytesと、4 KiB丸め・FSIZE sentinel・補助1 MiBを含む予約peakを[JSON記録](from-images-capacity-results.json)に保存しています。
@@ -159,6 +167,8 @@ hostにPillow・NumPy・qpdf・Popplerと.NET SDKが必要です。大fixtureと
 
 大きい4:4:4 JPEGで向き補正が必要な場合、originalでは422 `unsupported-image`になることがあります。「この画像を変換できませんでした。『標準』で再度試すか、画像を小さくしてください。」のように、形式以外の変換不能にも対応する案内を用意してください。standardでの再試行は利用者が選択し、自動切り替えは行いません。PNGではqualityの処理が共通なので、標準への切り替えだけで解決するとは案内しません。内部tool名・メモリ設定は利用者の画面へ表示する必要はありません。
 
-本追記はAPIリポジトリ内の引き継ぎです。サイト#41のIssue本文・コードは変更していません。
+504には「処理に時間がかかりすぎました。画像の枚数を減らすか、小さくして再度お試しください。」と案内してください。JPEGでは「元の画質」を選んでいた場合に「標準」で再度試す方法も案内できます。PNGでは両qualityの処理が共通なので、画質変更だけを解決策にしません。必要に応じて利用者側でJPEGとして保存する方法を示します。画像・順序・画質の選択を保持し、利用者が変更して再試行できるようにします。自動再送・画質変更・PNGの自動JPEG化は行いません。
+
+PR #58での追記はAPIリポジトリ内の引き継ぎで、当時はサイト#41のIssue本文・コードを変更していませんでした。2026-10-11 JSTの追跡整理で、サイト#41のIssue本文にも422・504の案内、再試行時の選択保持、#59・#46の配置前確認を追記しました。サイトのコード実装・公開は別作業です。
 
 PNG/JPEG/EXIF・元ファイル名・path・tool出力はログ/Problem Detailsに出しません。日次枠の返却は既存方針に沿って400と確認済み422 `output-too-large`だけを対象とし、空画像や`unsupported-image`へ広げません。API deploy後にサイトを公開する順序を維持します。[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認とinfra容量条件の整合は別作業で、この実装・測定ではdeploy保留を解除しません。
