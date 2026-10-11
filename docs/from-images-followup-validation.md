@@ -1,6 +1,6 @@
 # 画像からPDFの配置前容量検証（#59）
 
-> **訂正・再レビュー中:** 観測VmSizeとAS上限の差を「AS余裕2.89%」とした説明を撤回する。VmSizeはGoの予約とサンプリングの影響を受け、実際の必要ASを示さない。12 MPのAdam7 PNGでは、見積り内でも非決定的な422が報告された。下記は非interlaceの履歴であり、#59の完了・配置判断には使わない。[AS別の反復検証](from-images-as-validation.md)で、測定前に決めた基準と1136/1072 MiBの最新結果を記録した。製品ASの変更と採用はKooの判断待ちである。#46・サイト#41へ更新済みとした記載も誤りだったため、再測定前に注意書きを反映した。
+> **訂正・再レビュー中:** 観測VmSizeとAS上限の差を「AS余裕2.89%」とした説明を撤回する。VmSizeはGoの予約とサンプリングの影響を受け、実際の必要ASを示さない。12 MPのAdam7 PNGでは、見積り内でも非決定的な422が報告された。下記は非interlaceの履歴であり、#59の完了・配置判断には使わない。[AS別の反復検証](from-images-as-validation.md)の結果を受け、Kooの判断で取込専用ASは採用せず、共通AS 1 GiBのままAdam7を見積りで扱う（案A）。#46・サイト#41へ更新済みとした記載も誤りだったため、再測定前に注意書きを反映した。
 
 2026-10-11 JST。[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の画像処理とcompressの混在、16 bit・パレットPNG、standardの約48 MP・4:4:4 JPEGを合成データで測る。PR #61のレビューを受け、8 bit RGB/RGBAの境界も追加した。実機配置・公開と[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認は別作業である。
 
@@ -97,6 +97,6 @@ hostのqpdf AppArmorによる拡張子なしのraw出力拒否は、既存CIと�
 
 修正版Docker buildと全smokeが成功した。既存25 POST、compress両level、clean、splitのFSIZE実測、AS/CORE、read-only/non-root/network none、起動失敗・エラー非露出・job削除を確認した。大画像の189条件と通常smokeは別の検証である。
 
-現在の製品AS/Go soft limit、時間、入力/出力容量、同時2枠、cleanupは変更していない。画像取込ASを見直す場合は、overlayと共用する設定を分け、IsValid・README・security文書も更新する。Go soft limitは強制停止の上限ではなく、AS増加は最終的な制限も緩めるため、最悪のAdam7同士・Adam7とcompressの同時2件を再測定する。結果後にAdam7対応範囲・取込専用AS・同時2件のcgroup余裕をまとめてKooが判断する。合成入力の成功を任意入力・別infra条件へ一般化しない。collector確認、infraのCORE=0/容量条件整合とHumanの配置承認は引き続き必要である。
+製品AS/Go soft limit、時間、入力/出力容量、同時2枠、cleanupは変更していない。Adam7は見積りに展開画像1枚分を加えてimport前に422とし、取込専用ASは採用しない（[AS別の反復検証](from-images-as-validation.md)）。合成入力の成功を任意入力・別infra条件へ一般化しない。collector確認、infraのCORE=0/容量条件整合とHumanの配置承認は引き続き必要である。
 
-[サイト#41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)と#46へ、旧結果を最新仕様として使わない注意書きを先に反映した。最終結果・採用版の引き継ぎは再測定後である。READMEは8 bitのカラー・透過付きグレー、低bitグレー+tRNS、Adam7の未解決事象を明記し、縮小または利用者側でJPEGへ保存する案内とした。8 bit化だけで解消するとは案内しない。PNGでは「標準」に変えるだけでは解消しない。422/504でも画像・順序・画質の選択を保持し、自動再送・自動画質変更・PNGのJPEG化を行わない。採用API版の配置後にサイトを公開する。
+[サイト#41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)と#46へ、旧結果を最新仕様として使わない注意書きを先に反映した。案Aの結果を両Issueへ引き継ぐ。READMEは8 bitのカラー・透過付きグレー、低bitグレー+tRNS、Adam7の受付範囲を明記し、縮小または利用者側でJPEGへ保存する案内とした。8 bit化だけで解消するとは案内しない。PNGでは「標準」に変えるだけでは解消しない。422/504でも画像・順序・画質の選択を保持し、自動再送・自動画質変更・PNGのJPEG化を行わない。採用API版の配置後にサイトを公開する。

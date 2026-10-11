@@ -1,18 +1,19 @@
 # PNG取込のAS別反復検証（#59、2026-10-11 UTC）
 
-## 結果と採用待ちの判断
+## 採用した方針（案A、2026-10-11 Koo判断）
 
-画像取込にだけAS（仮想アドレス空間）1136 MiBを適用する案を提示する。全60入力について1136 MiBと1072 MiB（候補−64 MiB）で各30回、合計3600回の取込がすべて成功した。同時2件も16条件・480組・960要求すべて200で、cgroupピークは636.160/1536 MiB、未使用は899.840 MiB（58.58%）だった。
+取込専用ASは採用せず、取込・overlay共通のAS 1 GiBを維持する。Adam7はpassごとの画像を持つため、PNG見積りに展開画像1枚分（画素数×展開サンプルbytes。パレット・透過なしグレーは1チャネル、その他は4チャネル）を加え、超過はimport前に422とする。設定の分離・`IsValid`・起動経路の変更は不要になった。
 
-**製品のAS設定は変更していない。** 測定専用wrapperで検証した提案であり、Kooが次の3点を一度に判断する。
+1136 MiB案を採らない理由は、Go初期化が全失敗する境界の16 MiB手前だったためである。同じimageでASを変えて`version`と12 MP非interlaceのimportを各3回試すと、1148 MiBまでは成功し、1152/1184/1216 MiBは`version`も失敗、1280/1344 MiBは`version`だけ成功、1536 MiB以上は両方成功した。境界の位置は固定Go runtimeの予約配置に依存し、pdfcpu・Go・kernelの更新で動き得る。下の候補表はこの判断の根拠として残す。
 
-1. Adam7を、現在許可しているPNGの全型・見積り内の対応対象に含めるか。
-2. 画像取込専用ASを1136 MiB（1,191,182,336 bytes）とし、overlayは既存の1024 MiBを維持するか。
-3. CPU 1・物理メモリ1536 MiB・swapなし・tmpfs 256 MiB・共通同時2件で、今回のcgroup余裕を採用判断に使うか。
+### 案Aの結果（AS 1024 MiB）
 
-採用後は取込用設定を共用の`PdfcpuAddressSpaceLimitBytes`から分け、`ImportImageAsync`と`CreateAsync`の適用範囲、`IsValid`、起動時の両経路、README・security文書を変更し、その実装版で検証する。Go soft limit 200MiBは維持する。GOMEMLIMITは超過しても強制停止する上限ではなく、AS増加は最終的な制限も緩める。コンテナの物理メモリ上限は別の制限である。
+[結果](from-images-adam7-estimate-results.json)に入力のSHA-256・寸法・見積り・試行数・cgroup peakを保存した。
 
-#59の完了と配置判断は保留する。本番旧条件の512 MiB＋swap合計1 GiBへ今回の値を当てはめない。#46のcollector確認、infraのCORE=0・容量条件整合、Humanのmerge・配置承認は引き続き必要である。
+- 新しい見積りの境界直下にあるAdam7全26型×低/高複雑度の52入力と、非interlace 12 MP RGBA8の4入力を、製品と同じAS 1024 MiBで各30回、計1680回取り込んだ。失敗0、OOM/oom_kill 0。各入力は1行高い隣接入力が見積りを超えることも確認した。
+- Adam7の受付は、8 bitのカラー・透過付きグレーが約10.3 MP、16 bitのカラー・透過付きグレーが低複雑度約4.8 MP、パレット・透過なしグレー8が約20.6 MP。12 MPのAdam7 RGBA8（低・高複雑度の縦横4入力）は見積り超過となる。
+- 見積り変更後のimage（`3157ada`）でHTTPを確認した。8入力×両quality×単独/同時2件の32条件・48要求で200が36件、422 `unsupported-image`が12件。422はすべてpdfcpu起動0回、cgroup peak最大530.9 MiB、PDF検査・後片付け・health/rotateは正常だった。
+- 「候補−64 MiB」の基準は案Aに適用しない。ASと成功率が単調でないため下側の余裕は意味のある指標にならず、非interlace 12 MP RGBA8は960 MiBで失敗する既存の状態でもある。根拠は固定binaryのAS 1024 MiBでの反復成功であり、pdfcpu更新時は同じ境界入力で再検証する。
 
 ## 測定前の合格基準
 
@@ -100,8 +101,8 @@ sudo python3 scripts/from-images-as-validation.py --plan docs/from-images-as-nex
 
 ## CIに固定した項目
 
-C#とPythonが同じ固定159ベクタを読み、正確な作業量bytesと標準320 MiBの受付判定を検査する。12 MPの縦横・低高複雑度、パレット/透過なしグレー8の係数12、透過付きグレー8と1/2/4 bitの22P下限、Adam7全型の隣接境界を含む。小さいencoded値でも係数12/22Pを識別するベクタがある。Adam7だけの見積り項は追加していないため、その項のテストはない。
+C#とPythonが同じ固定159ベクタを読み、正確な作業量bytesと標準320 MiBの受付判定を検査する。12 MPの縦横・低高複雑度、パレット/透過なしグレー8の係数12、透過付きグレー8と1/2/4 bitの22P下限、Adam7全型の隣接境界（案Aの見積り）を含む。小さいencoded値でも係数12/22Pを識別するベクタがある。sanitizerのテストで、同じ画素のPNGがinterlaceだけで見積りを超えることも確認する。
 
-Release build警告/エラー0、全919 .NETテスト成功、失敗/skip 0（3分24秒）。driver回帰5件も成功した。GitHub CIはhead `5b3a7ac`の[実行38117119157](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/38117119157)でRelease build/test・Docker build/全smoke成功を確認した。TRX `/tmp/issue59-as-test-results/issue59-as-vectors-all.trx`はローカル記録であり、CI成果物と区別する。以後のheadのCI状態はPRで確認する。
+案A（`3157ada`）でRelease build警告/エラー0、全920 .NETテスト成功、失敗/skip 0（3分24秒）、driver回帰5件も成功した。それ以前の記録として、GitHub CIはhead `5b3a7ac`の[実行38117119157](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/38117119157)でRelease build/test・Docker build/全smoke成功を確認した。TRX `/tmp/issue59-as-test-results/issue59-as-vectors-all.trx`はローカル記録であり、CI成果物と区別する。以後のheadのCI状態はPRで確認する。
 
 現在の製品AS 1 GiBでも非interlaceの前回測定は成功したが、Adam7の非決定的失敗が残る。今回の成功は固定binary・合成入力・測定環境で宣言した反復基準を満たす根拠であり、未採用の設定が配置済みになったことを意味しない。
