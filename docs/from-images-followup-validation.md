@@ -1,83 +1,100 @@
 # 画像からPDFの配置前容量検証（#59）
 
-2026-10-11 JST。[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の画像処理とcompressの混在、16 bit・パレットPNG、standardの約48 MP・4:4:4 JPEGを合成データで測る。PR #58当時の測定とは分ける。実機配置・公開、[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認はこの作業に含まない。
+2026-10-11 JST。[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の画像処理とcompressの混在、16 bit・パレットPNG、standardの約48 MP・4:4:4 JPEGを合成データで測る。PR #61のレビューを受け、8 bit RGB/RGBAの境界も追加した。実機配置・公開と[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認は別作業である。
 
-## 測定対象と判定
+## レビューを受けた変更と根拠
 
-変更前はmain `0c8aea1cf70f46273fe21a68be2a82edc0b51fca`、修正版は `4a24843608c8300ff0f220f276895bbaa62d8ed2`。Dockerfile・固定tool・Go soft limit・AS・並列数を維持し、16 bit PNGの見積りの画素係数だけを24から48へ見直した。
+初回提案 `4a24843608c8300ff0f220f276895bbaa62d8ed2` は16 bitの画素係数を一律48、8 bit以下を12としていた。追加測定では、この見積り以内のRGB8（14.8 MP）・RGB8+tRNS（14.8 MP）・RGBA8（13 MP）で変換中の422を再現した。8コンテナ・12要求中、200は4、422は8だった。期待200に対する失敗として保存し、成功した測定に合算しない。コンテナOOMとは別の失敗である。この3入力は修正版generatorの`oversized-rgb8-high`、`oversized-rgb8-trns-high`、`oversized-rgba8-high`と完全なSHA-256が一致する。追加の低複雑度22.3 MP RGBA8は`png(path, 4000, 5575, 8, 6, True, False, 6100)`で再生成できる。
 
-全HTTP測定は1条件ごとに新しいコンテナを使う。CPU 1、memory 1536 MiB、MemorySwap合計も1536 MiB（追加swapなし）、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privileges。画像とcompressは同じ処理枠を共有する。2要求は送信前のbarrierで開始を合わせ、成功する同時2件では2 jobの重なりも観測する。通常設定は内部deadline 30秒。HTTP時間はアップロードと全応答の受信を含み、内部deadlineの残り時間に換算しない。
+固定pdfcpuの単独試験でも、13.4 MPのRGB8/tRNSで75,497,472 bytesの圧縮buffer確保失敗を観測した。RGB8は同じ入力で成功/失敗の両方を観測した。一方、12.192 MPのRGBA8、16.76 MPの高複雑度グレー16、22.3 MPの低複雑度グレー16は各2回成功した。この予備試験はHTTP測定の代わりにしない。
 
-PNGの見積りは `E = 2×正規化PNG bytes + 画素数×(16 bitは48、8 bit以下は12) + 64 MiB`、上限320 MiB。グレー、グレー+tRNS、RGB、RGB+tRNS、グレー+alpha、RGBAの16 bitと、8 bitパレットのtRNS有無を、単色と固定seedの高複雑度に分ける。tRNSの高複雑度入力にも実際の透明画素を入れる。PNGは直接IHDR・画素・CRC・zlibを書き、Pillowによる16 bit RGBの8 bit化を避ける。PNGは非interlaceで、Adam7の大画像容量を検証した結果ではない。
+修正版の製品コードは `c3b4c9d3d0c77a3c1a0ba53e0fdfe2bf2a040259`。AS、Go soft limit、同時実行数、Dockerfile、tool版を維持し、型別の受付見積りを使う。入力のチャネル数だけでなく、[GoのPNGデコーダ](https://github.com/golang/go/blob/go1.26.0/src/image/png/reader.go)が実際に作る画素を基準にする。透過なしグレー16は1チャネル×2 bytes、RGB16/RGBA16・グレー16+tRNS/alphaは4チャネル×2 bytesに展開される。[固定pdfcpuの画像処理](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/model/image.go)は展開画素とPDF用buffer・圧縮bufferを持つ。
 
-Eの上限直前・直後はRGBA16と透過パレットPNGの高さを1行だけ変え、実際のencoded bytesを含めて決める。E以内の候補は200と正常PDFを要求し、超過は422 `unsupported-image`、成功ヘッダーと部分PDFなしを要求する。設計の必須合格対象である縦横12 MP・高複雑度RGBA8も両quality・単独/同時2件で再確認する。
+正規化PNGの実サイズをB、画素数をPとし、上限は320 MiB。係数は実測から決めた受付用の値で、RSS/仮想メモリの上界ではない。
 
-JPEGは8064×6048（48,771,072 pixels）の4:4:4、単色RGB、quality 90、baseline/progressive、Orientation 1/6の4条件をstandardで測る。係数メモリと向き補正の条件を調べる入力であり、全実写真の時間の上界を示さない。別途、固定seedの高複雑度4:4:4 JPEG（4500×3800、quality 100、optimize）をstandard/originalで測る。同じJPEGをPDFへ埋め込み、入力約47.7 MiBのcompressをstandard/strongで画像処理と組み合わせる。各成功PDFはqpdfの構造・1ページを確認し、画像側ではA4・余白・寸法・透過を確認する。
+| PNGの型 | 見積りE |
+| --- | --- |
+| 16 bit・透過なしグレー | `64 MiB + 2B + 12P` |
+| その他の16 bit | `64 MiB + 2B + 48P` |
+| 8 bit以下・非パレットのカラー/透過付きグレー | `64 MiB + max(2B + 14P, 22P)` |
+| その他の8 bit以下（透過なしグレー、パレット） | `64 MiB + 2B + 12P` |
 
-## 16 bitの見積り見直し
+16 bitの画素係数は展開チャネル数×サンプル幅2 bytes×6である。8 bitカラーは圧縮PNGが小さくても、画素bufferを過大に受け付けない下限を設ける。高複雑度RGB8の失敗を防ぐには、係数12→14だけでは足りなかった。透過なしグレー8とパレットは従来の保守的な係数を維持する。16 bitグレー+tRNS/alphaは4チャネルへ展開されるため、透過なしグレーの緩和を適用しない。
 
-変更前の高複雑度RGB16（4000×1860、入力44,677,863 bytes）とRGBA16（4000×1600、51,236,483 bytes）は旧Eの320 MiB以内だったが、pdfcpuのAS 1 GiB下で拒否された。RGB16には200/422の両方を観測した。RGBA16の制限付き単独toolでも、圧縮bufferの75,497,472 bytes確保に失敗してexit 2となった。これはtool内のメモリ確保失敗で、コンテナのOOM/oom_killとは区別する。
+高さが1行違う境界入力を実サイズで確認した。幅4000 pxの場合、透過なしグレー16の低複雑度は22.360/22.364 MP、高複雑度は16.772/16.776 MP、RGB8/tRNSと低複雑度RGBA8は12.200/12.204 MP、高複雑度RGBA8は12.196/12.200 MPが受付直前/直後である。RGBA16の低複雑度5.588/5.592 MPと透過パレット19.168/19.172 MPも確認する。型・encoded bytesによって境界は変わり、寸法だけの成功保証ではない。
 
-16 bitの係数を48へ変更し、同じ入力をimport前に拒否する。修正版の低複雑度は約5.58 MP、高複雑度は型に応じ約4.18〜5.14 MPの、Eが320 MiBに近い入力を測る。AS 1 GiBやGo soft limit 200MiBを増やさず、8 bitの係数12を維持する。48は実測に基づく受付見積りであり、RSS/ASの上界や任意入力の成功を証明しない。大きいグレー16 bitも含め、以前より受付範囲が狭くなる。
+## 測定条件とdriverの検証
 
-小さいPNGを使う追加4件のHTTP回帰テストでは、旧・新の見積りの間に予算を設定し、pdfcpuのpathを起動後に故意に存在しないものへ変える。16 bitはtool起動前の422、同じ寸法の8 bitは実toolで200となることとjob削除を確認する。大画像測定の代わりにはしない。
+1条件ごとに新しいコンテナを使う。CPU 1、memory 1536 MiB、MemorySwap合計1536 MiB（追加swapなし）、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privileges。pdfcpuはAS 1024 MiB、GOMEMLIMIT 200MiB、GOGC 100、GOMAXPROCS 1、CORE 0を維持する。APIの同時2枠を既存PDF処理と共有し、送信前のbarrierで開始を合わせる。成功する同時2件では2 jobの重なりも要求する。HTTP時間はアップロード・全応答受信を含み、内部30秒deadlineの残り時間に換算しない。
+
+PNGは16 bitの型を保ってIHDR・画素・CRC・zlibを直接生成する。グレー/RGBのtRNS、グレー+alpha、RGBA、パレットの透過有無、低/高複雑度、縦横12 MP RGBA8を含む。非interlaceの測定であり、Adam7大画像の容量検証ではない。境界探索は1本の圧縮streamのprefixとcompressorのコピーを使い、PNG全体を行ごとに再生成しない。確定した隣接2入力だけを保存し、その実サイズでも境界をassertする。
+
+JPEGは8064×6048（48,771,072 pixels）の単色4:4:4・quality 90、baseline/progressive、Orientation 1/6をstandardで測る。全実写真の処理時間の上界ではない。別途、固定seedの高複雑度4:4:4 JPEG（4500×3800、quality 100、optimize、約47.7 MiB）を両qualityで測り、同じJPEGを埋め込んだPDFのcompress standard/strongと画像を同時に送る。混在には、受付超過RGBA8の422とcompressの200の組も含める。
+
+driverは次も確認する。
+
+- 測定専用のread-only shell wrapperがpdfcpuのexec直前に固定1 byteを追記する。起動時自己テスト分を消してから数え、PNG見積りによる422は起動0回、成功画像は要求数と同じ起動回数をassertする。20 msのprocess観測だけで「起動しなかった」と判断しない。wrapperは測定コンテナだけにbind mountし、製品imageへ追加しない。
+- 混在の期待statusはfixture manifestから取得し、画像側を200へ固定しない。
+- JSONでないエラー本文でもHTTP status・Content-Type・応答bytes/hashを先に保存する。JSON不正は検証エラーとして残し、通信エラーに置き換えない。本文そのものは保存しない。
+- 同時toolのVmSize/RSSは各processの最大を記録し、tool ASの残りbytes/割合を別項目に保存する。cgroupの余裕と区別する。
+- 成功PDFはqpdf構造・1ページ・A4/余白・PNG寸法/SMask・JPEG向きを検査する。拒否/504は成功ヘッダー・部分PDFなし、全条件でprocess/job削除・health・後続rotateを確認する。
 
 ## 修正版の結果
 
-通常設定の124コンテナ測定・194要求は、200が170要求、見積り超過による422が24要求で、すべて期待どおりだった。500/503/504、OOM/oom_kill、残存job/tool、終了後health失敗は0。全コンテナで後続の既存rotateも200。下表は単独/同時2件・両qualityを含む各群の最大で、列ごとに異なる測定が最大となることがある。
+通常設定は188コンテナ・292要求で、210件200、82件422 `unsupported-image`、全条件が期待どおりだった。500/503/504、OOM/oom_kill、残存job/tool、health失敗は0。全コンテナで後続rotateが200だった。
 
-| 測定群 | 要求数・結果 | 最大HTTP秒 | cgroup peak MiB | tmpfs観測peak MiB |
-| --- | --- | ---: | ---: | ---: |
-| 見積り以内の16 bit PNG | 78件200 | 3.023 | 425.80 | 127.62 |
-| 見積り以内のパレットPNG | 30件200 | 1.947 | 465.61 | 146.27 |
-| 必須合格対象の12 MP高複雑度RGBA8 | 12件200 | 3.013 | 541.15 | 183.22 |
-| 約48 MP・4:4:4 JPEG standard | 12件200 | 1.172 | 609.21 | 19.99 |
-| 画像処理とcompressの混在 | 32件200 | 3.895 | 504.86 | 135.77 |
-| 見積り超過PNG | 24件422 | 1.087 | 179.55 | 145.68 |
+| 測定群（単独/同時2件・両quality） | 要求数・結果 | 最大HTTP秒 | cgroup peak MiB | tmpfs観測peak MiB | pdfcpu最大VmSize MiB | AS 1024 MiBの残り |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 透過なしグレー16 | 24件200 | 2.251 | 439.08 | 128.02 | 929.77 | 9.20% |
+| その他の16 bit PNG | 66件200 | 2.774 | 427.84 | 127.62 | 929.83 | 9.20% |
+| パレットPNG | 30件200 | 2.039 | 462.32 | 146.27 | 992.65 | 3.06% |
+| 8 bitカラーPNG（12 MPと境界） | 36件200 | 2.949 | 542.31 | 186.18 | 994.40 | 2.89% |
+| 約48 MP・4:4:4 JPEG standard | 12件200 | 1.240 | 609.31 | 19.99 | 734.99 | 28.22% |
+| 画像とcompressの混在 | 36件200・4件422 | 3.917 | 465.48 | 146.95 | 800.44 | 21.83% |
+| PNG見積り超過（混在を除く） | 78件422 | 1.275 | 196.19 | 162.06 | 起動0回 | — |
+
+この表以外に約47.7 MiB JPEGの単独/同時2件を両qualityで6要求測り、すべて200だった。表の各列の最大は同じ測定とは限らない。混在のcompressは20要求すべてでJPEGを1件再圧縮した。PNGの見積り超過は単独/同時2件の78要求と混在の4要求すべてでpdfcpuの起動0回をassertした。成功画像190要求では起動190回だった。
 
 | 約48 MP JPEGの条件 | 単独HTTP秒 | 同時2件の遅い方のHTTP秒 | 同時2件cgroup peak MiB |
 | --- | ---: | ---: | ---: |
-| baseline・Orientation 1 | 0.297 | 0.543 | 71.04 |
-| baseline・Orientation 6 | 0.330 | 0.546 | 71.05 |
-| progressive・Orientation 1 | 0.611 | 1.172 | 609.21 |
-| progressive・Orientation 6 | 0.617 | 1.136 | 608.66 |
+| baseline・Orientation 1 | 0.306 | 0.477 | 70.74 |
+| baseline・Orientation 6 | 0.297 | 0.508 | 67.76 |
+| progressive・Orientation 1 | 0.625 | 1.168 | 607.04 |
+| progressive・Orientation 6 | 0.624 | 1.240 | 609.31 |
 
-この表以外に約47.7 MiBの高複雑度JPEGの単独/同時2件を6要求測り、すべて200。混在測定のcompressは全16要求でJPEGを1件再圧縮した。通常設定の全体最大HTTPは5.098秒、cgroup peak 609.21 MiB（制限1536 MiB）、tmpfs観測peak 190.625 MiB（制限256 MiB）、単一jobの観測割当量95.313 MiB（予算124 MiB）、最終PDF最大47.653 MiB（上限54 MiB）。観測した容量余裕はこの合成入力での結果であり、サンプリングで捕捉できなかった瞬間の値、全入力、異なるCPU/配置条件へ一般化しない。
+全体のHTTP最大は5.199秒、cgroup最大609.31/1536 MiB、tmpfs観測190.629/256 MiB、単一job観測98.457/124 MiB、出力最大47.653/54 MiB。cgroupには約927 MiBの余裕がある一方、pdfcpuのASは最大VmSize 994.402 MiBに対して**残り29.598 MiB、約2.89%**しかない。パレットも約3.06%である。初回提案でも12 MP RGBA8は993.902 MiBで約2.94%、16 bitは930.836 MiBで約9.10%だった。メモリ確保失敗で先に効いたのはこのtool ASであり、コンテナの物理メモリ余裕だけを配置可の根拠にしない。今回の受付見直しは失敗した入力を外す対策であり、任意入力で十分なAS余裕を保証する対策ではない。
 
-短い期限の別測定は、約47.7 MiB JPEGのoriginalがHTTP 504・2.427秒で終了し、PDF/成功ヘッダーを返さず、残存job/tool 0、health/後続rotate 200、OOM/oom_kill 0だった。2.427秒はHTTP全体であり、内部の2秒予算と同一の尺度ではない。生データの`deadline_final`には通常設定の対照1要求もあり、上の194要求へ重複加算しない。
-
-変更前の116コンテナ測定では15条件が候補の期待を満たさなかった。高複雑度16 bit RGB/RGBAのtool拒否と、tRNSを宣言していても透明画素のなかったRGB16入力のSMask期待を区別する。修正版は透明画素を持つfixtureでSMaskも確認した。変更前の数値を修正版の成功件数へ合算しない。
+短い期限は別の1コンテナ・1要求で504、HTTP 2.337秒、成功ヘッダー/部分PDFなし、OOM/oom_kill 0、残存job/tool 0、health/後続rotate 200だった。HTTP全体の2.337秒を内部2秒予算と同じ尺度にしない。通常292要求には合算しない。
 
 ## 生データと再現
 
-HTTP・cgroup・tmpfs・tool RSS/AS/FSIZE/COREの生記録、対象SHA、完全なDocker image ID、tool/driver版、fixture bytes・完全なSHA-256・seed、残存job/tool・health・既存rotateの結果は [from-images-followup-results.json](from-images-followup-results.json) に保存する。PDF/PNG/JPEG本体はリポジトリへ含めない。tmpfsとRSSは20 msのサンプリング値、cgroup peakはkernelの値。短いtoolを捕捉できなかった0を実処理時間0とは扱わない。loopback HTTPのbash/catは測定コンテナ内で動き、cgroup peakへ含まれる。
+[生データ](from-images-followup-results.json)の `review_final` が型別見積りの今回の測定、`review_baseline` が8 bit境界の失敗再現、`review_probes` が固定toolの予備試験である。`baseline` はmain `0c8aea1` の初回測定、`final` / `deadline_final` は一律48の初回提案の記録であり、今回の成功件数へ合算しない。初回提案は通常124条件・194要求（170件200、24件422）、cgroup最大609.21 MiBだったが、8 bitの受付境界が不足していた。
 
-hostにPillow・NumPy・qpdfとDockerが必要。通常CIへ大画像を追加しない。
+対象SHA、完全なDocker image ID、tool/driver版、script hash、fixture bytes・完全なSHA-256・seed、HTTP・cgroup/tmpfs・tool RSS/VmSize/AS/FSIZE/CORE、残存job/toolとhealth/rotateを保存する。PNG/JPEG/PDF本体はリポジトリに含めない。tmpfsとprocessメモリは20 msのサンプリング値、cgroup peakはkernel値。捕捉できなかった瞬間の値や短いtoolの処理時間を保証しない。loopback HTTPのbash/catもcgroup peakに含まれる。
+
+hostにPillow・NumPy・qpdfとDockerが必要。大画像は通常CIへ追加せず、driverの小さい回帰テスト2件をCIで実行する。
 
 ```bash
-# 本PRの最終checkoutで実行。製品imageは測定対象のSHAから作る。
-git worktree add --detach /tmp/issue59-measured-source 4a24843608c8300ff0f220f276895bbaa62d8ed2
-docker build -t amane-pdf-api:issue59-final /tmp/issue59-measured-source
-python3 scripts/from-images-followup.py --generate-only --fixtures /tmp/issue59-fixtures
-sudo python3 scripts/from-images-followup.py amane-pdf-api:issue59-final \
-  --target-sha 4a24843608c8300ff0f220f276895bbaa62d8ed2 \
-  --fixtures /tmp/issue59-fixtures --output /tmp/issue59-results --mixed --timeout-check
+git worktree add --detach /tmp/issue59-measured-source c3b4c9d3d0c77a3c1a0ba53e0fdfe2bf2a040259
+docker build -t amane-pdf-api:issue59-review /tmp/issue59-measured-source
+python3 /tmp/issue59-measured-source/scripts/from-images-followup-test.py
+python3 /tmp/issue59-measured-source/scripts/from-images-followup.py \
+  --generate-only --fixtures /tmp/issue59-review-fixtures
+sudo python3 /tmp/issue59-measured-source/scripts/from-images-followup.py amane-pdf-api:issue59-review \
+  --target-sha c3b4c9d3d0c77a3c1a0ba53e0fdfe2bf2a040259 \
+  --fixtures /tmp/issue59-review-fixtures --output /tmp/issue59-review-results --mixed --timeout-check
 ```
 
-短いdeadlineの追加確認は、有効な`QpdfTimeoutSeconds=2`と`CompressSoftTimeoutSeconds=1`を使う。`--timeout-check`で約47.7 MiB JPEGのoriginalを504にし、tool終了待ち・job削除・health 200・既存rotate 200を確認する。標準30秒の性能測定へ合算しない。再実行は新しいoutput dirを指定する。
+output dirは再実行ごとに新しくする。短いdeadlineは有効な `QpdfTimeoutSeconds=2` / `CompressSoftTimeoutSeconds=1` を使い、通常設定とは別に記録する。初回driverの1秒例は起動時設定検査を通らず、HTTP測定ではなかった。初回fixtureはコミット `55b645e` から28入力を再生成し、すべてSHA-256が一致した記録も保存した。旧PR #58の30枚測定の完全な入力hashと生ログは未回収であり、回収済みとは扱わない。
 
-変更前のfixture/driverはコミット `55b645e` の`--generate-only`で再現できる。測定imageのAPIコードはmain `0c8aea1`。生記録のfixture manifestのgenerator hashは予備測定のtool版取得処理修正前の値で、画素生成はこのコミットと同じ。別ディレクトリで28入力を再生成し、全入力のSHA-256一致を確認した記録もJSONへ保存した。fixtureごとの完全なハッシュを同一性の基準にする。
+## 通常検証と配置への引き継ぎ
 
-初回driverの1秒deadline例は、compress soft deadlineの21秒より短く起動時設定検査を通らないため、HTTP測定にはならなかった。driverを有効な2/1秒へ修正し、上記の別測定で確認した。これは製品コードの再変更ではない。124件の通常設定の生記録は保持し、起動しなかった例を504や正常な測定件数へ数えない。
+Release buildは警告0・エラー0。全760テストが成功、失敗/skip 0、所要3分15秒。追加のHTTP4ケースは、8 bitカラーが存在しないpdfcpuのpathへ到達する前に422となり、同じ予算で透過なしグレー16が実toolで200になることを確認する。sanitizerの追加1ケースはグレー16のtRNS/alphaに4チャネル分の予算が必要なことを検証する。従来の16 bit import前拒否4ケースも成功した。driver回帰2件は非JSON時のHTTP証拠保存と、prefix探索の境界と実PNGサイズの一致を確認する。
 
-## 通常検証
+hostのqpdf AppArmorによる拡張子なしのraw出力拒否は、既存CIと同じ配布バイナリの一時コピーをPATHと`Pdf__QpdfPath`へ指定して避けた。製品コードやhostのAppArmor設定を変更していない。TRXは`/tmp/issue59-review-test-results/issue59-review-all.trx`で、CI成果物とは別のローカル記録である。
 
-Release buildは警告0・エラー0。全755テストは成功、失敗/skip 0、所要3分16秒（追加の4ケースを含む）。Ubuntu hostのqpdf AppArmorによる拡張子なしのraw出力拒否は、既存CIと同じ配布バイナリの一時コピーをPATHと`Pdf__QpdfPath`へ指定して避けた。製品コードやhostのAppArmor設定は変更していない。固定pdfcpu/configは既存installerの検証用一時ディレクトリを指定した。TRXは`/tmp/issue59-test-results-20261011/issue59.trx`で、長期保存するCI成果物とは区別する。
+修正版Docker buildと全smokeが成功した。既存25 POST、compress両level、clean、splitのFSIZE実測、AS/CORE、read-only/non-root/network none、起動失敗・エラー非露出・job削除を確認した。大画像の189条件と通常smokeは別の検証である。
 
-修正版Docker buildと全smokeが成功。既存25 POST、compress両level、clean、splitのFSIZE実測、CORE/AS、read-only/non-root/network none、起動失敗・エラー非露出・job削除を確認した。大画像の124測定と通常smokeは別の検証である。
+製品のAS/Go soft limit、時間、入力/出力容量、同時2枠、cleanupを維持する。#46ではcgroup余裕だけで配置可と判断せず、pdfcpuのAS残り約3%を明示して採用版のレビューを行う。合成入力の成功を任意入力・別infra条件へ一般化しない。実際の配置条件を測定条件と合わせるか、その条件で再測定する。collector確認、infraのCORE=0/容量条件整合とHumanの配置承認は引き続き必要である。
 
-## 配置とサイトへの引き継ぎ
-
-本測定の条件と実際のinfra条件を合わせるか、配置条件で再測定する。#46のcollector確認・CORE=0・容量条件整合とHuman承認を配置前に確認し、API配置後にサイトを公開する。
-
-[サイト#41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)には、16 bit PNGは比較的小さい画像でも制限にかかること、縮小または利用者側で8 bit PNG/JPEGへ保存し直せることを引き継ぐ。PNGは両qualityで同じ処理なので「標準」に変えるだけでは解消しない。JPEGの大きい4:4:4 originalの向き補正制約は継続する。422/504時は画像・順序・画質の選択を保持し、自動再送・画質変更・PNGのJPEG化を行わない。
+[サイト#41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)とREADMEへ、8 bitカラーは約12.2 MP、16 bitカラー/透過付きグレーは低複雑度でも約5.6 MPで制限にかかること、透過なしグレー16は別の見積りを使うことを引き継ぐ。縮小、必要に応じ利用者側で8 bit PNG/JPEGとして保存し直す案内とする。PNGでは「標準」に変えるだけでは解消しない。422/504でも画像・順序・画質の選択を保持し、自動再送・自動画質変更・PNGのJPEG化を行わない。採用API版の配置後にサイトを公開する。
