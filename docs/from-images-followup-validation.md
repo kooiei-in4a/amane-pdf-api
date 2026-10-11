@@ -1,5 +1,7 @@
 # 画像からPDFの配置前容量検証（#59）
 
+> **訂正・再レビュー中:** 観測VmSizeとAS上限の差を「AS余裕2.89%」とした説明を撤回する。VmSizeはGoの予約とサンプリングの影響を受け、実際の必要ASを示さない。12 MPのAdam7 PNGでは、見積り内でも非決定的な422が報告された。下記は非interlaceの履歴であり、#59の完了・配置判断には使わない。[AS別反復の計画](from-images-as-plan.json)で合格基準を先に決め、製品設定を変更せずに再測定する。#46・サイト#41へ更新済みとした記載も誤りだったため、先に注意書きを反映した。
+
 2026-10-11 JST。[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の画像処理とcompressの混在、16 bit・パレットPNG、standardの約48 MP・4:4:4 JPEGを合成データで測る。PR #61のレビューを受け、8 bit RGB/RGBAの境界も追加した。実機配置・公開と[#46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)のcollector確認は別作業である。
 
 ## レビューを受けた変更と根拠
@@ -36,14 +38,14 @@ driverは次も確認する。
 - 測定専用のread-only shell wrapperがpdfcpuのexec直前に固定1 byteを追記する。起動時自己テスト分を消してから数え、PNG見積りによる422は起動0回、成功画像は要求数と同じ起動回数をassertする。20 msのprocess観測だけで「起動しなかった」と判断しない。wrapperは測定コンテナだけにbind mountし、製品imageへ追加しない。
 - 混在の期待statusはfixture manifestから取得し、画像側を200へ固定しない。
 - JSONでないエラー本文でもHTTP status・Content-Type・応答bytes/hashを先に保存する。JSON不正は検証エラーとして残し、通信エラーに置き換えない。本文そのものは保存しない。
-- 同時toolのVmSize/RSSは各processの最大を記録し、tool ASの残りbytes/割合を別項目に保存する。cgroupの余裕と区別する。
+- 同時toolのVmSize/RSSは各processのサンプリング最大を記録する。旧生データの`tool_address_space_headroom`は観測値と上限との差であり、必要ASや実際の余裕として解釈しない。AS別の反復失敗率で評価する。
 - 成功PDFはqpdf構造・1ページ・A4/余白・PNG寸法/SMask・JPEG向きを検査する。拒否/504は成功ヘッダー・部分PDFなし、全条件でprocess/job削除・health・後続rotateを確認する。
 
 ## 修正版の結果
 
 通常設定は188コンテナ・292要求で、210件200、82件422 `unsupported-image`、全条件が期待どおりだった。500/503/504、OOM/oom_kill、残存job/tool、health失敗は0。全コンテナで後続rotateが200だった。
 
-| 測定群（単独/同時2件・両quality） | 要求数・結果 | 最大HTTP秒 | cgroup peak MiB | tmpfs観測peak MiB | pdfcpu最大VmSize MiB | AS 1024 MiBの残り |
+| 測定群（単独/同時2件・両quality） | 要求数・結果 | 最大HTTP秒 | cgroup peak MiB | tmpfs観測peak MiB | pdfcpu観測最大VmSize MiB | 上限と観測値の差（余裕ではない） |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | 透過なしグレー16 | 24件200 | 2.251 | 439.08 | 128.02 | 929.77 | 9.20% |
 | その他の16 bit PNG | 66件200 | 2.774 | 427.84 | 127.62 | 929.83 | 9.20% |
@@ -62,7 +64,7 @@ driverは次も確認する。
 | progressive・Orientation 1 | 0.625 | 1.168 | 607.04 |
 | progressive・Orientation 6 | 0.624 | 1.240 | 609.31 |
 
-全体のHTTP最大は5.199秒、cgroup最大609.31/1536 MiB、tmpfs観測190.629/256 MiB、単一job観測98.457/124 MiB、出力最大47.653/54 MiB。cgroupには約927 MiBの余裕がある一方、pdfcpuのASは最大VmSize 994.402 MiBに対して**残り29.598 MiB、約2.89%**しかない。パレットも約3.06%である。初回提案でも12 MP RGBA8は993.902 MiBで約2.94%、16 bitは930.836 MiBで約9.10%だった。メモリ確保失敗で先に効いたのはこのtool ASであり、コンテナの物理メモリ余裕だけを配置可の根拠にしない。今回の受付見直しは失敗した入力を外す対策であり、任意入力で十分なAS余裕を保証する対策ではない。
+全体のHTTP最大は5.199秒、cgroup最大609.31/1536 MiB、tmpfs観測190.629/256 MiB、単一job観測98.457/124 MiB、出力最大47.653/54 MiB。pdfcpuの観測最大VmSizeは994.402 MiBだったが、AS上限1024 MiBとの差29.598 MiB（2.89%）を実際の余裕として扱えない。失敗する割当て自体はVmSizeへ反映されず、Goは上限に応じて予約を変えるためである。必要ASを少数回の二分探索で確定せず、ASごとの反復回数・失敗数を残す。コンテナの物理メモリ（cgroup）と仮想アドレス空間（AS）の上限を区別し、どちらか一方だけを配置可の根拠にしない。
 
 短い期限は別の1コンテナ・1要求で504、HTTP 2.337秒、成功ヘッダー/部分PDFなし、OOM/oom_kill 0、残存job/tool 0、health/後続rotate 200だった。HTTP全体の2.337秒を内部2秒予算と同じ尺度にしない。通常292要求には合算しない。
 
@@ -95,6 +97,6 @@ hostのqpdf AppArmorによる拡張子なしのraw出力拒否は、既存CIと�
 
 修正版Docker buildと全smokeが成功した。既存25 POST、compress両level、clean、splitのFSIZE実測、AS/CORE、read-only/non-root/network none、起動失敗・エラー非露出・job削除を確認した。大画像の189条件と通常smokeは別の検証である。
 
-製品のAS/Go soft limit、時間、入力/出力容量、同時2枠、cleanupを維持する。#46ではcgroup余裕だけで配置可と判断せず、pdfcpuのAS残り約3%を明示して採用版のレビューを行う。合成入力の成功を任意入力・別infra条件へ一般化しない。実際の配置条件を測定条件と合わせるか、その条件で再測定する。collector確認、infraのCORE=0/容量条件整合とHumanの配置承認は引き続き必要である。
+現在の製品AS/Go soft limit、時間、入力/出力容量、同時2枠、cleanupは変更していない。画像取込ASを見直す場合は、overlayと共用する設定を分け、IsValid・README・security文書も更新する。Go soft limitは強制停止の上限ではなく、AS増加は最終的な制限も緩めるため、最悪のAdam7同士・Adam7とcompressの同時2件を再測定する。結果後にAdam7対応範囲・取込専用AS・同時2件のcgroup余裕をまとめてKooが判断する。合成入力の成功を任意入力・別infra条件へ一般化しない。collector確認、infraのCORE=0/容量条件整合とHumanの配置承認は引き続き必要である。
 
-[サイト#41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)とREADMEへ、8 bitカラーは約12.2 MP、16 bitカラー/透過付きグレーは低複雑度でも約5.6 MPで制限にかかること、透過なしグレー16は別の見積りを使うことを引き継ぐ。縮小、必要に応じ利用者側で8 bit PNG/JPEGとして保存し直す案内とする。PNGでは「標準」に変えるだけでは解消しない。422/504でも画像・順序・画質の選択を保持し、自動再送・自動画質変更・PNGのJPEG化を行わない。採用API版の配置後にサイトを公開する。
+[サイト#41](https://github.com/kooiei-in4a/amane-tools-site/issues/41)と#46へ、旧結果を最新仕様として使わない注意書きを先に反映した。最終結果・採用版の引き継ぎは再測定後である。READMEは8 bitのカラー・透過付きグレー、低bitグレー+tRNS、Adam7の未解決事象を明記し、縮小または利用者側でJPEGへ保存する案内とした。8 bit化だけで解消するとは案内しない。PNGでは「標準」に変えるだけでは解消しない。422/504でも画像・順序・画質の選択を保持し、自動再送・自動画質変更・PNGのJPEG化を行わない。採用API版の配置後にサイトを公開する。
