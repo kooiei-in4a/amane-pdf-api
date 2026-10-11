@@ -154,7 +154,7 @@ from-imagesは拡張子・MIME・元ファイル名を参照せず、内容がJP
 
 JPEGは8 bit・1/3成分に限り、全体を上限付きで走査するJpegHeaderとstrict decoderを組み合わせます。最初のSOSまでの最初のExif APP1だけから、境界と型を検査したIFD0 Orientationを読みます。不正な値・重複は1にし、GPS等へ再帰しません。jpegtranはcopy none・strict・optimize・maxscans 100を固定し、必要な回転/反転/trimだけをAPIが選びます。生成JPEGは全scanを再検査してAPP/COM/末尾データの残存を拒否し、固定長JFIF densityを書き直します。
 
-PNGは64 KiB bufferでCRC・IHDR・chunk名・長さ・順序・PLTE/tRNS・連続IDAT・IENDを検査し、5種類の許可chunkだけを書き直します。APNG・未知critical chunkを拒否し、デコードは.NETで行いません。見積り320 MiBと画素数50 MPを併用し、固定版pdfcpuのデコード失敗は通常の422に分類します。PNGのmetadataを除去しても、pdfcpuでPDF化したときのサイズ増大は防げないため、出力とjobの容量制限を別に適用します。
+PNGは64 KiB bufferでCRC・IHDR・chunk名・長さ・順序・PLTE/tRNS・連続IDAT・IENDを検査し、5種類の許可chunkだけを書き直します。APNG・未知critical chunkを拒否し、デコードは.NETで行いません。見積り320 MiBと画素数50 MPを併用し、固定版pdfcpuのデコード失敗は通常の422に分類します。16 bitは広い画素と圧縮bufferの共存を踏まえ、見積りの画素係数を48 bytesへ変更しました（8 bit以下は12）。AS 1 GiB・Go soft limit 200MiB・コンテナmemoryを増やさず、見積り超過をimport前に422で拒否します。見積りはRSS/ASの上界の証明ではありません。PNGのmetadataを除去しても、pdfcpuでPDF化したときのサイズ増大は防げないため、出力とjobの容量制限を別に適用します。
 
 jobはupload・正規化画像・PNM・JPEG・全生成ページ・最終PDFと補助1 MiBを4 KiB単位で予約します。外部出力は予算Bの1 byte先までFSIZEを許可し、その丸めも予約して、実サイズがBを超えれば成功終了でも専用422にします。削除が成功するまで容量を解放しません。正規化直後に元uploadを削除し、importに必要な二重保持をなくします。pdfcpu importは既存PDFへ追記するため、生成ページのpathを事前作成せず、0700 jobで守って成功後に0600へ変更します。ページごとと最終PDFをqpdfで検査し、検査/結合失敗は500です。部分PDFは返しません。
 

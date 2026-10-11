@@ -72,6 +72,8 @@ def png(path, width, height, depth, color, alpha, high, seed):
         for row in range(height):
             if high:
                 pixels = rng.integers(0, maximum + 1, (width, channels), dtype=np.uint16 if depth == 16 else np.uint8)
+                if alpha and color in (0, 2):
+                    pixels[0] = maximum // 4
             else:
                 values = ([70, 100, 200, 128] if color == 6 else [100, 128] if color == 4
                           else [70, 100, 200] if color == 2 else [0] if color == 3 else [100])
@@ -98,7 +100,7 @@ def generate(directory):
         record = dict(name=name, file=path.name, bytes=path.stat().st_size, sha256=digest(path), **details)
         if details.get("format") == "png":
             record["png_working_bytes"] = (2 * record["bytes"] + details["width"] * details["height"] *
-                                           (24 if details["depth"] == 16 else 12) + 64 * MIB)
+                                           (48 if details["depth"] == 16 else 12) + 64 * MIB)
             record["expected"] = 200 if record["png_working_bytes"] <= 320 * MIB else 422
             record["expected_reason"] = None if record["expected"] == 200 else "unsupported-image"
         else:
@@ -108,13 +110,13 @@ def generate(directory):
         print(name, record["bytes"], record.get("png_working_bytes"), flush=True)
     # Near the 320 MiB estimate: low entropy is limited by pixel count; high
     # entropy also counts compressed bytes. RGBA16 high is near the upload cap.
-    formats = [("gray16", 16, 0, False, 2385), ("gray16-trns", 16, 0, True, 2385),
-               ("rgb16", 16, 2, False, 1860), ("rgb16-trns", 16, 2, True, 1860),
-               ("grayalpha16", 16, 4, True, 2090), ("rgba16", 16, 6, True, 1600),
+    formats = [("gray16", 16, 0, False, 1285), ("gray16-trns", 16, 0, True, 1285),
+               ("rgb16", 16, 2, False, 1115), ("rgb16-trns", 16, 2, True, 1115),
+               ("grayalpha16", 16, 4, True, 1195), ("rgba16", 16, 6, True, 1045),
                ("palette8", 8, 3, False, 4775), ("palette8-trns", 8, 3, True, 4775)]
     for index, (label, depth, color, alpha, high_height) in enumerate(formats):
         for high in (False, True):
-            width, height = 4000, high_height if high else (2788 if depth == 16 else 5570)
+            width, height = 4000, high_height if high else (1394 if depth == 16 else 5570)
             name = label + ("-high" if high else "-low")
             path = directory / (name + ".png")
             seed = 5900 + index
@@ -123,19 +125,19 @@ def generate(directory):
                 alpha=alpha, entropy="high" if high else "low", seed=seed)
     # Bracket the working limit with adjacent heights using the actual PNG size.
     for label, depth, color, high, initial_height, seed in (
-            ("rgba16-boundary", 16, 6, False, 2795, 5990),
+            ("rgba16-boundary", 16, 6, False, 1397, 5990),
             ("palette8-trns-boundary", 8, 3, True, 4790, 5991)):
         path = directory / (label + "-below.png")
         height = initial_height
         while True:
             png(path, 4000, height, depth, color, True, high, seed)
-            estimate = 2 * path.stat().st_size + 4000 * height * (24 if depth == 16 else 12) + 64 * MIB
+            estimate = 2 * path.stat().st_size + 4000 * height * (48 if depth == 16 else 12) + 64 * MIB
             if estimate > 320 * MIB:
                 height -= 1
                 continue
             above = directory / (label + "-above.png")
             png(above, 4000, height + 1, depth, color, True, high, seed)
-            above_estimate = 2 * above.stat().st_size + 4000 * (height + 1) * (24 if depth == 16 else 12) + 64 * MIB
+            above_estimate = 2 * above.stat().st_size + 4000 * (height + 1) * (48 if depth == 16 else 12) + 64 * MIB
             if above_estimate <= 320 * MIB:
                 height += 1
                 continue
@@ -143,6 +145,13 @@ def generate(directory):
                 add(label + "-" + suffix, target, format="png", width=4000, height=h,
                     depth=depth, color=color, alpha=True, entropy="high" if high else "low", seed=seed)
             break
+    # The old high-entropy RGB/RGBA failures must now be rejected before import.
+    for label, color, height, seed in (("rgb16", 2, 1860, 5902), ("rgba16", 6, 1600, 5905)):
+        name = "oversized-" + label + "-high"
+        path = directory / (name + ".png")
+        png(path, 4000, height, 16, color, color == 6, True, seed)
+        add(name, path, format="png", width=4000, height=height, depth=16, color=color,
+            alpha=color == 6, entropy="high", seed=seed)
     # Recheck the design's mandatory 12 MP RGBA acceptance cases with new inputs.
     for portrait in (False, True):
         w, h = (3000, 4000) if portrait else (4000, 3000)

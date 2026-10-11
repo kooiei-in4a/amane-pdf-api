@@ -128,7 +128,10 @@ internal static class PngSanitizer
     }
 
     internal static long WorkingBytes(int width, int height, int depth, long encoded) =>
-        checked(2 * encoded + (long)width * height * (depth == 16 ? 24 : 12) + 64 * 1048576);
+        // 16-bit RGB/alpha retains wider pixels and growing compression buffers.
+        // #59 measured failures below the old estimate at the existing 1 GiB AS.
+        // This is an admission estimate, not a bound on RSS or virtual memory.
+        checked(2 * encoded + (long)width * height * (depth == 16 ? 48 : 12) + 64 * 1048576);
 
     internal static uint UpdateCrc(uint crc, ReadOnlySpan<byte> bytes)
     {

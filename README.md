@@ -429,7 +429,7 @@ LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・f
 
 同じ30秒の起動deadline内で、画像用djpeg・cjpeg・jpegtran・pdfcpu importの実変換とqpdf検査も行います。小さなEXIF回転JPEGを両qualityで、RGBA PNGをoriginalで変換します。失敗時は「画像からPDFへの変換の自己テストに失敗しました。」の固定ログで待受を開始せず終了します。画像用maxmemoryの320Mは約305.18 MiBで、AS 384 MiBから約78.82 MiBを残します。AS 320 MiBへ下げるなら268Mが上限です。
 
-PNG見積りは`2×正規化PNG bytes + 幅×高さ×(16 bitなら24、それ以外は12) + 64 MiB`です。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
+PNG見積りは`2×正規化PNG bytes + 幅×高さ×(16 bitなら48、それ以外は12) + 64 MiB`です。16 bitの係数は[#59](https://github.com/kooiei-in4a/amane-pdf-api/issues/59)の大画像測定で24から48へ見直しました。16 bitの受付範囲は狭くなり、低複雑度でも約5.6 MPが見積り上の上限です。入力bytesも数えるため、高複雑度ではさらに小さくなります。画像を小さくするか、利用者側で8 bit PNG/JPEGへ保存し直して再送してください。見積り以内のすべての画像の変換成功を保証するものではありません。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
 
 Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。新しいHTTP endpointはありません。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
 
