@@ -227,6 +227,13 @@ def generate(directory):
         cases=cases))
 
 
+def stdout_only_qpdf(tool, arguments):
+    # These inspection commands write no output file. The product discards or
+    # bounds stdout, and intentionally sets AS/CORE without setting FSIZE.
+    return tool == "qpdf" and len(arguments) == 3 and arguments[1] in (
+        b"--check", b"--is-encrypted", b"--requires-password", b"--show-npages")
+
+
 class Monitor(images.Monitor):
     def loop(self):
         while not self.stop.wait(.02):
@@ -256,7 +263,13 @@ class Monitor(images.Monitor):
                         limit = line[len(prefix):].split()[0]
                         # prlimit can be sampled before it has applied limits; record tools only.
                         if name != "prlimit":
-                            assert limit != "unlimited" and (key != "core" or limit == "0")
+                            if key == "fsize" and limit == "unlimited":
+                                arguments = (proc / "cmdline").read_bytes().rstrip(b"\0").split(b"\0")
+                                assert stdout_only_qpdf(name, arguments), f"pid={pid} tool={name} fsize=unlimited"
+                                values["qpdf_inspection_unlimited_fsize_observed"] = 1
+                                continue
+                            assert limit != "unlimited" and (key != "core" or limit == "0"), \
+                                f"pid={pid} tool={name} {key}={limit}"
                             values[name + "_" + key] = int(limit)
                 values["active_tools"] = active
                 for key, value in values.items():
@@ -272,7 +285,7 @@ class Monitor(images.Monitor):
         self.stop.set(); self.thread.join()
         self.peak.update(memory_peak=int((self.cg / "memory.peak").read_text()), samples=self.samples,
             memory_events={k: int(v) for k, v in (line.split() for line in (self.cg / "memory.events").read_text().splitlines())},
-            monitor_error=None if self.error is None else str(self.error),
+            monitor_error=None if self.error is None else f"{type(self.error).__name__}: {self.error}",
             tool_seconds_sampled={name: round(sum(p["last"] - p["first"] for p in self.processes.values() if p["tool"] == name), 3)
                                   for name in TOOLS})
         # VmSize is sampled and includes runtime reservations. Its distance
@@ -404,7 +417,7 @@ def run_case(args, specs, label, settings=()):
             row["rotate_after"] = 200
         except Exception as error:
             row["validation_errors"].append(str(error) or "rotate failed")
-        if row["memory_events"]["oom"] or row["memory_events"]["oom_kill"] or row["monitor_error"]:
+        if row["memory_events"]["oom"] or row["memory_events"]["oom_kill"] or row["monitor_error"] is not None:
             row["validation_errors"].append("OOM or monitor failure")
         if not row["samples"] or row["remaining_tools"] or row["health_after"] != 200:
             row["validation_errors"].append("measurement/cleanup/health failure")

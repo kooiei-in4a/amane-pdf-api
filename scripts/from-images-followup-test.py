@@ -14,6 +14,31 @@ spec.loader.exec_module(m)
 
 
 class DriverTests(unittest.TestCase):
+    def test_only_read_only_qpdf_commands_allow_unlimited_fsize(self):
+        for flag in (b"--check", b"--is-encrypted", b"--requires-password", b"--show-npages"):
+            self.assertTrue(m.stdout_only_qpdf("qpdf", [b"/usr/bin/qpdf", flag, b"input.pdf"]))
+        self.assertFalse(m.stdout_only_qpdf("qpdf", [b"/usr/bin/qpdf", b"input.pdf", b"output.pdf"]))
+        self.assertFalse(m.stdout_only_qpdf("qpdf", [b"/usr/bin/qpdf", b"--check", b"input.pdf", b"output.pdf"]))
+        self.assertFalse(m.stdout_only_qpdf("cjpeg", [b"/usr/bin/cjpeg", b"--check", b"input.pdf"]))
+
+    def test_monitor_preserves_an_empty_exception_as_a_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cg = Path(directory)
+            (cg / "memory.peak").write_text("123\n")
+            (cg / "memory.events").write_text("oom 0\noom_kill 0\n")
+            monitor = m.Monitor.__new__(m.Monitor)
+            monitor.cg = cg
+            monitor.stop = threading.Event()
+            monitor.thread = threading.Thread(target=lambda: None)
+            monitor.thread.start()
+            monitor.peak = {}
+            monitor.processes = {}
+            monitor.samples = 0
+            monitor.error = AssertionError()
+            metrics = monitor.finish()
+        self.assertTrue(metrics["monitor_error"])
+        self.assertIn("AssertionError", metrics["monitor_error"])
+
     def test_startup_failure_keeps_non_http_evidence(self):
         spec = importlib.util.spec_from_file_location("as_validation", Path(__file__).with_name("from-images-as-validation.py"))
         driver = importlib.util.module_from_spec(spec)

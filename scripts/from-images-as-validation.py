@@ -222,7 +222,7 @@ def direct_batch(args, case, as_mib, repetitions):
         remaining = [name for name in api.exec("ps", "-eo", "comm").stdout.decode().splitlines() if name in m.TOOLS]
         health = api.request("GET", "/healthz")[0]
         assert not remaining and health == 200
-        assert not metrics["memory_events"]["oom"] and not metrics["memory_events"]["oom_kill"] and not metrics["monitor_error"]
+        assert not metrics["memory_events"]["oom"] and not metrics["memory_events"]["oom_kill"] and metrics["monitor_error"] is None
     # VmSize remains a sampled diagnostic; it is not an AS reserve measurement.
     metrics.pop("tool_address_space_headroom", None)
     row = dict(name=case["name"], address_space_mib=as_mib, input_sha256=case["sha256"], trials=trials,
@@ -283,7 +283,7 @@ def http_batch(args, cases, specs, as_mib):
         errors = []
         if invocations != expected_invocations or remaining or health != 200:
             errors.append("Invocation/cleanup/health failure")
-        if metrics["memory_events"]["oom"] or metrics["memory_events"]["oom_kill"] or metrics["monitor_error"]:
+        if metrics["memory_events"]["oom"] or metrics["memory_events"]["oom_kill"] or metrics["monitor_error"] is not None:
             errors.append("OOM or monitor failure")
         if metrics["memory_peak"] >= .9 * 1536 * MIB:
             errors.append("cgroup reserve below the predeclared 10%")
