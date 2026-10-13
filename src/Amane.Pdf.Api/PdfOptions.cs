@@ -21,6 +21,8 @@ public sealed class PdfOptions
     public int MaxConcurrentProcesses { get; set; } = 2;
     public const int MultipartOverheadBytes = 64 * 1024;
     public long MaxRequestBytes => checked(MaxFileBytes + MultipartOverheadBytes);
+    public long MaxStampImageBytes { get; set; } = 1024 * 1024;
+    public long MaxStampRequestBytes => checked(MaxFileBytes + MaxStampImageBytes + MultipartOverheadBytes);
     public long MaxMergeRequestBytes => checked(MaxMergeInputBytes + MultipartOverheadBytes);
     public string QpdfPath { get; set; } = "qpdf";
     public string PdfcpuPath { get; set; } = "pdfcpu";

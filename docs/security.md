@@ -208,6 +208,18 @@ CropBox外の本文はForm BBoxで表示されなくなり、後でCropBoxを広
 
 透過はAPIが固定値0.25から生成する白紙のExtGStateで設定します。白紙には利用者の文字を入れず、pdfcpuが追記するContents streamをページごとに独立させます。共有streamによる他ページの文字混入を回帰テストで検査します。透過指定がない既存の描画では白紙の生成形式を維持します。全ページの対象範囲は既に取得したmetadataから決め、入力検査を二重にしません。容量・共有30秒・同時2枠・キャンセル時のprocess tree終了待ち・job削除は共通overlay処理を使います。[透かし検証記録](watermark-validation.md)に実測と文字抽出・viewer上の制約を記載します。
 
+## 電子印鑑（PNG画像の押印、Linux）
+
+`stamp-image`はPDFとPNGを各1個、ストリーミングで読みます。PDF 50 MiB・画像1 MiBのpart上限に加え、request全体の50 MiB + 1 MiB + 64 KiBをContent-Lengthと読み取りbytesの両方で制限します。他endpointのrequest上限は広げません。画像はAPI生成の0600ファイルへ置き、利用者のfilename・Content-Type・pathは処理やログに使いません。
+
+既存PngSanitizerのsignature・全chunk CRC・順序・IHDR・depth/color type・PLTE/tRNS・APNG検査とmetadata除去を使い、縦横各2000 px以下を追加で確認します。IDATはencoded 1 MiB以下だけを保持し、ZLibStreamで1行ずつ展開してAdam7を含むデータの過不足・filter・zlib header・Adler-32を検査します。展開画素全体を保持しません。圧縮bytesだけで展開メモリを推定せず、既存のPNG working bytes見積りも適用します。from-imagesの入力契約は変更しません。
+
+画像をoverlayの容量台帳へ載せ、描画検査後に削除して容量を解放します。PNG検査中の入力PDF・upload・sanitize済み画像の合計も起動時にjob予算へ収まることを確認します。文字用JSONを使わない描画ではJSONの予約・存在確認を省きます。座標・scaleは検証済み値からInvariantCultureで生成し、shellを使わずArgumentListで渡します。
+
+pdfcpuは固定設定・offline・job内HOME・AS 1 GiB・GOMEMLIMIT 200 MiB・CORE 0・FSIZE 1で実行し、レイヤーPDFをstdoutから最大8 MiBまで受け取ります。超過分は保持せず排出し、422 `image-too-complex`にします。FSIZEによる部分ファイル削除を入力破損の根拠にしません。起動失敗・signal・Go runtime障害・異常な生成PDFは固定500、PNG検査済みのstamp exit 1は422 `unsupported-image`です。stderr・stdout本文をログへ出しません。
+
+共有timeout・request中断・アプリ停止でprocess treeの終了を待ち、印影を含む一時ファイルを削除します。出力は共通overlayのqpdf検査・ページ数と属性比較を通します。印影に改ざん防止・本人確認の効力はありません。描画・最大入力同時2件の検証は[検証記録](stamp-image-validation.md)を参照してください。
+
 ## core dumpと公開条件
 
 FSIZE超過時のSIGXFSZの既定動作はcoreを伴う終了です。Linuxの共通起動経路でSIGXFSZをSIG_IGNへ設定してtoolへexecし、この終了を防ぎます。書込み上限はprlimitで維持します。qpdfは切れたJSONでもexit 0となり得るため、pages／metadataの実サイズが上限以上なら、同値を含めて既知のmetadata上限として画像処理を終了します。splitは従来どおりpartBudget+1のFSIZEと実サイズの比較で専用422を返します。

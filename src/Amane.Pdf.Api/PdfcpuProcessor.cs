@@ -93,6 +93,32 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
         File.SetUnixFileMode(outputPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
 
+    internal async Task StampImageAsync(TemporaryPdfFiles files, StampImage image, StampPlacement placement,
+        string blankPath, string outputPath, long pdfBudget, CancellationToken token)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        RequireJobPath(files, image.Path); RequireJobPath(files, blankPath); RequireJobPath(files, outputPath);
+        if (pdfBudget is <= 0 or > LayerFileLimitBytes || Path.GetFileName(image.Path) != "stamp.png" ||
+            image.Width is < 1 or > StampImageInput.MaxSide || image.Height is < 1 or > StampImageInput.MaxSide ||
+            new FileInfo(image.Path).Length is <= 0 or > StampImageInput.MaxBytes ||
+            new FileInfo(blankPath).Length is <= 0 or > LayerFileLimitBytes || !placement.IsValid ||
+            Path.GetFullPath(blankPath) == Path.GetFullPath(files.InputPath) ||
+            Path.GetFullPath(blankPath) == Path.GetFullPath(outputPath) || File.Exists(outputPath))
+            throw new ArgumentException("Image stamp arguments are invalid.");
+        // FSIZE cannot identify overflow: pdfcpu deletes partial files on exit 1.
+        // Capture its PDF on stdout instead; the runner drains excess without retaining it.
+        var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
+            ["stamp", "add", "-m", "image", "--", image.Path, placement.Description, blankPath, "-"],
+            fileBudget: 1, stdoutLimit: (int)pdfBudget), token);
+        if (result.ExitCode is < 0 or 126 or 127 or >= 128) throw new InvalidOperationException(Failure);
+        if (result.Stdout is null) throw new PdfStampImageException(PdfStampImageReason.TooComplex);
+        if (result.ExitCode == 1) throw PdfStampImageException.Unsupported();
+        if (result.ExitCode != 0 || result.Stdout.Length == 0) throw new InvalidOperationException(Failure);
+        await using (var file = TemporaryPdfFiles.CreatePrivateFile(outputPath))
+            await file.WriteAsync(result.Stdout, token);
+        await CheckOutputAsync(files, outputPath, 1, token);
+    }
+
     private Task<ExternalProcessResult> QpdfAsync(TemporaryPdfFiles files, string[] arguments,
         CancellationToken token, int? stdoutLimit = null)
         => ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(settings.PrlimitPath,
@@ -247,6 +273,13 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             await processor.CreateAsync(files, new(new Dictionary<int, IReadOnlyList<PdfcpuText>>
                 { [1] = [new("起動確認", Dy: 12)] }), blank, files.OutputPath,
                 LayerFileLimitBytes, LayerFileLimitBytes, token);
+            File.Delete(files.OutputPath);
+            await using (var png = TemporaryPdfFiles.CreatePrivateFile(files.StampImagePath))
+                await png.WriteAsync(Convert.FromBase64String(PdfFromImagesProcessor.StartupPng), token);
+            var image = new StampImage(files.StampImagePath, 16, 24);
+            await processor.StampImageAsync(files, image,
+                StampPlacement.Calculate(new(1, 0.7m, 0.1m, 0.12m), image, new(595, 842)),
+                blank, files.OutputPath, LayerFileLimitBytes, token);
         }
         catch (Exception) { throw new PdfcpuStartupException(); }
     }

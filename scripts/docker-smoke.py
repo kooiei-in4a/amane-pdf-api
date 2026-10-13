@@ -2,6 +2,7 @@
 """実Docker上のPDF APIを検証する。Python標準ライブラリのみ使用する。"""
 
 import contextlib
+import base64
 import http.client
 import io
 import json
@@ -31,7 +32,7 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD, files=None, text=None):
+def multipart(file=None, password=PASSWORD, files=None, text=None, image=None):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
     inputs = files if files is not None else ([] if file is None else [file])
@@ -46,6 +47,9 @@ def multipart(file=None, password=PASSWORD, files=None, text=None):
         )
     if text is not None:
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\n{text}\r\n'.encode())
+    if image is not None:
+        parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="../../untrusted.png"\r\n'
+                      'Content-Type: application/octet-stream\r\n\r\n').encode() + image + b'\r\n')
     parts.append(f"--{boundary}--\r\n".encode())
     return b"".join(parts), "multipart/form-data; boundary=" + boundary
 
@@ -588,6 +592,17 @@ def main(image):
         assert status == 200 and headers["Content-Type"] == "application/pdf"
         assert "filename=watermarked.pdf" in headers["Content-Disposition"]
         assert api.page_rotations(watermarked) == [0, 0, 0]
+        api.assert_clean()
+        stamp = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAABAAAAAYCAYAAADzoH0MAAAAIUlEQVR4nGO8IyLSwEABYKJE86gBowaMGjBqwKgBg80AANH/AbRalHV6AAAAAElFTkSuQmCC")
+        body, content_type = multipart(FIXTURE, password=None, image=stamp)
+        status, headers, stamped = api.request("POST", "/api/pdf/stamp-image?page=1&x=0.7&y=0.1&width=0.12", body, content_type)
+        assert status == 200 and headers["Content-Type"] == "application/pdf"
+        assert "stamped.pdf" in headers["Content-Disposition"]
+        assert api.page_rotations(stamped) == [0]
+        api.assert_clean()
+        body, content_type = multipart(FIXTURE, password=None, image=b"not PNG")
+        status, _, problem = api.request("POST", "/api/pdf/stamp-image?page=1&x=0.7&y=0.1&width=0.12", body, content_type)
+        assert status == 422 and json.loads(problem)["reason"] == "unsupported-image"
         api.assert_clean()
         body, content_type = multipart(FIXTURE, password=None, text="PRIVATE_WATERMARK%")
         status, _, problem = api.request("POST", "/api/pdf/watermark?style=diagonal&color=gray", body, content_type)

@@ -118,3 +118,6 @@ jobs:
 
       - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
         run: /usr/bin/python3 scripts/from-images-validation.py amane-pdf-api:ci
+
+      - name: Verify stamp image orientation, transparency and non-target pages (CI tools only)
+        run: /usr/bin/python3 scripts/stamp-image-validation.py amane-pdf-api:ci

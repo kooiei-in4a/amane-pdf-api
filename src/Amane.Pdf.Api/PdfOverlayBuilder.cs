@@ -21,7 +21,8 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
 
     internal async Task BuildAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
         Func<OverlayCanvas, CancellationToken, Task> draw, CancellationToken token,
-        Action<OverlayStage>? observe = null, double? fillOpacity = null)
+        Action<OverlayStage>? observe = null, double? fillOpacity = null,
+        IReadOnlyList<string>? drawInputs = null, bool layerJson = true)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         if (fillOpacity is { } opacity && (!double.IsFinite(opacity) || opacity <= 0 || opacity >= 1))
@@ -34,6 +35,13 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         var layer = Path.Combine(files.DirectoryPath, "overlay-layer.pdf");
         var overlaid = Path.Combine(files.DirectoryPath, "overlaid.pdf");
         var intermediates = new[] { metadata, update, blankJson, blank, layer, overlaid, files.PdfcpuLayerJsonPath };
+        var inputs = drawInputs?.Select(Path.GetFullPath).ToArray() ?? [];
+        if (inputs.Distinct(StringComparer.Ordinal).Count() != inputs.Length || inputs.Any(path =>
+            Path.GetDirectoryName(path) != Path.GetFullPath(files.DirectoryPath) ||
+            path == Path.GetFullPath(files.InputPath) || path == Path.GetFullPath(files.OutputPath) ||
+            intermediates.Any(other => path == Path.GetFullPath(other)) || !File.Exists(path) || new FileInfo(path).Length == 0))
+            throw new ArgumentException("描画入力pathが不正です。");
+        intermediates = [.. intermediates, .. inputs];
         var inputValidated = false;
         var completed = false;
         var stage = Stopwatch.StartNew();
@@ -72,6 +80,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             var inputBytes = new FileInfo(files.InputPath).Length;
             if (inputBytes > Math.Min(settings.MaxFileBytes, InputLimitBytes)) throw PdfOverlayInputException.TooComplex();
             capacity.Reserve(files.InputPath, inputBytes);
+            foreach (var path in inputs) capacity.Reserve(path, new FileInfo(path).Length);
             await qpdf.ValidateAsync(files, token);
             Mark("validate-input", inputBytes);
             int count, from, to;
@@ -92,18 +101,19 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             await WritePdf(blank, ["--json-input", blankJson, blank]);
             capacity.Delete(blankJson);
             Mark("blank", new FileInfo(blank).Length);
-            var jsonBudget = capacity.ReserveWrite(files.PdfcpuLayerJsonPath, settings.OverlayGeneratedLimitBytes);
+            var jsonBudget = layerJson ? capacity.ReserveWrite(files.PdfcpuLayerJsonPath, settings.OverlayGeneratedLimitBytes) : 0;
             var pdfBudget = capacity.ReserveWrite(layer, settings.OverlayGeneratedLimitBytes, true);
             var canvas = new OverlayCanvas(blank, layer,
                 originals.Select(page => new PdfcpuPageSize(page.DisplayWidth, page.DisplayHeight)).ToArray(), jsonBudget, pdfBudget);
             await draw(canvas, token);
-            capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
+            if (layerJson) capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
             capacity.Commit(layer, pdfBudget);
             // Treat the delegate's output as generated data: it must pass the same checks.
             await ValidateGenerated(layer, originals.Length, token);
             Mark("draw", new FileInfo(layer).Length);
             observe?.Invoke(new("layer-budget", 0, pdfBudget));
             capacity.Delete(blank); capacity.Delete(files.PdfcpuLayerJsonPath);
+            foreach (var path in inputs) capacity.Delete(path);
             await WritePdf(overlaid, [files.InputPath, "--update-from-json=" + update, overlaid,
                 "--overlay", layer, "--to=" + from + "-" + to, "--from=1-z", "--"]);
             Mark("overlay", new FileInfo(overlaid).Length);

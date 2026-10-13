@@ -1,0 +1,146 @@
+[
+  {
+    "rotation": 0,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 0,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 0,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 90,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 90,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 90,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 180,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 180,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 180,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 270,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 270,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 270,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false
+  },
+  {
+    "rotation": 0,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 0,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 0,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 90,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 90,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 90,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 180,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 180,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 180,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 270,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 270,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true
+  },
+  {
+    "rotation": 270,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true
+  }
+]

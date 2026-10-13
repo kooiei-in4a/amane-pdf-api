@@ -1,0 +1,40 @@
+{
+  "input_bytes": 52428800,
+  "metadata_bytes": 33030150,
+  "objects": 50000,
+  "pages": 1000,
+  "image_bytes": 1048576,
+  "image_sides": [
+    2000,
+    2000
+  ],
+  "depth": 16,
+  "adam7": true,
+  "requests": [
+    {
+      "seconds_including_upload_and_download": 20.191275631999815,
+      "output_bytes": 52385464
+    },
+    {
+      "seconds_including_upload_and_download": 20.150363856000695,
+      "output_bytes": 52385464
+    }
+  ],
+  "memory_peak": 745349120,
+  "memory_events": {
+    "low": 0,
+    "high": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0,
+    "sock_throttled": 0
+  },
+  "cpu": 1,
+  "memory_limit_mib": 1536,
+  "swap": false,
+  "tmpfs_limit_mib": 256,
+  "concurrent": 2,
+  "jobs_remaining": 0,
+  "driver_memory_included": false
+}
