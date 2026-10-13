@@ -6,6 +6,8 @@ pdfcpu [v0.16.1](https://github.com/pdfcpu/pdfcpu/tree/v0.16.1) は別プロセ�
 
 日本語には[BIZ UDPゴシックv1.051](https://github.com/googlefonts/morisawa-biz-ud-gothic/tree/v1.051)（Morisawa、OFL-1.1）を使い、OFL原文と著作権表示を `BIZ-UDGothic-OFL.txt` に保持します。pdfcpuに同梱されたRoboto RegularはApache-2.0で、`Copyright 2011 Google Inc. All Rights Reserved.` とlicense全文を `Roboto-NOTICE.txt` / `Roboto-LICENSE.txt` に収録します。
 
+透かしの生成表 `WatermarkGlyphs.g.cs`（字幅・字形収録bitset）も、この固定BIZ UDPゴシック由来です。OFL-1.1の表示と原文を同じ場所に保持します。
+
 `third_party/pdfcpu-modules.json` は固定go.modのindirectを含む11 module、version、Go module checksum、licenseファイル、Linux binaryへの組込みの有無を記録します。Linux x86_64配布binaryの `go version -m` は9 moduleを示し、jsonschema-goとWindows用mousetrapは組み込まれていません。11件ともlicense原文・付属NOTICE/PATENTSを `third_party/pdfcpu/modules/` に保持します。
 
 | Module | Version | License |

@@ -31,7 +31,7 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD, files=None):
+def multipart(file=None, password=PASSWORD, files=None, text=None):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
     inputs = files if files is not None else ([] if file is None else [file])
@@ -44,6 +44,8 @@ def multipart(file=None, password=PASSWORD, files=None):
         parts.append(
             f'--{boundary}\r\nContent-Disposition: form-data; name="password"\r\n\r\n{password}\r\n'.encode()
         )
+    if text is not None:
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\n{text}\r\n'.encode())
     parts.append(f"--{boundary}--\r\n".encode())
     return b"".join(parts), "multipart/form-data; boundary=" + boundary
 
@@ -581,6 +583,17 @@ def main(image):
             assert status == 400 and headers["Content-Type"].startswith("application/problem+json")
             assert json.loads(problem)["status"] == 400
             api.assert_clean()
+        body, content_type = multipart(three_pages, password=None, text="社外秘")
+        status, headers, watermarked = api.request("POST", "/api/pdf/watermark?style=diagonal&color=gray", body, content_type)
+        assert status == 200 and headers["Content-Type"] == "application/pdf"
+        assert "filename=watermarked.pdf" in headers["Content-Disposition"]
+        assert api.page_rotations(watermarked) == [0, 0, 0]
+        api.assert_clean()
+        body, content_type = multipart(FIXTURE, password=None, text="PRIVATE_WATERMARK%")
+        status, _, problem = api.request("POST", "/api/pdf/watermark?style=diagonal&color=gray", body, content_type)
+        assert status == 400 and b"PRIVATE_WATERMARK" not in problem
+        assert b"PRIVATE_WATERMARK" not in docker("logs", api.name).stdout
+        api.assert_clean()
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)
         api.protect(b"", expected=422)

@@ -21,9 +21,11 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
 
     internal async Task BuildAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
         Func<OverlayCanvas, CancellationToken, Task> draw, CancellationToken token,
-        Action<OverlayStage>? observe = null)
+        Action<OverlayStage>? observe = null, double? fillOpacity = null)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        if (fillOpacity is { } opacity && (!double.IsFinite(opacity) || opacity <= 0 || opacity >= 1))
+            throw new ArgumentOutOfRangeException(nameof(fillOpacity));
         var capacity = new OverlayCapacity(settings.OverlayJobLimitBytes);
         var metadata = Path.Combine(files.DirectoryPath, "overlay-metadata.json");
         var update = Path.Combine(files.DirectoryPath, "overlay-update.json");
@@ -86,7 +88,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             }
             Mark("input-attributes");
             inputValidated = true;
-            await WriteJson(blankJson, writer => WriteBlank(writer, originals, token));
+            await WriteJson(blankJson, writer => WriteBlank(writer, originals, token, fillOpacity));
             await WritePdf(blank, ["--json-input", blankJson, blank]);
             capacity.Delete(blankJson);
             Mark("blank", new FileInfo(blank).Length);
@@ -158,7 +160,8 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         }
         catch (PdfInputException) { throw new InvalidOperationException(Failure); }
     }
-    private static void WriteBlank(Utf8JsonWriter writer, IReadOnlyList<PdfPageAttributes> pages, CancellationToken token)
+    private static void WriteBlank(Utf8JsonWriter writer, IReadOnlyList<PdfPageAttributes> pages,
+        CancellationToken token, double? fillOpacity)
     {
         writer.WriteStartObject(); writer.WriteStartArray("qpdf"); writer.WriteStartObject();
         writer.WriteNumber("jsonversion", 2); writer.WriteString("pdfversion", "1.7"); writer.WriteEndObject();
@@ -175,9 +178,29 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             token.ThrowIfCancellationRequested();
             Start($"obj:{i + 3} 0 R"); writer.WriteString("/Type", "/Page"); writer.WriteString("/Parent", "2 0 R");
             writer.WritePropertyName("/MediaBox"); new PdfBox(0, 0, pages[i].DisplayWidth, pages[i].DisplayHeight).Write(writer);
-            writer.WriteStartObject("/Resources"); writer.WriteEndObject(); End(); writer.Flush();
+            writer.WriteStartObject("/Resources");
+            if (fillOpacity is { } alpha)
+            {
+                writer.WriteStartObject("/ExtGState"); writer.WriteStartObject("/AmaneAlpha");
+                writer.WriteString("/Type", "/ExtGState"); writer.WriteNumber("/ca", alpha); writer.WriteNumber("/CA", alpha);
+                writer.WriteEndObject(); writer.WriteEndObject();
+            }
+            writer.WriteEndObject();
+            if (fillOpacity is not null) writer.WriteString("/Contents", $"{pages.Count + 3 + i} 0 R");
+            End();
+            if (fillOpacity is not null)
+            {
+                // pdfcpu appends to an existing stream. Sharing one across pages
+                // would also share the appended text, so every page owns its stream.
+                writer.WriteStartObject($"obj:{pages.Count + 3 + i} 0 R"); writer.WriteStartObject("stream");
+                writer.WriteStartObject("dict"); writer.WriteEndObject();
+                writer.WriteBase64String("data", "/AmaneAlpha gs\n"u8);
+                writer.WriteEndObject(); writer.WriteEndObject();
+            }
+            writer.Flush();
         }
-        Start("trailer"); writer.WriteString("/Root", "1 0 R"); writer.WriteNumber("/Size", pages.Count + 3); End();
+        Start("trailer"); writer.WriteString("/Root", "1 0 R");
+        writer.WriteNumber("/Size", pages.Count * (fillOpacity is null ? 1 : 2) + 3); End();
         writer.WriteEndObject(); writer.WriteEndArray(); writer.WriteEndObject();
     }
 }
