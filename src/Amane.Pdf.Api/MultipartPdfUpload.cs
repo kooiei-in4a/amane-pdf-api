@@ -13,6 +13,46 @@ public static class MultipartPdfUpload
     public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
         => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
 
+    internal static async Task<byte[]> ReadFileAndTextAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, int maxTextBytes, CancellationToken token)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTextBytes);
+        var boundary = ReadBoundary(request);
+        using var body = new SizeLimitedReadStream(request.Body, options.MaxRequestBytes);
+        var reader = new MultipartReader(boundary, body);
+        var hasFile = false;
+        byte[]? text = null;
+        var buffer = new byte[64 * 1024];
+        while (await ReadNextAsync(reader, token) is { } section)
+        {
+            var disposition = ReadDisposition(section);
+            var name = HeaderUtilities.RemoveQuotes(disposition.Name).Value;
+            var isFile = disposition.FileName.HasValue || disposition.FileNameStar.HasValue;
+            if (name == "file" && isFile && !hasFile)
+            {
+                hasFile = true;
+                await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, token);
+            }
+            else if (name == "text" && !isFile && text is null)
+            {
+                // Read only one byte beyond the limit, then reject without buffering more.
+                var bytes = new byte[checked(maxTextBytes + 1)];
+                var length = 0;
+                int read;
+                while ((read = await ReadBodyAsync(section.Body, bytes.AsMemory(length), token)) != 0)
+                {
+                    length += read;
+                    if (length > maxTextBytes) throw new BadHttpRequestException("Invalid text length.");
+                }
+                text = bytes[..length];
+            }
+            else throw new BadHttpRequestException("Unexpected or duplicate multipart field.");
+        }
+        if (!hasFile || text is null) throw new BadHttpRequestException("Missing required field.");
+        while (await ReadBodyAsync(body, buffer, token) != 0) { }
+        return text;
+    }
+
     public static Task<IReadOnlyList<string>> ReadMergeFilesAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, CancellationToken cancellationToken)
         => ReadMultipleAsync(request, options, 2, options.MaxMergeFiles, options.MaxMergeInputBytes,

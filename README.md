@@ -16,6 +16,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
+- Linuxの `POST /api/pdf/watermark` による全ページへの透かし文字
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/split` によるPDF分割とZIP返却
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
@@ -325,6 +326,28 @@ curl --fail-with-body \
   -o numbered.pdf
 ```
 
+### PDF透かし（Linux）
+
+```bash
+curl --fail-with-body \
+  'http://127.0.0.1:8080/api/pdf/watermark?style=diagonal&color=gray' \
+  -F file=@input.pdf -F 'text=社外秘' -o watermarked.pdf
+```
+
+`style` と `color` は各1つ必須です。`style=diagonal` は表示上の対角線に沿って中央へ大きく配置し、不透明度0.25の透過で描きます。`style=corner` は右上から28 pt内側へ不透明の14 ptで配置し、横幅に収まらない場合だけ縮小します。`color=gray` は `#808080`、`color=red` は `#C00000` です。query keyは大文字小文字を区別せず、値は小文字の完全一致です。未知のkey、欠落、重複、空値は400です。
+
+multipartは `file`（filenameあり）と `text`（filenameなし）各1件で、順序は自由です。passwordなどの追加fieldは400です。textはpartのContent-Typeやcharsetにかかわらずstrict UTF-8として読み、最大120 bytes、1〜30 text element（結合文字を含む見かけの文字数）です。空文字・空白だけ、不正UTF-8、制御文字・改行・絵文字・補助平面の漢字（𠮷など）、ASCIIの `%` と `\` は400です。trim・Unicode正規化はしません。
+
+使える文字はASCII表示可能文字、U+3000〜303F（CJK記号・句読点）、U+3040〜309F（ひらがな）、U+30A0〜30FF（カタカナ）、U+4E00〜9FFF（CJK統合漢字）、U+FF01〜FF5E（全角英数記号）、U+FF61〜FF9F（半角カナ）のうち、固定のBIZ UDPゴシックに字形がある文字です。JIS第1・第2水準漢字は使えます。簡体字の一部や `丢`・`〰` など、範囲内でも字形がない文字は400です。`﨑`・`①`・`é` は許可範囲外です。全角 `％`・`＼` は使えます。結合濁点は受理しますが、pdfcpuは合成せず独立した全角幅の濁点として描きます。半角 `ｶﾞ` は通常の半角カナ表記です。
+
+全ページの本文の前面に描くので、全面画像のスキャンPDFでも表示されます。注釈やフォームwidgetは透かしより前面に表示されます。成功時は200、`application/pdf`、固定名 `watermarked.pdf` です。Rotate・CropBox・UserUnit・非A4の寸法を反映し、ページ数・属性・しおり・リンク・フォームを保持します。CropBox外の本文の扱いはページ番号APIと同じです。
+
+diagonalは字幅と回転後の外接矩形に加え、pdfcpuが回転前の枠をページ内へ押し戻す制約に合わせて縮小します。そのため縦長ページの長い文字は対角線全体より小さくなります。最小は両styleとも1 ptです。非常に小さいページでは文字や28 ptの余白が収まらず、切れる場合があります。
+
+上限はPDF 50 MiB、全1000ページ、入力metadata 32 MiB / 50,000 object、各生成JSON・白紙・レイヤー8 MiB、出力62 MiB、job 124 MiBです。queryはアップロード前、textの意味・文字種はアップロード完了後かつtool起動前に判定します。121 byte目を読むと即400です。PDF・リクエスト総量の超過は413、描画予算の超過は422 `too-complex`、対応範囲外のページ属性は422 `unsupported-pdf`、破損・警告・暗号化はreasonなしの422です。処理はアップロード後30秒、既存APIと共有する同時2枠・待ち0（503）です。
+
+透かしはPDF編集ソフトで消せるため、情報保護の手段には使えません。透かしの文字は抽出・検索・コピーの対象になります。PDF/A-1にdiagonalの透過を加えると、出力はPDF/A-1に適合しなくなります。検証方法と制約は[透かし検証記録](docs/watermark-validation.md)を参照してください。
+
 ### PDFページ抽出・削除・並べ替え
 
 ```text
@@ -381,6 +404,7 @@ curl --fail-with-body -F file=@input.pdf \
 ### 入力とエラー
 
 暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、圧縮、分割、回転、ページ番号、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
+透かしAPIは `file` と `text` 各1件を受け付けます。textはstrict UTF-8で120 bytes、1〜30 text element、許可範囲と固定fontの字形を検査し、空白だけの入力は400です。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
 
 Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
@@ -619,12 +643,13 @@ docker build -t amane-pdf-api:ci .
 python3 scripts/docker-smoke.py amane-pdf-api:ci
 ```
 
-Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。実Builderで描画した文字の位置・向きと、追加文字以外の元本文をPopplerで比較します。ページ番号は36通りの実HTTPで3書式・4位置・3サイズと回転・CropBox・UserUnit・A3/B5/はがきの文字・位置を確認します。
+Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。実Builderで描画した文字の位置・向きと、追加文字以外の元本文をPopplerで比較します。ページ番号は36通りの実HTTPで3書式・4位置・3サイズと回転・CropBox・UserUnit・A3/B5/はがきの文字・位置を確認します。透かしは24通りの実HTTP・288ページで中央/右上の配置、前面描画、透過色、抽出・subset fontを検査し、許可21,498文字の字形・幅を実pdfcpuで照合します。
 
 ```bash
 python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
 python3 scripts/overlay-validation.py amane-pdf-api:ci --render
 python3 scripts/page-numbers-validation.py amane-pdf-api:ci
+python3 scripts/watermark-validation.py amane-pdf-api:ci
 ```
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archive・元TTFはpdfcpuのruntime追加物に含めません。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。

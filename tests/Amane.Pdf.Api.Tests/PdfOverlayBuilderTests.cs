@@ -7,6 +7,73 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfOverlayBuilderTests
 {
     [TestMethod]
+    [DataRow(false)] [DataRow(true)]
+    public async Task BlankOpacityUsesOnePrivateStreamPerPageAndDefaultHasNoContents(bool transparent)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var job = new OverlayJob(); await job.CreateInput(OverlayFixtures.Geometry());
+        var copy = Path.Combine(job.Root, "blank.json");
+        job.Settings.QpdfPath = job.Script($"if [ \"$1\" = --json-input ]; then cp \"$2\" '{copy}'; fi\nexec qpdf \"$@\"");
+        await job.Builder.BuildAsync(job.Files, static count => (1, count), async (canvas, token) =>
+        {
+            using var blank = JsonDocument.Parse(await File.ReadAllBytesAsync(copy, token));
+            var objects = blank.RootElement.GetProperty("qpdf")[1];
+            Assert.AreEqual(transparent ? 17 : 10, objects.GetProperty("trailer").GetProperty("value").GetProperty("/Size").GetInt32());
+            var references = new HashSet<string>();
+            for (var i = 0; i < 7; i++)
+            {
+                var page = objects.GetProperty($"obj:{i + 3} 0 R").GetProperty("value");
+                var resources = page.GetProperty("/Resources");
+                if (!transparent)
+                {
+                    Assert.AreEqual(0, resources.EnumerateObject().Count());
+                    Assert.IsFalse(page.TryGetProperty("/Contents", out _));
+                    continue;
+                }
+                Assert.AreEqual(0.25, resources.GetProperty("/ExtGState").GetProperty("/AmaneAlpha").GetProperty("/ca").GetDouble());
+                var reference = page.GetProperty("/Contents").GetString()!;
+                Assert.IsTrue(references.Add(reference));
+                Assert.AreEqual("/AmaneAlpha gs\n", System.Text.Encoding.ASCII.GetString(Convert.FromBase64String(
+                    objects.GetProperty("obj:" + reference).GetProperty("stream").GetProperty("data").GetString()!)));
+            }
+            await job.Pdfcpu.CreateAsync(job.Files, new(Enumerable.Range(1, 7).ToDictionary(i => i,
+                i => (IReadOnlyList<PdfcpuText>)[new("PAGE" + i, Anchor: "c")]), canvas.Pages),
+                canvas.BlankPath, canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, token);
+            var result = await ExternalProcessRunner.RunAsync(new(job.Settings.QpdfPath,
+                ["--json=2", "--json-key=qpdf", "--json-key=pages", "--json-stream-data=inline", "--decode-level=all", canvas.LayerPath],
+                StdoutLimit: 8 * 1048576), token);
+            Assert.AreEqual(0, result.ExitCode);
+            using var layer = JsonDocument.Parse(result.Stdout!);
+            var layerObjects = layer.RootElement.GetProperty("qpdf")[1];
+            references.Clear();
+            foreach (var page in layer.RootElement.GetProperty("pages").EnumerateArray())
+            {
+                var content = string.Concat(page.GetProperty("contents").EnumerateArray().Select(reference =>
+                {
+                    Assert.IsTrue(references.Add(reference.GetString()!));
+                    return System.Text.Encoding.ASCII.GetString(Convert.FromBase64String(layerObjects.GetProperty("obj:" + reference.GetString())
+                        .GetProperty("stream").GetProperty("data").GetString()!));
+                }));
+                Assert.AreEqual(1, System.Text.RegularExpressions.Regex.Matches(content, @"\bTj\b").Count, content);
+                if (transparent) Assert.IsTrue(content.TrimStart().StartsWith("/AmaneAlpha gs"));
+            }
+        }, default, fillOpacity: transparent ? 0.25 : null);
+        CollectionAssert.AreEquivalent(new[] { job.Files.OutputPath }, Directory.GetFiles(job.Files.DirectoryPath));
+    }
+
+    [TestMethod]
+    [DataRow(0.0)] [DataRow(1.0)] [DataRow(-0.1)] [DataRow(1.1)]
+    [DataRow(double.NaN)] [DataRow(double.PositiveInfinity)]
+    public async Task InvalidOpacityPrecedesAnyFileOrToolOperation(double opacity)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var job = new OverlayJob();
+        await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => job.Builder.BuildAsync(job.Files,
+            static count => (1, count), (_, _) => throw new AssertFailedException("Must not draw"), default, fillOpacity: opacity));
+        Assert.AreEqual(0, Directory.GetFiles(job.Files.DirectoryPath).Length);
+    }
+
+    [TestMethod]
     public async Task Geometry_RealText_AdjustmentPrecedesOverlay_AndRestoresOriginalAttributes()
     {
         if (!OperatingSystem.IsLinux()) return;

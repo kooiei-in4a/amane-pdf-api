@@ -204,6 +204,10 @@ MediaBox/CropBox/Rotateは継承、UserUnit/TrimBoxは非継承で解決しま�
 
 CropBox外の本文はForm BBoxで表示されなくなり、後でCropBoxを広げても表示されません。元のstreamや文字抽出には残り得るため、黒塗りや情報除去として扱いません。通常表示・非対象ページの保持は実文字レイヤーのPoppler比較で確認します。最大文字入力のレイヤー余裕、同時2件の各24秒以内・OOM 0・job/tmpfs予算・残存job/process 0の実測は[PR B検証記録](overlay-validation.md)へ記録します。driverのメモリもcgroup peakへ含まれます。通常CIと手動測定を区別し、文字上限を広げる場合は再測定します。画像系は#29/#26でbytes・画素数・生成物の上限を定めて同じ検証を行い、文字の結果を流用しません。
 
+透かしAPIは `file` と `text` 各1件だけを受け付けます。text fieldは121 byteの固定バッファで読み、121 byte目で400にします。upload・MIME epilogueの読み取り後、tool起動前にstrict UTF-8、1〜30 text element、許可Rune範囲と固定TTFから生成した字形表を検査します。ASCII `%`・`\`、未収録文字、空白だけの入力を拒否し、trim・正規化はしません。字幅はRune単位で数え、結合濁点にも幅を割り当てます。利用者の文字列は0600のlayer JSONにだけ入り、argv・ログ・Problem Detailsへ出しません。`-`・`,`・引用符もJSON文字列として渡します。
+
+透過はAPIが固定値0.25から生成する白紙のExtGStateで設定します。白紙には利用者の文字を入れず、pdfcpuが追記するContents streamをページごとに独立させます。共有streamによる他ページの文字混入を回帰テストで検査します。透過指定がない既存の描画では白紙の生成形式を維持します。全ページの対象範囲は既に取得したmetadataから決め、入力検査を二重にしません。容量・共有30秒・同時2枠・キャンセル時のprocess tree終了待ち・job削除は共通overlay処理を使います。[透かし検証記録](watermark-validation.md)に実測と文字抽出・viewer上の制約を記載します。
+
 ## core dumpと公開条件
 
 FSIZE超過時のSIGXFSZの既定動作はcoreを伴う終了です。Linuxの共通起動経路でSIGXFSZをSIG_IGNへ設定してtoolへexecし、この終了を防ぎます。書込み上限はprlimitで維持します。qpdfは切れたJSONでもexit 0となり得るため、pages／metadataの実サイズが上限以上なら、同値を含めて既知のmetadata上限として画像処理を終了します。splitは従来どおりpartBudget+1のFSIZEと実サイズの比較で専用422を返します。
