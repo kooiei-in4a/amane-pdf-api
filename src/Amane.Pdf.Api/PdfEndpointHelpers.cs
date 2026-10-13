@@ -14,7 +14,8 @@ internal static class PdfEndpointHelpers
         long? maxRequestBytes = null,
         Action<HttpResponse>? onSend = null,
         string contentType = "application/pdf",
-        bool images = false)
+        bool images = false,
+        string? tooLargeTitle = null)
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         try
@@ -42,6 +43,15 @@ internal static class PdfEndpointHelpers
                 return;
             }
             await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
+        }
+        catch (PdfStampImageException exception)
+        {
+            var complex = exception.Reason == PdfStampImageReason.TooComplex;
+            await Results.Problem(statusCode: 422,
+                title: complex ? "印影画像の描画が処理上限を超えています。画像を小さくするか単純にしてください。" :
+                    "この印影画像は処理できません。PNGの形式、破損や画像の大きさを確認してください。",
+                extensions: new Dictionary<string, object?> { ["reason"] = complex ? "image-too-complex" : "unsupported-image" })
+                .ExecuteAsync(context);
         }
         catch (PdfImageInputException exception)
         {
@@ -99,8 +109,8 @@ internal static class PdfEndpointHelpers
         {
             var tooLarge = exception.StatusCode == 413;
             await Results.Problem(statusCode: tooLarge ? 413 : 400,
-                title: tooLarge ? (images ? "画像またはリクエストのサイズ上限を超過しました。" :
-                    "PDFまたはリクエストのサイズ上限を超過しました。") : "リクエストの形式が不正です。").ExecuteAsync(context);
+                title: tooLarge ? (tooLargeTitle ?? (images ? "画像またはリクエストのサイズ上限を超過しました。" :
+                    "PDFまたはリクエストのサイズ上限を超過しました。")) : "リクエストの形式が不正です。").ExecuteAsync(context);
         }
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {

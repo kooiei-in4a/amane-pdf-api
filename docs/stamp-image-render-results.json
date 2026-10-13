@@ -1,0 +1,338 @@
+[
+  {
+    "rotation": 0,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 0,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 0,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 90,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 90,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 90,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 180,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 180,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 180,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 270,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 270,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 270,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 0,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 0,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 0,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 90,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 90,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 90,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 180,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 180,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 180,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 270,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 270,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 270,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": null
+  },
+  {
+    "rotation": 0,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 0,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 0,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 90,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 90,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 90,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 180,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 180,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 180,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 270,
+    "user_unit": 0.5,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 270,
+    "user_unit": 1,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 270,
+    "user_unit": 2,
+    "depth": 8,
+    "adam7": false,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 0,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 0,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 0,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 90,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 90,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 90,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 180,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 180,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 180,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 270,
+    "user_unit": 0.5,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 270,
+    "user_unit": 1,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  },
+  {
+    "rotation": 270,
+    "user_unit": 2,
+    "depth": 16,
+    "adam7": true,
+    "input_ocg_base_state": "OFF"
+  }
+]

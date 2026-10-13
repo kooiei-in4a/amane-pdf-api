@@ -13,6 +13,37 @@ public static class MultipartPdfUpload
     public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
         => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
 
+    internal static async Task ReadFileAndImageAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken token)
+    {
+        var boundary = ReadBoundary(request);
+        using var body = new SizeLimitedReadStream(request.Body, options.MaxStampRequestBytes);
+        var reader = new MultipartReader(boundary, body);
+        var hasFile = false;
+        var hasImage = false;
+        var buffer = new byte[64 * 1024];
+        while (await ReadNextAsync(reader, token) is { } section)
+        {
+            var disposition = ReadDisposition(section);
+            var name = HeaderUtilities.RemoveQuotes(disposition.Name).Value;
+            if (!disposition.FileName.HasValue && !disposition.FileNameStar.HasValue)
+                throw new BadHttpRequestException("Expected multipart file.");
+            if (name == "file" && !hasFile)
+            {
+                hasFile = true;
+                await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, token);
+            }
+            else if (name == "image" && !hasImage)
+            {
+                hasImage = true;
+                await CopyFileAsync(section.Body, files.StampUploadPath, options.MaxStampImageBytes, buffer, token);
+            }
+            else throw new BadHttpRequestException("Unexpected or duplicate multipart field.");
+        }
+        if (!hasFile || !hasImage) throw new BadHttpRequestException("Missing required field.");
+        while (await ReadBodyAsync(body, buffer, token) != 0) { }
+    }
+
     internal static async Task<byte[]> ReadFileAndTextAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, int maxTextBytes, CancellationToken token)
     {

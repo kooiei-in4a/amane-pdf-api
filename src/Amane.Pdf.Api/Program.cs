@@ -10,7 +10,8 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
-            PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options))) &&
+            PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options) &&
+            StampImageInput.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
@@ -44,6 +45,7 @@ if (OperatingSystem.IsLinux())
     app.MapPost("/api/pdf/from-images", PdfFromImagesEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/page-numbers", PdfPageNumbersEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/watermark", PdfWatermarkEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/stamp-image", PdfStampImageEndpoint.HandleAsync).RequireRateLimiting("pdf");
 }
 app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/split", PdfSplitEndpoint.HandleAsync).RequireRateLimiting("pdf");

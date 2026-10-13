@@ -17,6 +17,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
 - Linuxの `POST /api/pdf/watermark` による全ページへの透かし文字
+- Linuxの `POST /api/pdf/stamp-image` による指定ページ・表示位置への透過PNG押印
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/split` によるPDF分割とZIP返却
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
@@ -348,6 +349,35 @@ diagonalは字幅と回転後の外接矩形に加え、pdfcpuが回転前の枠
 
 透かしはPDF編集ソフトで消せるため、情報保護の手段には使えません。透かしの文字は抽出・検索・コピーの対象になります。PDF/A-1にdiagonalの透過を加えると、出力はPDF/A-1に適合しなくなります。検証方法と制約は[透かし検証記録](docs/watermark-validation.md)を参照してください。
 
+### PDF電子印鑑（Linux）
+
+```text
+POST /api/pdf/stamp-image?page=1&x=0.72&y=0.08&width=0.12
+Content-Type: multipart/form-data
+
+file   PDFファイル（1個、50 MiB以下）
+image  PNGの印影画像（1個、1 MiB以下、縦横各2000 px以下）
+```
+
+queryは4つとも必須です。`page`は先頭0なしのASCII数字による1始まりのページ番号です。`x` / `y`は表示上のページ左上を原点とする画像左上の位置（0〜1）、`width`は表示上のページ幅に対する画像幅（0.02〜0.5）です。高さは画像の縦横比から決まります。小数はASCII数字と`.`だけ、小数点以下4桁までです。符号・指数表記・空白・未知key・重複keyは400です。keyの大文字小文字は区別しません。
+
+表示座標にはCropBoxとRotate、UserUnitを反映します。画像が表示範囲からはみ出す場合や、存在しないページの指定は400です。本文の前面に重ね、注釈やフォームはその上に表示される場合があります。対象外ページとページ属性を保持し、出力をqpdfで検査してから200、`application/pdf`、固定ファイル名`stamped.pdf`で返します。
+
+PNGはsignature・chunk・CRCと圧縮データを検査します。グレー1/2/4/8/16 bit、RGB 8/16 bit、パレット1/2/4/8 bit、グレー+alpha / RGBA 8/16 bit、Adam7、tRNSに対応し、透明・半透明を保持します。JPEG・APNG・壊れたPNG・寸法超過・空の画像は422 `unsupported-image`です。画像metadata・IEND後のデータは除去します。ICC・gamma情報の除去で色がわずかに変わる場合があります。ファイル名やpartのContent-Typeは判定に使いません。
+
+request全体の上限は53,542,912 bytes（50 MiB + 1 MiB + 64 KiB）です。PDF・画像・requestのbytes超過は413です。小さく圧縮されたPNGでも描画レイヤーが8 MiBを超える場合は422 `image-too-complex`となります。PDFの処理上限は422 `too-complex`、対応外ページ属性は422 `unsupported-pdf`です。出力62 MiB・job 124 MiB・共有30秒・同時2枠の既存制限を使います。
+
+印影画像は処理中の一時ファイルだけに置き、成功・失敗・timeout・cancelで削除します。**電子印鑑は電子署名ではなく、改ざん防止や本人確認の効力はありません。** pdfcpuは印影に透かし用のOCGとArtifactを付けるため、編集ソフトで透かしとして削除される場合があります。pdf.js・Acrobatでの表示確認はサイト側の受け入れ検証で行います。複数画像・複数ページへの同時押印、印影生成、電子署名・タイムスタンプは扱いません。
+
+押印後はPDF/Aの適合性を保持しません。印影の画像XObjectに`/Interpolate true`が付くため、PDF/Aの画像補間の制約に適合しなくなります（[veraPDFのPDF/A検証ルール](https://github.com/veraPDF/veraPDF-validation-profiles/wiki/PDFA-Part-1-rules#rule-624-3)）。`qpdf --check`はPDF/A適合性の検査ではありません。
+
+```bash
+curl --fail-with-body -F file=@input.pdf -F image=@stamp.png \
+  'http://127.0.0.1:8080/api/pdf/stamp-image?page=1&x=0.72&y=0.08&width=0.12' -o stamped.pdf
+```
+
+実装設計は[stamp-image-design.md](docs/stamp-image-design.md)、検証結果は[stamp-image-validation.md](docs/stamp-image-validation.md)に記録します。サイト[amane-tools-site #44](https://github.com/kooiei-in4a/amane-tools-site/issues/44)の中継には、このAPI専用上限と`image-too-complex`の伝達が必要です。
+
 ### PDFページ抽出・削除・並べ替え
 
 ```text
@@ -430,6 +460,7 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | 環境変数 | 初期値 | 意味 |
 | --- | --- | --- |
 | `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込む単一file（PDF・画像）の最大bytes |
+| `Pdf__MaxStampImageBytes` | `1048576`（1 MiB） | 電子印鑑の画像上限。0より大きく1 MiB以下。request上限はMaxFileBytes + この値 + 64 KiB |
 | `Pdf__MaxImageFiles` | `30` | from-imagesの画像枚数。1〜100 |
 | `Pdf__MaxImageInputBytes` | `52428800`（50 MiB） | 画像入力合計の最大bytes。正、50 MiB以下 |
 | `Pdf__MaxUploadImagePixels` | `50000000` | 画像1枚の受付画素数。正、50 MP以下 |

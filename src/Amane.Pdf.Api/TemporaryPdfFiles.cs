@@ -9,6 +9,8 @@ public sealed class TemporaryPdfFiles : IDisposable
     public string OutputPath => Path.Combine(DirectoryPath, "output.pdf");
     public string JobPath => Path.Combine(DirectoryPath, "job.json");
     internal string PdfcpuLayerJsonPath => Path.Combine(DirectoryPath, "pdfcpu-layer.json");
+    internal string StampUploadPath => Path.Combine(Path.GetFullPath(DirectoryPath), "stamp-upload.bin");
+    internal string StampImagePath => Path.Combine(Path.GetFullPath(DirectoryPath), "stamp.png");
     internal string UnlockCheckJobPath => Path.Combine(DirectoryPath, "unlock-check.json");
     internal string UnlockDecryptJobPath => Path.Combine(DirectoryPath, "unlock-decrypt.json");
 

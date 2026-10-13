@@ -264,6 +264,8 @@ public sealed class PdfcpuProcessorTests
     [DataRow("Pdf:PdfcpuMemoryLimit", "２００MiB")]
     [DataRow("Pdf:PdfcpuMemoryLimit", "9223372036854775807MiB")]
     [DataRow("Pdf:PdfcpuMemoryLimit", "1025MiB")]
+    [DataRow("Pdf:MaxStampImageBytes", "0")]
+    [DataRow("Pdf:MaxStampImageBytes", "1048577")]
     public void InvalidOptions_PreventStartup(string key, string value)
     {
         if (!OperatingSystem.IsLinux()) return;
