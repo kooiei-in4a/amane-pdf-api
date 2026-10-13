@@ -36,5 +36,8 @@
   "tmpfs_limit_mib": 256,
   "concurrent": 2,
   "jobs_remaining": 0,
-  "driver_memory_included": false
+  "driver_memory_included": false,
+  "color_type": 6,
+  "image_png_bytes": 62831,
+  "image_trailing_bytes": 985745
 }

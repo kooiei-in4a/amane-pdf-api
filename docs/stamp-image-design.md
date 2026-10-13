@@ -1,12 +1,12 @@
 # 電子印鑑（PNG画像のスタンプ）APIの実装設計
 
-2026-10-13 JST。対象は [Issue #29](https://github.com/kooiei-in4a/amane-pdf-api/issues/29) の `POST /api/pdf/stamp-image`。2026-10-13の実装指示に基づき、§13の推奨方針を採用して実装した。設計調査時点の実測と判断を以下に残す。実装後の検証結果・制約の正本は [stamp-image-validation.md](stamp-image-validation.md) を参照する。
+2026-10-13 JST。対象は [Issue #29](https://github.com/kooiei-in4a/amane-pdf-api/issues/29) の `POST /api/pdf/stamp-image`。状態は**PR #64のブランチで実装済み・mainへ未merge**である。2026-10-13の実装指示に基づく採用結果を§13に記載する。§1・§3・§12の設計調査時点の事実と、現在の実装・検証結果を区別する。実装後の検証結果・制約の正本は [stamp-image-validation.md](stamp-image-validation.md) を参照する。
 
 この文書では、記述を次の3種類に分ける。
 
 - **【事実】** 基準commitのコード・文書から確認したこと、または固定versionの実toolで確認したこと
-- **【設計】** この文書で決める実装方針
-- **【未検証】** 推測・未確認の挙動。実装PRで確認する
+- **【設計】** 採用した実装方針。実装済みか未対応かは本文と§13に記載する
+- **【未検証】** 追加確認が必要な挙動。現在の未確認事項は検証記録に記載する
 
 ## 1. 調査の基準
 
@@ -75,7 +75,7 @@ A の副作用は次のとおり。
 - 【事実】入力PDFが自分のOCGを持ち、`/D /BaseState /OFF` の場合も、Popplerでは印影が表示され、入力側のOFFのレイヤーは非表示のままだった。
 - 【未検証】pdf.js、Acrobat、その他のviewerでの表示。pdf.js は未登録のOCGを表示する実装だと認識しているが、今回はソース・実機とも確認していない。印影は「透かし（Artifact）」として扱われ、編集ソフトの透かし削除機能などで消せる可能性がある。
 
-OCGを除去する追加処理（qpdf JSONでレイヤーの `/OC` と `/OCProperties` を消す）も可能だが、qpdfの呼び出しと検査が1段増える。印影には改ざん防止の効力がないため、【設計】除去は行わず、READMEに記載する。§13の仕様確認事項1に挙げる。
+OCGを除去する追加処理（qpdf JSONでレイヤーの `/OC` と `/OCProperties` を消す）も可能だが、qpdfの呼び出しと検査が1段増える。印影には改ざん防止の効力がないため、【設計】除去は行わず、READMEに記載する。§13の決定1として採用済みである。
 
 ### 3.2 処理フローと責務
 
@@ -280,8 +280,8 @@ pdfcpu = "pos:bl, off:{left} {bottom}, scale:{scale} abs, rot:0"
 - 横も防御的に `left + w ≤ W + Tolerance` を確認する。
 - `x = 1` は `width ≥ 0.02` のため常に横方向で400、`y = 1` は `h > 0` のため常に縦方向で400になる。
 - 縦長のPNG（例：1×2000 px、width=0.5）は、多くのページで縦方向に400になる。仕様どおりとする。
-- 数値の文字列化：実装では `left`・`bottom`・`scale` を `ToString("R", InvariantCulture)` とする。小さいページのscaleが固定小数書式で0へ丸められるのを防ぐ。指数表記はpdfcpuで受理され、argvにはAPIの検証済み計算値だけを入れる。値は非負で `+0` に正規化する（`Math.Max(0, v)` は +0 を返す）。
-  - 【事実】pdfcpu は小数12桁の scale と `-0` を受理した。指数表記（`4E1 1e-05`）も受理したが、実装では精度維持に必要な場合に使う。
+- 数値の文字列化：実装では `left`・`bottom`・`scale` を `ToString("R", InvariantCulture)` とする。小さいページのscaleが固定小数書式で0へ丸められるのを防ぐ。指数表記はpdfcpuで受理され、argvにはAPIの検証済み計算値だけを入れる。leftは非負のqueryとページ幅の積、bottomは `Math.Max(0, H − top − h)` で計算する。queryが指数表記を受け付けない仕様（§5.1）と、APIが生成するargvの数値書式は別である。
+  - 【事実】レビューでpdfcpu 0.16.1が `5.68E-14`・`3E-05`・`4E1` をそれぞれ正しい数値として読むことを確認済み。`:R`で生成する大文字Eの指数表記を使える。設計probeでは小数12桁のscaleと `-0` も受理した。
 - 精度：表示上の誤差は pdfcpu の書式（5〜6桁）と上記の丸めを合わせて 1e-4 pt 程度である。完了条件の1 ptに対して十分に小さい。
 
 ### 4.3 CropBox・Rotate・UserUnit
@@ -324,7 +324,7 @@ pdfcpu = "pos:bl, off:{left} {bottom}, scale:{scale} abs, rot:0"
 | 欠落・重複・未知の field（`password`、`text` など）、filenameのない `file`/`image` | 400 |
 | request全量 | `Content-Length` > 53,542,912 なら読む前に413。chunked でも `SizeLimitedReadStream` で413 |
 | 空の `file` | 既存APIと同じく qpdf の検査で422（reasonなし） |
-| 空の `image` | 422 `unsupported-image`（PNG signatureがない。§13 仕様確認事項3） |
+| 空の `image` | 422 `unsupported-image`（PNG signatureがない。§13 決定3） |
 | part の Content-Type、利用者の filename・拡張子 | 使わない。ログにも出さない。保存名はAPIが決めた `stamp-upload.bin` → `stamp.png` |
 | MIME epilogue | 読み切ってから処理を始める（既存と同じ） |
 
@@ -334,7 +334,7 @@ pdfcpu = "pos:bl, off:{left} {bottom}, scale:{scale} abs, rot:0"
 | --- | --- | --- |
 | 判定 | 先頭8 bytesのPNG signatureで判定する。Content-Type・拡張子は使わない | 【事実】sanitizer |
 | IHDR | 最初・13 bytes・1回。幅・高さとも1〜2000（総画素数4,000,000で早期に拒否し、各辺は sanitize 後に検査） | 【事実】sanitizer＋【設計】各辺の検査 |
-| bit depth / color type | gray 1/2/4/8/16、RGB 8/16、palette 1/2/4/8、gray+alpha 8/16、RGBA 8/16 を受理 | 【事実】gray 1/8/16、RGB 8/16、palette 4/8、gray+alpha 8/16、RGBA 8/16 で pdfcpu が成功し、描画も正しかった。【未検証】gray 2/4、palette 1/2（実装PRのテストで確認する） |
+| bit depth / color type | gray 1/2/4/8/16、RGB 8/16、palette 1/2/4/8、gray+alpha 8/16、RGBA 8/16 を受理 | 【事実】設計probeの描画確認に加え、実装の`AcceptsAllPngDepthsAndAdam7IncludingPaletteTransparency`で全depth/color type・Adam7・tRNSの受付と透過用SMaskを検証済み |
 | interlace | Adam7 を受理 | 【事実】RGBA 8/16、palette 8 の Adam7 で成功 |
 | PLTE / tRNS | 仕様どおりの位置・長さ・値域だけ受理。tRNS（gray・RGB の color key、palette の alpha）の透過を保持 | 【事実】sanitizer。color key・palette alpha の透過を描画で確認 |
 | alpha | alpha・tRNS は pdfcpu が `/SMask`（DeviceGray）にする。16 bit は 16 bpc のまま。1 bit gray と 4 bit palette は8 bitに展開される | 【事実】出力構造 |
@@ -407,26 +407,29 @@ pdfcpu = "pos:bl, off:{left} {bottom}, scale:{scale} abs, rot:0"
 
 ### 6.5 ログ
 
-PDF本文、PNG bytes、利用者の filename、query の値、pdfcpu の stdout/stderr を出力しない（runner は stderr を破棄する）。500 は既存の固定メッセージだけとする。【設計】pdfcpu の exit 1 を422にする場合（§7.2）は、原因の調査のため、固定文言の Warning「印影画像の描画がpdfcpuで失敗しました。」だけを出す。
+stamp処理独自のログにPDF本文、PNG bytes、利用者のfilename、queryの値、pdfcpuのstdout/stderrを追加しない。runnerはstderrを破棄し、500では既存の固定Errorメッセージ「PDF処理で内部障害が発生しました。」だけを出す。ASP.NET Core標準アクセスログにはURL/queryが含まれる場合があり、その抑制はstamp機能で追加していない。
+
+**未実装**：設計時に提案した、pdfcpu exit 1での固定Warning「印影画像の描画がpdfcpuで失敗しました。」は出力していない。現在は422 `unsupported-image`へ変換して応答するだけである。機能コードの挙動を維持するため、このレビュー修正ではログを追加しない。
 
 ## 7. エラー契約
 
 ### 7.1 一覧
 
-| 条件 | status | reason | title（案） |
+| 条件 | status | reason | title（実装の文言） |
 | --- | ---: | --- | --- |
 | query の欠落・重複・未知key・空値・書式・範囲・`page` の overflow | 400 | なし | リクエストの形式が不正です。（既存） |
-| multipart の形式（Content-Type、boundary、section） | 400 | なし | 既存の文言 |
-| field の欠落・重複・未知、filename のない part | 400 | なし | 同上 |
-| `page` > ページ数（入力検査後） | 400 | なし | 同上 |
-| はみ出し（metadata 取得後） | 400 | なし | 同上 |
+| multipartのContent-Type、boundary、section（BadHttpRequestExceptionへ変換） | 400 | なし | リクエストの形式が不正です。 |
+| 未変換のInvalidDataException | 400 | なし | multipart/form-data の形式が不正です。 |
+| field の欠落・重複・未知、filename のない part | 400 | なし | リクエストの形式が不正です。 |
+| `page` > ページ数（入力検査後） | 400 | なし | リクエストの形式が不正です。 |
+| はみ出し（metadata 取得後） | 400 | なし | リクエストの形式が不正です。 |
 | PDF > 50 MiB、画像 > 1 MiB、request > 53,542,912 bytes | 413 | なし | **PDF・画像またはリクエストのサイズ上限を超過しました。**（新規） |
-| PNG でない・空、構造・CRC・IHDR・各辺0または2001以上・APNG・未知 critical、IDAT（zlib・Adler・filter・過不足）、検査済み PNG での pdfcpu exit 1 | 422 | `unsupported-image` | **この画像は押印できません。PNG形式（縦横各2000 px以下、アニメーションなし）か、破損していないか確認してください。** |
-| 正当な PNG だが、生成レイヤーが8 MiBを超える | 422 | `image-too-complex`（新規） | **この画像は押印用のデータ量の上限を超えます。色やグラデーションの少ない画像にするか、画像を小さくしてください。** |
-| PDF の破損・警告・暗号化・空 | 422 | なし | 共通の422（既存） |
+| PNG でない・空、構造・CRC・IHDR・各辺0または2001以上・APNG・未知 critical、IDAT（zlib・Adler・filter・過不足）、検査済み PNG での pdfcpu exit 1 | 422 | `unsupported-image` | **この印影画像は処理できません。PNGの形式、破損や画像の大きさを確認してください。** |
+| 正当な PNG だが、生成レイヤーが8 MiBを超える | 422 | `image-too-complex`（新規） | **印影画像の描画が処理上限を超えています。画像を小さくするか単純にしてください。** |
+| PDF の破損・警告・暗号化・空 | 422 | なし | このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。 |
 | PDF の処理上限（metadata・object数・50 MiB・job・出力62 MiB） | 422 | `too-complex` | このPDFは描画の処理上限を超えています。（既存） |
-| 対応外のページ属性（Rotate・Box・UserUnit・寸法） | 422 | `unsupported-pdf` | 既存 |
-| 同時実行の上限 | 503 | なし | 既存 |
+| 対応外のページ属性（Rotate・Box・UserUnit・寸法） | 422 | `unsupported-pdf` | このPDFのページ属性は描画に対応していません。 |
+| 同時実行の上限 | 503 | なし | PDF処理の同時実行上限に達しました。 |
 | 共有30秒の超過 | 504 | なし | PDF処理が制限時間を超過しました。（既存。`images: false`） |
 | pdfcpu の起動失敗（126/127）・signal・exit 2以上・空出力、生成PDFの検査失敗、managed I/O 障害、cleanup 失敗 | 500 | なし | PDF処理に失敗しました。（既存） |
 
@@ -436,7 +439,7 @@ PDF本文、PNG bytes、利用者の filename、query の値、pdfcpu の stdout
 | --- | --- | --- |
 | exit 0、stdout が上限以内で非空 | 成功。検査へ進む | ― |
 | stdout が上限を超過（`null`） | 422 `image-too-complex` | 【事実】pipe には FSIZE が掛からず、runner の上限判定は確定的。blank は API 生成で小さく、PDF 側の要因はない |
-| exit 1 | 422 `unsupported-image` | 【事実】pdfcpu の通常エラーは exit 1（壊れたPNGで確認）。PNG は .NET 側で構造と展開を検査済みで、blank・設定は API と起動時の自己テストで保証される。残る原因は「仕様上は正しい PNG を pdfcpu が読めない」場合であり、利用者には画像の非対応として返す（§13 仕様確認事項5） |
+| exit 1 | 422 `unsupported-image` | 【事実】pdfcpu の通常エラーは exit 1（壊れたPNGで確認）。PNG は .NET 側で構造と展開を検査済みで、blank・設定は API と起動時の自己テストで保証される。残る原因は「仕様上は正しい PNG を pdfcpu が読めない」場合であり、利用者には画像の非対応として返す（§13 決定5） |
 | exit 2 | 500 | 【事実】Go runtime の fatal error（AS 不足など）は exit 2。最大の入力でも AS 1 GiB で再現しなかった |
 | 126/127、負、128以上 | 500 | 起動失敗・signal（既存の扱いと同じ） |
 | exit 0 で stdout が空、生成PDFの検査失敗 | 500 | 生成物の異常 |
@@ -452,93 +455,58 @@ stderr の文言から原因を推測しない（既存の方針と同じ）。
 
 ## 8. テストと完了条件
 
-### 8.1 .NET 単体テスト（tool 不要）
+### 8.1 実装済みの.NET単体テスト（tool不要）
 
-- `StampPlacementTests`
-  - 例示値（W=600、H=800、300×200 px、0.72/0.08/0.12 → left 432、top 64、w 72、h 48、bottom 688、scale 0.24）。
-  - Rotate 90/270 相当の横長寸法、UserUnit 0.5/2 相当の寸法、14,400 pt と 3 pt のページ、1×1 px と 2000×2000 px。
-  - 右端・下端にちょうど接する場合は受理、超える場合（`x + width = 1.0001`、縦に 1e-5 pt 超過）は400、Tolerance 内は `bottom ≥ 0` に丸める。
-  - `x=1`、`y=1`、縦長PNG での400。
-  - Description に指数表記・`-0`・`,` が出ないこと（1e-7 など極小値、14,400）。
-- `StampImageQueryTests`
-  - 必須4 key、大文字小文字の違う key、重複、未知 key、空値、最大長＋1。
-  - `page` の先頭0、`2147483648`（overflow）、11桁。
-  - `x`/`y`/`width` の拒否例（§5.1。`0.١٢`、全角、`1e-1`、`+0.5`、`0.12345`、`.5`、`1.`）と境界（0、1、0.02、0.5、0.0199、0.5001）。
-- `PngDataValidatorTests`：既存の `FromImagesFixtures.Png` を拡張して生成する。
-  - 全 color type・bit depth（§5.3。gray 2/4・palette 1/2 を含む）と Adam7 の正常系。
-  - zlib 破損、Adler 不一致、データ不足・過剰、filter type 5〜255、IDAT を複数 chunk に分割した正常系、cancel。
-- `StampImageInputTests`
-  - 2001×1、1×2001、4000×1000（総画素数内で各辺超過）、2000×2000。
-  - 空 file、APNG、未知 critical、CRC 破損。
-  - sanitize 後に upload が削除されること。`PdfImageInputException` が外へ出ないこと。
-- `OverlayBuilder` の追加分
-  - `drawInputs` の予約・削除・失敗時の削除。job 外・入力と同一の path の拒否。
-  - `layerJson: false` で JSON を予約しないこと。既存の page-numbers/watermark が変わらないこと（既存テスト）。
-- 設定の検証：`MaxStampImageBytes` の 0、1 MiB＋1、overflow する組合せ、job 不足で起動に失敗すること。
+- `StampPlacementTests`：必須query・ASCII書式・重複/未知key・overflow・範囲、表示寸法と縦横比、右下端の境界、はみ出し、縦長画像、culture、小さいscaleを0へ丸めないことを検査する。queryのテストもこのクラスに含む。
+- `StampImageInputTests`：全depth/color type・Adam7の1×1/17×23 px、複数IDAT（空chunkを含む）、zlib/Adler破損、データの過不足、filter不正、trailer欠損、FDICT、各辺超過、metadataとuploadの削除を検査する。`PngDataValidator`専用のテストクラスは作らず、このクラスから`PrepareAsync`経由で検査する。
+- 設定の純粋な検証は同クラス、`MaxStampImageBytes`の0/1 MiB超での起動拒否は`PdfcpuProcessorTests.InvalidOptions_PreventStartup`で確認する。
+- fixtureは`StampFixtures`と既存`FromImagesFixtures.Chunk`で生成する。
 
-### 8.2 .NET 実 tool テスト（host の qpdf・pdfcpu。既存 CI の dotnet test で実行）
+### 8.2 実装済みの.NET実toolテスト（hostのqpdf・pdfcpu）
 
-- `StampImage_PlacesAtDisplayedPosition`
-  - Rotate 0/90/180/270 と −90/450（正規化と元の値の復元）、CropBox の原点ずれ、UserUnit 0.5/2、継承した MediaBox/Rotate。
-  - 出力の content stream を q/Q/cm/Do と Form `/Matrix` を含めて合成し、画像の単位正方形の3点を表示座標へ変換して、左上・幅・高さ・向き（鏡像・回転がないこと）を期待値と1 pt以内で比較する。合成処理はテスト用の helper として追加する（§12.1 の `analyze.py` と同じ方法）。
-- `StampImage_TransparencyStructure`
-  - RGBA・gray+alpha・tRNS（gray/RGB/palette）で、画像に `/SMask` があること。不透明な PNG では `/SMask` がないこと。
-  - 16 bit で `BitsPerComponent 16`、palette で `Indexed` であること。
-- `StampImage_OnlyTargetPageChanges`
-  - 3ページの PDF の2ページ目に押し、1・3ページの Contents・Resources・属性・BleedBox/ArtBox・しおり・Link・フォームが保持されること。
-  - ページ数と非暗号化。
-- `StampImage_PdfcpuArgvContainsOnlyGeneratedPathsAndNumbers`
-  - 利用者の filename（`秘密.png` など）・part の Content-Type が argv・ログ・Problem Details に出ないこと（watermark のテストと同じ方式）。
-- `StampImage_ImageTooComplex`
-  - 2000×2000 で高entropyの PNG（≤ 1 MiB、Up filter の構成。§12.1）が422 `image-too-complex` になり、残存ファイルがないこと。
-  - レイヤーが上限の95〜100%になる画像（seed 固定）が成功すること。
-- `StampImage_PdfcpuExitCodes`
-  - テスト用の偽 pdfcpu（exit 1／2／127／空出力／上限超過出力）で、§7.2 の対応どおりになること。
+- `PdfStampImageTests.PlacesAtDisplayedPositionForEveryRotationCropAndUserUnit_OnlyTargetPageChanges`：7ページのfixture（Rotate 0/90/180/270/−90/630、CropBoxのずれ、UserUnit 0.5/1/2）へ1ページずつ押す。画像・Formの行列を合成し、3点を表示座標へ変換して1 pt以内で比較する。ページ数・ページ属性・対象外Contents・SMaskを確認する。
+- `AcceptsAllPngDepthsAndAdam7IncludingPaletteTransparency`：全depth/color type・Adam7、gray/RGB/paletteのtRNSとalpha付き画像を実APIへ送り、成功と透過用SMaskを検査する。
+- `SmallValidPngWithHugeLayer_ReturnsImageTooComplex`：2000×2000のUp filter画像が8 MiBを超え、422 `image-too-complex`とcleanupになることを検査する。
+- `PdfErrorsAndToolFailuresKeepDistinctContracts`：PDFの空/破損/暗号化・unsupported-pdf・too-complex、toolのexit 1/2/126/127/137と内部500を確認する。
+- 上限直前のレイヤーは.NETテストとは別に§8.5の実HTTP容量測定で確認した。しおり/Link/フォーム、継承Box、argvの詳細について、stamp専用の新しい検査を追加したとは扱わない。共通overlayの既存テストとは区別する。
 
-### 8.3 HTTP テスト（WebApplicationFactory）
+### 8.3 実装済みのHTTP・cleanup検証（WebApplicationFactory）
 
-- query の400がアップロード前に返り、tool が起動しないこと。
-- multipart の欠落・重複・未知・順序の入れ替え・filename のない part・空の part。
-- 413 の3種：画像 1 MiB＋1、PDF 50 MiB＋1、request 全量（Content-Length あり／chunked）。
-- **50 MiB ちょうどの有効な PDF と 1 MiB ちょうどの有効な PNG が413にならないこと。**
-  - PDF は既存の上限 PDF の生成処理を使う。
-  - PNG は 2000×2000 RGBA に private ancillary chunk を足して、ちょうど1,048,576 bytes にする（sanitizer で除去される）。
-  - 結果は200、または PDF の処理上限による422。どちらでも413でないことを確認する。
-- page > ページ数で400、はみ出しで400（入力検査は1回だけ）。
-- 422 の各 reason と title。画像→PDF 用の文言が出ないこと。
-- PDF の破損・暗号化・`unsupported-pdf`・`too-complex` が既存の契約どおりであること。
-- 成功時の `Content-Type: application/pdf`、`Content-Disposition: attachment; filename=stamped.pdf`。
-- cleanup：成功・400・413・422・500・timeout（blocking tool）・client の cancel・送信中の切断で、job ディレクトリが空になり、子 process が残らないこと。共有の実行枠が解放されること。
+- `InvalidQueryPrecedesUploadAndTools`：不正queryの400がuploadやrequest-stageのtool呼び出しより先に返る。
+- `InvalidMultipartImageAndPlacement_ReturnExpectedProblems`：必須field、重複、未知field、filenameなし、不正PNG、各辺、page超過とはみ出し。正常系ではimage/fileの順序を入れ替える。
+- `IndividualAndTotalUploadLimits_WorkWithAndWithoutContentLength`：partとrequest全量の413、Content-Lengthあり/なし。PDFのpart境界は小さく設定して確認する。
+- `MaxPdfPlusMaxPng_IsAccepted_WithoutRaisingOtherEndpointsLimit`：xref手前に余白を入れた50 MiB PDFと、通常サイズのPNGを**IEND後の0埋めで1 MiBにした**入力が200になり、他endpointの上限は広がらないことを検査する。これは2000×2000の画像を使うテストではない。
+- 正常応答のapplication/pdf・stamped.pdf、Problem Detailsのreason、利用者のfilename・metadata・内部pathが応答やログへ漏れないことを確認する。
+- `TimeoutCancelAndBusySlot_DeleteImageAndWaitForProcessTree`と`EveryStageWaitsForChildrenAndDeletesStamp`：入力metadata・stamp描画・overlayでtimeout/cancel/アプリ停止を注入し、process treeの終了、印影を含むjob削除、503と共有枠の解放を確認する。送信中断専用のstampテストを追加したとは扱わない。
 
-### 8.4 描画比較スクリプト（CI の docker job、Poppler）
+### 8.4 実装済みの描画比較（CIのdocker job、Poppler）
 
-`scripts/stamp-image-validation.py IMAGE --render` を新規に追加する。
+実行コマンドは `python3 scripts/stamp-image-validation.py IMAGE`。`--render`という引数はない。
 
-- 実 API container に、4隅に色を付けた非対称の RGBA PNG（半透明の帯、透明の中央を含む）を、§8.2 と同じページ群へ押す。
-- 配置行列を合成して±1 ptで比較する。
-- `pdftoppm -cropbox -r 72×UserUnit` で描画し、4隅の色（許容差あり）、透明部分が下地の色であること、半透明部分（alpha 128）が下地との中間値であることを確認する。
-- 非対象ページを元の PDF と pixel 単位で比較する。
-- 入力が OCG（`/BaseState /OFF`）を持つ場合も印影が表示されることを確認する。
-- 結果を `docs/stamp-image-validation.md` に記録する。
+- 実APIへ、CropBoxに原点のずれがある12ページ（Rotate 0/90/180/270 × UserUnit 0.5/1/2）のPDFを送る。RGBA 8 bitとRGBA 16 bit Adam7の四隅に色がある非対称PNGを、各対象ページへx/y=0.2、width=0.3で押す。
+- OCGなしの入力24ケースに加え、Catalogの`/OCProperties`に入力側OCGと`/D /BaseState /OFF`を持つ入力24ケースを実行する。OFFレイヤーには全面赤の描画を置き、印影が表示され、入力側の赤は非表示のまま、出力のBaseStateもOFFのままであることを検査する。
+- Popplerは `pdftoppm -cropbox -r 144`で描画する。実際のraster寸法から割合の期待位置を求め、四隅の赤・緑・青・黄、完全透明部分の灰色204、alpha 128の黒と下地の合成値102を、RGB許容差3以内で比較する。
+- 対象ページの背景と、12 dpiで描いた非対象ページの全画素が灰色204（許容差1）を保つことを確認する。これは合成した灰色fixtureの確認であり、任意の元PDFとの全画素比較ではない。
+- 配置行列の合成と表示座標への変換（3点、許容差1 pt）は.NETの`PlacesAtDisplayedPositionForEveryRotationCropAndUserUnit_OnlyTargetPageChanges`が担当する。Pythonの描画比較では行列を解析しない。
+- `qpdf --check`、印影を含むjob削除も確認する。結果・48ケースのJSONを `docs/stamp-image-validation.md` と `docs/stamp-image-render-results.json` に記録する。pdf.js・Acrobatの確認はサイト#44に残る。
 
-### 8.5 容量・時間の測定（手動。既存の `OverlayCapacity` category の方式）
+### 8.5 実施済みの容量・時間測定（手動、実HTTP）
 
-- 条件：既存と同じ（CPU 1、memory 1.5 GiB、swap なし、tmpfs 256 MiB、non-root、read-only、network none）。単独と、同時2件を共有30秒の token で処理する。
-- 入力
-  - 上限規模の PDF（約52 MB・metadata 約33 MB・50,000 object。既存の測定用の生成処理）。対象ページは14,400 pt四方のページと最小ページの2条件。
-  - PNG の条件
-    - (a) レイヤーが8 MiBの95〜100%になる 8 bit RGBA
-    - (b) pdfcpu の memory が最大になる 2000×2000 の 16 bit RGBA Adam7（1 MiB 以下）
-    - (c) 1 MiB ちょうどの通常の印影
-- 記録：stage ごとの時間（`observe`）、job 台帳の peak、memory.peak、tmpfs の観測値、oom_kill、FSIZE、残存した job/process。
-- 合格基準：各処理が24秒以内、OOM・残存がゼロ。
-- 注意：文字レイヤー（#25/#27/#28）や画像→PDF（#26）の実測値を性能保証に流用しない。#25 の最長22.3秒は1000ページの文字描画での値であり、stamp は1ページだが PDF 全体の検査・metadata・overlay の費用は同程度になる見込み（【未検証】）。24秒を超えた場合は、30秒・上限を広げず、Human に報告する。
+`python3 scripts/stamp-image-validation.py IMAGE --capacity --output DIR`を実行する。`--capacity-image PNG_PATH`を付けると指定PNGをそのまま使い、幅・高さ・bit depth・color type・interlace・IENDまでのbytesと後続bytesを実データから記録する。固定値の画像属性を記録しない。
+
+- 条件：CPU 1、memory 1536 MiB、swapなし、tmpfs 256 MiB、non-root、read-only root、network none。実APIの2件にそれぞれ既存の共有30秒deadlineを適用する。測定driverはhostで動き、cgroupのmemory.peakには含まない。
+- PDFは既存overlay測定fixtureを50 MiBに調整したもの（50,000 reachable object、1000ページ、入力metadata 33,030,150 bytes）。対象は1000ページ目の14,400 pt四方、x/y=0.2、width=0.5。
+- 既存測定は2000×2000・16 bit RGBA Adam7を、**IEND後の0埋めを含め1 MiBにした**入力。2件とも200、20.191 / 20.150秒、出力各52,385,464 bytes、memory.peak 745,349,120 bytes、OOM・残存job/process 0。uploadの上限と最大寸法を確認する測定であり、レイヤーの8 MiB直前を試すものではない。
+- レビュー時の追加測定は、列ごとの乱数に行ごとに+1するUp filterの8 bit RGBA、2000×1395 px、PNG本体20,917 bytes（元driverのHTTP uploadはIEND後0埋めで1 MiB）。単体stampのレイヤー8,372,407 bytes（8 MiB上限の約99.8%）でも2件とも200、19.7 / 19.5秒、出力各60,678,901 bytes、memory.peak 759,238,656 bytes、OOM 0だった。提供された測定記録として検証文書へ追記する。
+- 現行driverが測るのは、upload/downloadを含むHTTP時間・出力bytes・cgroup memory.peakとmemory.events・残存job/processである。台帳の制限はAPIで適用するが、stageごとのobserve、台帳peak、tmpfs使用量のサンプリングはこのdriverで記録しない。FSIZEもこの測定で再取得せず、既存の起動/runnerテストで確認する。
+- 単独処理と最小ページの測定、任意の画像に対するmemoryの最大値は未確認。16 bit Adam7の1条件を「pdfcpu memoryの最悪値」とは扱わない。
+- 合格基準は各処理24秒以内、OOM・残存ゼロ。結果は使用した合成入力の値であり、文字レイヤーや画像→PDFの測定を性能保証へ流用しない。
 
 ### 8.6 Docker smoke
 
-- `scripts/docker-smoke.py` に `stamp_smoke` を追加する。
-  - host で作った 64×48 の透過 PNG を1ページの PDF に `page=1&x=0.7&y=0.1&width=0.12` で押し、200・`stamped.pdf` であることを確認する。
-  - container 内で `qpdf --check` が exit 0、ページ数が1、画像に `/SMask` があることを確認する。
+- `scripts/docker-smoke.py`の`main`に押印のsmokeを追加済み。専用の`stamp_smoke`関数は作らない。
+  - 固定の合成16×24 RGBA PNG を1ページの PDF に `page=1&x=0.7&y=0.1&width=0.12` で押し、200・`stamped.pdf` であることを確認する。
+  - container内で`qpdf --check`と1ページ・Rotate 0を確認する。SMaskの構造検査は.NETテストで行う。非PNGの422もsmokeで確認する。
   - job が残っていないこと（`assert_clean`）を確認する。
 - 起動時の自己テストに stamp を含めたことで、壊れた pdfcpu では起動に失敗することを確認する（既存の `assert_startup_failure` の方式）。
 
@@ -559,18 +527,19 @@ stderr の文言から原因を推測しない（既存の方針と同じ）。
 | --- | --- |
 | `src/Amane.Pdf.Api/PdfStampImageEndpoint.cs`（新規） | endpoint、`StampImageQuery` |
 | `src/Amane.Pdf.Api/StampPlacement.cs`（新規） | 配置の純粋関数 |
-| `src/Amane.Pdf.Api/StampImageInput.cs`（新規） | `StampImage`、`StampImageInput`、`PngDataValidator`、`PdfStampImageException` |
+| `src/Amane.Pdf.Api/StampImageInput.cs`（新規） | `StampImage`、`StampImageInput`、`PdfStampImageException` |
+| `src/Amane.Pdf.Api/PngDataValidator.cs`（新規） | IDATの展開検査 |
 | `src/Amane.Pdf.Api/PdfcpuProcessor.cs` | `StampImageAsync`、起動時の stamp 自己テスト |
 | `src/Amane.Pdf.Api/PdfOverlayBuilder.cs` | `drawInputs`、`layerJson` |
 | `src/Amane.Pdf.Api/MultipartPdfUpload.cs` | `ReadFileAndImageAsync` |
 | `src/Amane.Pdf.Api/PdfEndpointHelpers.cs` | `tooLargeTitle`、`PdfStampImageException` の catch |
 | `src/Amane.Pdf.Api/TemporaryPdfFiles.cs` | `StampUploadPath`、`StampImagePath` |
 | `src/Amane.Pdf.Api/PdfOptions.cs`、`Program.cs` | 設定、検証、endpoint の登録 |
-| `tests/Amane.Pdf.Api.Tests/`（`StampPlacementTests.cs`、`StampImageQueryTests.cs`、`PngDataValidatorTests.cs`、`PdfStampImageTests.cs`、`PdfStampImageResourceTests.cs`、helper） | §8.1〜§8.3、§8.5 |
+| `tests/Amane.Pdf.Api.Tests/`（`StampPlacementTests.cs`、`StampImageInputTests.cs`、`PdfStampImageTests.cs`、`StampFixtures.cs`、`PdfcpuProcessorTests.cs`） | §8.1〜§8.3、§8.5 |
 | `scripts/stamp-image-validation.py`（新規）、`scripts/docker-smoke.py`、`.github/workflows/ci.yml` | §8.4、§8.6 |
 | `README.md`、`docs/security.md` | §10 |
 | `docs/stamp-image-validation.md`（新規） | 実測の記録 |
-| `docs/stamp-image-design.md`（この文書） | 設計の正本。§13 仕様確認事項6 |
+| `docs/stamp-image-design.md`（この文書） | 設計の正本。§13 決定6（Issueの案内は未反映） |
 
 Dockerfile と THIRD_PARTY_NOTICES は変更しない（新しい依存はない）。
 
@@ -672,27 +641,27 @@ V1〜V4・V9 は `reproduce.sh` で再現できる。V8・V10〜V15 は同じ im
 | zlib の preset dictionary（FDICT）での .NET の例外 | 単体テスト |
 | 実 API の Builder 経由での配置（probe は Builder の調整後の状態を再現したもの） | §8.2 |
 
-## 13. 実装で採用した判断（設計時の推奨案）
+## 13. 決定状況と残る対応
 
-| # | 事項 | 推奨 | 理由 |
+| # | 事項 | 決定・実装状況 | 理由 |
 | --- | --- | --- | --- |
-| 1 | stamp が追加する OCG・Artifact | そのまま受け入れ、README に記載する | create は拡大できず使えない。除去には qpdf の処理が1段増える。印影に改ざん防止の効力はない。Poppler では入力の OCG に関係なく表示される |
-| 2 | 画像起因のレイヤー超過の reason | 新しい `image-too-complex` | 利用者が取るべき対処（画像を単純にする）が `unsupported-image`（形式・破損）と異なる。site の許可 reason に1つ追加が必要 |
-| 3 | 空の `image` | 422 `unsupported-image` | PNG signature がない入力として、他の非 PNG と同じ扱いにする。画像→PDF の「reason なし422」は複数画像のための区別であり、単一画像の押印では reason があるほうが site で扱いやすい |
-| 4 | 16 bit・Adam7・palette・gray・tRNS | すべて受理する | 実 tool で成功と透過を確認した。利用者が持つ既存の印影 PNG を拒否しない。pdf.js での表示は site で確認する |
-| 5 | 検査済み PNG での pdfcpu exit 1 | 422 `unsupported-image`（入力由来の診断情報をログへ残さない） | 入力のうち利用者に由来するのは PNG だけである。500 にすると利用者が再試行を繰り返す。原因の調査はログの件数で行う |
-| 6 | 設計の正本の置き場所 | この文書を実装PRに含め、Issue 末尾の旧設計はこの文書への案内に置き換える（#25 の pdfcpu-design.md と同じ運用） | Issue とコードの乖離を防ぐ |
-| 7 | はみ出しの許容差 | 縦方向 1e-6 pt、横方向は decimal で厳密 | 端にちょうど接する指定を、浮動小数点の誤差で400にしない |
-| 8 | query key の大文字小文字 | 区別しない（既存 API と同じ） | 一貫性 |
-| 9 | 印影の重なり順 | 本文の前面、注釈・フォームの背面（overlay 方式の既定） | 既存の透かしと同じ |
+| 1 | stamp が追加する OCG・Artifact | 採用済み。除去せずREADMEに記載。PopplerのOFFレイヤー回帰検証を追加。pdf.js/Acrobatは未確認 | create は拡大できず使えない。除去には qpdf の処理が1段増える。印影に改ざん防止の効力はない。Poppler では入力の OCG に関係なく表示される |
+| 2 | 画像起因のレイヤー超過の reason | APIは`image-too-complex`で実装済み。サイト#44の許可・伝達は未対応 | 利用者が取るべき対処（画像を単純にする）が `unsupported-image`（形式・破損）と異なる。site の許可 reason に1つ追加が必要 |
+| 3 | 空の `image` | 422 `unsupported-image`で実装済み | PNG signature がない入力として、他の非 PNG と同じ扱いにする。画像→PDF の「reason なし422」は複数画像のための区別であり、単一画像の押印では reason があるほうが site で扱いやすい |
+| 4 | 16 bit・Adam7・palette・gray・tRNS | 採用済み。全depth/color typeとAdam7・tRNSを実toolで検証 | 実 tool で成功と透過を確認した。利用者が持つ既存の印影 PNG を拒否しない。pdf.js での表示は site で確認する |
+| 5 | 検査済み PNG での pdfcpu exit 1 | 422 `unsupported-image`で実装済み。専用Warningは未実装（§6.5） | 入力のうち利用者に由来するのは PNG だけである。500 にすると利用者が再試行を繰り返す。stdout/stderrや入力由来の診断情報は記録しない |
+| 6 | 設計の正本の置き場所 | PR #64に本書を追加済み。Issue末尾の旧設計から本書への案内への置換は未反映 | Issue とコードの乖離を防ぐ |
+| 7 | はみ出しの許容差 | 実装済み。縦方向1e-6 pt、横方向はdecimalで厳密 | 端にちょうど接する指定を、浮動小数点の誤差で400にしない |
+| 8 | query key の大文字小文字 | 区別しない仕様で実装済み（既存APIと同じ） | 一貫性 |
+| 9 | 印影の重なり順 | 採用済み。本文の前面、注釈・フォームの背面（overlay方式の既定） | 既存の透かしと同じ |
 
 ## 14. セルフレビュー
 
 - **重複の排除**：入力の `qpdf --check`・ページ数・Box・UserUnit の取得は Builder の1回だけで、endpoint は再取得しない。PNG の展開は .NET（ストリーミング）と pdfcpu の2回になる。.NET 側は判別のための検査で、画素を保持しない。
 - **既存契約への影響**：Builder の追加引数は既定値で従来どおり動く。`ExecuteAsync` の `tooLargeTitle` は省略時に従来の文言になる。他 API の request 上限・sanitizer・runner は変えない。
-- **判別の確定性**：容量超過（stdout が `null`）は確定的に判定できる。exit 1 を422とするのは推論であり、その前提（PNG の完全な検査、blank と設定の保証）を明記して、仕様確認事項5に挙げた。
+- **判別の確定性**：容量超過（stdout が `null`）は確定的に判定できる。exit 1 を422とするのは推論であり、その前提（PNG の完全な検査、blank と設定の保証）を明記して、決定5として採用した。
 - **安全性**：argv に利用者の文字列が入らない。印影は0600の一時ファイルとメモリだけに置く。FSIZE=1 で予期しない書き込みを止める。ログには固定文言だけを出す。
-- **リスク**：上限規模の PDF での時間は24秒に近い可能性がある（§8.5、未検証）。超えた場合も上限を広げず、Human に判断を求める。OCG の表示は viewer によって異なる可能性がある（§12.2）。
+- **リスク**：上限規模PDFの同時2件は§8.5の2条件で各24秒以内だった。任意入力の保証には使わない。OCGのPoppler表示は回帰検証済みで、pdf.js/Acrobatは未確認である。
 - **範囲外**：複数画像・複数ページ、印影の生成、電子署名、PNG 以外、UI、deploy は扱わない。from-images への IDAT 検査の適用も扱わない。
 - **自己矛盾の確認**：Issue の「image は PNG のみ・1 MiB・2000 px」「request 上限」「stamped.pdf」「保存しない」「README の注意」をすべて §5〜§10 に反映した。Issue 草案の正規表現と §5.1 の文字検査は、範囲の検査後に同じ値の集合を受理する。
 

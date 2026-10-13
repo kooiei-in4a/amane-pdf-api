@@ -369,6 +369,8 @@ request全体の上限は53,542,912 bytes（50 MiB + 1 MiB + 64 KiB）です。P
 
 印影画像は処理中の一時ファイルだけに置き、成功・失敗・timeout・cancelで削除します。**電子印鑑は電子署名ではなく、改ざん防止や本人確認の効力はありません。** pdfcpuは印影に透かし用のOCGとArtifactを付けるため、編集ソフトで透かしとして削除される場合があります。pdf.js・Acrobatでの表示確認はサイト側の受け入れ検証で行います。複数画像・複数ページへの同時押印、印影生成、電子署名・タイムスタンプは扱いません。
 
+押印後はPDF/Aの適合性を保持しません。印影の画像XObjectに`/Interpolate true`が付くため、PDF/Aの画像補間の制約に適合しなくなります（[veraPDFのPDF/A検証ルール](https://github.com/veraPDF/veraPDF-validation-profiles/wiki/PDFA-Part-1-rules#rule-624-3)）。`qpdf --check`はPDF/A適合性の検査ではありません。
+
 ```bash
 curl --fail-with-body -F file=@input.pdf -F image=@stamp.png \
   'http://127.0.0.1:8080/api/pdf/stamp-image?page=1&x=0.72&y=0.08&width=0.12' -o stamped.pdf

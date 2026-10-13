@@ -1,0 +1,47 @@
+{
+  "input_bytes": 52428800,
+  "metadata_bytes": 33030150,
+  "objects": 50000,
+  "pages": 1000,
+  "image_bytes": 1048576,
+  "image_sides": [
+    2000,
+    1395
+  ],
+  "depth": 8,
+  "adam7": false,
+  "requests": [
+    {
+      "seconds_including_upload_and_download": 19.738551926999207,
+      "output_bytes": 60678901
+    },
+    {
+      "seconds_including_upload_and_download": 19.48317766099899,
+      "output_bytes": 60678901
+    }
+  ],
+  "memory_peak": 759238656,
+  "memory_events": {
+    "low": 0,
+    "high": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0,
+    "sock_throttled": 0
+  },
+  "cpu": 1,
+  "memory_limit_mib": 1536,
+  "swap": false,
+  "tmpfs_limit_mib": 256,
+  "concurrent": 2,
+  "jobs_remaining": 0,
+  "driver_memory_included": false,
+  "color_type": 6,
+  "image_png_bytes": 20917,
+  "image_trailing_bytes": 1027659,
+  "layer_bytes": 8372407,
+  "layer_measurement": "review standalone pdfcpu stamp",
+  "fixture_seed": 64,
+  "measurement_source": "PR #64 review (2026-10-13); image metadata corrected from actual PNG"
+}
