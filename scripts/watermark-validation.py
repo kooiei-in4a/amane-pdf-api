@@ -325,22 +325,7 @@ def main():
         directory = Path(temporary)
         source, cases = fixture(directory)
         before = pixels(source, directory, "original")
-        # CI-only instrumentation, mounted read-only; production has no metrics
-        # wrapper and no text logging. Record just the generated layer's length.
-        wrapper = directory / "measure-pdfcpu.sh"
-        wrapper.write_text("""#!/bin/sh
-umask 077
-/opt/amane-pdf/bin/pdfcpu "$@"
-result=$?
-if [ "$result" = 0 ]; then
-  for argument do last=$argument; done
-  case "$last" in */overlay-layer.pdf) stat -c %s "$last" > /tmp/watermark-layer-bytes;; esac
-fi
-exit "$result"
-""")
-        wrapper.chmod(0o755)
-        with smoke.running_container(args.image, settings=("Pdf__PdfcpuPath=/watermark-measure.sh",),
-                                     mounts=((wrapper, "/watermark-measure.sh"),)) as api:
+        with smoke.running_container(args.image) as api:
             for text, style, color in itertools.product(("社外秘", "取扱注意", "見本", "DRAFT", "-DRAFT, 社外秘", "W"*30),
                                                         ("diagonal", "corner"), ("gray", "red")):
                 body, content_type = smoke.multipart(source.read_bytes(), password=None, text=text)
@@ -358,11 +343,31 @@ exit "$result"
                         Image.fromarray(after[page-1]).save(args.artifacts / f"{style}-{color}-{name}.png")
                 api.assert_clean()
             verify_glyphs(api, directory, scalars, drawable, advances)
+            assert api.request("GET", "/healthz")[0] == 200
+            events = dict(line.split() for line in api.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
+            assert events["oom"] == events["oom_kill"] == "0", events
+            print("Memory peak (drawing/glyphs): " + api.exec("cat", "/sys/fs/cgroup/memory.peak").stdout.decode().strip())
+        # Instrument only capacity measurements. Placement and glyph checks
+        # above use the production executable directly, without a wrapper.
+        wrapper = directory / "measure-pdfcpu.sh"
+        wrapper.write_text("""#!/bin/sh
+umask 077
+/opt/amane-pdf/bin/pdfcpu "$@"
+result=$?
+if [ "$result" = 0 ]; then
+  for argument do last=$argument; done
+  case "$last" in */overlay-layer.pdf) stat -c %s "$last" > /tmp/watermark-layer-bytes;; esac
+fi
+exit "$result"
+""")
+        wrapper.chmod(0o755)
+        with smoke.running_container(args.image, settings=("Pdf__PdfcpuPath=/watermark-measure.sh",),
+                                     mounts=((wrapper, "/watermark-measure.sh"),)) as api:
             capacity(api, directory)
             assert api.request("GET", "/healthz")[0] == 200
             events = dict(line.split() for line in api.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
             assert events["oom"] == events["oom_kill"] == "0", events
-            print("Memory peak: " + api.exec("cat", "/sys/fs/cgroup/memory.peak").stdout.decode().strip())
+            print("Memory peak (capacity): " + api.exec("cat", "/sys/fs/cgroup/memory.peak").stdout.decode().strip())
         print("Watermark: 24 HTTP requests / 288 pages; geometry/opacity/color/front/extraction/subset/cleanup/health: PASS")
 
 

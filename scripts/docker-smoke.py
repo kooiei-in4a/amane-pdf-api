@@ -592,7 +592,8 @@ def main(image):
         body, content_type = multipart(FIXTURE, password=None, text="PRIVATE_WATERMARK%")
         status, _, problem = api.request("POST", "/api/pdf/watermark?style=diagonal&color=gray", body, content_type)
         assert status == 400 and b"PRIVATE_WATERMARK" not in problem
-        assert b"PRIVATE_WATERMARK" not in docker("logs", api.name).stdout
+        logs = docker("logs", api.name)
+        assert b"PRIVATE_WATERMARK" not in logs.stdout + logs.stderr
         api.assert_clean()
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)

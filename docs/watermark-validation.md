@@ -35,16 +35,16 @@ HTTPテストはUTF-8と120/121 bytes、60 Rune、文字数・空白・字形の
 
 ## 容量測定
 
-通常CIで1000ページの成功と1001ページの422 `too-complex` を確認します。14,400² ptのページで120 bytes・60 Runeの文字列と1字の最大サイズの透かしを別々に送ります。レイヤーbytesの計測wrapperはCI専用でread-only mountし、本番imageに入れません。
+通常CIで1000ページの成功と1001ページの422 `too-complex` を確認します。14,400² ptのページで120 bytes・60 Runeの文字列と1字の最大サイズの透かしを別々に送ります。配置の24 HTTP requestと字形照合は本番imageのpdfcpuを直接使います。レイヤーbytesの計測wrapperは容量測定専用の別コンテナへread-only mountし、本番imageに入れません。
 
-処理時間、レイヤー・出力bytesとcgroup peakはスクリプトの標準出力へ記録します。cgroup peakには全字形照合の直接pdfcpu実行も含みます。50 MiB・50,000 objectの上限規模fixtureは今回実測していません。既存[overlay容量測定](overlay-validation.md)の範囲内で、今回の追加は1ページ1文字要素と透過stream 1 objectです。
+処理時間、レイヤー・出力bytesとcgroup peakはスクリプトの標準出力へ記録します。描画・字形照合と容量測定のcgroup peakを別々に記録し、どちらもOOM 0・job削除・healthを確認します。50 MiB・50,000 objectの上限規模fixtureは今回実測していません。既存[overlay容量測定](overlay-validation.md)の範囲内で、今回の追加は1ページ1文字要素と透過stream 1 objectです。
 
 | 1000ページのtext | 時間 | レイヤー | 出力 |
 | --- | --- | --- | --- |
-| `A` + U+3099を30組（60 Rune、120 bytes） | 1.397秒 | 413,254 bytes | 1,107,233 bytes |
-| `秘`（1 Rune、各ページ8,145.87 pt） | 1.379秒 | 407,728 bytes | 1,104,274 bytes |
+| `A` + U+3099を30組（60 Rune、120 bytes） | 1.854秒 | 413,254 bytes | 1,107,233 bytes |
+| `秘`（1 Rune、各ページ8,145.87 pt） | 1.649秒 | 407,729 bytes | 1,104,274 bytes |
 
-このrunのcgroup memory.peakは118,800,384 bytes（約113.3 MiB）、OOM/oom_killとも0です。1001ページは422 `too-complex`、終了後のjobなし・health成功を確認しました。
+このrunのcgroup memory.peakは描画・字形照合117,440,512 bytes（112 MiB）、容量測定88,723,456 bytes（約84.6 MiB）で、両コンテナのOOM/oom_killとも0です。1001ページは422 `too-complex`、終了後のjobなし・health成功を確認しました。
 
 ## 再現と代表画像
 
