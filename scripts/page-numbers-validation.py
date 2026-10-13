@@ -101,9 +101,12 @@ def verify(path, cases, position, format, size):
             assert abs(xmin - 28) <= 1, (name, position, xmin)
         else:
             assert abs(width - xmax - 28) <= 1, (name, position, width, xmax)
-        # Anchor offsets use the baseline; the glyph bbox bottom differs by a few points.
+        # For the locked BIZ UDP font, the bottom glyph bbox extends about
+        # 0.45 * font_size below the anchor. Compare to this size-dependent
+        # expectation so 12pt text is not pressed against a 28 +/- 6pt boundary.
         margin = ymin if position == "top-right" else height - ymax
-        assert abs(margin - 28) <= 6, (name, position, margin)
+        expected_margin = 28 if position == "top-right" else 28 - 0.45 * font_size
+        assert abs(margin - expected_margin) <= 2, (name, position, size, margin, expected_margin)
 
 
 def main(image):
