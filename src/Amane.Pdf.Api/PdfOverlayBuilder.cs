@@ -14,7 +14,12 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
     internal const long InputLimitBytes = 50 * 1048576;
     private readonly PdfOptions settings = options.Value;
 
-    internal async Task BuildAsync(TemporaryPdfFiles files, int from, int to,
+    internal Task BuildAsync(TemporaryPdfFiles files, int from, int to,
+        Func<OverlayCanvas, CancellationToken, Task> draw, CancellationToken token,
+        Action<OverlayStage>? observe = null)
+        => BuildAsync(files, _ => (from, to), draw, token, observe);
+
+    internal async Task BuildAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
         Func<OverlayCanvas, CancellationToken, Task> draw, CancellationToken token,
         Action<OverlayStage>? observe = null)
     {
@@ -67,12 +72,13 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             capacity.Reserve(files.InputPath, inputBytes);
             await qpdf.ValidateAsync(files, token);
             Mark("validate-input", inputBytes);
-            int count;
+            int count, from, to;
             PdfPageAttributes[] originals;
             using (var input = await ReadMetadata(files.InputPath, settings.OverlayJsonLimitBytes, PdfPageBoxes.InputObjectLimit))
             {
                 count = input.Pages.Count;
                 if (input.Encrypted != false) throw new InvalidOperationException(Failure);
+                (from, to) = resolveRange(count);
                 if (from < 1 || to < from || to > count) throw new ArgumentException("描画ページ範囲が不正です。");
                 if (to - from + 1 > settings.OverlayMaxPages) throw PdfOverlayInputException.TooComplex();
                 originals = Enumerable.Range(from - 1, to - from + 1).Select(i => input.Read(i, token)).ToArray();
