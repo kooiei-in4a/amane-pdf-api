@@ -110,5 +110,8 @@ jobs:
       - name: Compare real overlay text and original rendering (CI tools only)
         run: /usr/bin/python3 scripts/overlay-validation.py amane-pdf-api:ci --render
 
+      - name: Verify page numbers, font and display coordinates (CI tools only)
+        run: /usr/bin/python3 scripts/page-numbers-validation.py amane-pdf-api:ci
+
       - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
         run: /usr/bin/python3 scripts/from-images-validation.py amane-pdf-api:ci

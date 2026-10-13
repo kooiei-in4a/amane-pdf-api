@@ -15,6 +15,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
 - Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
+- Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/split` によるPDF分割とZIP返却
 - `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
@@ -288,6 +289,42 @@ curl --fail-with-body -F file=@input.pdf \
 
 サイト側のUI・利用者向け制限・ヘッダーの伝達は[amane-tools-site #38](https://github.com/kooiei-in4a/amane-tools-site/issues/38)で扱います。
 
+### PDFページ番号（Linux）
+
+```text
+POST /api/pdf/page-numbers?position=bottom-center&format=number-total&from=2&start=1&size=medium
+Content-Type: multipart/form-data
+
+file  PDFファイル
+```
+
+| query | 必須 / 既定値 | 値と意味 |
+| --- | --- | --- |
+| `position` | 必須 | `bottom-center`（下中央）、`bottom-right`（下右）、`bottom-left`（下左）、`top-right`（上右） |
+| `format` | 必須 | `number`（`1`）、`number-total`（`1 / 9`）、`dash`（`- 1 -`） |
+| `from` | 既定 `1` | 番号を入れ始める物理ページ。1〜99999、総ページ数以下 |
+| `start` | 既定 `1` | 最初に表示する番号。1〜99999 |
+| `size` | 既定 `medium` | `small`（9 pt）、`medium`（10.5 pt）、`large`（12 pt） |
+
+`from` より前のページには番号を入れず、`from` のページから `start`、`start + 1` と数えます。`number-total` の総数は `start + (総ページ数 - from)` です。例えば10ページのPDFへ `from=2&start=1` を指定すると、表紙はそのままで、2〜10ページに `1 / 9`〜`9 / 9` を入れます。
+
+数値は先頭0のないASCII数字だけです。query keyは大文字小文字を区別せず、列挙値は小文字の完全一致です。未知のkey、重複、空値、不正な書式、`from` の範囲外、最後の表示番号が99999を超える指定は400です。400にreasonは付きません。`file` は1件だけを受け付け、passwordなどの追加fieldは400で拒否します。
+
+文字はBIZ UDPゴシックで黒、表示上のページ端から約10 mm（28 pt）内側に配置します。指定サイズを維持し、自動縮小しません。幅が約47 mm（133 pt）未満のページでは、12 ptの長い番号（例: `99999 / 99999`）が欠ける場合があります。
+
+成功時は200、`application/pdf`、固定ファイル名 `numbered.pdf` です。回転・CropBox・UserUnitを反映した白紙へ描き、qpdf overlayで重ねます。元のページ数、しおり、フォーム、リンク、ページ属性を保ちます。番号を付けるページのCropBox外の元本文は合成後に表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
+
+対象は最大1000ページで、表紙などの対象外ページはこの数に含めません。入力PDF 50 MiB、入力metadata 32 MiB / 50,000 object、生成JSON・白紙・番号レイヤー各8 MiB、出力62 MiB、job 124 MiBの既存overlay上限を使います。処理上限は422 `too-complex`、対応範囲外のページ属性は422 `unsupported-pdf`、破損・警告・暗号化などの入力不正はreasonなしの422です。番号用queryの書式はアップロード前、ページ数に依存する400は入力検査後に判定します。
+
+入力検査・metadata取得・番号描画・合成・属性復元・出力検査を合わせてアップロード後30秒、既存APIと共有する同時2枠・待ち行列0です。入力検査を二重に実行せず、全処理が完了して出力検査を通ってから返します。
+
+```bash
+curl --fail-with-body \
+  -F file=@input.pdf \
+  'http://127.0.0.1:8080/api/pdf/page-numbers?position=bottom-center&format=number-total&from=2&start=1' \
+  -o numbered.pdf
+```
+
 ### PDFページ抽出・削除・並べ替え
 
 ```text
@@ -343,7 +380,7 @@ curl --fail-with-body -F file=@input.pdf \
 
 ### 入力とエラー
 
-暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、圧縮、分割、回転、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
+暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、圧縮、分割、回転、ページ番号、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
 
 Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使います。
@@ -431,7 +468,7 @@ LinuxではpdfcpuとBIZ UDPゴシックも必須です。起動時にversion・f
 
 PNG見積りは`64 MiB + 2×正規化PNG bytes + 画素数×係数`が基本です。16 bitはGoデコーダの展開チャネル数×サンプル幅2 bytes×6で、透過なしグレーは12、カラーと透過付きグレーは48です。8 bit以下の非パレット・カラー/透過付きグレーは係数14に加え、`64 MiB + 画素数×22`以上と見積もります。その他は係数12です。Adam7はpassごとの画像を持つため、さらに`画素数×展開サンプルbytes`（パレット・透過なしグレーは1チャネル、その他は4チャネル）を加えます。圧縮bufferの成長を含む#59の実測に基づく受付見積りで、RSS/ASの上界でも変換成功の保証でもありません。型別の境界は[追加検証記録](docs/from-images-followup-validation.md)、AS別の失敗率は[反復検証](docs/from-images-as-validation.md)を参照してください。製品ASは取込・overlay共通の1 GiBを維持します。ASは仮想アドレス空間の上限で、コンテナの物理メモリ上限とは別です。固定Go runtimeではASと成功率が単調でないため、pdfcpuを更新する場合はAS 1 GiBでの境界入力の反復検証をやり直します。jobの最小値は`1 MiB + round4KiB(MaxImageInputBytes) + MaxImageFiles×4096`、最大124 MiBです。画像関連の制限は標準値を上限にして小さく設定できますが、起動用fixtureが通らない設定は自己テストで拒否します。
 
-Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。新しいHTTP endpointはありません。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
+Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。ページ番号APIもこの基盤を使います。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
 
 文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、最大1,000対象ページです。各要素の改行LF・tabはそれぞれ3個までで、他の制御文字、不正なUTF-16、pdfcpuの置換文字`%`は拒否します。font sizeは1〜14,400 pt、座標・offsetは±14,400 pt、文字回転は±360度、fontは固定です。JSONの描画範囲へcanvasの物理寸法を渡してください。後続APIでこの範囲を広げる場合は最大入力の再検証が必要です。画像→PDFは文字系の8 MiB予算と分離し、[画像用の検証記録](docs/from-images-validation.md)にbytes・画素数・生成物の測定を記載します。画像stampは#29で別途検証します。[設計書](docs/pdfcpu-design.md)、[PR A](docs/pdfcpu-validation.md)、[PR Bの検証記録](docs/overlay-validation.md)を参照してください。
 
@@ -442,8 +479,8 @@ passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で�
 
 mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
 
-30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
-暗号化、解除、最適化、圧縮、情報除去、画像からPDF、結合、分割、回転、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
+30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。ページ番号も入力検査から描画・合成・復元・出力検査まで同じ予算を共有します。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
+暗号化、解除、最適化、圧縮、情報除去、画像からPDF、結合、分割、回転、ページ番号、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
 merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 1.5 GiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
 ファイルサイズが50 MiB以内でも、大きな画像のデコードやqpdfのbufferが上限に達すると422になり得ます。破損、警告、処理上限超過をstderrで区別しません。全qpdf呼び出し（unlockの各probe・出力検証、64 bytesのページ数取得を含む）へ同じ制限を適用します。出力検証の失敗は500です。
@@ -582,11 +619,12 @@ docker build -t amane-pdf-api:ci .
 python3 scripts/docker-smoke.py amane-pdf-api:ci
 ```
 
-Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。実Builderで描画した文字の位置・向きと、追加文字以外の元本文をPopplerで比較します。
+Docker smokeはnon-root・read-only・network noneで日本語の実描画、font subset/ToUnicode、設定への書込み拒否、全licenseのchecksumを確認します。通常の.NETテストとDocker smokeにPopplerは不要です。文字抽出とfontの埋込みをCIと同じ条件で確認する場合は、hostへpoppler-utilsを導入して次を実行します。tool不足は失敗として扱います。実Builderで描画した文字の位置・向きと、追加文字以外の元本文をPopplerで比較します。ページ番号は36通りの実HTTPで3書式・4位置・3サイズと回転・CropBox・UserUnit・A3/B5/はがきの文字・位置を確認します。
 
 ```bash
 python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
 python3 scripts/overlay-validation.py amane-pdf-api:ci --render
+python3 scripts/page-numbers-validation.py amane-pdf-api:ci
 ```
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archive・元TTFはpdfcpuのruntime追加物に含めません。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。

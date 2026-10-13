@@ -568,6 +568,19 @@ def main(image):
         optimized = api.optimize(FIXTURE)
         assert api.page_rotations(optimized) == [0]
         assert api.page_rotations(api.merge([rotated, FIXTURE])) == [90, 0]
+        three_pages = api.merge([FIXTURE] * 3)
+        body, content_type = multipart(three_pages, password=None)
+        path = "/api/pdf/page-numbers?position=bottom-center&format=dash&from=2&start=1"
+        status, headers, numbered = api.request("POST", path, body, content_type)
+        assert status == 200 and headers["Content-Type"] == "application/pdf"
+        assert "filename=numbered.pdf" in headers["Content-Disposition"]
+        assert api.page_rotations(numbered) == [0, 0, 0]  # Includes independent qpdf --check.
+        api.assert_clean()
+        for query in ("position=bottom-center&format=dash&from=4", "position=bottom-center&format=dash&start=01"):
+            status, headers, problem = api.request("POST", "/api/pdf/page-numbers?" + query, body, content_type)
+            assert status == 400 and headers["Content-Type"].startswith("application/problem+json")
+            assert json.loads(problem)["status"] == 400
+            api.assert_clean()
         api.protect(None, expected=400)
         api.protect(FIXTURE, password=None, expected=400)
         api.protect(b"", expected=422)

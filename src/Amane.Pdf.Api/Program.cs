@@ -42,6 +42,7 @@ if (OperatingSystem.IsLinux())
     app.MapPost("/api/pdf/compress", PdfCompressEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/clean", PdfCleanEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/from-images", PdfFromImagesEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/page-numbers", PdfPageNumbersEndpoint.HandleAsync).RequireRateLimiting("pdf");
 }
 app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 app.MapPost("/api/pdf/split", PdfSplitEndpoint.HandleAsync).RequireRateLimiting("pdf");
