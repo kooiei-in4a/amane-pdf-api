@@ -2,7 +2,7 @@ namespace Amane.Pdf.Api;
 
 internal sealed class PdfCleanTooComplexException : Exception;
 
-internal sealed class CleanCapacity(long limit)
+internal sealed class CleanCapacity(long limit, Func<Exception>? overflow = null)
 {
     private readonly Dictionary<string, long> reservations = [];
     internal long Used { get; private set; }
@@ -15,18 +15,18 @@ internal sealed class CleanCapacity(long limit)
             options.MaxFileBytes <= long.MaxValue - 4095 &&
             options.CleanJobLimitBytes / 4096 * 4096 >= Allocated(options.MaxFileBytes);
 
-    internal long ReserveWrite(string path, long perFileLimit)
+    internal long ReserveWrite(string path, long perFileLimit, Func<Exception>? failure = null, bool sentinel = false)
     {
-        var bytes = Math.Min(perFileLimit, Remaining / 4096 * 4096);
-        if (bytes <= 0) throw new PdfCleanTooComplexException();
-        Reserve(path, bytes);
+        var bytes = Math.Min(perFileLimit, Remaining / 4096 * 4096 - (sentinel ? 1 : 0));
+        if (bytes <= 0) throw (failure ?? overflow)?.Invoke() ?? new PdfCleanTooComplexException();
+        Reserve(path, bytes + (sentinel ? 1 : 0));
         return bytes;
     }
     internal void Reserve(string path, long bytes)
     {
         var allocated = Allocated(bytes);
         var next = checked(Used - reservations.GetValueOrDefault(path) + allocated);
-        if (bytes < 0 || next > limit) throw new PdfCleanTooComplexException();
+        if (bytes < 0 || next > limit) throw overflow?.Invoke() ?? new PdfCleanTooComplexException();
         reservations[path] = allocated;
         Used = next;
     }
@@ -38,7 +38,7 @@ internal sealed class CleanCapacity(long limit)
 }
 
 // Refuse the write before it reaches disk; post-write accounting alone is insufficient.
-internal sealed class CleanLimitedWriteStream(Stream inner, long limit, CancellationToken token = default) : Stream
+internal sealed class CleanLimitedWriteStream(Stream inner, long limit, CancellationToken token = default, Func<Exception>? overflow = null) : Stream
 {
     private long written;
     public override bool CanRead => false;
@@ -49,7 +49,7 @@ internal sealed class CleanLimitedWriteStream(Stream inner, long limit, Cancella
     private void Check(int count)
     {
         token.ThrowIfCancellationRequested();
-        if (count > limit - written) throw new PdfCleanTooComplexException();
+        if (count > limit - written) throw overflow?.Invoke() ?? new PdfCleanTooComplexException();
         written += count;
     }
     public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));

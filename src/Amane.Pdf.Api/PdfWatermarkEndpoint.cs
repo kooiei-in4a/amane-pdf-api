@@ -12,7 +12,7 @@ internal static class PdfWatermarkEndpoint
         return PdfEndpointHelpers.ExecuteAsync(context, options.Value, "watermarked.pdf",
             () => watermark = WatermarkOptions.Parse(context.Request.Query),
             async (files, token) => text = WatermarkText.Parse(await MultipartPdfUpload.ReadFileAndTextAsync(
-                context.Request, files, options.Value, WatermarkText.MaxBytes, token)),
+                context.Request, files, "text", WatermarkText.MaxBytes, options.Value.MaxFileBytes, options.Value.MaxRequestBytes, token)),
             (files, token) => overlay.BuildAsync(files, static count => (1, count),
                 (canvas, drawToken) => pdfcpu.CreateAsync(files, watermark!.CreateLayer(canvas, text!),
                     canvas.BlankPath, canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, drawToken),

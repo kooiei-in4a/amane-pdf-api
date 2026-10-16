@@ -1,0 +1,219 @@
+[
+  {
+    "name": "dct-baseline90",
+    "width": 4000,
+    "height": 7500,
+    "samples": 90000000,
+    "filter": "/DCTDecode",
+    "progressive": false,
+    "encoded_bytes": 835092,
+    "exit_code": 0,
+    "milliseconds": 349,
+    "memory_peak_bytes": 162906112,
+    "jpeg_bytes": 261201,
+    "center_rgb": [
+      32,
+      32,
+      32
+    ],
+    "outside_rgb": [
+      128,
+      128,
+      128
+    ],
+    "drawn": true
+  },
+  {
+    "name": "dct-progressive90",
+    "width": 4000,
+    "height": 7500,
+    "samples": 90000000,
+    "filter": "/DCTDecode",
+    "progressive": true,
+    "encoded_bytes": 362303,
+    "exit_code": 0,
+    "milliseconds": 537,
+    "memory_peak_bytes": 341864448,
+    "jpeg_bytes": 261201,
+    "center_rgb": [
+      32,
+      32,
+      32
+    ],
+    "outside_rgb": [
+      128,
+      128,
+      128
+    ],
+    "drawn": true
+  },
+  {
+    "name": "dct-gray90",
+    "width": 9000,
+    "height": 10000,
+    "samples": 90000000,
+    "filter": "/DCTDecode",
+    "progressive": true,
+    "encoded_bytes": 363974,
+    "exit_code": 0,
+    "milliseconds": 468,
+    "memory_peak_bytes": 273346560,
+    "jpeg_bytes": 260510,
+    "center_rgb": [
+      32,
+      32,
+      32
+    ],
+    "outside_rgb": [
+      128,
+      128,
+      128
+    ],
+    "drawn": true
+  },
+  {
+    "name": "jpx-rgb30",
+    "width": 2000,
+    "height": 5000,
+    "samples": 30000000,
+    "filter": "/JPXDecode",
+    "progressive": false,
+    "encoded_bytes": 9004,
+    "exit_code": 0,
+    "milliseconds": 457,
+    "memory_peak_bytes": 223543296,
+    "jpeg_bytes": 259483,
+    "center_rgb": [
+      32,
+      32,
+      32
+    ],
+    "outside_rgb": [
+      128,
+      128,
+      128
+    ],
+    "drawn": true
+  },
+  {
+    "name": "jpx-gray30",
+    "width": 5000,
+    "height": 6000,
+    "samples": 30000000,
+    "filter": "/JPXDecode",
+    "progressive": false,
+    "encoded_bytes": 4275,
+    "exit_code": 0,
+    "milliseconds": 412,
+    "memory_peak_bytes": 223064064,
+    "jpeg_bytes": 260733,
+    "center_rgb": [
+      32,
+      32,
+      32
+    ],
+    "outside_rgb": [
+      128,
+      128,
+      128
+    ],
+    "drawn": true
+  },
+  {
+    "name": "jpx-rgba30",
+    "width": 2000,
+    "height": 5000,
+    "samples": 30000000,
+    "filter": "/JPXDecode",
+    "progressive": false,
+    "encoded_bytes": 9082,
+    "exit_code": 0,
+    "milliseconds": 708,
+    "memory_peak_bytes": 315568128,
+    "jpeg_bytes": 259483,
+    "center_rgb": [
+      32,
+      32,
+      32
+    ],
+    "outside_rgb": [
+      128,
+      128,
+      128
+    ],
+    "drawn": true
+  },
+  {
+    "name": "jbig2-1000",
+    "width": 40000,
+    "height": 25000,
+    "samples": 1000000000,
+    "filter": "/JBIG2Decode",
+    "progressive": false,
+    "encoded_bytes": 91,
+    "exit_code": 0,
+    "milliseconds": 1023,
+    "memory_peak_bytes": 320245760,
+    "jpeg_bytes": 264039,
+    "center_rgb": [
+      0,
+      0,
+      0
+    ],
+    "outside_rgb": [
+      255,
+      255,
+      255
+    ],
+    "drawn": true
+  },
+  {
+    "name": "dct-cmyk90",
+    "width": 3000,
+    "height": 7500,
+    "samples": 90000000,
+    "filter": "/DCTDecode",
+    "progressive": true,
+    "encoded_bytes": 359221,
+    "data_limit_bytes": 402653184,
+    "exit_code": 0,
+    "milliseconds": 1468,
+    "memory_peak_bytes": 341102592,
+    "jpeg_bytes": 259742,
+    "center_rgb": [
+      69,
+      70,
+      72
+    ],
+    "outside_rgb": [
+      148,
+      149,
+      153
+    ],
+    "drawn": true,
+    "reference_768_mib": {
+      "name": "dct-cmyk90",
+      "width": 3000,
+      "height": 7500,
+      "samples": 90000000,
+      "filter": "/DCTDecode",
+      "progressive": true,
+      "encoded_bytes": 359221,
+      "data_limit_bytes": 805306368,
+      "exit_code": 0,
+      "milliseconds": 1496,
+      "memory_peak_bytes": 341434368,
+      "jpeg_bytes": 259742,
+      "center_rgb": [
+        69,
+        70,
+        72
+      ],
+      "outside_rgb": [
+        148,
+        149,
+        153
+      ]
+    }
+  }
+]

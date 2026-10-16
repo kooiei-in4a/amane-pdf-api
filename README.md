@@ -17,6 +17,7 @@ PDFを安全に処理するための小さなWeb APIです。
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
 - Linuxの `POST /api/pdf/watermark` による全ページへの透かし文字
+- Linuxの `POST /api/pdf/redact` による指定範囲の画像化方式の黒塗り
 - Linuxの `POST /api/pdf/stamp-image` による指定ページ・表示位置への透過PNG押印
 - `POST /api/pdf/merge` による複数PDFのアップロード順での結合
 - `POST /api/pdf/split` によるPDF分割とZIP返却
@@ -120,6 +121,34 @@ curl --fail-with-body -F file=@input.pdf http://127.0.0.1:8080/api/pdf/clean -o 
 共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは50,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdf出力がFSIZEと同じ長さでも安全側に拒否します。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
 
 入力DOMを破棄してからPDFを生成し、入力・更新JSON・job JSONを削除してから出力を検査します。2 jobで248 MiB以内の一時ファイル予算を確保し、tmpfs 256 MiBとmemory 1.5 GiB・swapなしを実行環境で維持してください。[検証記録](docs/clean-validation.md)は合成fixtureでの実測です。設定を増やす場合は容量・メモリ・時間を再計測してください。#46の公開条件の確認は別途必要です。
+
+### PDF黒塗り（Linux）
+
+`POST /api/pdf/redact` は、表示上のページの左上を原点とする範囲を黒で塗り、画像に置き換えたPDFを返します。multipartの `file`（PDF、30 MiB以下）と、fileでない `regions`（UTF-8 JSON、16 KiB以下）が1つずつ必要です。queryは受け付けません。
+
+```bash
+curl -X POST http://localhost:8080/api/pdf/redact \
+  -F 'file=@input.pdf' \
+  -F 'regions=[{"page":1,"x":0.1,"y":0.2,"width":0.3,"height":0.1}]' \
+  -o redacted.pdf
+```
+
+`page` は1始まりの整数、座標・幅・高さは0〜1の小数（小数点以下4桁まで、指数・符号・文字列は不可）です。幅・高さは正で、範囲全体がページ内に収まる必要があります。keyは上記5つちょうどで、重複keyも拒否します。範囲の重複は許し、100範囲・異なる20ページまで指定できます。未知のfield、重複part、不正UTF-8/BOM、ページ数を超える番号は400です。request上限は30 MiB + 64 KiBで、超過は413です。
+
+成功時は `application/pdf`・`redacted.pdf` と、`X-Pdf-Redacted-Pages`（指定ページ）・`X-Pdf-Rasterized-Pages`（画像化した全ページ）を返します。両ヘッダーは1始まり・昇順・カンマ区切りです。**指定ページとフォントを共有するページも画像にします**。画像化は最大30ページで、超える場合は分割して処理してください。画像化したページは文字検索・選択ができなくなり、JPEGの劣化が生じます。200dpiを上限に1600万画素へ収め、大きなページは解像度を下げます。塗る範囲は画素単位で外側へ丸めます。
+
+全ページの注釈・フォームの外観を可能な範囲で焼き込み、リンクを含む注釈、フォーム、タグ構造、しおり、文書情報・XMP、ページラベル、埋め込みファイルを除去します。元のページを新しい画像ページに置き換え、残るページから元の対象本文等へ別経路の参照がある構造は拒否します。画像化しないページに独立して複製された同じ情報や、そのページ自体の内容の除去は行いません。
+
+| HTTP / reason | title |
+| --- | --- |
+| 422 `too-complex` | このPDFは黒塗りの処理上限を超えています。 |
+| 422 `unsupported-pdf` | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
+| 422 `output-too-large` | 黒塗りしたページの画像が大きくなりすぎるため、処理できませんでした。黒塗りするページを減らしてください。 |
+| 422 `too-many-pages` | 黒塗りするページとフォントを共有するページも画像にする必要があり、上限の30ページを超えました。PDFを分割してから黒塗りしてください。 |
+
+破損・暗号化は既存のreasonなし422です。描画枠1つとPDF共通枠2つを使い、使用中はupload前に503、処理の30秒超過は504です。出力検証が失敗した場合は500で、PDFは返しません。
+
+**結果は必ず確認してください。** PDFiumは対応外機能・壊れたstream・メモリ不足で描画を省く場合があります。画像XObjectの上限を事前検査しますが、巨大なinline imageなどの省略を完全には検出できません。[設計](docs/redact-design.md)・[実装の検証記録](docs/redact-validation.md)を参照してください。
 
 ### PDF暗号化
 
@@ -457,13 +486,13 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 
 ## 描画プログラム（PDFium、Linux x86_64）
 
-`Amane.Pdf.Renderer` は別プロセスでPDFの1ページを描き、指定の画素矩形を黒で塗ってからJPEG（baseline、4:2:0、品質85）にします。画像化方式の黒塗り（#35 PR A）と、将来のPDF→画像・OCRの基盤です。**公開の黒塗りAPIはまだありません。** PDFiumをAPIプロセス内で読み込まず、PDFtoImage・SkiaSharp・NuGetの画像ライブラリは使いません。
+`Amane.Pdf.Renderer` は別プロセスでPDFの1ページを描き、指定の画素矩形を黒で塗ってからJPEG（baseline、4:2:0、品質85）にします。画像化方式の黒塗り（`POST /api/pdf/redact`）と、将来のPDF→画像・OCRの基盤です。PDFiumをAPIプロセス内で読み込まず、PDFtoImage・SkiaSharp・NuGetの画像ライブラリは使いません。
 
 PDFiumは `third_party/pdfium.lock` の `chromium/8100` を `scripts/install-pdfium.sh` で取得し、tgz全体のsha256を検証します。`--pdfium` の絶対pathだけから共有ライブラリを読み、V8・XFAなしのbuildを使います。pdfcpuと同じ検証済みBIZ UDPゴシックTTFを渡します。Linuxの起動時には、埋め込みなしの `/MS-Mincho`・`/UniJIS-UCS2-H` の「日本語」、黒い塗り、JPEG生成を実際に検査します。失敗時は「描画プログラム（PDFium）の自己テストに失敗しました。」だけを記録し、待受前に終了コード1で停止します。他の自己テストと固定30秒の起動deadlineを共有します。
 
 描画は最大1600万画素、範囲100個です。ページ寸法を0.01 pt以内で照合してから描き、JPEGが `--max-bytes` を超えたらファイルを作りません。塗る前の画像は出力せず、成功時のJPEGだけをCreateNew・0600で作ります。子プロセスはCORE 0・DATA 384 MiB・FSIZE（JPEG予算+1）、診断socketなしで実行し、timeout・cancelでkillして終了を待ちます。CoreCLRのW^X用memfdのため、FSIZEは起動時だけ最低8 MiBとし、プログラム内でPDFiumを読む前に予算+1へ下げます。AS制限は使いません。共有描画枠は待ち0・1枠です。呼び出し元がrequest全体で枠と一時ファイルの削除を管理します。
 
-PDFiumは対応外の内容やメモリ不足で画像を黙って省略する場合があります。将来の黒塗りAPIでは画像サイズの事前検査も行いますが、完全な見た目の一致は保証できないため結果を確認してください。[設計書](docs/redact-design.md)と[描画基盤の検証記録](docs/renderer-validation.md)を参照してください。
+PDFiumは対応外の内容やメモリ不足で画像を黙って省略する場合があります。黒塗りAPIでは画像サイズの事前検査も行いますが、完全な見た目の一致は保証できないため結果を確認してください。[設計書](docs/redact-design.md)と[描画基盤の検証記録](docs/renderer-validation.md)を参照してください。
 
 更新担当者は [pdfium-binaries releases](https://github.com/bblanchon/pdfium-binaries/releases)（週次）と [PDFiumの変更履歴](https://pdfium.googlesource.com/pdfium/+log)を確認し、修正の必要性を判断します。更新PRでlockの版・URL・sha256・license member一覧を更新し、tgzの `args.gn` がV8・XFAなしであることとライセンス原文の差分を確認します。Release build/test、hostの描画テスト、Docker smoke、`scripts/renderer-validation.py` の画素比較、hostテストのDATA/FSIZE検査、CPU 1・memory 1.5 GiBでの測定をやり直してください。runtime起動時のdownloadはありません。
 
@@ -506,6 +535,11 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
 | `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
 | `Pdf__PdfcpuAddressSpaceLimitBytes` | `1073741824`（1 GiB） | pdfcpu専用RLIMIT_AS。qpdfと別の値 |
+| `Pdf__MaxRedactInputBytes` | `31457280`（30 MiB） | 黒塗り入力。正、30 MiB以下。requestはこの値 + 64 KiB |
+| `Pdf__MaxRedactReplacementBytes` | `31457280`（30 MiB） | 黒塗りのJPEG合計。正、30 MiB以下 |
+| `Pdf__RedactOutputLimitBytes` | `65011712`（62 MiB） | 黒塗り出力。正、62 MiB以下 |
+| `Pdf__RedactJsonLimitBytes` | `33554432`（32 MiB） | 黒塗りの各構造・更新JSON。正、32 MiB以下 |
+| `Pdf__RedactJobLimitBytes` | `130023424`（124 MiB） | 黒塗りの全ファイル割当。正、124 MiB以下、4 KiB切上げ後の入力上限以上 |
 | `Pdf__RenderDataLimitBytes` | `402653184`（384 MiB） | PDFium描画子プロセスのRLIMIT_DATA。正、384 MiB以下 |
 | `Pdf__DotnetPath` | `/usr/bin/dotnet` | 描画子プロセスのdotnet。絶対path |
 | `Pdf__RendererPath` | `/opt/amane-pdf/renderer/Amane.Pdf.Renderer.dll` | 描画プログラム。絶対path |
@@ -704,6 +738,7 @@ python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
 python3 scripts/overlay-validation.py amane-pdf-api:ci --render
 python3 scripts/page-numbers-validation.py amane-pdf-api:ci
 python3 scripts/watermark-validation.py amane-pdf-api:ci
+python3 scripts/redact-validation.py amane-pdf-api:ci
 ```
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "dct-progressive",
+    "width": 4000,
+    "height": 10000,
+    "samples": 120000000,
+    "filter": "/DCTDecode",
+    "progressive": true,
+    "encoded_bytes": 482054,
+    "data_limit_bytes": 402653184,
+    "exit_code": 0,
+    "milliseconds": 367,
+    "memory_peak_bytes": 192327680,
+    "jpeg_bytes": 250627,
+    "center_rgb": [
+      0,
+      0,
+      0
+    ],
+    "outside_rgb": [
+      0,
+      0,
+      0
+    ],
+    "drawn": false,
+    "reference_768_mib": {
+      "name": "dct-progressive",
+      "width": 4000,
+      "height": 10000,
+      "samples": 120000000,
+      "filter": "/DCTDecode",
+      "progressive": true,
+      "encoded_bytes": 482054,
+      "data_limit_bytes": 805306368,
+      "exit_code": 0,
+      "milliseconds": 672,
+      "memory_peak_bytes": 432427008,
+      "jpeg_bytes": 262024,
+      "center_rgb": [
+        32,
+        32,
+        32
+      ],
+      "outside_rgb": [
+        128,
+        128,
+        128
+      ],
+      "drawn": true
+    }
+  },
+  {
+    "name": "jpx-rgb60",
+    "width": 4000,
+    "height": 5000,
+    "samples": 60000000,
+    "filter": "/JPXDecode",
+    "progressive": false,
+    "encoded_bytes": 11410,
+    "data_limit_bytes": 402653184,
+    "exit_code": 0,
+    "milliseconds": 402,
+    "memory_peak_bytes": 317415424,
+    "jpeg_bytes": 251953,
+    "center_rgb": [
+      0,
+      0,
+      254
+    ],
+    "outside_rgb": [
+      0,
+      0,
+      254
+    ],
+    "drawn": false,
+    "reference_768_mib": {
+      "name": "jpx-rgb60",
+      "width": 4000,
+      "height": 5000,
+      "samples": 60000000,
+      "filter": "/JPXDecode",
+      "progressive": false,
+      "encoded_bytes": 11410,
+      "data_limit_bytes": 805306368,
+      "exit_code": 0,
+      "milliseconds": 649,
+      "memory_peak_bytes": 376950784,
+      "jpeg_bytes": 261282,
+      "center_rgb": [
+        32,
+        32,
+        32
+      ],
+      "outside_rgb": [
+        128,
+        128,
+        128
+      ],
+      "drawn": true
+    }
+  }
+]

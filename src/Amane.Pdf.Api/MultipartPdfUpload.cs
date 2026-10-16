@@ -45,11 +45,11 @@ public static class MultipartPdfUpload
     }
 
     internal static async Task<byte[]> ReadFileAndTextAsync(HttpRequest request, TemporaryPdfFiles files,
-        PdfOptions options, int maxTextBytes, CancellationToken token)
+        string fieldName, int maxTextBytes, long maxFileBytes, long maxRequestBytes, CancellationToken token)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTextBytes);
         var boundary = ReadBoundary(request);
-        using var body = new SizeLimitedReadStream(request.Body, options.MaxRequestBytes);
+        using var body = new SizeLimitedReadStream(request.Body, maxRequestBytes);
         var reader = new MultipartReader(boundary, body);
         var hasFile = false;
         byte[]? text = null;
@@ -62,9 +62,9 @@ public static class MultipartPdfUpload
             if (name == "file" && isFile && !hasFile)
             {
                 hasFile = true;
-                await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, token);
+                await CopyFileAsync(section.Body, files.InputPath, maxFileBytes, buffer, token);
             }
-            else if (name == "text" && !isFile && text is null)
+            else if (name == fieldName && !isFile && text is null)
             {
                 // Read only one byte beyond the limit, then reject without buffering more.
                 var bytes = new byte[checked(maxTextBytes + 1)];

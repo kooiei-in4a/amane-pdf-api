@@ -112,6 +112,9 @@ jobs:
       - name: Verify PDFium renderer geometry, startup and resource limits
         run: /usr/bin/python3 scripts/renderer-validation.py amane-pdf-api:ci
 
+      - name: Verify redaction geometry with Poppler (CI tools only)
+        run: /usr/bin/python3 scripts/redact-validation.py amane-pdf-api:ci
+
       - name: Compare PDF structure, streams and rendering (CI tools only)
         run: /usr/bin/python3 scripts/compress-validation.py --render amane-pdf-api:ci
 

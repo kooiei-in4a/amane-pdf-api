@@ -1,0 +1,513 @@
+{
+  "qpdf": [
+    {
+      "jsonversion": 2,
+      "pdfversion": "1.7"
+    },
+    {
+      "obj:1 0 R": {
+        "value": {
+          "/Type": "/Catalog",
+          "/Pages": "2 0 R",
+          "/Names": {
+            "/EmbeddedFiles": {
+              "/Names": [
+                "u:doc.txt",
+                "30 0 R"
+              ]
+            },
+            "/Dests": {
+              "/Names": [
+                "u:MK_DEST",
+                [
+                  "3 0 R",
+                  "/Fit"
+                ]
+              ]
+            }
+          },
+          "/Outlines": "40 0 R",
+          "/StructTreeRoot": "50 0 R",
+          "/MarkInfo": {
+            "/Marked": true
+          },
+          "/AcroForm": {
+            "/Fields": [
+              "20 0 R"
+            ],
+            "/NeedAppearances": false
+          },
+          "/OpenAction": {
+            "/S": "/JavaScript",
+            "/JS": "u:app.alert('MK_JS')"
+          },
+          "/Metadata": "60 0 R",
+          "/PageLabels": {
+            "/Nums": [
+              0,
+              {
+                "/S": "/D",
+                "/P": "u:MK_PAGELABEL-"
+              }
+            ]
+          },
+          "/AF": [
+            "31 0 R"
+          ]
+        }
+      },
+      "obj:2 0 R": {
+        "value": {
+          "/Type": "/Pages",
+          "/Count": 3,
+          "/Kids": [
+            "3 0 R",
+            "5 0 R",
+            "7 0 R"
+          ],
+          "/Resources": {
+            "/Font": {
+              "/F1": "10 0 R",
+              "/F2": "11 0 R"
+            }
+          }
+        }
+      },
+      "obj:10 0 R": {
+        "value": {
+          "/Type": "/Font",
+          "/Subtype": "/Type1",
+          "/BaseFont": "/Helvetica"
+        }
+      },
+      "obj:11 0 R": {
+        "value": {
+          "/Type": "/Font",
+          "/Subtype": "/Type1",
+          "/BaseFont": "/Courier"
+        }
+      },
+      "obj:12 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/XObject",
+            "/Subtype": "/Form",
+            "/BBox": [
+              0,
+              0,
+              300,
+              50
+            ],
+            "/Resources": {
+              "/Font": {
+                "/F1": "10 0 R"
+              }
+            }
+          },
+          "data": "QlQgL0YxIDEyIFRmIDAgMTAgVGQgKE1LX0ZPUk1YKSBUaiBFVA=="
+        }
+      },
+      "obj:13 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/XObject",
+            "/Subtype": "/Form",
+            "/BBox": [
+              0,
+              0,
+              300,
+              50
+            ],
+            "/Resources": {
+              "/Font": {
+                "/F2": "11 0 R"
+              },
+              "/XObject": {
+                "/Xs": "12 0 R"
+              }
+            }
+          },
+          "data": "QlQgL0YyIDEyIFRmIDAgMTAgVGQgKFBVQkxJQ19ORVNURUQpIFRqIEVU"
+        }
+      },
+      "obj:3 0 R": {
+        "value": {
+          "/Type": "/Page",
+          "/Parent": "2 0 R",
+          "/MediaBox": [
+            0,
+            0,
+            595,
+            842
+          ],
+          "/Resources": {
+            "/Font": {
+              "/F1": "10 0 R"
+            },
+            "/XObject": {
+              "/X1": "12 0 R"
+            },
+            "/Properties": {
+              "/MC0": {
+                "/ActualText": "u:MK_PROPS"
+              }
+            }
+          },
+          "/Contents": "4 0 R",
+          "/Annots": [
+            "20 0 R",
+            "21 0 R",
+            "22 0 R"
+          ],
+          "/StructParents": 0,
+          "/PieceInfo": {
+            "/MK_PIECE": {
+              "/Private": "u:MK_PIECEINFO"
+            }
+          },
+          "/AF": [
+            "32 0 R"
+          ]
+        }
+      },
+      "obj:4 0 R": {
+        "stream": {
+          "dict": {},
+          "data": "L1NwYW4gPDwgL0FjdHVhbFRleHQgKE1LX0lOTElORV9BQ1RVQUxURVhUKSAvTUNJRCAwID4+IEJEQyBCVCAvRjEgMTggVGYgNTAgNzUwIFRkIChNS19CT0RZMSkgVGogRVQgRU1DIC9QIC9NQzAgQkRDIEVNQyBxIDEgMCAwIDEgNTAgNjAwIGNtIC9YMSBEbyBR"
+        }
+      },
+      "obj:20 0 R": {
+        "value": {
+          "/Type": "/Annot",
+          "/Subtype": "/Widget",
+          "/FT": "/Tx",
+          "/T": "u:MK_FIELDNAME",
+          "/V": "u:MK_FIELDVALUE",
+          "/Rect": [
+            50,
+            500,
+            300,
+            530
+          ],
+          "/P": "3 0 R",
+          "/AP": {
+            "/N": "23 0 R"
+          },
+          "/F": 4
+        }
+      },
+      "obj:23 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/XObject",
+            "/Subtype": "/Form",
+            "/BBox": [
+              0,
+              0,
+              250,
+              30
+            ],
+            "/Resources": {
+              "/Font": {
+                "/F1": "10 0 R"
+              }
+            }
+          },
+          "data": "L1R4IEJNQyBCVCAvRjEgMTIgVGYgMiAxMCBUZCAoTUtfRklFTERBUCkgVGogRVQgRU1D"
+        }
+      },
+      "obj:21 0 R": {
+        "value": {
+          "/Type": "/Annot",
+          "/Subtype": "/FileAttachment",
+          "/Rect": [
+            400,
+            500,
+            420,
+            520
+          ],
+          "/FS": {
+            "/Type": "/Filespec",
+            "/F": "u:a.txt",
+            "/EF": {
+              "/F": "33 0 R"
+            }
+          },
+          "/Contents": "u:MK_ANNOT_CONTENTS"
+        }
+      },
+      "obj:33 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/EmbeddedFile"
+          },
+          "data": "TUtfQU5OT1RfQVRUQUNITUVOVA=="
+        }
+      },
+      "obj:22 0 R": {
+        "value": {
+          "/Type": "/Annot",
+          "/Subtype": "/Link",
+          "/Rect": [
+            50,
+            400,
+            200,
+            420
+          ],
+          "/A": {
+            "/S": "/URI",
+            "/URI": "u:https://example.invalid/MK_URI1"
+          }
+        }
+      },
+      "obj:5 0 R": {
+        "value": {
+          "/Type": "/Page",
+          "/Parent": "2 0 R",
+          "/MediaBox": [
+            0,
+            0,
+            595,
+            842
+          ],
+          "/Resources": {
+            "/Font": {
+              "/F2": "11 0 R"
+            },
+            "/XObject": {
+              "/X1": "12 0 R"
+            }
+          },
+          "/Contents": "6 0 R",
+          "/Annots": [
+            "24 0 R",
+            "80 0 R"
+          ],
+          "/AF": [
+            "34 0 R"
+          ]
+        }
+      },
+      "obj:6 0 R": {
+        "stream": {
+          "dict": {},
+          "data": "QlQgL0YyIDE4IFRmIDUwIDc1MCBUZCAoUFVCTElDX1AyKSBUaiBFVA=="
+        }
+      },
+      "obj:24 0 R": {
+        "value": {
+          "/Type": "/Annot",
+          "/Subtype": "/Link",
+          "/Rect": [
+            50,
+            400,
+            200,
+            420
+          ],
+          "/A": {
+            "/S": "/URI",
+            "/URI": "u:https://example.invalid/MK_URI2"
+          }
+        }
+      },
+      "obj:34 0 R": {
+        "value": {
+          "/Type": "/Filespec",
+          "/F": "u:af2.txt",
+          "/EF": {
+            "/F": "35 0 R"
+          }
+        }
+      },
+      "obj:35 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/EmbeddedFile"
+          },
+          "data": "TUtfQUZfUEFHRTI="
+        }
+      },
+      "obj:7 0 R": {
+        "value": {
+          "/Type": "/Page",
+          "/Parent": "2 0 R",
+          "/MediaBox": [
+            0,
+            0,
+            595,
+            842
+          ],
+          "/Resources": {
+            "/XObject": {
+              "/X3": "13 0 R"
+            },
+            "/Font": {
+              "/F2": "11 0 R"
+            }
+          },
+          "/Contents": "8 0 R"
+        }
+      },
+      "obj:8 0 R": {
+        "stream": {
+          "dict": {},
+          "data": "cSAxIDAgMCAxIDUwIDcwMCBjbSAvWDMgRG8gUQ=="
+        }
+      },
+      "obj:30 0 R": {
+        "value": {
+          "/Type": "/Filespec",
+          "/F": "u:doc.txt",
+          "/EF": {
+            "/F": "36 0 R"
+          }
+        }
+      },
+      "obj:36 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/EmbeddedFile"
+          },
+          "data": "TUtfRE9DX0FUVEFDSE1FTlQ="
+        }
+      },
+      "obj:31 0 R": {
+        "value": {
+          "/Type": "/Filespec",
+          "/F": "u:root-af.txt",
+          "/EF": {
+            "/F": "37 0 R"
+          }
+        }
+      },
+      "obj:37 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/EmbeddedFile"
+          },
+          "data": "TUtfUk9PVF9BRg=="
+        }
+      },
+      "obj:32 0 R": {
+        "value": {
+          "/Type": "/Filespec",
+          "/F": "u:p1-af.txt",
+          "/EF": {
+            "/F": "38 0 R"
+          }
+        }
+      },
+      "obj:38 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/EmbeddedFile"
+          },
+          "data": "TUtfQUZfUEFHRTE="
+        }
+      },
+      "obj:40 0 R": {
+        "value": {
+          "/Type": "/Outlines",
+          "/First": "41 0 R",
+          "/Last": "41 0 R",
+          "/Count": 1
+        }
+      },
+      "obj:41 0 R": {
+        "value": {
+          "/Title": "u:MK_OUTLINE",
+          "/Parent": "40 0 R",
+          "/Dest": [
+            "3 0 R",
+            "/Fit"
+          ]
+        }
+      },
+      "obj:50 0 R": {
+        "value": {
+          "/Type": "/StructTreeRoot",
+          "/K": "51 0 R",
+          "/ParentTree": {
+            "/Nums": [
+              0,
+              [
+                "51 0 R"
+              ]
+            ]
+          }
+        }
+      },
+      "obj:51 0 R": {
+        "value": {
+          "/Type": "/StructElem",
+          "/S": "/P",
+          "/P": "50 0 R",
+          "/Pg": "3 0 R",
+          "/K": 0,
+          "/ActualText": "u:MK_ACTUALTEXT",
+          "/Alt": "u:MK_ALT"
+        }
+      },
+      "obj:60 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/Metadata",
+            "/Subtype": "/XML"
+          },
+          "data": "PHg6eG1wbWV0YT5NS19YTVA8L3g6eG1wbWV0YT4="
+        }
+      },
+      "obj:61 0 R": {
+        "value": {
+          "/Title": "u:MK_INFO_TITLE",
+          "/Author": "u:MK_INFO_AUTHOR"
+        }
+      },
+      "trailer": {
+        "value": {
+          "/Root": "1 0 R",
+          "/Info": "61 0 R",
+          "/Size": 82
+        }
+      },
+      "obj:80 0 R": {
+        "value": {
+          "/Type": "/Annot",
+          "/Subtype": "/FileAttachment",
+          "/Rect": [
+            400,
+            500,
+            430,
+            530
+          ],
+          "/Contents": "u:MK_VISIBLE_ATTACHMENT",
+          "/FS": "30 0 R",
+          "/AP": {
+            "/N": "81 0 R"
+          },
+          "/F": 4
+        }
+      },
+      "obj:81 0 R": {
+        "stream": {
+          "dict": {
+            "/Type": "/XObject",
+            "/Subtype": "/Form",
+            "/BBox": [
+              0,
+              0,
+              30,
+              30
+            ],
+            "/Resources": {
+              "/Font": {
+                "/F2": "11 0 R"
+              }
+            }
+          },
+          "data": "QlQgL0YyIDEyIFRmIDAgMTAgVGQgKE1LX0ZJTEVfQVApIFRqIEVU"
+        }
+      }
+    }
+  ]
+}
