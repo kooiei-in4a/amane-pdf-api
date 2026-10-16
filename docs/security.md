@@ -144,7 +144,7 @@ job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM
 
 画像単位の非0終了（126／127以外、SIGXFSZの153も含む）はその画像を保持します。126／127・起動失敗は500です。既知のmetadata・時間・容量上限は画像処理を終了し、採用済み結果で最終処理を試みます。候補判定中のmetadata上限では未採用の候補を新たに変換せず、採用済みJPEGがなければ置換0になります。想定外のmetadata異常、最終書き出し／出力検証の失敗（2／3も含む）は500、入力検査の上限超過は従来のreasonなし422です。出力見積りは上界の保証ではなく、最終出力の実サイズがfsize上限以上なら、exit 0やqpdf --check成功でも削除して500です。上限同値の正常PDFも安全側に拒否します。最終検証とファイルopen後に成功ヘッダーを付け、エラーには付けません。PDF・画像・JSON・stdout／stderr・内部pathを本番ログやエラーへ出しません。
 
-最終qpdfにはobject-streams=generateとcompression-level=9だけを指定します。stream-data、recompress-flate、decode-levelは指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTの生データ、LZW／ASCIIHex／ASCII85・複合filterのデコード後データと表示上の意味を検証します。qpdf --checkだけを表示保持の根拠とせず、CIの構造・データ比較と描画比較を行います。描画ツールはruntimeに含めません。
+最終qpdfにはobject-streams=generateとcompression-level=9だけを指定します。stream-data、recompress-flate、decode-levelは指定しません。単独DCT／Flate／RunLength／JPX／JBIG2／CCITTの生データ、LZW／ASCIIHex／ASCII85・複合filterのデコード後データと表示上の意味を検証します。qpdf --checkだけを表示保持の根拠とせず、CIの構造・データ比較と描画比較を行います。比較用のPopplerはruntimeに含めません。
 
 標準条件はmemory 1.5 GiB・swapなし・CPU 1・tmpfs 256 MiB・同時2・non-root・read-only・network noneです。2×124 MiBのjobに8 MiBのtmpfs余裕を残します。tmpfsもcgroup memoryへ含まれるので、ファイルの容量式だけで成立を判断しません。上限は設定可能な安全境界であり、拡大するときはREADMEのメモリ式・tmpfs式と実測を見直します。Webシステムのプラン別サイズ・回数制限はサイト側の責務です。[圧縮の実測記録](compress-validation.md)は対象fixtureでの確認であり、任意の入力の成功を保証しません。
 
@@ -227,3 +227,17 @@ FSIZE超過時のSIGXFSZの既定動作はcoreを伴う終了です。Linuxの�
 CORE soft/hard=0も共通適用しますが、pipe方式のcore collectorはRLIMIT_COREを無視するため、CORE=0だけを受渡し防止策とは扱いません。SIGSEGV／ABRT等の別signalによるcoreは今回の対策対象外です。qpdfのメモリにはPDF内容が含まれ得るため、コンテナ内にcoreファイルがないことだけではhostのcollectorへ内容が渡らない証明になりません。[Linuxのcore仕様](https://man7.org/linux/man-pages/man5/core.5.html)と[signalのexec時の継承](https://man7.org/linux/man-pages/man7/signal.7.html)を参照してください。
 
 合成データによるAPIの検証結果は[FSIZE core対策の検証記録](fsize-core-validation.md)に残します。本番に近い隔離VMでのcollector起動数・受信bytes・保存数の確認とinfraの容量整合は[共通対策 #46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)で追跡し、完了までAPI splitのdeployを保留します。サイトのsplitツールもAPI deploy後に行います。PRのmergeとdeployはそれぞれHumanの承認が必要です。
+
+## 描画プログラム（PDFium、Linux x86_64）
+
+`Amane.Pdf.Renderer` は `net10.0` の小さなconsole programで、APIとは別プロセスです。PDFiumの17関数を直接P/Invokeし、JPEGはOSの `libturbojpeg.so.0`（BGRX、4:2:0、品質85、baseline）で作ります。PDFtoImage・SkiaSharpは使いません。PDFiumはlock・tgz全体のsha256で固定し、指定された絶対pathだけをDllImportResolverで読みます。V8・XFAを無効にしたbuildで、PDFのJavaScriptを実行しません。共有libraryは0444、ライセンス原文をimageへ同梱します。
+
+引数はshellを介さずArgumentListで渡します。pathは絶対path、画素は1600万以下、塗る矩形はページ内の整数・100個以下です。ページを開くと寸法を期待値と0.01 pt以内で照合します。期待値は表示上の物理寸法をUserUnitで割った値で、RotateとCropBox∩MediaBoxの解釈がAPIとずれたまま塗ることを防ぎます。照合失敗は終了コード12です。
+
+白のbitmapへ描画した後、指定矩形をすべて黒で塗り、JPEGをメモリ内で圧縮します。塗る前の画像はファイルにもstdoutにも出しません。JPEG予算を超えると終了コード10で何も作りません。出力はCreateNew・0600だけです。描画programのstdout/stderrは無出力、Runnerも両方を捨てます。プロセスの異常終了・起動失敗は500相当、文書/ページ/寸法の失敗はunsupported-pdf、bitmap不足はtoo-complex、JPEG予算超過はoutput-too-largeへ分類できる型で返します。公開endpointとHTTPエラーへの接続は#35 PR Bです。
+
+プロセス制限はenvのSIGXFSZ無視、CORE 0、DATA 384 MiB、FSIZE（JPEG予算+1）です。ASはCoreCLRの予約領域を数えるため使いません。CoreCLRのW^X用memfdは小さいFSIZEでは作れず、起動時だけ最低8 MiBを許可し、managed program内でPDFiumのloadより前にFSIZEのsoft/hard両方を予算+1へ下げます。下げられなければPDFを開かず失敗します。W^Xは有効のままです。DOTNET_EnableDiagnostics=0で診断socketを作りません。WorkingDirectoryは0700のjob directoryです。Runnerがtimeout・cancelでprocess treeをkillして終了を待ち、失敗時の出力と呼び出し元のjob全体を削除します。描画枠はsingletonのSemaphoreSlim(1)をWait(0)で取り、将来の呼び出し元がrequest全体で保持します。
+
+起動時は検証済みBIZ UDPゴシックTTFを渡し、FPDF_LoadMemDocumentで埋め込みなしの「日本語」を描きます。暗い画素数、塗った矩形の全画素、JPEGの生成を検査します。フォントdirが空なら起動しません。起動処理は全自己テスト共通の30秒以内で、失敗ログは「描画プログラム（PDFium）の自己テストに失敗しました。」だけ、終了コード1です。PDF・入力名・path・native errorをログへ出しません。
+
+PDFiumはメモリ不足で画像を黙って省くことがあり、描画関数はエラーを返しません。DATA制限は任意入力の完全な表示を保証しません。画像サイズの事前検査（PR B）で抑える範囲を定めても、content内の巨大inline imageや対応外機能・壊れたstreamの省略は残ります。黒塗りAPIとしての安全性は元のページを新しい画像ページへ置き換えることと出力構造検証で担保する設計で、その実装はPR Bです。利用者には結果の確認を案内します。固定版更新時は描画比較・日本語・DATA/FSIZE・timeout/cancel・容量を再検証します。[検証記録](renderer-validation.md)を参照してください。

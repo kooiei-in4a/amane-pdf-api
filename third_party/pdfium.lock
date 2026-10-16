@@ -1,0 +1,29 @@
+{
+  "version": "chromium/8100",
+  "pdfium_version": "157.0.8100.0",
+  "platform": "linux-x64",
+  "name": "pdfium-linux-x64.tgz",
+  "url": "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/8100/pdfium-linux-x64.tgz",
+  "sha256": "1c1894a12d4d96ee01400c3874444126254180c5c7d2ab628576b67f8120320a",
+  "library_member": "lib/libpdfium.so",
+  "license_members": [
+    "LICENSE",
+    "licenses/abseil.txt",
+    "licenses/agg23.txt",
+    "licenses/dragonbox-Apache2-LLVM.txt",
+    "licenses/dragonbox-Boost.txt",
+    "licenses/fast_float.txt",
+    "licenses/freetype.txt",
+    "licenses/harfbuzz.txt",
+    "licenses/icu.txt",
+    "licenses/lcms.txt",
+    "licenses/libjpeg_turbo.ijg",
+    "licenses/libjpeg_turbo.md",
+    "licenses/libopenjpeg.txt",
+    "licenses/libpng.txt",
+    "licenses/llvm-libc.txt",
+    "licenses/pdfium.txt",
+    "licenses/simdutf.txt",
+    "licenses/zlib.txt"
+  ]
+}

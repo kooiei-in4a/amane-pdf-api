@@ -455,6 +455,18 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
 
+## 描画プログラム（PDFium、Linux x86_64）
+
+`Amane.Pdf.Renderer` は別プロセスでPDFの1ページを描き、指定の画素矩形を黒で塗ってからJPEG（baseline、4:2:0、品質85）にします。画像化方式の黒塗り（#35 PR A）と、将来のPDF→画像・OCRの基盤です。**公開の黒塗りAPIはまだありません。** PDFiumをAPIプロセス内で読み込まず、PDFtoImage・SkiaSharp・NuGetの画像ライブラリは使いません。
+
+PDFiumは `third_party/pdfium.lock` の `chromium/8100` を `scripts/install-pdfium.sh` で取得し、tgz全体のsha256を検証します。`--pdfium` の絶対pathだけから共有ライブラリを読み、V8・XFAなしのbuildを使います。pdfcpuと同じ検証済みBIZ UDPゴシックTTFを渡します。Linuxの起動時には、埋め込みなしの `/MS-Mincho`・`/UniJIS-UCS2-H` の「日本語」、黒い塗り、JPEG生成を実際に検査します。失敗時は「描画プログラム（PDFium）の自己テストに失敗しました。」だけを記録し、待受前に終了コード1で停止します。他の自己テストと固定30秒の起動deadlineを共有します。
+
+描画は最大1600万画素、範囲100個です。ページ寸法を0.01 pt以内で照合してから描き、JPEGが `--max-bytes` を超えたらファイルを作りません。塗る前の画像は出力せず、成功時のJPEGだけをCreateNew・0600で作ります。子プロセスはCORE 0・DATA 384 MiB・FSIZE（JPEG予算+1）、診断socketなしで実行し、timeout・cancelでkillして終了を待ちます。CoreCLRのW^X用memfdのため、FSIZEは起動時だけ最低8 MiBとし、プログラム内でPDFiumを読む前に予算+1へ下げます。AS制限は使いません。共有描画枠は待ち0・1枠です。呼び出し元がrequest全体で枠と一時ファイルの削除を管理します。
+
+PDFiumは対応外の内容やメモリ不足で画像を黙って省略する場合があります。将来の黒塗りAPIでは画像サイズの事前検査も行いますが、完全な見た目の一致は保証できないため結果を確認してください。[設計書](docs/redact-design.md)と[描画基盤の検証記録](docs/renderer-validation.md)を参照してください。
+
+更新担当者は [pdfium-binaries releases](https://github.com/bblanchon/pdfium-binaries/releases)（週次）と [PDFiumの変更履歴](https://pdfium.googlesource.com/pdfium/+log)を確認し、修正の必要性を判断します。更新PRでlockの版・URL・sha256・license member一覧を更新し、tgzの `args.gn` がV8・XFAなしであることとライセンス原文の差分を確認します。Release build/test、hostの描画テスト、Docker smoke、`scripts/renderer-validation.py` の画素比較、hostテストのDATA/FSIZE検査、CPU 1・memory 1.5 GiBでの測定をやり直してください。runtime起動時のdownloadはありません。
+
 ## リソース制限と設定
 
 | 環境変数 | 初期値 | 意味 |
@@ -494,6 +506,11 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
 | `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
 | `Pdf__PdfcpuAddressSpaceLimitBytes` | `1073741824`（1 GiB） | pdfcpu専用RLIMIT_AS。qpdfと別の値 |
+| `Pdf__RenderDataLimitBytes` | `402653184`（384 MiB） | PDFium描画子プロセスのRLIMIT_DATA。正、384 MiB以下 |
+| `Pdf__DotnetPath` | `/usr/bin/dotnet` | 描画子プロセスのdotnet。絶対path |
+| `Pdf__RendererPath` | `/opt/amane-pdf/renderer/Amane.Pdf.Renderer.dll` | 描画プログラム。絶対path |
+| `Pdf__PdfiumPath` | `/opt/amane-pdf/lib/libpdfium.so` | lock済みPDFium。絶対path |
+| `Pdf__RenderFontDir` | `/opt/amane-pdf/fonts` | BIZ UDPゴシックTTFのdir。絶対path |
 | `Pdf__PrlimitPath` | `/usr/bin/prlimit` | Linuxの制限付き実行に使うprlimit |
 | `Pdf__QpdfAddressSpaceLimitBytes` | `570425344`（544 MiB） | Linuxでqpdfに適用するRLIMIT_AS。正のbytes値 |
 | `Pdf__QpdfJpegMemory` | `600M` | 全OSのqpdfに渡すJPEGMEM。正のASCII数字＋任意の`M`/`m`、30文字未満、単位換算後のsigned long overflowを拒否 |
@@ -614,6 +631,7 @@ Dockerfile
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Linuxではlibjpeg-turbo-progs（djpeg／cjpegと必要なオプション）
 - Linux x86_64ではpdfcpu 0.16.1とBIZ UDPゴシック（共有installerで取得。curl・Python 3が必要）
+- Linux x86_64では固定版PDFium（`scripts/install-pdfium.sh` で取得）
 - Docker（コンテナ確認を行う場合）
 - Python 3（Docker smoke test。追加package不要）
 
@@ -625,6 +643,11 @@ Linuxでは、未存在または空のprefixへ固定取得物を導入し、API
 scripts/install-pdfcpu.sh /tmp/amane-pdf-tools
 export Pdf__PdfcpuPath=/tmp/amane-pdf-tools/bin/pdfcpu
 export Pdf__PdfcpuConfigDir=/tmp/amane-pdf-tools/config
+export Pdf__RenderFontDir=/tmp/amane-pdf-tools/fonts
+scripts/install-pdfium.sh /tmp/amane-pdfium
+export Pdf__PdfiumPath=/tmp/amane-pdfium/lib/libpdfium.so
+export Pdf__DotnetPath="$(command -v dotnet)"
+export Pdf__RendererPath="$PWD/src/Amane.Pdf.Renderer/bin/Release/net10.0/Amane.Pdf.Renderer.dll"
 ```
 
 ```bash
@@ -683,7 +706,7 @@ python3 scripts/page-numbers-validation.py amane-pdf-api:ci
 python3 scripts/watermark-validation.py amane-pdf-api:ci
 ```
 
-CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archive・元TTFはpdfcpuのruntime追加物に含めません。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。
+CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。
 
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。

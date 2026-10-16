@@ -2,6 +2,8 @@ using System.Globalization;
 
 namespace Amane.Pdf.Api;
 
+internal enum ProcessMemoryLimit { AddressSpace, Data }
+
 // The same argument/environment construction can be used for djpeg/cjpeg.
 internal static class ProcessMemoryLimits
 {
@@ -34,13 +36,15 @@ internal static class ProcessMemoryLimits
 
     internal static ExternalProcessRequest CreateRequest(string prlimitPath, string executablePath,
         IReadOnlyList<string> arguments, long addressSpaceLimitBytes, long? fileSizeLimitBytes,
-        IReadOnlyDictionary<string, string>? environment, int? stdoutLimit = null)
+        IReadOnlyDictionary<string, string>? environment, int? stdoutLimit = null,
+        ProcessMemoryLimit memoryLimit = ProcessMemoryLimit.AddressSpace)
     {
         if (!OperatingSystem.IsLinux())
             return new(executablePath, arguments, Environment: environment, StdoutLimit: stdoutLimit);
 
         var limit = addressSpaceLimitBytes.ToString(CultureInfo.InvariantCulture);
-        var limits = new List<string> { "--core=0:0", $"--as={limit}:{limit}" };
+        var memoryOption = memoryLimit == ProcessMemoryLimit.Data ? "--data" : "--as";
+        var limits = new List<string> { "--core=0:0", $"{memoryOption}={limit}:{limit}" };
         if (fileSizeLimitBytes is long size)
         {
             var value = size.ToString(CultureInfo.InvariantCulture);

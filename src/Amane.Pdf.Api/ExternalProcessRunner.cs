@@ -53,7 +53,8 @@ internal static class ExternalProcessRunner
         {
             foreach (var (key, value) in request.Environment)
             {
-                if (!Regex.IsMatch(key, @"\A[A-Z_][A-Z0-9_]*\z", RegexOptions.CultureInvariant))
+                if (key != "DOTNET_EnableDiagnostics" &&
+                    !Regex.IsMatch(key, @"\A[A-Z_][A-Z0-9_]*\z", RegexOptions.CultureInvariant))
                     throw new ArgumentException("Invalid environment variable key.", nameof(request));
                 startInfo.Environment[key] = value;
             }

@@ -32,6 +32,11 @@ public sealed class PdfOptions
     public string PrlimitPath { get; set; } = "/usr/bin/prlimit";
     public long QpdfAddressSpaceLimitBytes { get; set; } = 544 * 1024 * 1024;
     public string QpdfJpegMemory { get; set; } = "600M";
+    public long RenderDataLimitBytes { get; set; } = 384 * 1024 * 1024;
+    public string DotnetPath { get; set; } = "/usr/bin/dotnet";
+    public string RendererPath { get; set; } = "/opt/amane-pdf/renderer/Amane.Pdf.Renderer.dll";
+    public string PdfiumPath { get; set; } = "/opt/amane-pdf/lib/libpdfium.so";
+    public string RenderFontDir { get; set; } = "/opt/amane-pdf/fonts";
     public string DjpegPath { get; set; } = "djpeg";
     public string CjpegPath { get; set; } = "cjpeg";
     public string JpegtranPath { get; set; } = "jpegtran";

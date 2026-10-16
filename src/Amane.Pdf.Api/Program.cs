@@ -11,13 +11,15 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
             PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options) &&
-            StampImageInput.IsValid(options))) &&
+            StampImageInput.IsValid(options) && PdfRenderer.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
 builder.Services.AddSingleton<QpdfProcessor>();
 builder.Services.AddSingleton<PdfcpuProcessor>();
 builder.Services.AddSingleton<PdfOverlayBuilder>();
+builder.Services.AddSingleton<PdfRenderer>();
+builder.Services.AddSingleton<RenderSlot>();
 builder.Services.AddRateLimiter(_ => { });
 builder.Services.AddOptions<RateLimiterOptions>().Configure<IOptions<PdfOptions>>((limiter, pdf) =>
 {
@@ -62,6 +64,13 @@ try
     await ProcessMemoryLimits.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
     await PdfcpuProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
     await PdfFromImagesProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+    await PdfRenderer.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+}
+catch (PdfRendererStartupException)
+{
+    app.Logger.LogCritical("描画プログラム（PDFium）の自己テストに失敗しました。");
+    await app.DisposeAsync();
+    return 1;
 }
 catch (PdfImagesStartupException)
 {

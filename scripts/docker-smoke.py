@@ -346,8 +346,21 @@ def pdfcpu_smoke(api):
     metadata = api.exec("qpdf", "--json=2", "--json-stream-data=none", "--decode-level=none", root + "/layer.pdf").stdout
     assert b"/FontFile2" in metadata and b"/ToUnicode" in metadata and b"+BIZUDPGothic-Regular" in metadata
     pdf = api.exec("cat", root + "/layer.pdf").stdout
+    renderer = ["env", "DOTNET_EnableDiagnostics=0", *LIMITED_EXEC,
+                "--data=402653184:402653184", "--fsize=10485761:10485761", "--",
+                "dotnet", prefix + "/renderer/Amane.Pdf.Renderer.dll", "render-jpeg",
+                "--pdfium", prefix + "/lib/libpdfium.so", "--font-dir", prefix + "/fonts",
+                "--input", root + "/layer.pdf", "--page", "1", "--expect-size", "595,842",
+                "--width", "595", "--height", "842", "--quality", "85", "--max-bytes", "10485760",
+                "--fill", "100,200,300,250", "--output", root + "/rendered.jpg"]
+    rendered = api.exec(*renderer)
+    assert rendered.stdout == rendered.stderr == b""
+    jpeg = api.exec("cat", root + "/rendered.jpg").stdout
+    assert jpeg[:2] == b"\xff\xd8" and jpeg[-2:] == b"\xff\xd9"
+    assert api.exec("stat", "-c", "%a", root + "/rendered.jpg").stdout.strip() == b"600"
     api.exec("rm", "-rf", root)
     print("Docker pdfcpu: locked version/Japanese draw/subset font/read-only config/licenses PASS", flush=True)
+    print("Docker renderer: DATA-limited render/fill/JPEG/0600/cleanup PASS", flush=True)
     return pdf
 
 
@@ -540,6 +553,8 @@ def main(image):
     for setting in ("Pdf__PdfcpuPath=/missing/pdfcpu", "Pdf__PdfcpuConfigDir=/missing/config",
                     "Pdf__PdfcpuAddressSpaceLimitBytes=268435456"):
         assert_startup_failure(image, (setting,), "pdfcpu・日本語フォントの自己テストに失敗しました。")
+    for setting in ("Pdf__PdfiumPath=/missing/libpdfium.so", "Pdf__RenderFontDir=/tmp"):
+        assert_startup_failure(image, (setting,), "描画プログラム（PDFium）の自己テストに失敗しました。")
     clean_smoke(image)
     compress_smoke(image)
     split_smoke(image)
