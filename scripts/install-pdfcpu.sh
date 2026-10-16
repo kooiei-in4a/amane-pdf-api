@@ -70,6 +70,8 @@ with tempfile.TemporaryDirectory(prefix=".pdfcpu-install-", dir=prefix.parent) a
             shutil.copyfileobj(source, target)
     if sha(font) != lock["font_sha256"] or sha(downloads[2]) != sha(repo / "third_party/pdfcpu/BIZ-UDGothic-OFL.txt"):
         raise SystemExit("Font or OFL checksum mismatch.")
+    (stage / "fonts").mkdir()
+    shutil.copyfile(font, stage / "fonts/BIZUDPGothic-Regular.ttf")
     home = work / "home"
     home.mkdir(mode=0o700)
     environment = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home), GOMEMLIMIT="200MiB",

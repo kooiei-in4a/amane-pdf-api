@@ -1,0 +1,84 @@
+# reproduce.sh 2026-10-16 JST, image amane-pdf-api:issue72-5d8b298, host 7.0.0-38-generic
+## build spike renderer (PDFium chromium/8100 via NuGet, libturbojpeg from the image)
+## BIZ UDPGothic (same artifact and checksums as third_party/pdfcpu.lock)
+<workdir>/dl/BIZUDGothic.zip: OK
+<workdir>/fonts/BIZUDPGothic-Regular.ttf: OK
+## generate inputs
+### PDFium page size (points, as PDFium reports it)
+0 500 600
+1 600 500
+2 500 600
+3 600 500
+4 400 300
+5 300 400
+6 595 842
+7 595 842
+### rotate/crop/UserUnit renders with region (0.4,0.3,0.2,0.1)
+### non-embedded fonts
+### unreferenced-resource removal (exit code; SECRETFORM / F1 marker counts in output)
+keep page 2: exit=0 SECRETFORM=0 MarkerF1=0
+keep page 3: exit=3 SECRETFORM=1 MarkerF1=1
+keep page 4: exit=0 SECRETFORM=0 MarkerF1=0
+### form value without appearance (NeedAppearances true)
+generateAppearances=0 exit=3
+generateAppearances=1 exit=0
+### shared-font document: prune, inspect, render page 1
+### marker document: strip+flatten (one job), prune, inspect, render page 1
+flatten job exit=0
+prune exit=0
+0 1000 1200 TL blue TR yellow BL red BR green | in {'black'} out {'gray'}
+1 1200 1000 TL red TR blue BL green BR yellow | in {'black'} out {'gray'}
+2 1000 1200 TL green TR red BL yellow BR blue | in {'black'} out {'gray'}
+3 1200 1000 TL yellow TR green BL blue BR red | in {'black'} out {'gray'}
+4 1600 1200 TL red TR blue BL green BR yellow | in {'black'} out {'gray'}
+5 600 800 TL blue TR yellow BL red BR green | in {'black'} out {'gray'}
+dark pixels: no CJK font=0 BIZ UDPGothic=21107 Helvetica=16782
+needap generateAppearances=0: dark px in field=0
+needap generateAppearances=1: dark px in field=1169
+font sharing (shared-font doc, target 1):
+font keys per page: {1: 7, 2: 7}
+targets [1] -> also rasterize [2]
+font sharing (marker doc, target 1):
+font keys per page: {1: 1, 2: 1, 3: 1}
+targets [1] -> also rasterize []
+marker doc after prune:
+MK: ['MK_BODY1', 'MK_FIELDAP', 'MK_FORMX', 'MK_INLINE_ACTUALTEXT', 'MK_PAGELABEL', 'MK_PIECE', 'MK_PIECEINFO', 'MK_PROPS', 'MK_URI1', 'MK_URI2'] PUBLIC: ['PUBLIC_NESTED', 'PUBLIC_P2']
+shared final write exit=0
+errors that qpdf cannot detect
+markers final write exit=0
+errors that qpdf cannot detect
+shared-font doc: page-1-only characters in output ToUnicode (page 1 replaced, font shared with page 2):
+鈴:present 木:absent 一:present 郎:present 個:absent 人:present 番:absent 号:absent 9:absent 8:absent 7:present 6:absent
+marker doc after final write:
+MK: [] PUBLIC: ['PUBLIC_NESTED', 'PUBLIC_P2']
+## time and memory (1 CPU, no swap; memory.peak of the whole container)
+geometry.pdf page 7 1654x2339: wall=50ms peak=22MiB :: load=3ms render=0ms encode=10ms total=21ms jpeg=74621
+scan-page.pdf page 0 1654x2339: wall=152ms peak=66MiB :: load=4ms render=93ms encode=15ms total=124ms jpeg=879371
+vector.pdf page 0 1654x2339: wall=208ms peak=48MiB :: load=45ms render=97ms encode=24ms total=178ms jpeg=2694027
+vector.pdf page 1 3308x4678: wall=417ms peak=104MiB :: load=46ms render=234ms encode=73ms total=386ms jpeg=8723397
+scan-page.pdf page 0 4000x4000: wall=281ms peak=136MiB :: load=4ms render=167ms encode=48ms total=252ms jpeg=3746065
+## process limits: RLIMIT_AS vs RLIMIT_DATA (16 Mpx render of the 300 dpi scan page; full image => jpeg=3746065)
+AS 1024MiB: Failed to create CoreCLR, HRESULT: 0x8007000E
+AS 2048MiB: load=4ms render=43ms encode=27ms total=107ms jpeg=250627
+AS 4096MiB: load=4ms render=164ms encode=46ms total=247ms jpeg=3746065
+AS 1024MiB + GCHeapHardLimit 192MiB + GCRegionRange 256MiB: load=4ms render=2ms encode=27ms total=70ms jpeg=250627
+DATA 128MiB 16Mpx scan: load=4ms render=2ms encode=27ms total=73ms jpeg=250627
+DATA 128MiB A2 vector: bitmap error
+DATA 192MiB 16Mpx scan: load=4ms render=171ms encode=45ms total=253ms jpeg=3746065
+DATA 192MiB A2 vector: load=45ms render=232ms encode=71ms total=387ms jpeg=8723397
+DATA 256MiB 16Mpx scan: load=4ms render=173ms encode=45ms total=255ms jpeg=3746065
+DATA 256MiB A2 vector: load=45ms render=233ms encode=70ms total=385ms jpeg=8723397
+DATA 384MiB 16Mpx scan: load=4ms render=172ms encode=46ms total=255ms jpeg=3746065
+DATA 384MiB A2 vector: load=47ms render=239ms encode=70ms total=389ms jpeg=8723397
+### 600 dpi A4 scans rendered at 200 dpi (full image => jpeg=1083960)
+scan600-page DATA 192MiB: load=8ms render=235ms encode=17ms total=270ms jpeg=1083960
+scan600-page DATA 256MiB: load=8ms render=237ms encode=14ms total=269ms jpeg=1083960
+scan600-page DATA 384MiB: load=8ms render=233ms encode=14ms total=265ms jpeg=1083960
+scan600p-page DATA 192MiB: load=8ms render=133ms encode=9ms total=158ms jpeg=61779
+scan600p-page DATA 256MiB: load=7ms render=486ms encode=14ms total=524ms jpeg=1083960
+scan600p-page DATA 384MiB: load=8ms render=491ms encode=19ms total=533ms jpeg=1083960
+### Flate bombs (20000^2, 40000^2 gray) at DATA 384MiB
+bomb page 0: load=3ms render=239ms encode=10ms total=260ms jpeg=74940
+bomb page 1: load=6ms render=691ms encode=10ms total=716ms jpeg=77892
+peak=176MiB
+bomb page 0 centre gray value (128 = image drawn): 128

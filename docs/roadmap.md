@@ -30,10 +30,10 @@ amane-pdf-api と amane-tools-site のPDF機能を拡張するための、戦略
   | pdfcpu | 文字・画像のスタンプ、画像からのページ作成 | Apache-2.0 |
   | BIZ UDPゴシック | pdfcpuで描く日本語の文字 | OFL-1.1 |
   | PdfPig | 差分比較のための文字抽出 | Apache-2.0 |
-  | PDFium（PDFtoImage経由） | ページを画像として描く | BSD-3-Clause / Apache-2.0（PDFtoImageはMIT） |
+  | PDFium（別プロセスから直接P/Invoke） | ページを画像として描く | BSD-3-Clause / Apache-2.0 |
   | Tesseract | OCR | Apache-2.0 |
 
-  PDFium（PDFtoImage経由）は推奨案で、[#33](https://github.com/kooiei-in4a/amane-pdf-api/issues/33) の着手時の確認（version、更新の追い方、性能）で確定します。
+  PDFiumは[#35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) のPR Aで描画基盤を作り、#33はその上に載せます。固定版・sha256・ライセンスをlockし、JPEGはOSのlibturbojpegで作ります（設計§12.2、Human未確認）。
 
 - AGPL / GPLのPDFエンジン（Ghostscript、MuPDF / PyMuPDF、iText、Poppler）は採用しません。このAPIはApache-2.0で公開し、コンテナイメージを配布するためです。
 - ベースイメージをUbuntu 26.04に更新し、qpdfを開発環境と同じ12.3.2にそろえます。

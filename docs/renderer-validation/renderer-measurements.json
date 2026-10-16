@@ -1,0 +1,50 @@
+[
+  {
+    "width": 1654,
+    "height": 2339,
+    "iteration": 1,
+    "milliseconds": 155,
+    "memory_peak_bytes": 71057408,
+    "jpeg_bytes": 879371
+  },
+  {
+    "width": 1654,
+    "height": 2339,
+    "iteration": 2,
+    "milliseconds": 166,
+    "memory_peak_bytes": 70537216,
+    "jpeg_bytes": 879371
+  },
+  {
+    "width": 1654,
+    "height": 2339,
+    "iteration": 3,
+    "milliseconds": 158,
+    "memory_peak_bytes": 71127040,
+    "jpeg_bytes": 879371
+  },
+  {
+    "width": 4000,
+    "height": 4000,
+    "iteration": 1,
+    "milliseconds": 295,
+    "memory_peak_bytes": 143978496,
+    "jpeg_bytes": 3746065
+  },
+  {
+    "width": 4000,
+    "height": 4000,
+    "iteration": 2,
+    "milliseconds": 285,
+    "memory_peak_bytes": 144547840,
+    "jpeg_bytes": 3746065
+  },
+  {
+    "width": 4000,
+    "height": 4000,
+    "iteration": 3,
+    "milliseconds": 285,
+    "memory_peak_bytes": 143745024,
+    "jpeg_bytes": 3746065
+  }
+]

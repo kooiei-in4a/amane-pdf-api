@@ -28,6 +28,35 @@ pdfcpu [v0.16.1](https://github.com/pdfcpu/pdfcpu/tree/v0.16.1) は別プロセ�
 
 installerは上記すべてとmodule一覧、このnoticeをfinal imageの `/opt/amane-pdf/licenses/` にコピーします。`third_party/pdfcpu-licenses.sha256` とDocker smokeで原文の一致を検査します。更新時は固定Release・go.mod・binary metadata・各licenseを再照合してください。照合用Goと取得toolはruntimeへ追加しません。
 
+## 描画プログラム（PDFium）
+
+PDFium [chromium/8100（157.0.8100.0）](https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/8100) を別プロセスの Amane.Pdf.Renderer から直接P/Invokeします。PDFtoImage・SkiaSharpは使用しません。third_party/pdfium.lock のtgz全体のsha256を検証し、共有ライブラリとライセンス原文だけを取り出します。
+
+配布imageの /opt/amane-pdf/licenses/pdfium/ に、build scriptの LICENSE（MIT、Copyright Benoit BLANCHON）と、下表の licenses/ 17ファイルを改変せず同梱します。各著作権表示、NOTICE、許諾条件の全文はこれらの原文に保持します。PDFiumに含まれるlibjpeg-turboと、OSの libturbojpeg.so.0 は別の配布物です。
+
+| ソフトウェア | ライセンス | 配布image内の原文（上記dirからの相対path） |
+| --- | --- | --- |
+| PDFium（The PDFium Authors） | BSD-3-Clause / Apache-2.0 | licenses/pdfium.txt |
+| pdfium-binaries build script（Benoit BLANCHON） | MIT | LICENSE |
+| FreeType | FreeType Project License（FTL） | licenses/freetype.txt |
+| libjpeg-turbo | IJG / BSD-3-Clause / zlib | licenses/libjpeg_turbo.md、licenses/libjpeg_turbo.ijg |
+| OpenJPEG | BSD-2-Clause | licenses/libopenjpeg.txt |
+| lcms2 | MIT | licenses/lcms.txt |
+| libpng | PNG Reference Library License v2 | licenses/libpng.txt |
+| zlib | zlib | licenses/zlib.txt |
+| AGG 2.3 | AGGのpermissive license | licenses/agg23.txt |
+| abseil | Apache-2.0 | licenses/abseil.txt |
+| ICU | Unicode License v3 と同梱の第三者表示 | licenses/icu.txt |
+| HarfBuzz | Old MIT と同梱の第三者表示 | licenses/harfbuzz.txt |
+| fast_float | MIT | licenses/fast_float.txt |
+| simdutf | MIT | licenses/simdutf.txt |
+| dragonbox | Apache-2.0 WITH LLVM-exception / BSL-1.0 | licenses/dragonbox-Apache2-LLVM.txt、licenses/dragonbox-Boost.txt |
+| llvm-libc | Apache-2.0 WITH LLVM-exception | licenses/llvm-libc.txt |
+
+FreeTypeの配布表示: Portions of this software are copyright © 1996-2002, 2006 The FreeType Project (www.freetype.org). All rights reserved.
+
+描画用の日本語フォントは上記と同じ固定版BIZ UDPゴシックのTTFです。OFL原文と著作権表示は /opt/amane-pdf/licenses/BIZ-UDGothic-OFL.txt に保持します。
+
 ## qpdf
 
 このプロジェクトはPDF処理にqpdfを使用します。
@@ -51,7 +80,7 @@ prlimitはベースOSに元から含まれるユーティリティを別プロ�
 
 ## libjpeg-turbo（djpeg／cjpeg／jpegtranとJPEGライブラリ）
 
-LinuxのJPEG画像縮小・再圧縮に `libjpeg-turbo-progs` のdjpeg／cjpeg、画像→PDFの向き補正・metadata除去に同じパッケージのjpegtranを別プロセスとして使用します。APIコードへ新しい画像ライブラリをリンクしません。runtimeのqpdfの依存として既に導入されていた `libjpeg-turbo8` はqpdf等が使うlibjpeg互換ライブラリです。今回 `libjpeg-turbo-progs` とともに追加される `libturbojpeg0` はTurboJPEG APIの共有ライブラリで、APTの依存として同梱されます。APIはTurboJPEG APIを直接呼びません。
+LinuxのJPEG画像縮小・再圧縮に `libjpeg-turbo-progs` のdjpeg／cjpeg、画像→PDFの向き補正・metadata除去に同じパッケージのjpegtranを別プロセスとして使用します。APIコードへ新しい画像ライブラリをリンクしません。runtimeのqpdfの依存として既に導入されていた `libjpeg-turbo8` はqpdf等が使うlibjpeg互換ライブラリです。今回 `libjpeg-turbo-progs` とともに追加される `libturbojpeg0` はTurboJPEG APIの共有ライブラリで、APTの依存として同梱されます。別プロセスの描画プログラムは `libturbojpeg.so.0` を直接P/Invokeし、PDFiumのbitmapからJPEGを作ります。APIプロセス内では呼びません。
 
 - 公式Repository: https://github.com/libjpeg-turbo/libjpeg-turbo
 - ライセンス構成: IJG、BSD-3-Clause、zlib（各ファイルの条件は配布物を参照）
