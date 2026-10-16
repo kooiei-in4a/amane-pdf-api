@@ -110,7 +110,7 @@ Cの対策は、ExtGStateのFont配列の先頭を通常のFont辞書と同じ�
 
 ## 中立の共有objectを許可（Human判断: Koo、2026-10-17）
 
-本文を持たない共有設定も拒否していた7a21e1eから、Koo指定の役割・構造の許可リストへ変更した。Tのグラフの全到達位置を収集してから分類し、全役割が中立かつ構造も適合するobjectだけを拒否集合から除く。中立の子も探索し、本文を持つ子や別の本文の位置からも到達するobjectは拒否する。Rの式・ExtGStateのFont共有判定・探索の境界と上限・出力検証・画像閾値は維持する。
+本文を持たない共有設定も拒否していた7a21e1eから、Kooの方針と、ClaudeがPDF 2.0から作成した役割・構造の許可リストへ変更した。Tのグラフの全到達位置を収集してから分類し、全役割が中立かつ構造も適合するobjectだけを拒否集合から除く。中立の子も探索し、本文を持つ子や別の本文の位置からも到達するobjectは拒否する。Rの式・ExtGStateのFont共有判定・探索の境界と上限・出力検証・画像閾値は維持する。
 
 旧イメージ `amane-pdf-api:issue35-redact-review-fix`（7a21e1e）と新イメージ `amane-pdf-api:issue35-neutral` に、レビューの `repro.py` のA〜Gを実行した。OCGは両ページのPropertiesから同じOCGを参照し、contentに `/OC /MC0 BDC … EMC` を置いた追加の合成PDFで比較した。
 
@@ -132,3 +132,23 @@ D/E/F/G/OCGの出力をQDFと復号済み画像JSONで確認した。画像は27
 拒否ケースはSMaskのForm、HT・未知key、ProcSet内の参照、ICCとXObjectの役割衝突、未知keyを持つOCG、ICCのMetadataへの私的参照。役割の到達順を入れ替えても拒否する単体テスト、ColorSpaceの全許可形式とstream lookup・間接DeviceN属性を免除しない検査も含める。従来のRedactSecurityTests 13件を含む黒塗り関連93件が成功した。
 
 受け入れる残余リスクはKooの指示どおり、OCGのName、ICC内の記述文字列、Functionのサンプル値が共有設定として残ること。許可リスト外の共有objectは引き続き422になり得る。検証は合成PDFのみで、Chrome・Word・InDesign・スキャナ等の実文書で422がどれだけ減るかは確認していない。§13の記録は変更していない。容量・閾値の手動測定は上の各head時点の記録で、今回の変更では再測定していない。
+
+## 再レビュー後のFunctionの構造検査
+
+dc89139の独立レビューで、TRから参照したFunctionTypeもDomainも持たないstreamが中立として残ることを確認した（K）。共有設定を許可する方針はKooの判断、構造の表はClaudeがPDF 2.0から作成したものであり、設計書の判断の出所も訂正した。
+
+Functionのkeyの許可リストに加え、FunctionTypeが整数の0/2/3/4、Domainがあること、Type 0/4はstreamであることを必須にした。Type 2/3は従来どおり辞書またはstreamを許可する。実APIの回帰テストにType 0の共有tint transformの成功、TRからの空辞書streamとDomain不足の拒否を追加し、単体テストで全4種類の辞書/stream、必須key不足、未対応・小数・文字列の型を検査する。
+
+レビュー用repro.pyのA〜G・H・Kを、更新後のDocker image `amane-pdf-api:issue35-function` で再実行した。
+
+| ケース | dc89139の独立レビュー | Function構造検査の修正後 |
+| --- | --- | --- |
+| A/B | 422 unsupported-pdf | 422 unsupported-pdf |
+| C | 200、R=1,2 | 200、R=1,2 |
+| D/E/F/G | 200、R=1 | 200、R=1 |
+| H: 間接のExtGState map自体の共有 | 422 unsupported-pdf | 422 unsupported-pdf |
+| K: TRからFunctionではないstreamを共有 | 200、目印が残る | 422 unsupported-pdf |
+
+Hはmap自体を免除しない設計どおりで、共有mapを受け付ける範囲の拡大は今後の改善候補として記録する。Rの式・画像閾値・容量制限は変更しない。容量・閾値は再測定せず、実在の生成ツールによるPDFの受付改善率も未確認のままである。
+
+今回4件を追加し、Release buildは警告0・エラー0、全1,207テスト成功（skip 0、4分55秒）。hostの固定版pdfcpu・PDFium・フォントとCIと同じqpdf一時コピーを使用した。Docker build、docker-smoke、renderer-validation、redact-validationもすべて成功した。設計書§13はdc89139とbyte一致で保持している。

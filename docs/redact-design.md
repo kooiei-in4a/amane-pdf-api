@@ -259,7 +259,7 @@ qpdf --empty --remove-unreferenced-resources=yes --pages <redact-flat.pdf> 1-z -
 - 中立objectの子もたどり続ける。ExtGStateのFont・SMask/G、ICCのMetadata等の本文への参照は拒否集合へ入る。Shading、tiling pattern、Halftone、XObject、Thumb、PieceInfo、Metadata、注釈、未知の辞書・stream、Resourcesや各map自体の共有は免除しない。
 - R以外のページの、削除する `/Parent`・`/Annots` 以外の値から任意の参照をたどる。中立objectを通過してもその子を検査し、拒否集合または従来どおりRの元page/content・Tのフォント配下へ到達すれば422 `unsupported-pdf`。書き換える実際のcatalog/rootと別途検査する実際のページを境界にする。深さ32・訪問100万は§6の検査と共有する。
 
-中立の構造の許可リスト（KooのPDF 2.0に基づく判断）:
+中立の構造の許可リスト（共有設定を許可する方針はKooの判断、構造の表はClaudeがPDF 2.0から作成）:
 
 | 役割 | 構造の条件 |
 | --- | --- |
@@ -268,9 +268,11 @@ qpdf --empty --remove-unreferenced-resources=yes --pages <redact-flat.pdf> 1-z -
 | ColorSpace | ICCBased / Indexed / Separation / DeviceN / Pattern / CalGray / CalRGB / Labで始まる所定長の配列。Indexed lookupは文字列のみ。DeviceN属性辞書は直接辞書のみ |
 | ICC | stream。N必須。key ⊆ {N, Alternate, Range, Metadata, Length, Filter, DecodeParms}。Type/Subtypeなし |
 | OC | Type=OCG、key ⊆ {Type, Name, Intent, Usage}、またはType=OCMD、key ⊆ {Type, OCGs, P, VE} |
-| Function | 辞書またはstream。key ⊆ {FunctionType, Domain, Range, Size, BitsPerSample, Order, Encode, Decode, C0, C1, N, Functions, Bounds, Length, Filter, DecodeParms}。Subtypeなし |
+| Function | FunctionTypeは整数の0/2/3/4、Domain必須。Type 0/4はstream、Type 2/3は辞書またはstream。key ⊆ {FunctionType, Domain, Range, Size, BitsPerSample, Order, Encode, Decode, C0, C1, N, Functions, Bounds, Length, Filter, DecodeParms}。Subtypeなし |
 
 ExtGStateのkey一覧は [PDF Associationの仕様由来モデル（Table 57）](https://github.com/pdf-association/arlington-pdf-model/blob/master/tsv/latest/GraphicsStateParameter.tsv) と照合した。非推奨のHTP/TR/TR2を含み、HTとベンダー拡張は含めない。中立の設定値（OCGのName、ICC内の記述文字列、Functionのサンプル値）は残ることを受け入れる。これらは文書全体で共有する設定値として扱い、黒塗り範囲の本文とは区別する。
+
+既知の制限: TikZ/pgf型の文書に見られるような、ExtGState等の間接map辞書そのものの共有が刈り込み後も残る場合は422になる。この構造を模した合成PDFで確認した。共有mapを受け付ける範囲の拡大は今後の改善候補とし、今回の許可リストには追加しない。
 
 - カタログ: `{"/Type": "/Catalog", "/Pages": <根>}` に置き換える。
 - ページツリーの根: `{"/Type": "/Pages", "/Kids": [...], "/Count": n}` に置き換える。R のページは新しいpageの参照に差し替える。
@@ -369,6 +371,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 - `RedactRegions`: §5.3 の各規則の400（JSON不正、BOM、深さ、空配列、101個、未知key、key不足、重複key、`"page": 1.0`・`01`・`2147483648`、`x` の `1e-1`・`-0`・`.5`・`0.12345`・`1.0001`、`width: 0`、`x + width > 1`、21ページ、16 KiB超）、成功する境界（`1.0000`、`x + width = 1`、100個、20ページ）。
 - `RedactRaster`: A4・A2・A1・極端に細長いページの画素数、1600万画素を超えないこと、外側への丸め（整数ちょうどの境界を含む）、`MediaBox` の書式に指数が出ないこと。
 - `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし、ExtGStateのFont）、共有画像・フォントなしFormの切り抜きと、Resources/Thumb/mask/私的参照の拒否、中立の役割・構造・全到達位置の照合と役割衝突（ICCをXObjectとしても使う等）、中立objectの子の本文の拒否、§6.2 の画像の検査、update JSON の内容。
+- 中立Function: FunctionTypeの整数0/2/3/4とDomainを必須とし、Type 0/4はstreamだけを認める。必須key不足、未対応の型、小数・文字列の型、Type 0/4の非stream辞書を拒否する。
 
 ### 10.2 実tool（host の qpdf・PDFium）
 

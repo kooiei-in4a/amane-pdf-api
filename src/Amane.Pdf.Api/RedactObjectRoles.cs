@@ -50,9 +50,14 @@ internal static class RedactObjectRoles
         {
             "/OCG" => Keys(value, OcgKeys), "/OCMD" => Keys(value, OcmdKeys), _ => false
         }),
-        RedactObjectRole.Function => Keys(value, FunctionKeys),
+        RedactObjectRole.Function => Function(value, stream),
         _ => false
     };
+
+    private static bool Function(JsonElement value, bool stream) => Keys(value, FunctionKeys) &&
+        value.TryGetProperty("/FunctionType", out var type) && type.ValueKind == JsonValueKind.Number &&
+        type.TryGetInt32(out var kind) && kind is 0 or 2 or 3 or 4 &&
+        value.TryGetProperty("/Domain", out _) && (stream || kind is 2 or 3);
 
     private static bool ColorSpace(JsonElement value)
     {

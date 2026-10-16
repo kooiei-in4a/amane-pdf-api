@@ -13,7 +13,7 @@ public sealed class RedactNeutralObjectsTests
     [TestMethod]
     [DataRow("icc", "/ICCBased")] [DataRow("state", "/ExtGState")] [DataRow("procset", "/ProcSet")]
     [DataRow("ocg", "SETTING_OC_GROUP")] [DataRow("ocmd", "/OCMD")]
-    [DataRow("function2", "/FunctionType 2")] [DataRow("function4", "/FunctionType 4")]
+    [DataRow("function0", "/FunctionType 0")] [DataRow("function2", "/FunctionType 2")] [DataRow("function4", "/FunctionType 4")]
     [DataRow("function3", "/FunctionType 3")] [DataRow("cs-indirect", "/ICCBased")]
     [DataRow("inherited", "/ImB")] [DataRow("color-map", "/ICCBased")]
     [DataRow("state-alias", "/ExtGState")] [DataRow("state-functions", "/TR2")]
@@ -38,6 +38,7 @@ public sealed class RedactNeutralObjectsTests
     [DataRow("smask")] [DataRow("state-ht")] [DataRow("state-unknown")]
     [DataRow("bad-procset")] [DataRow("icc-role-conflict")]
     [DataRow("ocg-private")] [DataRow("icc-metadata")]
+    [DataRow("state-function-empty")] [DataRow("state-function-domain")]
     public async Task NeutralParent_DoesNotExemptBodyChildrenOrConflictingRoles(string kind)
     {
         if (!PdfCompressTests.Linux()) return;
@@ -69,13 +70,16 @@ public sealed class RedactNeutralObjectsTests
             if (kind == "icc-metadata") extra = "/PieceInfo << /App << /Private 10 0 R >> >>";
             if (kind == "icc-role-conflict") { targetOnly = "/Bad 8 0 R"; after = " /Bad Do"; }
         }
-        if (kind is "state" or "state-alias" or "state-functions" or "state-ht" or "state-unknown" or "smask")
+        if (kind is "state" or "state-alias" or "state-functions" or "state-function-empty" or "state-function-domain" or "state-ht" or "state-unknown" or "smask")
         {
             common = kind == "state-alias" ? "/ExtGState << /OC 8 0 R >>" : "/ExtGState << /GS0 8 0 R >>";
             before = kind == "state-alias" ? "/OC gs " : "/GS0 gs ";
             setting = Text("<< /Type /ExtGState /CA 1 /ca 1" + (kind switch
-                { "state-functions" => " /TR2 10 0 R", "state-ht" => " /HT /Default", "state-unknown" => " /Unknown 1", "smask" => " /SMask << /S /Alpha /G 10 0 R >>", _ => "" }) + " >>");
+                { "state-functions" => " /TR2 10 0 R", "state-function-empty" or "state-function-domain" => " /TR 10 0 R",
+                    "state-ht" => " /HT /Default", "state-unknown" => " /Unknown 1", "smask" => " /SMask << /S /Alpha /G 10 0 R >>", _ => "" }) + " >>");
             if (kind == "state-functions") auxiliary = Stream("/FunctionType 4 /Domain [0 1] /Range [0 1]", "{ }");
+            if (kind == "state-function-empty") auxiliary = Stream("", "SETTING_NON_FUNCTION");
+            if (kind == "state-function-domain") auxiliary = Stream("/FunctionType 4", "{ }");
             if (kind == "smask")
             {
                 targetOnly = "/Form 10 0 R"; after = " /Form Do";
@@ -101,6 +105,7 @@ public sealed class RedactNeutralObjectsTests
             var f2 = Text("<< /FunctionType 2 /Domain [0 1] /C0 [0 0 0] /C1 [1 1 1] /N 1 >>");
             setting = kind switch
             {
+                "function0" => CompressFixtures.Stream("/FunctionType 0 /Domain [0 1] /Range [0 1 0 1 0 1] /Size [2] /BitsPerSample 8", [0, 0, 0, 255, 255, 255]),
                 "function2" => f2,
                 "function4" => Stream("/FunctionType 4 /Domain [0 1] /Range [0 1 0 1 0 1]", "{ dup dup }"),
                 _ => Text("<< /FunctionType 3 /Domain [0 1] /Functions [10 0 R] /Bounds [] /Encode [0 1] >>")
@@ -122,6 +127,29 @@ public sealed class RedactNeutralObjectsTests
             Stream("", content1), setting, Stream("", content2),
             inherited ? Text("<< /XObject << /ImA 5 0 R /ImB 6 0 R >> >>") : auxiliary
         ]), target);
+    }
+
+    [TestMethod]
+    public void Function_RequiresSupportedTypeAndDomain_AndStreamsForSampledOrCalculatorFunctions()
+    {
+        foreach (var type in new[] { 0, 2, 3, 4 })
+        {
+            foreach (var stream in new[] { false, true })
+            {
+                var dictionary = new JsonObject { ["/FunctionType"] = type, ["/Domain"] = new JsonArray(0, 1) };
+                var wrapper = stream ? new JsonObject { ["stream"] = new JsonObject { ["dict"] = dictionary } } :
+                    new JsonObject { ["value"] = dictionary };
+                using var document = JsonDocument.Parse(wrapper.ToJsonString());
+                Assert.AreEqual(stream || type is 2 or 3, RedactObjectRoles.IsNeutral(document.RootElement, RedactObjectRole.Function));
+            }
+        }
+        foreach (var dictionary in new[] { "{}", "{\"/Domain\":[0,1]}", "{\"/FunctionType\":4}",
+                     "{\"/FunctionType\":1,\"/Domain\":[0,1]}", "{\"/FunctionType\":2.5,\"/Domain\":[0,1]}",
+                     "{\"/FunctionType\":\"4\",\"/Domain\":[0,1]}" })
+        {
+            using var document = JsonDocument.Parse("{\"stream\":{\"dict\":" + dictionary + "}}");
+            Assert.IsFalse(RedactObjectRoles.IsNeutral(document.RootElement, RedactObjectRole.Function));
+        }
     }
 
     [TestMethod]
