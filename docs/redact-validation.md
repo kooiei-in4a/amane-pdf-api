@@ -79,7 +79,9 @@ python3 scripts/redact-thresholds.py amane-pdf-api:redact-validation \
 
 hostテストのtool/font/PDFium環境変数と、qpdfの一時コピーはCIと同じ設定を使う。手動driverにはhostのqpdf・Poppler・Pillow（OpenJPEG対応）・NumPy・gccが必要。JBIG2生成は検証側のjbig2enc 0.30のみで行い、配布imageへは入れない。閾値の旧値の再現は`--cases dct-progressive,jpx-rgb60 --reference`で行う。通常CIは容量測定を繰り返さず、実符号化のhostテストとDockerの画素比較を実行する。
 
-## 独立レビュー対応（2026-10-17）
+## 独立レビュー対応（7a21e1e、2026-10-17）
+
+以下は7a21e1e時点の記録。本文を持たない共有objectの扱いは、後続のKoo判断で次節の許可リスト方式へ変更する。
 
 独立レビューの反例A/B/Cを、旧head `c25ac5e`のイメージと修正後のイメージで実APIに送って確認した。
 
@@ -105,3 +107,28 @@ Cの対策は、ExtGStateのFont配列の先頭を通常のFont辞書と同じ�
 | 50 MiB結合と同時 | 8,322 ms | 1,560 ms | 260,050,944 bytes（248.00 MiB） | 112,259,072 bytes（107.06 MiB） |
 
 両方の黒塗りと結合はHTTP 200、OOM/OOM killとも0、ENOSPCなし。終了後のjobとrendererは0。§13の設計調査時の記録は変更していない。
+
+## 中立の共有objectを許可（Human判断: Koo、2026-10-17）
+
+本文を持たない共有設定も拒否していた7a21e1eから、Koo指定の役割・構造の許可リストへ変更した。Tのグラフの全到達位置を収集してから分類し、全役割が中立かつ構造も適合するobjectだけを拒否集合から除く。中立の子も探索し、本文を持つ子や別の本文の位置からも到達するobjectは拒否する。Rの式・ExtGStateのFont共有判定・探索の境界と上限・出力検証・画像閾値は維持する。
+
+旧イメージ `amane-pdf-api:issue35-redact-review-fix`（7a21e1e）と新イメージ `amane-pdf-api:issue35-neutral` に、レビューの `repro.py` のA〜Gを実行した。OCGは両ページのPropertiesから同じOCGを参照し、contentに `/OC /MC0 BDC … EMC` を置いた追加の合成PDFで比較した。
+
+| ケース | 7a21e1e | 中立判定の修正後 |
+| --- | --- | --- |
+| A: 共有画像の切り抜き | 422 unsupported-pdf | 422 unsupported-pdf |
+| B: 対象画像への私的参照 | 422 unsupported-pdf | 422 unsupported-pdf |
+| C: ExtGStateのFont共有 | 200、R=1,2 | 200、R=1,2 |
+| D: 共有ICC profile | 422 unsupported-pdf | 200、R=1 |
+| E: 共有の間接ExtGState | 422 unsupported-pdf | 200、R=1 |
+| F: 継承した間接Resources | 200、R=1 | 200、R=1 |
+| G: 共有の間接ProcSet | 422 unsupported-pdf | 200、R=1 |
+| 共有OCG | 422 unsupported-pdf | 200、R=1 |
+
+D/E/F/G/OCGの出力をQDFと復号済み画像JSONで確認した。画像は277×277の置換画像と20×20の対象外画像の2つで、残る元画像の全サンプルは青であり、対象ページの赤い元画像はない。中立設定（またはFの刈り込み済みImB参照）は残った。[確認値](redact-validation/neutral-object-checks.json)。RGBの任意のbyte位置で部分検索すると青にもずれた一致が起きるため、再現スクリプトの行パターン件数は不在の判定には使わない。
+
+`RedactNeutralObjectsTests`に24件を追加した。成功ケースは合成sRGB profile（Pillow/LittleCMSで生成し固定fixture化）、間接ColorSpace、任意のリソース名、ExtGStateのtransfer function、ProcSet、OCG/OCMD、SeparationのType 2/4のtint transform、Type 3のFunctions配列、継承Resources。成功時は200・R=T、固有の元画像bytesがQDFにないことと共有設定の残存を検査する。
+
+拒否ケースはSMaskのForm、HT・未知key、ProcSet内の参照、ICCとXObjectの役割衝突、未知keyを持つOCG、ICCのMetadataへの私的参照。役割の到達順を入れ替えても拒否する単体テスト、ColorSpaceの全許可形式とstream lookup・間接DeviceN属性を免除しない検査も含める。従来のRedactSecurityTests 13件を含む黒塗り関連93件が成功した。
+
+受け入れる残余リスクはKooの指示どおり、OCGのName、ICC内の記述文字列、Functionのサンプル値が共有設定として残ること。許可リスト外の共有objectは引き続き422になり得る。検証は合成PDFのみで、Chrome・Word・InDesign・スキャナ等の実文書で422がどれだけ減るかは確認していない。§13の記録は変更していない。容量・閾値の手動測定は上の各head時点の記録で、今回の変更では再測定していない。

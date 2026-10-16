@@ -64,8 +64,8 @@ request
 
 - 画像化したページは、最終段で**新しく作ったpage object**に置き換える。そのページの辞書・content・Resourcesは許可した値だけで、元のページのobjectはどこからも参照されないため出力に書かれない（qpdfは到達できるobjectだけを書く）。
 - 出力に残るのは、画像化しなかったページから到達できるobjectと、許可リストにしたカタログ・ページツリーだけ。
-- 刈り込みは未使用のResources参照を除くが、ページの私的な参照は除かない。PR Bでは、R以外のページの残る辞書から任意の参照をたどり、Rの元page/contentまたはTのページ辞書・実効Resourcesから到達する間接objectを残す構造を422 `unsupported-pdf` にする。これにより、Resources以外の参照から元の対象本文が残る経路も拒否する。独立したobjectに複製された情報や、画像化しないページ自身の内容の除去は対象外。
-- 共有画像・Formも、変換行列・クリップ・CropBoxによって対象外ページでは一部しか表示されないことがある。したがって「共有画像・Formはすべて対象外ページの表示内容」とは扱わない。R以外のページがTの画像・Form・Resources・Thumb等の間接objectを共有する場合は、用途を問わず422 `unsupported-pdf` にする。Rは承認済みのフォント共有の式から広げない。フォントは字形と対応表をまとめて持つため、共有ページをRへ含める（§6、§13.5）。
+- 刈り込みは未使用のResources参照を除くが、ページの私的な参照は除かない。Tから到達する間接objectを役割付きで収集し、全到達位置が中立の役割かつ構造が許可リストに合うobjectだけを拒否集合から除外する。既定は本文として保護し、R以外のページが拒否集合を参照すれば422 `unsupported-pdf` にする。独立したobjectに複製された情報や、画像化しないページ自身の内容の除去は対象外。
+- 共有画像・Formは、変換行列・クリップ・CropBoxによって対象外ページでは一部しか表示されないことがあるため、拒否を維持する。中立と認める共有ICC・ExtGState・ProcSet・OC・Function等は設定値として残せるが、その子の本文objectは保護する（§7.3）。この許可リスト方式は2026-10-17のHuman判断（Koo）。Rのフォント共有の式は変えない。
 - 文書単位の情報（しおり、名前付き要素、添付、OpenAction、XMP、文書情報、ページラベル）は、`--empty` による組み直しとカタログの許可リストで持ち越さない。フォームとタグ構造は手順3で除き、ページの `/AF` と添付注釈も手順3で除く。注釈は、外観があるものは手順3で焼き込み、残ったものは最終段で全ページから除く。
 
 ## 4. 描画program `Amane.Pdf.Renderer`
@@ -254,7 +254,24 @@ qpdf --empty --remove-unreferenced-resources=yes --pages <redact-flat.pdf> 1-z -
 `RedactDocument` が pruned.pdf の構造JSON（`--json=2 --json-key=qpdf --json-key=pages --json-stream-data=none --decode-level=none`、32 MiB以下）から書く。
 
 - 前提の確認: ページツリーの根の `/Kids` が全ページを直接持ち、各ページの `/Parent` が根であること、ページ数が入力と同じであること。違えば500（`--pages` の出力は平らになる）。
-- Tのページ辞書（`/Parent`を除く）と実効Resourcesから、辞書・配列・stream辞書を通じて到達する間接objectを保護対象にする。画像・Form・Resources・Thumb・mask・私的なキーも含める。R以外のページの、削除する `/Parent`・`/Annots` 以外の値から任意の参照をたどり、この集合またはRの元page/contentへ到達したら422 `unsupported-pdf`。書き換える実際のカタログ・根と、別途検査する実際のページを境界にし、ページツリー全体へは広げない。深さ32・訪問100万は§6の検査と共有する。安全側に拒否するため、表示内容を持たない間接objectの共有でも拒否することがある。
+- Tのページ辞書（`/Parent`を除く）と実効Resourcesから、到達位置ごとの役割を子へ渡して収集する。同じ参照でも別の役割なら探索を省かない。全到達を集めた後で分類する2段階とし、すべての位置が中立の役割で、各役割の構造条件も満たす場合だけ中立とする。1つでも本文の位置があれば拒否集合に入れる。
+- ResourcesのExtGState/ColorSpace/Propertiesの各entry、ProcSet、画像のColorSpace、ICCBasedのprofile、Indexed/Patternのbase、Separation/DeviceNのalternateとtint transform、OC/OCMDのOCGs、ExtGStateのTR/TR2/BG/BG2/UCR/UCR2、FunctionのFunctionsの各要素へ役割を渡す。それ以外は本文。名前から設定objectと推測して免除しない。
+- 中立objectの子もたどり続ける。ExtGStateのFont・SMask/G、ICCのMetadata等の本文への参照は拒否集合へ入る。Shading、tiling pattern、Halftone、XObject、Thumb、PieceInfo、Metadata、注釈、未知の辞書・stream、Resourcesや各map自体の共有は免除しない。
+- R以外のページの、削除する `/Parent`・`/Annots` 以外の値から任意の参照をたどる。中立objectを通過してもその子を検査し、拒否集合または従来どおりRの元page/content・Tのフォント配下へ到達すれば422 `unsupported-pdf`。書き換える実際のcatalog/rootと別途検査する実際のページを境界にする。深さ32・訪問100万は§6の検査と共有する。
+
+中立の構造の許可リスト（KooのPDF 2.0に基づく判断）:
+
+| 役割 | 構造の条件 |
+| --- | --- |
+| ExtGState | 非stream辞書。Typeなし、またはExtGState。keyはPDF 2.0標準のExtGState keyのみ（HTは除外。拡張keyも除外） |
+| ProcSet | 名前だけの配列。参照を含めば中立にしない |
+| ColorSpace | ICCBased / Indexed / Separation / DeviceN / Pattern / CalGray / CalRGB / Labで始まる所定長の配列。Indexed lookupは文字列のみ。DeviceN属性辞書は直接辞書のみ |
+| ICC | stream。N必須。key ⊆ {N, Alternate, Range, Metadata, Length, Filter, DecodeParms}。Type/Subtypeなし |
+| OC | Type=OCG、key ⊆ {Type, Name, Intent, Usage}、またはType=OCMD、key ⊆ {Type, OCGs, P, VE} |
+| Function | 辞書またはstream。key ⊆ {FunctionType, Domain, Range, Size, BitsPerSample, Order, Encode, Decode, C0, C1, N, Functions, Bounds, Length, Filter, DecodeParms}。Subtypeなし |
+
+ExtGStateのkey一覧は [PDF Associationの仕様由来モデル（Table 57）](https://github.com/pdf-association/arlington-pdf-model/blob/master/tsv/latest/GraphicsStateParameter.tsv) と照合した。非推奨のHTP/TR/TR2を含み、HTとベンダー拡張は含めない。中立の設定値（OCGのName、ICC内の記述文字列、Functionのサンプル値）は残ることを受け入れる。これらは文書全体で共有する設定値として扱い、黒塗り範囲の本文とは区別する。
+
 - カタログ: `{"/Type": "/Catalog", "/Pages": <根>}` に置き換える。
 - ページツリーの根: `{"/Type": "/Pages", "/Kids": [...], "/Count": n}` に置き換える。R のページは新しいpageの参照に差し替える。
 - R の各ページに、新しいobject（番号は構造JSONの `maxobjectid` の次から）を3つ作る。
@@ -336,7 +353,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 | 413 | — | 入力30 MiB超、request 30 MiB + 64 KiB超 | 既存 |
 | 422 | なし | 入力の破損・暗号化 | 既存 |
 | 422 | `too-complex` | JSON・object数・台帳の上限、§6.2 の画像の大きさ、bitmapを確保できない | このPDFは黒塗りの処理上限を超えています。 |
-| 422 | `unsupported-pdf` | 刈り込みの警告、PDFiumで開けない、ページの大きさの不一致、ページ属性（`PdfPageBoxes` の例外もここへ変換）、1 pt 未満のページ、残るページから対象ページのobjectへの参照（画像・Formの共有や私的参照も含む） | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
+| 422 | `unsupported-pdf` | 刈り込みの警告、PDFiumで開けない、ページの大きさの不一致、ページ属性（`PdfPageBoxes` の例外もここへ変換）、1 pt 未満のページ、残るページから拒否集合への参照（共有画像・Form・私的参照。中立の許可リスト外は既定で拒否） | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
 | 422 | `output-too-large` | JPEGの合計30 MiB超、JPEGが1枚で残りを超えた、出力の上限 | 黒塗りしたページの画像が大きくなりすぎるため、処理できませんでした。黒塗りするページを減らしてください。 |
 | 422 | `too-many-pages` | 画像化するページが30を超える | 黒塗りするページとフォントを共有するページも画像にする必要があり、上限の30ページを超えました。PDFを分割してから黒塗りしてください。 |
 | 500 | — | 出力の検証の失敗、想定外の終了コード、描画programの起動失敗 | 既存 |
@@ -351,7 +368,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 
 - `RedactRegions`: §5.3 の各規則の400（JSON不正、BOM、深さ、空配列、101個、未知key、key不足、重複key、`"page": 1.0`・`01`・`2147483648`、`x` の `1e-1`・`-0`・`.5`・`0.12345`・`1.0001`、`width: 0`、`x + width > 1`、21ページ、16 KiB超）、成功する境界（`1.0000`、`x + width = 1`、100個、20ページ）。
 - `RedactRaster`: A4・A2・A1・極端に細長いページの画素数、1600万画素を超えないこと、外側への丸め（整数ちょうどの境界を含む）、`MediaBox` の書式に指数が出ないこと。
-- `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし、ExtGStateのFont）、共有画像・フォントなしFormの切り抜きと、Resources/Thumb/mask/私的参照の拒否、§6.2 の画像の検査、update JSON の内容。
+- `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし、ExtGStateのFont）、共有画像・フォントなしFormの切り抜きと、Resources/Thumb/mask/私的参照の拒否、中立の役割・構造・全到達位置の照合と役割衝突（ICCをXObjectとしても使う等）、中立objectの子の本文の拒否、§6.2 の画像の検査、update JSON の内容。
 
 ### 10.2 実tool（host の qpdf・PDFium）
 
@@ -412,6 +429,8 @@ PDFのフォントは、文書全体で使った文字の形と「どの文字�
 | B | 指定したページだけを画像にし、文字の種類が残ることを画面とREADMEで説明する | 名前などに珍しい漢字があると、その字が文書にあったことは分かる |
 
 Claudeの推奨はA（2026-10-07のHuman決定「見た目だけ黒い事故が仕組み上起きない方式に限る」に合う）。**2026-10-16、HumanがAを承認した。** サイト（amane-tools-site#47）に `X-Pdf-Rasterized-Pages` の中継、「黒塗りしていないページも画像になった」旨の表示、`too-many-pages` の文言と日次回数の扱いを加える必要がある（#47 の更新で行う）。
+
+**追加のHuman判断（Koo、2026-10-17）**: 本文を持たないICC・ExtGState・ProcSet・OCG等の共有objectは、§7.3の役割と構造の許可リストで認める。共有画像・Form・私的参照の漏洩拒否とRの式は維持する。許可リスト外は既定で本文として拒否する。OCGのName、ICC内の記述文字列、Functionのサンプル値の残存を設定値として受け入れる。Chrome・Word・InDesign・スキャナ等の実文書で受付改善率を測った判断ではなく、合成PDFで検証する方針。
 
 ### 12.2 Claudeが決めたこと（Human未確認。異議がなければこのまま）
 
@@ -507,6 +526,7 @@ pdfcpu 0.16.1 で、1ページ目「鈴木一郎 個人番号 9876」、2ペー�
 
 ## 14. 未検証・残余リスク
 
+- 中立の許可リスト外の共有objectは引き続き422になり得る。許可リストの判断は合成PDFで検証しており、実在の各生成ツールのPDFで受付改善率は未確認。
 - §6.2の閾値と§10.5の容量・並行実行はPR Bで測定済み。合成fixtureに対する測定であり、任意のPDFの成功・描画の完全性を保証するものではない。
 - 画像の受付検査はPDF辞書の成分数と画像1枚ごとの大きさに基づく。符号化データの実成分数が辞書と異なる場合と、同一ページ内の画像の合計作業量は未検証。描画が省略される可能性があり、閾値だけで完全性を保証しない。
 - content内の inline image が大きい場合、PDFiumが黙って省く可能性。黒塗りの安全性には影響しない。

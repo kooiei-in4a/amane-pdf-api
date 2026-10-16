@@ -250,7 +250,13 @@ qpdfによる入力検査の後、埋め込みファイルの除去、外観生�
 
 指定ページTと、Tのフォント辞書・フォントprogram・文字対応表等を共有するページを画像化集合Rとします。ExtGStateのFont配列、Form、Pattern、SMask、Type3のResourcesも調べます。共有判定は刈り込みの後に行い、Rからの連鎖は追いません。Tは20ページ、Rは30ページまでです。深さ32・合計訪問100万、JSON 32 MiB・間接object 50,000を超える構造は422 `too-complex` です。
 
-Rに対し、200dpi・1600万画素・各辺65,535画素を上限に描き、指定範囲を外側へ丸めて黒で塗ってからJPEGにします。Rの元のpage・content・Resourcesは持ち越さず、新しいobjectを作ります。最終段でカタログとページツリーの根を許可リストにし、全ページのAnnotsを除きます。R以外のページに残る任意の参照もたどり、Rの元page/content、またはTのページ辞書・実効Resourcesから到達する間接objectを残す場合は422 `unsupported-pdf` にします。Tの収集ではページのParentを除き、実際のcatalog/root/ページを境界にします。画像・Form・Resources・Thumb・mask・私的なキーも保護対象です。共有画像・Formはクリップ等で一部しか表示されないため、Rを広げる代わりに共有自体を拒否します。表示内容を持たない間接objectの共有も安全側に拒否することがあります。私的参照も含む漏洩経路を独立レビューで再現したため検査を拡張しました。画像化しないページ自身の内容や、独立したobjectに複製された情報までは消去しません。
+Rに対し、200dpi・1600万画素・各辺65,535画素を上限に描き、指定範囲を外側へ丸めて黒で塗ってからJPEGにします。Rの元のpage・content・Resourcesは持ち越さず、新しいobjectを作ります。最終段でカタログとページツリーの根を許可リストにし、全ページのAnnotsを除きます。R以外のページに残る任意の参照もたどり、Rの元page/content、Tのフォント配下、またはTから到達した本文objectを残す場合は422 `unsupported-pdf` にします。
+
+本文を持たない共有objectは、2026-10-17のHuman判断（Koo）により役割と構造の許可リストで認めます。Tのグラフの全到達位置を先に収集し、すべての位置が中立の役割で、objectの構造も各役割の条件に合う場合だけ拒否集合から除外します。対象はExtGState（HT・未知keyは不可）、名前だけのProcSet、限定したColorSpace配列、ICC profile、OCG/OCMD、Functionです。詳細は[設計§7.3](redact-design.md#73-手順5-最終段の-update-json)。役割の異なる再到達も探索し、ICCをXObjectとしても使うような衝突は拒否します。
+
+中立の親からも子へ進み、ExtGStateのFont/SMaskのForm、ICCのMetadata等の本文は保護します。画像・Form・Shading・tiling pattern・Halftone・Thumb・PieceInfo・Metadata・注釈・未知の辞書やstreamは既定で本文です。TのParentを除き、実際のcatalog/root/ページを境界とすること、深さ32・訪問100万の上限は維持します。共有画像・Formはクリップ等で一部しか表示されないため、Rを広げる代わりに共有を拒否します。画像化しないページ自身の内容や、独立したobjectに複製された情報までは消去しません。
+
+OCGのName、ICC内の記述文字列、Functionのサンプル値は、文書全体で共有する設定値として出力に残ることを受け入れます。許可リスト外の共有objectは引き続き422になり得ます。検証は合成PDFを使っており、Chrome・Word・InDesign・スキャナ等の実文書で422がどれだけ減るかは未確認です。
 
 描画前に画像XObject・SMask/Maskを検査します。最後のfilterがDCTなら幅×高さ×成分数9,000万、JPXなら3,000万、JBIG2なら10億画素以下です。DATA 384 MiB・1600万画素のページで、JPEG baseline/progressive・Gray/CMYK、JPX RGB/Gray/alpha、JBIG2の境界を実測しました。設計時のDCT 1億2,000万・JPX 6,000万では画像が黙って欠けたため下げています。検査はPDF辞書の成分数・画像1枚ごとの大きさに基づき、実データの成分数との不一致と同一ページ内の画像の合計作業量は未検証です。閾値は任意の符号化データの描画成功を保証しません。inline imageはこの検査の対象外です。利用者には結果の確認を案内します。
 

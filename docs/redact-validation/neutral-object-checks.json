@@ -1,0 +1,82 @@
+[
+  {
+    "case": "D-shared-icc",
+    "image_dimensions": [
+      [
+        277,
+        277
+      ],
+      [
+        20,
+        20
+      ]
+    ],
+    "remaining_input_image_is_blue": true,
+    "original_target_image_absent": true,
+    "shared_setting_marker_present": true
+  },
+  {
+    "case": "E-shared-extgstate",
+    "image_dimensions": [
+      [
+        277,
+        277
+      ],
+      [
+        20,
+        20
+      ]
+    ],
+    "remaining_input_image_is_blue": true,
+    "original_target_image_absent": true,
+    "shared_setting_marker_present": true
+  },
+  {
+    "case": "F-inherited-resources",
+    "image_dimensions": [
+      [
+        277,
+        277
+      ],
+      [
+        20,
+        20
+      ]
+    ],
+    "remaining_input_image_is_blue": true,
+    "original_target_image_absent": true,
+    "shared_setting_marker_present": true
+  },
+  {
+    "case": "G-shared-procset",
+    "image_dimensions": [
+      [
+        277,
+        277
+      ],
+      [
+        20,
+        20
+      ]
+    ],
+    "remaining_input_image_is_blue": true,
+    "original_target_image_absent": true,
+    "shared_setting_marker_present": true
+  },
+  {
+    "case": "OCG-shared",
+    "image_dimensions": [
+      [
+        277,
+        277
+      ],
+      [
+        20,
+        20
+      ]
+    ],
+    "remaining_input_image_is_blue": true,
+    "original_target_image_absent": true,
+    "shared_setting_marker_present": true
+  }
+]

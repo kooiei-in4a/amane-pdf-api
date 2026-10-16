@@ -198,8 +198,8 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
     }
 
     // Shared images and Forms can contain data clipped out of surviving pages.
-    // Reject every surviving reference into the target page's object graph,
-    // including private references, instead of expanding the approved page set.
+    // Protect body objects, allowing only settings that are neutral in every
+    // target-side role. Even neutral settings may lead to protected children.
     internal void CheckSurvivingReferences(RedactRegions regions, IReadOnlyList<int> rasterized)
     {
         var denied = rasterized.Select(number => boxes.Pages[number - 1]).ToHashSet();
@@ -219,42 +219,66 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
                 if (PdfObjectRef.Parse(key) is { } font) denied.Add(font);
         var (catalog, root) = Roots();
         var rewritten = boxes.Pages.Append(catalog).Append(root).ToHashSet();
-        var collected = new HashSet<PdfObjectRef>();
-        var seen = new HashSet<PdfObjectRef>();
-        void Walk(JsonElement value, int depth, bool collect)
+        var arrivals = new Dictionary<PdfObjectRef, RedactObjectRole>();
+        void Collect(JsonElement value, int depth, RedactObjectRole role)
         {
             Tick(depth);
             if (PdfObjectRef.Parse(value) is { } reference)
             {
-                if (!collect && denied.Contains(reference)) throw PdfRedactException.Unsupported();
-                // Actual page-tree dictionaries are rewritten or inspected separately.
-                // A dictionary merely declaring /Type /Catalog or /Pages is still walked.
                 if (rewritten.Contains(reference)) return;
-                if (collect) denied.Add(reference);
-                if (!(collect ? collected : seen).Add(reference)) return;
+                var previous = arrivals.GetValueOrDefault(reference);
+                if ((previous & role) != 0) return;
+                arrivals[reference] = previous | role;
                 if (!boxes.Objects.TryGetValue(reference, out var wrapper)) throw PdfRedactException.Unsupported();
-                var content = wrapper.TryGetProperty("value", out var raw) ? raw : wrapper.GetProperty("stream").GetProperty("dict");
-                Walk(content, depth + 1, collect);
+                Collect(wrapper.TryGetProperty("value", out var raw) ? raw : wrapper.GetProperty("stream").GetProperty("dict"), depth + 1, role);
             }
             else if (value.ValueKind == JsonValueKind.Object)
             {
-                foreach (var property in value.EnumerateObject()) Walk(property.Value, depth + 1, collect);
+                foreach (var property in value.EnumerateObject())
+                    if (role != RedactObjectRole.Page || property.Name != "/Parent")
+                        Collect(property.Value, depth + 1, RedactObjectRoles.Child(value, role, property.Name));
             }
             else if (value.ValueKind == JsonValueKind.Array)
-                foreach (var item in value.EnumerateArray()) Walk(item, depth + 1, collect);
+            {
+                var index = 0;
+                foreach (var item in value.EnumerateArray()) Collect(item, depth + 1, RedactObjectRoles.Element(value, role, index++));
+            }
         }
         foreach (var number in regions.Pages)
         {
             var page = boxes.Dictionary(boxes.Pages[number - 1]);
-            foreach (var property in page.EnumerateObject())
-                if (property.Name != "/Parent") Walk(property.Value, 0, true);
-            // Include effective resources even when they were inherited.
-            Walk(boxes.Inherited(page, "/Resources", token) ?? default, 0, true);
+            Collect(page, 0, RedactObjectRole.Page);
+            Collect(boxes.Inherited(page, "/Resources", token) ?? default, 0, RedactObjectRole.Resources);
+        }
+        // Classify only after collecting every arrival, including conflicting roles.
+        foreach (var pair in arrivals)
+        {
+            Tick(0);
+            if (!RedactObjectRoles.IsNeutral(boxes.Objects[pair.Key], pair.Value)) denied.Add(pair.Key);
+        }
+        var seen = new HashSet<PdfObjectRef>();
+        void Walk(JsonElement value, int depth)
+        {
+            Tick(depth);
+            if (PdfObjectRef.Parse(value) is { } reference)
+            {
+                if (denied.Contains(reference)) throw PdfRedactException.Unsupported();
+                if (rewritten.Contains(reference) || !seen.Add(reference)) return;
+                if (!boxes.Objects.TryGetValue(reference, out var wrapper)) throw PdfRedactException.Unsupported();
+                // Neutral parents do not exempt their body-bearing descendants.
+                Walk(wrapper.TryGetProperty("value", out var raw) ? raw : wrapper.GetProperty("stream").GetProperty("dict"), depth + 1);
+            }
+            else if (value.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in value.EnumerateObject()) Walk(property.Value, depth + 1);
+            }
+            else if (value.ValueKind == JsonValueKind.Array)
+                foreach (var item in value.EnumerateArray()) Walk(item, depth + 1);
         }
         for (var i = 0; i < boxes.Pages.Count; i++)
             if (!rasterized.Contains(i + 1))
                 foreach (var property in boxes.Dictionary(boxes.Pages[i]).EnumerateObject())
-                    if (property.Name is not ("/Parent" or "/Annots")) Walk(property.Value, 0, false);
+                    if (property.Name is not ("/Parent" or "/Annots")) Walk(property.Value, 0);
     }
 
     private (PdfObjectRef Catalog, PdfObjectRef Root) Roots()
