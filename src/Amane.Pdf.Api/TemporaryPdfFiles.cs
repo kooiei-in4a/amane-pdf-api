@@ -8,6 +8,16 @@ public sealed class TemporaryPdfFiles : IDisposable
     public string InputPath => Path.Combine(DirectoryPath, "input.pdf");
     public string OutputPath => Path.Combine(DirectoryPath, "output.pdf");
     public string JobPath => Path.Combine(DirectoryPath, "job.json");
+    internal string RedactFlatPath => Path.Combine(Path.GetFullPath(DirectoryPath), "redact-flat.pdf");
+    internal string RedactPrunedPath => Path.Combine(Path.GetFullPath(DirectoryPath), "redact-pruned.pdf");
+    internal string RedactJsonPath => Path.Combine(Path.GetFullPath(DirectoryPath), "redact-inspect.json");
+    internal string RedactStripPath => Path.Combine(Path.GetFullPath(DirectoryPath), "redact-strip.json");
+    internal string RedactFinalPath => Path.Combine(Path.GetFullPath(DirectoryPath), "redact-final.json");
+    internal string RedactPagePath(int number)
+    {
+        if (number < 1) throw new ArgumentOutOfRangeException(nameof(number));
+        return Path.Combine(Path.GetFullPath(DirectoryPath), string.Create(System.Globalization.CultureInfo.InvariantCulture, $"redact-page-{number:D3}.jpg"));
+    }
     internal string PdfcpuLayerJsonPath => Path.Combine(DirectoryPath, "pdfcpu-layer.json");
     internal string StampUploadPath => Path.Combine(Path.GetFullPath(DirectoryPath), "stamp-upload.bin");
     internal string StampImagePath => Path.Combine(Path.GetFullPath(DirectoryPath), "stamp.png");

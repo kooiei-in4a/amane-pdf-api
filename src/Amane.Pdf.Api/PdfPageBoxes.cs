@@ -43,6 +43,8 @@ internal sealed class PdfPageBoxes : IDisposable
     internal IReadOnlyList<PdfObjectRef> Pages { get; }
     internal bool? Encrypted { get; }
     internal int ObjectCount => objects.Count;
+    internal JsonDocument Document => document;
+    internal IReadOnlyDictionary<PdfObjectRef, JsonElement> Objects => objects;
 
     internal PdfPageBoxes(ReadOnlyMemory<byte> bytes, long byteLimit, int objectLimit, CancellationToken token)
     {
@@ -106,7 +108,7 @@ internal sealed class PdfPageBoxes : IDisposable
             throw PdfOverlayInputException.Unsupported();
         return value;
     }
-    private JsonElement Resolve(JsonElement value, CancellationToken token)
+    internal JsonElement Resolve(JsonElement value, CancellationToken token)
     {
         var seen = new HashSet<PdfObjectRef>();
         while (PdfObjectRef.Parse(value) is { } reference)

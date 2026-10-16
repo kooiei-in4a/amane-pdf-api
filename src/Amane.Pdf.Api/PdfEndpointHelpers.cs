@@ -44,6 +44,11 @@ internal static class PdfEndpointHelpers
             }
             await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
         }
+        catch (PdfRedactException exception)
+        {
+            await Results.Problem(statusCode: 422, title: exception.Title,
+                extensions: new Dictionary<string, object?> { ["reason"] = exception.Code }).ExecuteAsync(context);
+        }
         catch (PdfStampImageException exception)
         {
             var complex = exception.Reason == PdfStampImageReason.TooComplex;

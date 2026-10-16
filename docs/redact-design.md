@@ -1,6 +1,6 @@
 # 黒塗り（画像化方式）APIの実装設計
 
-2026-10-16 JST。対象は [Issue #35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) の `POST /api/pdf/redact`。状態は**設計確定・未実装**。フォントを共有するページの扱いは2026-10-16にHumanが案Aを承認した（§12.1）。
+2026-10-16 JST。対象は [Issue #35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) の `POST /api/pdf/redact`。状態は**PR A（#66）で描画基盤を実装済み、PR BでAPIを実装**。PR Bの実測は [redact-validation.md](redact-validation.md) に記録する。フォントを共有するページの扱いは2026-10-16にHumanが案Aを承認した（§12.1）。
 
 記述の区分:
 
@@ -64,8 +64,8 @@ request
 
 - 画像化したページは、最終段で**新しく作ったpage object**に置き換える。そのページの辞書・content・Resourcesは許可した値だけで、元のページのobjectはどこからも参照されないため出力に書かれない（qpdfは到達できるobjectだけを書く）。
 - 出力に残るのは、画像化しなかったページから到達できるobjectと、許可リストにしたカタログ・ページツリーだけ。
-- 画像化しなかったページから到達できるobjectは、刈り込みでcontentが実際に使うものに限られる（刈り込みが完全でないときは止める）。そのため、画像化したページの内容がそこに混ざる経路は「両方のページが使う共有object」だけになる。
-- 共有objectのうち、画像・Form XObjectは画像化しなかったページにも描かれている内容そのものである。**フォントだけは、両方のページで使った文字の字形と対応表を1つにまとめて持つ**ため、画像化したページだけの文字が残る（§6、§13.5）。
+- 刈り込みは未使用のResources参照を除くが、ページの私的な参照は除かない。Tから到達する間接objectを役割付きで収集し、全到達位置が中立の役割かつ構造が許可リストに合うobjectだけを拒否集合から除外する。既定は本文として保護し、R以外のページが拒否集合を参照すれば422 `unsupported-pdf` にする。独立したobjectに複製された情報や、画像化しないページ自身の内容の除去は対象外。
+- 共有画像・Formは、変換行列・クリップ・CropBoxによって対象外ページでは一部しか表示されないことがあるため、拒否を維持する。中立と認める共有ICC・ExtGState・ProcSet・OC・Function等は設定値として残せるが、その子の本文objectは保護する（§7.3）。この許可リスト方式は2026-10-17のHuman判断（Koo）。Rのフォント共有の式は変えない。
 - 文書単位の情報（しおり、名前付き要素、添付、OpenAction、XMP、文書情報、ページラベル）は、`--empty` による組み直しとカタログの許可リストで持ち越さない。フォームとタグ構造は手順3で除き、ページの `/AF` と添付注釈も手順3で除く。注釈は、外観があるものは手順3で焼き込み、残ったものは最終段で全ページから除く。
 
 ## 4. 描画program `Amane.Pdf.Renderer`
@@ -128,7 +128,7 @@ env --ignore-signal=XFSZ -- prlimit --core=0:0 --data=<384 MiB> --fsize=<max(max
 - `ProcessMemoryLimits.CreateRequest` は常に `--as` を付けるため、AS の代わりに DATA を指定できる引数を追加する。
 - **PR Aの実装時の修正（2026-10-16）**: CoreCLRのW^X用memfdにより、起動前のFSIZEが1 MiB以下だとruntimeが起動できなかった（8 MiBでは成功）。起動時だけ最低8 MiBとし、`render-jpeg` 内でPDFiumのload・入力PDFのopenより前にFSIZEのsoft/hard両方を `max-bytes + 1` へ下げる。下げられなければ失敗する。W^Xは有効のまま。`self-test` は出力しないため起動用の8 MiBを使う。実測は [renderer-validation.md](renderer-validation.md)。§13の設計調査時の記録は変更しない。
 - RLIMIT_DATA は書き込み可能な実メモリだけを数え、CoreCLRの予約（PROT_NONE）を数えないため .NET でも使える（§13.3）。
-- 384 MiB は、16 Mpx のbitmap（64 MB）と600dpi A4のプログレッシブJPEG（256 MiBで描けた）に余裕を持たせた値。コンテナmemoryの見積り（README「1536 MiB ≥ 128 + 256 + 2 × 544 + 64」）では、描画は2つあるPDF処理枠の1つを使い、qpdfのAS 544 MiBの枠に収める。【未検証】描画中の `memory.peak` と、50 MiB結合との同時実行でOOMが起きないこと（§10.5）。
+- 384 MiB は、16 Mpx のbitmap（64 MB）と600dpi A4のプログレッシブJPEG（256 MiBで描けた）に余裕を持たせた値。コンテナmemoryの見積り（README「1536 MiB ≥ 128 + 256 + 2 × 544 + 64」）では、描画は2つあるPDF処理枠の1つを使い、qpdfのAS 544 MiBの枠に収める。PR Bでは30 MiB/30ページと50 MiB結合同時実行を測定し、両処理の成功・OOMなしを確認した（[検証記録](redact-validation.md)）。
 - 1 request内の描画は逐次。描画枠（§8.2）により、描画programが同時に2つ動くことはない。
 - 描画programは stdout・stderr に何も書かない。runner は既定どおり両方を読み捨てる。APIのログは既存の固定文言だけで、ページ番号・範囲・ファイル名を出さない。
 
@@ -190,7 +190,7 @@ env --ignore-signal=XFSZ -- prlimit --core=0:0 --data=<384 MiB> --fsize=<max(max
 ### 5.4 画素への変換【設計】
 
 - 表示寸法 `Wpt`・`Hpt` = `PdfPageAttributes.DisplayWidth / DisplayHeight`（CropBox ∩ MediaBox、Rotate 90/270 で入れ替え、UserUnit を掛ける。≤ 14,400 pt は既存の検査）。どちらかが1 pt 未満なら422 `unsupported-pdf`。
-- 縮尺 `s = min(200 / 72, sqrt(16,000,000 / (Wpt × Hpt)))`。画素数 `W = max(1, floor(Wpt × s))`、`H = max(1, floor(Hpt × s))`。A4（595.28×841.89 pt）は1653×2338、A2は3307×4677（ここまで200dpi）、A1以上はdpiが200より下がる。
+- 縮尺 `s = min(200 / 72, sqrt(16,000,000 / (Wpt × Hpt)), 65,535 / Wpt, 65,535 / Hpt)`。画素数 `W = max(1, floor(Wpt × s))`、`H = max(1, floor(Hpt × s))`。A4（595.28×841.89 pt）は1653×2338、A2は3307×4677（ここまで200dpi）、A1以上はdpiが200より下がる。
 - 範囲: `左 = floor(x × W)`、`上 = floor(y × H)`、`右 = ceil((x + width) × W)`、`下 = ceil((y + height) × H)`（decimal）。外側へ丸めるので塗り残しは出ない。右・下は W・H で頭打ち。`width > 0` なので必ず `右 > 左`。
 - 置き換えページの `MediaBox = [0 0 Wpt Hpt]`（小数点以下4桁に丸め、指数表記を使わない）。画像がページ全体を覆う。
 
@@ -205,26 +205,26 @@ R = T ∪ { q ∉ T | FontKeys(q) ∩ FontKeys(T) ≠ ∅ }      （|R| ≤ 30�
 ```
 
 - `FontKeys(p)` は、pruned.pdf でページ p の content が使うフォントの識別子の集合。刈り込みの後に求める（刈り込み前は、共有のResources辞書や未使用の参照で全ページが共有と判定された。§13.6）。
-- たどる範囲: ページの `/Resources` → `/Font` の各フォント。`/XObject` のForm、`/Pattern` のtiling pattern、`/ExtGState` の `/SMask` の `/G`、Type3フォントの、それぞれの `/Resources` を再帰的にたどる（深さ32、訪問数100万で422 `too-complex`）。注釈は最終段で除くのでたどらない。
+- たどる範囲: ページの `/Resources` → `/Font` の各フォントと、`/ExtGState` → `/Font` 配列の先頭のフォント。`/XObject` のForm、`/Pattern` のtiling pattern、`/ExtGState` の `/SMask` の `/G`、Type3フォントの、それぞれの `/Resources` を再帰的にたどる（深さ32、訪問数100万で422 `too-complex`）。注釈は最終段で除くのでたどらない。
 - 識別子: フォント辞書が間接objectならその参照、直接objectなら raw JSON の文字列。加えて、フォントから `/Parent` 以外でたどれるすべての間接object（`/FontDescriptor`、`/FontFile*`、`/ToUnicode`、`/DescendantFonts`、`/CIDSet`、`/CharProcs` の各stream など）の参照。別のフォント辞書が同じフォントprogramを共有する場合も検出する。
 - 共有して画像化したページ（R − T）は黒塗りしないが、そのページの文字は検索できなくなる。その先の連鎖（R − T のページが別のページとフォントを共有する）は追わない。R − T のページの内容は黒塗りの対象ではないため。
 - 画像の大きさの検査（§6.2）と画素への変換は R の全ページに行う。
 
 採らなかった案B（R = T とし、フォントに文字の種類が残ることを説明する）は §12.1 を参照。
 
-### 6.2 画像の大きさの検査【設計・閾値は未検証】
+### 6.2 画像の大きさの検査【PR Bの実測で閾値を確定】
 
 PDFiumはメモリが足りないと画像を黙って省き、ページの一部が白く欠けたまま成功する（§13.3）。黒塗りの安全性は損なわないが、利用者が気づかないまま欠けたページを受け取るのを避けるため、R の各ページからたどれる画像XObject（§6.1 と同じ範囲。画像の `/SMask`・`/Mask` も含む）を描画前に検査する。
 
 | filter（最後のfilter） | 上限 | 根拠 |
 | --- | --- | --- |
-| `/DCTDecode` | 幅 × 高さ × 成分数 ≤ 120,000,000 | プログレッシブJPEGは全係数をメモリに置く。600dpi A4 RGB（約1億400万）は 256 MiB で描けた |
-| `/JPXDecode` | 幅 × 高さ × 成分数 ≤ 60,000,000 | 【未検証】OpenJPEGは1成分4 byteで展開する見込み |
-| `/JBIG2Decode` | 幅 × 高さ ≤ 1,000,000,000 | 【未検証】1 bit/画素で全体を展開する見込み |
+| `/DCTDecode` | 幅 × 高さ × 成分数 ≤ 90,000,000 | 1600万画素のページでは、元の120,000,000のprogressive画像がDATA 384 MiBで黒く欠け、768 MiBで正しく描けた。90,000,000のbaseline/progressive・Gray/CMYKを測定した |
+| `/JPXDecode` | 幅 × 高さ × 成分数 ≤ 30,000,000 | 元の60,000,000ではDATA 384 MiBで省略され、768 MiBでは描けた。30,000,000のRGB・Gray・alpha付きを測定した |
+| `/JBIG2Decode` | 幅 × 高さ ≤ 1,000,000,000 | 40000×25000のgeneric region画像をDATA 384 MiB・1600万画素のページで測定し、描けた |
 | その他（Flateなど） | 上限なし | 行単位で処理された。40000×40000のFlate画像も約80 MiBで正しく描けた |
 
 - 成分数は `/ColorSpace` から決める（Gray 1、RGB・Lab・CalRGB 3、CMYK 4、ICCBased は `/N`、Indexed・Separation 1、DeviceN は名前の数、`/ImageMask true` は1、不明・なしは4）。
-- 超えたら422 `too-complex`。【未検証】閾値ちょうどの画像がDATA 384 MiBで欠けずに描けること、超える画像が422になることをPRで測り、閾値を確定する（§10.5）。
+- 超えたら422 `too-complex`。閾値ちょうどの実符号化画像がDATA 384 MiBで描け、寸法を1画素増やすとAPIが422になることをテストする。測定方法・memory.peak・限界は [検証記録](redact-validation.md)。任意の符号化・壊れたstreamの完全な描画を保証する閾値ではない。
 - content内のinline image（`BI … ID … EI`）は構造JSONに現れないため検査できない。content streamの大きさに比例するため残余リスクとして記録する。
 
 ## 7. qpdf の各段
@@ -236,7 +236,7 @@ PDFiumはメモリが足りないと画像を黙って省き、ページの一�
  "flattenAnnotations": "all", "generateAppearances": "", "removeAcroform": "", "removeStructure": ""}
 ```
 
-- `redact-strip.json` は `PdfEmbeddedFileStripper` が手順2の構造JSONから作る（変更がなければ `updateFromJson` を省く）。1つのjobでも添付・`/AF`・添付注釈は消えた（§13.7）。【未検証】update が焼き込みより先に適用されること。外観を持つ添付注釈を含む文書で、添付の目印が残らないことをテストで確かめる（§10.2）。
+- `redact-strip.json` は `PdfEmbeddedFileStripper` が手順2の構造JSONから作る（変更がなければ `updateFromJson` を省く）。1つのjobでも添付・`/AF`・添付注釈は消えた（§13.7）。PR Bでは黒塗りしないページに外観付き添付注釈を置き、その外観も目印も残らないことを実toolテストで確認する。
 - 終了コード0と3を受け付ける。3（警告）は焼き込めなかった注釈がある場合で、それらは最終段で除く（見た目が消えるだけで、情報は残らない）。2は500（入力は手順1で検査済み）。
 - 出力は `RunCleanWriteAsync` と同じ FSIZE の扱いにし、上限を超えたら422 `too-complex`。
 
@@ -246,7 +246,7 @@ PDFiumはメモリが足りないと画像を黙って省き、ページの一�
 qpdf --empty --remove-unreferenced-resources=yes --pages <redact-flat.pdf> 1-z -- <redact-pruned.pdf>
 ```
 
-- **終了コードは0だけを受け付ける。** 3は422 `unsupported-pdf`（「このPDFは、黒塗りで安全に処理できない構造を含んでいます。」）。content の構文エラーで刈り込みが行われず、未使用の参照が残るため（§13.6）。stderrは読まない。
+- **終了コードは0だけを受け付ける。** 部分出力のサイズによらず、非0は422 `unsupported-pdf`。3も422 `unsupported-pdf`（「このPDFは、黒塗りで安全に処理できない構造を含んでいます。」）。content の構文エラーで刈り込みが行われず、未使用の参照が残るため（§13.6）。stderrは読まない。
 - この段で文書単位の情報（しおり、名前付き要素、添付の一覧、OpenAction、XMP、文書情報）はなくなる。ページラベルは残るので最終段で除く。
 
 ### 7.3 手順5: 最終段の update JSON
@@ -254,6 +254,26 @@ qpdf --empty --remove-unreferenced-resources=yes --pages <redact-flat.pdf> 1-z -
 `RedactDocument` が pruned.pdf の構造JSON（`--json=2 --json-key=qpdf --json-key=pages --json-stream-data=none --decode-level=none`、32 MiB以下）から書く。
 
 - 前提の確認: ページツリーの根の `/Kids` が全ページを直接持ち、各ページの `/Parent` が根であること、ページ数が入力と同じであること。違えば500（`--pages` の出力は平らになる）。
+- Tのページ辞書（`/Parent`を除く）と実効Resourcesから、到達位置ごとの役割を子へ渡して収集する。同じ参照でも別の役割なら探索を省かない。全到達を集めた後で分類する2段階とし、すべての位置が中立の役割で、各役割の構造条件も満たす場合だけ中立とする。1つでも本文の位置があれば拒否集合に入れる。
+- ResourcesのExtGState/ColorSpace/Propertiesの各entry、ProcSet、画像のColorSpace、ICCBasedのprofile、Indexed/Patternのbase、Separation/DeviceNのalternateとtint transform、OC/OCMDのOCGs、ExtGStateのTR/TR2/BG/BG2/UCR/UCR2、FunctionのFunctionsの各要素へ役割を渡す。それ以外は本文。名前から設定objectと推測して免除しない。
+- 中立objectの子もたどり続ける。ExtGStateのFont・SMask/G、ICCのMetadata等の本文への参照は拒否集合へ入る。Shading、tiling pattern、Halftone、XObject、Thumb、PieceInfo、Metadata、注釈、未知の辞書・stream、Resourcesや各map自体の共有は免除しない。
+- R以外のページの、削除する `/Parent`・`/Annots` 以外の値から任意の参照をたどる。中立objectを通過してもその子を検査し、拒否集合または従来どおりRの元page/content・Tのフォント配下へ到達すれば422 `unsupported-pdf`。書き換える実際のcatalog/rootと別途検査する実際のページを境界にする。深さ32・訪問100万は§6の検査と共有する。
+
+中立の構造の許可リスト（共有設定を許可する方針はKooの判断、構造の表はClaudeがPDF 2.0から作成）:
+
+| 役割 | 構造の条件 |
+| --- | --- |
+| ExtGState | 非stream辞書。Typeなし、またはExtGState。keyはPDF 2.0標準のExtGState keyのみ（HTは除外。拡張keyも除外） |
+| ProcSet | 名前だけの配列。参照を含めば中立にしない |
+| ColorSpace | ICCBased / Indexed / Separation / DeviceN / Pattern / CalGray / CalRGB / Labで始まる所定長の配列。Indexed lookupは文字列のみ。DeviceN属性辞書は直接辞書のみ |
+| ICC | stream。N必須。key ⊆ {N, Alternate, Range, Metadata, Length, Filter, DecodeParms}。Type/Subtypeなし |
+| OC | Type=OCG、key ⊆ {Type, Name, Intent, Usage}、またはType=OCMD、key ⊆ {Type, OCGs, P, VE} |
+| Function | FunctionTypeは整数の0/2/3/4、Domain必須。Type 0/4はstream、Type 2/3は辞書またはstream。key ⊆ {FunctionType, Domain, Range, Size, BitsPerSample, Order, Encode, Decode, C0, C1, N, Functions, Bounds, Length, Filter, DecodeParms}。Subtypeなし |
+
+ExtGStateのkey一覧は [PDF Associationの仕様由来モデル（Table 57）](https://github.com/pdf-association/arlington-pdf-model/blob/master/tsv/latest/GraphicsStateParameter.tsv) と照合した。非推奨のHTP/TR/TR2を含み、HTとベンダー拡張は含めない。中立の設定値（OCGのName、ICC内の記述文字列、Functionのサンプル値）は残ることを受け入れる。これらは文書全体で共有する設定値として扱い、黒塗り範囲の本文とは区別する。
+
+既知の制限: TikZ/pgf型の文書に見られるような、ExtGState等の間接map辞書そのものの共有が刈り込み後も残る場合は422になる。この構造を模した合成PDFで確認した。共有mapを受け付ける範囲の拡大は今後の改善候補とし、今回の許可リストには追加しない。
+
 - カタログ: `{"/Type": "/Catalog", "/Pages": <根>}` に置き換える。
 - ページツリーの根: `{"/Type": "/Pages", "/Kids": [...], "/Count": n}` に置き換える。R のページは新しいpageの参照に差し替える。
 - R の各ページに、新しいobject（番号は構造JSONの `maxobjectid` の次から）を3つ作る。
@@ -279,7 +299,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 2. 構造JSON（`--json-key=qpdf --json-key=pages --json-key=attachments`、32 MiB以下）で:
    - trailer の key ⊆ `{/Root, /Size, /ID}`
    - カタログの key = `{/Type, /Pages}`、ページツリーの根の key ⊆ `{/Type, /Kids, /Count}`、ページ数が入力と同じ
-   - どのページにも `/Annots` がない
+   - どのページにも `/Annots` がなく、ページ一覧外の `/Type /Page` objectもない
    - R の各ページ: key = `{/Type, /Parent, /MediaBox, /Resources, /Contents}`、`/Resources` = `{/XObject: {/Im0: 参照}}`、`/Contents` は1つのstreamの参照、`/Im0` の辞書の key ⊆ `{/Type, /Subtype, /Width, /Height, /ColorSpace, /BitsPerComponent, /Filter, /Length}` で値が書いたとおり
    - `PdfEmbeddedFileStripper.Verify(document, 0)`（`/AF`・`/EF`・`/RF` がない、`/Type /EmbeddedFile` のstreamがない、添付の一覧が空、XMPと文書情報がない）
 3. R の content stream の中身: `qpdf --json=2 --json-key=qpdf --json-object=<参照>… --json-stream-data=inline --decode-level=generalized`（stdout 64 KiB以下）で取り出し、書いたbytesと一致すること。
@@ -301,12 +321,14 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 | `RenderDataLimitBytes` | 384 MiB | 描画programの RLIMIT_DATA |
 | `DotnetPath` / `RendererPath` / `PdfiumPath` / `RenderFontDir` | `/usr/bin/dotnet`、`/opt/amane-pdf/renderer/Amane.Pdf.Renderer.dll`、`/opt/amane-pdf/lib/libpdfium.so`、`/opt/amane-pdf/fonts` | 絶対path |
 
+容量・DATAの数値設定は正で標準値以下、jobは4 KiB切上げ後の入力上限以上であることを起動時に検証する。
+
 定数（設定にしない）: 範囲100個、黒塗りするページ20、画像化するページ30、regions 16 KiB、200dpi、1600万画素、JPEG品質85、§6.2 の画像の上限。
 
 ### 8.2 同時実行と時間
 
 - 既存の `pdf` 同時実行枠（2）に加え、描画枠（1）を request 全体で持つ。描画枠は upload の前に取り、取れなければ503（既存の「PDF処理の同時実行上限に達しました。」）。
-- 時間は既存の30秒を request 全体で共有する（`ExecuteAsync`）。実測は12ページで約2.7秒、描画は1ページ0.15〜0.45秒、起動は約50 ms（§13.2）。30ページでも15秒程度の見込み。
+- 処理時間はupload後から既存の30秒を各段で共有する（`ExecuteAsync`）。実測は12ページで約2.7秒、描画は1ページ0.15〜0.45秒、起動は約50 ms（§13.2）。30ページでも15秒程度の見込み。
 
 ### 8.3 容量の台帳とファイルの削除
 
@@ -333,7 +355,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 | 413 | — | 入力30 MiB超、request 30 MiB + 64 KiB超 | 既存 |
 | 422 | なし | 入力の破損・暗号化 | 既存 |
 | 422 | `too-complex` | JSON・object数・台帳の上限、§6.2 の画像の大きさ、bitmapを確保できない | このPDFは黒塗りの処理上限を超えています。 |
-| 422 | `unsupported-pdf` | 刈り込みの警告、PDFiumで開けない、ページの大きさの不一致、ページ属性（`PdfPageBoxes` の例外もここへ変換）、1 pt 未満のページ | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
+| 422 | `unsupported-pdf` | 刈り込みの警告、PDFiumで開けない、ページの大きさの不一致、ページ属性（`PdfPageBoxes` の例外もここへ変換）、1 pt 未満のページ、残るページから拒否集合への参照（共有画像・Form・私的参照。中立の許可リスト外は既定で拒否） | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
 | 422 | `output-too-large` | JPEGの合計30 MiB超、JPEGが1枚で残りを超えた、出力の上限 | 黒塗りしたページの画像が大きくなりすぎるため、処理できませんでした。黒塗りするページを減らしてください。 |
 | 422 | `too-many-pages` | 画像化するページが30を超える | 黒塗りするページとフォントを共有するページも画像にする必要があり、上限の30ページを超えました。PDFを分割してから黒塗りしてください。 |
 | 500 | — | 出力の検証の失敗、想定外の終了コード、描画programの起動失敗 | 既存 |
@@ -348,13 +370,14 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 
 - `RedactRegions`: §5.3 の各規則の400（JSON不正、BOM、深さ、空配列、101個、未知key、key不足、重複key、`"page": 1.0`・`01`・`2147483648`、`x` の `1e-1`・`-0`・`.5`・`0.12345`・`1.0001`、`width: 0`、`x + width > 1`、21ページ、16 KiB超）、成功する境界（`1.0000`、`x + width = 1`、100個、20ページ）。
 - `RedactRaster`: A4・A2・A1・極端に細長いページの画素数、1600万画素を超えないこと、外側への丸め（整数ちょうどの境界を含む）、`MediaBox` の書式に指数が出ないこと。
-- `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし）、§6.2 の画像の検査、update JSON の内容。
+- `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし、ExtGStateのFont）、共有画像・フォントなしFormの切り抜きと、Resources/Thumb/mask/私的参照の拒否、中立の役割・構造・全到達位置の照合と役割衝突（ICCをXObjectとしても使う等）、中立objectの子の本文の拒否、§6.2 の画像の検査、update JSON の内容。
+- 中立Function: FunctionTypeの整数0/2/3/4とDomainを必須とし、Type 0/4はstreamだけを認める。必須key不足、未対応の型、小数・文字列の型、Type 0/4の非stream辞書を拒否する。
 
 ### 10.2 実tool（host の qpdf・PDFium）
 
 - 描画program: Rotate 0/90/180/270・CropBox のずれ・CropBox が MediaBox からはみ出す・UserUnit 2 のページで、四隅の色と塗った範囲が期待どおり（試作の `check_geom.py` と同じ方法）。`--expect-size` の不一致で12。埋め込みなしの日本語が描ける（暗い画素が一定数以上）。`--max-bytes` 超過で10、出力ファイルなし。各終了コード。
 - 目印の検査: 試作の `gen_markers.py` の構成（本文、Form XObject とその未使用参照・入れ子のFormの未使用参照、フォームの値・名前・外観、添付注釈、外観のないリンク、ページと文書の `/AF`、文書の添付、しおり、名前付き要素、タグ構造の `/ActualText`・`/Alt`、content内の `/ActualText`、`/Properties`、`/PieceInfo`、ページラベル、OpenAction、XMP、文書情報）で、出力をQDF展開してどの目印も残らず、対象外のページの文字（`PUBLIC_*`）が残ること。
-- 外観（paperclipなど）を持つ添付注釈を、黒塗りしないページに置いた文書で、添付の目印が出力に残らないこと（§7.1 の未検証事項）。
+- 外観（paperclipなど）を持つ添付注釈を、黒塗りしないページに置いた文書で、添付の目印が出力に残らないこと（§7.1）。
 - 共有フォント: pdfcpu で作った2ページの文書（§13.5）で、2ページ目も画像になり、出力に「鈴」などが残らないこと。
 - 刈り込みの警告: 対象外のページのcontentに構文エラーがある文書で422 `unsupported-pdf`。
 - `/NeedAppearances true` のフォームの値が、対象外のページで見た目として残ること。
@@ -409,6 +432,8 @@ PDFのフォントは、文書全体で使った文字の形と「どの文字�
 | B | 指定したページだけを画像にし、文字の種類が残ることを画面とREADMEで説明する | 名前などに珍しい漢字があると、その字が文書にあったことは分かる |
 
 Claudeの推奨はA（2026-10-07のHuman決定「見た目だけ黒い事故が仕組み上起きない方式に限る」に合う）。**2026-10-16、HumanがAを承認した。** サイト（amane-tools-site#47）に `X-Pdf-Rasterized-Pages` の中継、「黒塗りしていないページも画像になった」旨の表示、`too-many-pages` の文言と日次回数の扱いを加える必要がある（#47 の更新で行う）。
+
+**追加のHuman判断（Koo、2026-10-17）**: 本文を持たないICC・ExtGState・ProcSet・OCG等の共有objectは、§7.3の役割と構造の許可リストで認める。共有画像・Form・私的参照の漏洩拒否とRの式は維持する。許可リスト外は既定で本文として拒否する。OCGのName、ICC内の記述文字列、Functionのサンプル値の残存を設定値として受け入れる。Chrome・Word・InDesign・スキャナ等の実文書で受付改善率を測った判断ではなく、合成PDFで検証する方針。
 
 ### 12.2 Claudeが決めたこと（Human未確認。異議がなければこのまま）
 
@@ -504,8 +529,9 @@ pdfcpu 0.16.1 で、1ページ目「鈴木一郎 個人番号 9876」、2ペー�
 
 ## 14. 未検証・残余リスク
 
-- §6.2 の JPX・JBIG2 の閾値と、DCT 1億2000万サンプルのプログレッシブJPEGが DATA 384 MiB・1600万画素のページで描けること。
-- 描画中のコンテナ全体の `memory.peak` と、他のPDF処理との同時実行（§10.5）。
+- 中立の許可リスト外の共有objectは引き続き422になり得る。許可リストの判断は合成PDFで検証しており、実在の各生成ツールのPDFで受付改善率は未確認。
+- §6.2の閾値と§10.5の容量・並行実行はPR Bで測定済み。合成fixtureに対する測定であり、任意のPDFの成功・描画の完全性を保証するものではない。
+- 画像の受付検査はPDF辞書の成分数と画像1枚ごとの大きさに基づく。符号化データの実成分数が辞書と異なる場合と、同一ページ内の画像の合計作業量は未検証。描画が省略される可能性があり、閾値だけで完全性を保証しない。
 - content内の inline image が大きい場合、PDFiumが黙って省く可能性。黒塗りの安全性には影響しない。
 - PDFiumが content の一部を描けない場合（未対応の機能、壊れたstream）も黙って省く。画像にしたページの見た目が元と違う可能性は、READMEで「結果を必ず確認する」案内とあわせて書く。
 - 画像にしなかったページの `/PieceInfo`・`/Thumb`・ページ単位のXMPなどは残る（黒塗りの対象ではない）。

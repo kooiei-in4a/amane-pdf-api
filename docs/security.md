@@ -234,10 +234,34 @@ CORE soft/hard=0も共通適用しますが、pipe方式のcore collectorはRLIM
 
 引数はshellを介さずArgumentListで渡します。pathは絶対path、画素は1600万以下、塗る矩形はページ内の整数・100個以下です。ページを開くと寸法を期待値と0.01 pt以内で照合します。期待値は表示上の物理寸法をUserUnitで割った値で、RotateとCropBox∩MediaBoxの解釈がAPIとずれたまま塗ることを防ぎます。照合失敗は終了コード12です。
 
-白のbitmapへ描画した後、指定矩形をすべて黒で塗り、JPEGをメモリ内で圧縮します。塗る前の画像はファイルにもstdoutにも出しません。JPEG予算を超えると終了コード10で何も作りません。出力はCreateNew・0600だけです。描画programのstdout/stderrは無出力、Runnerも両方を捨てます。プロセスの異常終了・起動失敗は500相当、文書/ページ/寸法の失敗はunsupported-pdf、bitmap不足はtoo-complex、JPEG予算超過はoutput-too-largeへ分類できる型で返します。公開endpointとHTTPエラーへの接続は#35 PR Bです。
+白のbitmapへ描画した後、指定矩形をすべて黒で塗り、JPEGをメモリ内で圧縮します。塗る前の画像はファイルにもstdoutにも出しません。JPEG予算を超えると終了コード10で何も作りません。出力はCreateNew・0600だけです。描画programのstdout/stderrは無出力、Runnerも両方を捨てます。プロセスの異常終了・起動失敗は500相当、文書/ページ/寸法の失敗はunsupported-pdf、bitmap不足はtoo-complex、JPEG予算超過はoutput-too-largeへ分類できる型で返します。`POST /api/pdf/redact` がこの分類を固定の422 reason/titleへ変換します。
 
 プロセス制限はenvのSIGXFSZ無視、CORE 0、DATA 384 MiB、FSIZE（JPEG予算+1）です。ASはCoreCLRの予約領域を数えるため使いません。CoreCLRのW^X用memfdは小さいFSIZEでは作れず、起動時だけ最低8 MiBを許可し、managed program内でPDFiumのloadより前にFSIZEのsoft/hard両方を予算+1へ下げます。下げられなければPDFを開かず失敗します。W^Xは有効のままです。DOTNET_EnableDiagnostics=0で診断socketを作りません。WorkingDirectoryは0700のjob directoryです。Runnerがtimeout・cancelでprocess treeをkillして終了を待ち、失敗時の出力と呼び出し元のjob全体を削除します。描画枠はsingletonのSemaphoreSlim(1)をWait(0)で取り、将来の呼び出し元がrequest全体で保持します。
 
 起動時は検証済みBIZ UDPゴシックTTFを渡し、FPDF_LoadMemDocumentで埋め込みなしの「日本語」を描きます。暗い画素数、塗った矩形の全画素、JPEGの生成を検査します。フォントdirが空なら起動しません。起動処理は全自己テスト共通の30秒以内で、失敗ログは「描画プログラム（PDFium）の自己テストに失敗しました。」だけ、終了コード1です。PDF・入力名・path・native errorをログへ出しません。
 
-PDFiumはメモリ不足で画像を黙って省くことがあり、描画関数はエラーを返しません。DATA制限は任意入力の完全な表示を保証しません。画像サイズの事前検査（PR B）で抑える範囲を定めても、content内の巨大inline imageや対応外機能・壊れたstreamの省略は残ります。黒塗りAPIとしての安全性は元のページを新しい画像ページへ置き換えることと出力構造検証で担保する設計で、その実装はPR Bです。利用者には結果の確認を案内します。固定版更新時は描画比較・日本語・DATA/FSIZE・timeout/cancel・容量を再検証します。[検証記録](renderer-validation.md)を参照してください。
+PDFiumはメモリ不足で画像を黙って省くことがあり、描画関数はエラーを返しません。DATA制限は任意入力の完全な表示を保証しません。画像サイズの事前検査（後述）で抑える範囲を定めても、content内の巨大inline imageや対応外機能・壊れたstreamの省略は残ります。黒塗りAPIは元のページを新しい画像ページへ置き換え、出力構造を検証します。利用者には結果の確認を案内します。固定版更新時は描画比較・日本語・DATA/FSIZE・timeout/cancel・容量を再検証します。[検証記録](renderer-validation.md)を参照してください。
+
+## 黒塗り（画像化方式、Linux）
+
+`POST /api/pdf/redact` は入力30 MiB・regions 16 KiB・request 30 MiB + 64 KiBに制限します。request上限をContent-Lengthと実読み取りの両方で検査し、範囲はdecimalで検証します。PDF共通枠に加え描画枠1つをupload前から送信・削除まで保持します。範囲・ページ番号・本文・ファイル名はログに出しません。
+
+qpdfによる入力検査の後、埋め込みファイルの除去、外観生成、全注釈の焼き込み、フォーム・タグ構造の除去を1つのjobで実行します。刈り込みは別の段で行い、警告を含む非0終了は422 `unsupported-pdf` です。刈り込みが省略されたまま処理を続けません。NeedAppearancesのフォーム値と、外観付き添付注釈の除去を実toolで検証しています。
+
+指定ページTと、Tのフォント辞書・フォントprogram・文字対応表等を共有するページを画像化集合Rとします。ExtGStateのFont配列、Form、Pattern、SMask、Type3のResourcesも調べます。共有判定は刈り込みの後に行い、Rからの連鎖は追いません。Tは20ページ、Rは30ページまでです。深さ32・合計訪問100万、JSON 32 MiB・間接object 50,000を超える構造は422 `too-complex` です。
+
+Rに対し、200dpi・1600万画素・各辺65,535画素を上限に描き、指定範囲を外側へ丸めて黒で塗ってからJPEGにします。Rの元のpage・content・Resourcesは持ち越さず、新しいobjectを作ります。最終段でカタログとページツリーの根を許可リストにし、全ページのAnnotsを除きます。R以外のページに残る任意の参照もたどり、Rの元page/content、Tのフォント配下、またはTから到達した本文objectを残す場合は422 `unsupported-pdf` にします。
+
+本文を持たない共有objectは、2026-10-17のHuman判断（Koo）により役割と構造の許可リストで認めます。Tのグラフの全到達位置を先に収集し、すべての位置が中立の役割で、objectの構造も各役割の条件に合う場合だけ拒否集合から除外します。対象はExtGState（HT・未知keyは不可）、名前だけのProcSet、限定したColorSpace配列、ICC profile、OCG/OCMD、Functionです。詳細は[設計§7.3](redact-design.md#73-手順5-最終段の-update-json)。役割の異なる再到達も探索し、ICCをXObjectとしても使うような衝突は拒否します。
+
+中立の親からも子へ進み、ExtGStateのFont/SMaskのForm、ICCのMetadata等の本文は保護します。画像・Form・Shading・tiling pattern・Halftone・Thumb・PieceInfo・Metadata・注釈・未知の辞書やstreamは既定で本文です。TのParentを除き、実際のcatalog/root/ページを境界とすること、深さ32・訪問100万の上限は維持します。共有画像・Formはクリップ等で一部しか表示されないため、Rを広げる代わりに共有を拒否します。画像化しないページ自身の内容や、独立したobjectに複製された情報までは消去しません。
+
+OCGのName、ICC内の記述文字列、Functionのサンプル値は、文書全体で共有する設定値として出力に残ることを受け入れます。許可リスト外の共有objectは引き続き422になり得ます。検証は合成PDFを使っており、Chrome・Word・InDesign・スキャナ等の実文書で422がどれだけ減るかは未確認です。
+
+描画前に画像XObject・SMask/Maskを検査します。最後のfilterがDCTなら幅×高さ×成分数9,000万、JPXなら3,000万、JBIG2なら10億画素以下です。DATA 384 MiB・1600万画素のページで、JPEG baseline/progressive・Gray/CMYK、JPX RGB/Gray/alpha、JBIG2の境界を実測しました。設計時のDCT 1億2,000万・JPX 6,000万では画像が黙って欠けたため下げています。検査はPDF辞書の成分数・画像1枚ごとの大きさに基づき、実データの成分数との不一致と同一ページ内の画像の合計作業量は未検証です。閾値は任意の符号化データの描画成功を保証しません。inline imageはこの検査の対象外です。利用者には結果の確認を案内します。
+
+JPEG合計30 MiB、出力62 MiB、job全体124 MiBを台帳で予約し、外部writerには残容量のFSIZEを適用します。JPEGのmax-bytes+1も予約します。不要ファイルは各段で削除し、成功・失敗・timeout・cancelともjob全体を削除します。外部プロセスは既存Runnerが停止・回収します。
+
+送信前に暗号化・qpdfチェック、trailer/catalog/root/page/imageの許可リストと値、ページ数・順序、全Annotsと添付の不在を確認します。ページ一覧外のPage objectも拒否します。Rのcontentは`--json-object`で復号済みbytesを取り出し、生成した命令と完全一致させます。1つでも失敗すれば500でPDFと成功ヘッダーを返しません。全文QDF展開・目印検索とPoppler比較は検証側だけで実行します。
+
+CPU 1・memory 1.5 GiB・swapなし・tmpfs 256 MiB・read-only・network noneでの30 MiB/30ページと50 MiB結合同時実行、画像閾値の測定結果は[検証記録](redact-validation.md)に記載します。PDFiumや閾値を更新するときは、これらとrenderer-validationを再実行します。

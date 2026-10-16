@@ -32,7 +32,7 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD, files=None, text=None, image=None):
+def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
     inputs = files if files is not None else ([] if file is None else [file])
@@ -47,6 +47,8 @@ def multipart(file=None, password=PASSWORD, files=None, text=None, image=None):
         )
     if text is not None:
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\n{text}\r\n'.encode())
+    if regions is not None:
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="regions"\r\n\r\n{regions}\r\n'.encode())
     if image is not None:
         parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="../../untrusted.png"\r\n'
                       'Content-Type: application/octet-stream\r\n\r\n').encode() + image + b'\r\n')
@@ -577,6 +579,14 @@ def main(image):
         schema = json.loads(docker("exec", api.name, "qpdf", "--job-json-help").stdout)
         assert "256bit" in schema["encrypt"] and "passwordMode" in schema and "check" in schema and "isEncrypted" in schema
         assert "requiresPassword" in schema and "decrypt" in schema
+        body, content_type = multipart(FIXTURE, password=None,
+            regions='[{"page":1,"x":0.1,"y":0.2,"width":0.3,"height":0.1}]')
+        status, headers, redacted = api.request("POST", "/api/pdf/redact", body, content_type)
+        assert status == 200 and headers["Content-Type"] == "application/pdf"
+        assert "filename=redacted.pdf" in headers["Content-Disposition"]
+        assert headers["X-Pdf-Redacted-Pages"] == headers["X-Pdf-Rasterized-Pages"] == "1"
+        assert api.page_rotations(redacted) == [0]
+        api.assert_clean()
         encrypted = api.protect(FIXTURE)
         api.verify_encryption(encrypted)
         api.verify_decryption(api.unlock(encrypted))
