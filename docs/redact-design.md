@@ -64,8 +64,8 @@ request
 
 - 画像化したページは、最終段で**新しく作ったpage object**に置き換える。そのページの辞書・content・Resourcesは許可した値だけで、元のページのobjectはどこからも参照されないため出力に書かれない（qpdfは到達できるobjectだけを書く）。
 - 出力に残るのは、画像化しなかったページから到達できるobjectと、許可リストにしたカタログ・ページツリーだけ。
-- 刈り込みは未使用のResources参照を除くが、ページの私的な参照は除かない。PR Bでは、R以外のページの残る辞書から任意の参照をたどり、Rの元page/contentまたはTのフォント配下の間接objectへ到達する構造を422 `unsupported-pdf` にする。これにより、Resources以外の参照から元の対象本文が残る経路も拒否する。独立したobjectに複製された情報や、画像化しないページ自身の内容の除去は対象外。
-- 共有objectのうち、画像・Form XObjectは画像化しなかったページにも描かれている内容そのものである。**フォントだけは、両方のページで使った文字の字形と対応表を1つにまとめて持つ**ため、画像化したページだけの文字が残る（§6、§13.5）。
+- 刈り込みは未使用のResources参照を除くが、ページの私的な参照は除かない。PR Bでは、R以外のページの残る辞書から任意の参照をたどり、Rの元page/contentまたはTのページ辞書・実効Resourcesから到達する間接objectを残す構造を422 `unsupported-pdf` にする。これにより、Resources以外の参照から元の対象本文が残る経路も拒否する。独立したobjectに複製された情報や、画像化しないページ自身の内容の除去は対象外。
+- 共有画像・Formも、変換行列・クリップ・CropBoxによって対象外ページでは一部しか表示されないことがある。したがって「共有画像・Formはすべて対象外ページの表示内容」とは扱わない。R以外のページがTの画像・Form・Resources・Thumb等の間接objectを共有する場合は、用途を問わず422 `unsupported-pdf` にする。Rは承認済みのフォント共有の式から広げない。フォントは字形と対応表をまとめて持つため、共有ページをRへ含める（§6、§13.5）。
 - 文書単位の情報（しおり、名前付き要素、添付、OpenAction、XMP、文書情報、ページラベル）は、`--empty` による組み直しとカタログの許可リストで持ち越さない。フォームとタグ構造は手順3で除き、ページの `/AF` と添付注釈も手順3で除く。注釈は、外観があるものは手順3で焼き込み、残ったものは最終段で全ページから除く。
 
 ## 4. 描画program `Amane.Pdf.Renderer`
@@ -205,7 +205,7 @@ R = T ∪ { q ∉ T | FontKeys(q) ∩ FontKeys(T) ≠ ∅ }      （|R| ≤ 30�
 ```
 
 - `FontKeys(p)` は、pruned.pdf でページ p の content が使うフォントの識別子の集合。刈り込みの後に求める（刈り込み前は、共有のResources辞書や未使用の参照で全ページが共有と判定された。§13.6）。
-- たどる範囲: ページの `/Resources` → `/Font` の各フォント。`/XObject` のForm、`/Pattern` のtiling pattern、`/ExtGState` の `/SMask` の `/G`、Type3フォントの、それぞれの `/Resources` を再帰的にたどる（深さ32、訪問数100万で422 `too-complex`）。注釈は最終段で除くのでたどらない。
+- たどる範囲: ページの `/Resources` → `/Font` の各フォントと、`/ExtGState` → `/Font` 配列の先頭のフォント。`/XObject` のForm、`/Pattern` のtiling pattern、`/ExtGState` の `/SMask` の `/G`、Type3フォントの、それぞれの `/Resources` を再帰的にたどる（深さ32、訪問数100万で422 `too-complex`）。注釈は最終段で除くのでたどらない。
 - 識別子: フォント辞書が間接objectならその参照、直接objectなら raw JSON の文字列。加えて、フォントから `/Parent` 以外でたどれるすべての間接object（`/FontDescriptor`、`/FontFile*`、`/ToUnicode`、`/DescendantFonts`、`/CIDSet`、`/CharProcs` の各stream など）の参照。別のフォント辞書が同じフォントprogramを共有する場合も検出する。
 - 共有して画像化したページ（R − T）は黒塗りしないが、そのページの文字は検索できなくなる。その先の連鎖（R − T のページが別のページとフォントを共有する）は追わない。R − T のページの内容は黒塗りの対象ではないため。
 - 画像の大きさの検査（§6.2）と画素への変換は R の全ページに行う。
@@ -254,7 +254,7 @@ qpdf --empty --remove-unreferenced-resources=yes --pages <redact-flat.pdf> 1-z -
 `RedactDocument` が pruned.pdf の構造JSON（`--json=2 --json-key=qpdf --json-key=pages --json-stream-data=none --decode-level=none`、32 MiB以下）から書く。
 
 - 前提の確認: ページツリーの根の `/Kids` が全ページを直接持ち、各ページの `/Parent` が根であること、ページ数が入力と同じであること。違えば500（`--pages` の出力は平らになる）。
-- R以外のページの、削除する `/Parent`・`/Annots` 以外の値から任意の参照をたどる。Rの元page/content、Tのフォント配下の間接objectに到達したら422 `unsupported-pdf`。書き換えるカタログ・根と、別途検査する実際のページは循環をたどらない。深さ32・訪問100万は§6の検査と共有する。
+- Tのページ辞書（`/Parent`を除く）と実効Resourcesから、辞書・配列・stream辞書を通じて到達する間接objectを保護対象にする。画像・Form・Resources・Thumb・mask・私的なキーも含める。R以外のページの、削除する `/Parent`・`/Annots` 以外の値から任意の参照をたどり、この集合またはRの元page/contentへ到達したら422 `unsupported-pdf`。書き換える実際のカタログ・根と、別途検査する実際のページを境界にし、ページツリー全体へは広げない。深さ32・訪問100万は§6の検査と共有する。安全側に拒否するため、表示内容を持たない間接objectの共有でも拒否することがある。
 - カタログ: `{"/Type": "/Catalog", "/Pages": <根>}` に置き換える。
 - ページツリーの根: `{"/Type": "/Pages", "/Kids": [...], "/Count": n}` に置き換える。R のページは新しいpageの参照に差し替える。
 - R の各ページに、新しいobject（番号は構造JSONの `maxobjectid` の次から）を3つ作る。
@@ -336,7 +336,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 | 413 | — | 入力30 MiB超、request 30 MiB + 64 KiB超 | 既存 |
 | 422 | なし | 入力の破損・暗号化 | 既存 |
 | 422 | `too-complex` | JSON・object数・台帳の上限、§6.2 の画像の大きさ、bitmapを確保できない | このPDFは黒塗りの処理上限を超えています。 |
-| 422 | `unsupported-pdf` | 刈り込みの警告、PDFiumで開けない、ページの大きさの不一致、ページ属性（`PdfPageBoxes` の例外もここへ変換）、1 pt 未満のページ、残るページから元の対象データへの別経路の参照 | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
+| 422 | `unsupported-pdf` | 刈り込みの警告、PDFiumで開けない、ページの大きさの不一致、ページ属性（`PdfPageBoxes` の例外もここへ変換）、1 pt 未満のページ、残るページから対象ページのobjectへの参照（画像・Formの共有や私的参照も含む） | このPDFは、黒塗りで安全に処理できない構造を含んでいます。 |
 | 422 | `output-too-large` | JPEGの合計30 MiB超、JPEGが1枚で残りを超えた、出力の上限 | 黒塗りしたページの画像が大きくなりすぎるため、処理できませんでした。黒塗りするページを減らしてください。 |
 | 422 | `too-many-pages` | 画像化するページが30を超える | 黒塗りするページとフォントを共有するページも画像にする必要があり、上限の30ページを超えました。PDFを分割してから黒塗りしてください。 |
 | 500 | — | 出力の検証の失敗、想定外の終了コード、描画programの起動失敗 | 既存 |
@@ -351,7 +351,7 @@ qpdf <redact-pruned.pdf> --update-from-json=<redact-final.json> <output.pdf>
 
 - `RedactRegions`: §5.3 の各規則の400（JSON不正、BOM、深さ、空配列、101個、未知key、key不足、重複key、`"page": 1.0`・`01`・`2147483648`、`x` の `1e-1`・`-0`・`.5`・`0.12345`・`1.0001`、`width: 0`、`x + width > 1`、21ページ、16 KiB超）、成功する境界（`1.0000`、`x + width = 1`、100個、20ページ）。
 - `RedactRaster`: A4・A2・A1・極端に細長いページの画素数、1600万画素を超えないこと、外側への丸め（整数ちょうどの境界を含む）、`MediaBox` の書式に指数が出ないこと。
-- `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし）、§6.2 の画像の検査、update JSON の内容。
+- `RedactDocument`（qpdfが書いたJSONの固定fixture）: フォントの共有の判定（間接・直接のフォント、別のフォント辞書が同じ `/FontFile2` を持つ、Form・Pattern・SMaskの `/G`・Type3 の中のフォント、共有なし、ExtGStateのFont）、共有画像・フォントなしFormの切り抜きと、Resources/Thumb/mask/私的参照の拒否、§6.2 の画像の検査、update JSON の内容。
 
 ### 10.2 実tool（host の qpdf・PDFium）
 
@@ -508,6 +508,7 @@ pdfcpu 0.16.1 で、1ページ目「鈴木一郎 個人番号 9876」、2ペー�
 ## 14. 未検証・残余リスク
 
 - §6.2の閾値と§10.5の容量・並行実行はPR Bで測定済み。合成fixtureに対する測定であり、任意のPDFの成功・描画の完全性を保証するものではない。
+- 画像の受付検査はPDF辞書の成分数と画像1枚ごとの大きさに基づく。符号化データの実成分数が辞書と異なる場合と、同一ページ内の画像の合計作業量は未検証。描画が省略される可能性があり、閾値だけで完全性を保証しない。
 - content内の inline image が大きい場合、PDFiumが黙って省く可能性。黒塗りの安全性には影響しない。
 - PDFiumが content の一部を描けない場合（未対応の機能、壊れたstream）も黙って省く。画像にしたページの見た目が元と違う可能性は、READMEで「結果を必ず確認する」案内とあわせて書く。
 - 画像にしなかったページの `/PieceInfo`・`/Thumb`・ページ単位のXMPなどは残る（黒塗りの対象ではない）。

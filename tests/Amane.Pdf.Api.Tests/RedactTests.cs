@@ -110,7 +110,7 @@ public sealed class RedactDocumentTests
     [TestMethod]
     public void Fonts_IndirectDirectProgramsAndNestedResources_WithoutTransitiveExpansion()
     {
-        foreach (var kind in new[] { "indirect", "direct", "program", "form", "pattern", "smask", "type3" })
+        foreach (var kind in new[] { "indirect", "direct", "program", "form", "pattern", "smask", "type3", "state", "state-direct" })
         {
             var root = Fixture();
             var objects = Objects(root);
@@ -118,7 +118,7 @@ public sealed class RedactDocumentTests
             objects["obj:80 0 R"] = JsonNode.Parse("""{"value":{"/FontFile2":"81 0 R"}}""");
             objects["obj:81 0 R"] = JsonNode.Parse("""{"stream":{"dict":{}}}""");
             objects["obj:82 0 R"] = new JsonObject { ["value"] = font.DeepClone() };
-            JsonNode raw = kind == "direct" ? font.DeepClone() : JsonValue.Create("82 0 R")!;
+            JsonNode raw = kind is "direct" or "state-direct" ? font.DeepClone() : JsonValue.Create("82 0 R")!;
             Page(root, 1)["/Resources"] = new JsonObject { ["/Font"] = new JsonObject { ["/F1"] = raw.DeepClone() } };
             var res = new JsonObject { ["/Font"] = new JsonObject { ["/F2"] = raw.DeepClone() } };
             if (kind == "program")
@@ -131,6 +131,7 @@ public sealed class RedactDocumentTests
             var form = new JsonObject { ["/Type"] = "/XObject", ["/Subtype"] = "/Form", ["/Resources"] = res.DeepClone() };
             Page(root, 2)["/Resources"] = kind switch
             {
+                "state" or "state-direct" => new JsonObject { ["/ExtGState"] = new JsonObject { ["/E"] = new JsonObject { ["/Font"] = new JsonArray(raw.DeepClone(), JsonValue.Create(12)) } } },
                 "form" => new JsonObject { ["/XObject"] = new JsonObject { ["/X"] = "84 0 R" } },
                 "pattern" => new JsonObject { ["/Pattern"] = new JsonObject { ["/P"] = new JsonObject { ["/PatternType"] = 1, ["/Resources"] = res.DeepClone() } } },
                 "smask" => new JsonObject { ["/ExtGState"] = new JsonObject { ["/E"] = new JsonObject { ["/SMask"] = new JsonObject { ["/G"] = "84 0 R" } } } },

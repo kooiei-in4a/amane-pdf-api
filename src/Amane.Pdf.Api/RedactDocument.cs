@@ -72,6 +72,20 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
             }
         }
 
+        void Font(JsonElement font, int depth)
+        {
+            Tick(depth);
+            var dictionary = Content(font);
+            if (dictionary.ValueKind != JsonValueKind.Object) throw PdfRedactException.Unsupported();
+            if (!images)
+            {
+                keys.Add(PdfObjectRef.Parse(font)?.Text ?? "direct:" + dictionary.GetRawText());
+                FontGraph(font, depth + 1, []);
+            }
+            if (Name(dictionary, "/Subtype") == "/Type3")
+                Resources(Property(dictionary, "/Resources"), depth + 1);
+        }
+
         void Image(JsonElement image, JsonElement colorSpaces, int depth)
         {
             Tick(depth);
@@ -91,18 +105,7 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
             if (!resourcesSeen.Add(resources)) return;
             var fonts = Property(resources, "/Font");
             if (fonts.ValueKind == JsonValueKind.Object)
-                foreach (var font in fonts.EnumerateObject())
-                {
-                    var dictionary = Content(font.Value);
-                    if (dictionary.ValueKind != JsonValueKind.Object) throw PdfRedactException.Unsupported();
-                    if (!images)
-                    {
-                        keys.Add(PdfObjectRef.Parse(font.Value)?.Text ?? "direct:" + dictionary.GetRawText());
-                        FontGraph(font.Value, depth + 1, []);
-                    }
-                    if (Name(dictionary, "/Subtype") == "/Type3")
-                        Resources(Property(dictionary, "/Resources"), depth + 1);
-                }
+                foreach (var font in fonts.EnumerateObject()) Font(font.Value, depth + 1);
             var colorSpaces = Property(resources, "/ColorSpace");
             foreach (var kind in new[] { "/XObject", "/Pattern" })
             {
@@ -125,7 +128,14 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
             if (states.ValueKind == JsonValueKind.Object)
                 foreach (var state in states.EnumerateObject())
                 {
-                    var group = Property(Property(Content(state.Value), "/SMask"), "/G");
+                    var dictionary = Content(state.Value);
+                    var font = Property(dictionary, "/Font");
+                    if (font.ValueKind is not (JsonValueKind.Undefined or JsonValueKind.Null))
+                    {
+                        if (font.ValueKind != JsonValueKind.Array || font.GetArrayLength() != 2) throw PdfRedactException.Unsupported();
+                        Font(font[0], depth + 1);
+                    }
+                    var group = Property(Property(dictionary, "/SMask"), "/G");
                     if (group.ValueKind == JsonValueKind.Object)
                         Resources(Property(group, "/Resources"), depth + 1);
                 }
@@ -187,9 +197,9 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
         return 4;
     }
 
-    // A surviving page may have a private reference to an original page,
-    // content stream or font outside Resources. Replacing only the page-tree
-    // entry would keep that original data reachable. Reject this structure.
+    // Shared images and Forms can contain data clipped out of surviving pages.
+    // Reject every surviving reference into the target page's object graph,
+    // including private references, instead of expanding the approved page set.
     internal void CheckSurvivingReferences(RedactRegions regions, IReadOnlyList<int> rasterized)
     {
         var denied = rasterized.Select(number => boxes.Pages[number - 1]).ToHashSet();
@@ -209,31 +219,42 @@ internal sealed class RedactDocument(PdfPageBoxes boxes, CancellationToken token
                 if (PdfObjectRef.Parse(key) is { } font) denied.Add(font);
         var (catalog, root) = Roots();
         var rewritten = boxes.Pages.Append(catalog).Append(root).ToHashSet();
+        var collected = new HashSet<PdfObjectRef>();
         var seen = new HashSet<PdfObjectRef>();
-        void Walk(JsonElement value, int depth)
+        void Walk(JsonElement value, int depth, bool collect)
         {
             Tick(depth);
             if (PdfObjectRef.Parse(value) is { } reference)
             {
-                if (denied.Contains(reference)) throw PdfRedactException.Unsupported();
-                if (!seen.Add(reference)) return;
+                if (!collect && denied.Contains(reference)) throw PdfRedactException.Unsupported();
+                // Actual page-tree dictionaries are rewritten or inspected separately.
+                // A dictionary merely declaring /Type /Catalog or /Pages is still walked.
+                if (rewritten.Contains(reference)) return;
+                if (collect) denied.Add(reference);
+                if (!(collect ? collected : seen).Add(reference)) return;
                 if (!boxes.Objects.TryGetValue(reference, out var wrapper)) throw PdfRedactException.Unsupported();
                 var content = wrapper.TryGetProperty("value", out var raw) ? raw : wrapper.GetProperty("stream").GetProperty("dict");
-                // These dictionaries are either rewritten or inspected separately.
-                if (rewritten.Contains(reference)) return;
-                Walk(content, depth + 1);
+                Walk(content, depth + 1, collect);
             }
             else if (value.ValueKind == JsonValueKind.Object)
             {
-                foreach (var property in value.EnumerateObject()) Walk(property.Value, depth + 1);
+                foreach (var property in value.EnumerateObject()) Walk(property.Value, depth + 1, collect);
             }
             else if (value.ValueKind == JsonValueKind.Array)
-                foreach (var item in value.EnumerateArray()) Walk(item, depth + 1);
+                foreach (var item in value.EnumerateArray()) Walk(item, depth + 1, collect);
+        }
+        foreach (var number in regions.Pages)
+        {
+            var page = boxes.Dictionary(boxes.Pages[number - 1]);
+            foreach (var property in page.EnumerateObject())
+                if (property.Name != "/Parent") Walk(property.Value, 0, true);
+            // Include effective resources even when they were inherited.
+            Walk(boxes.Inherited(page, "/Resources", token) ?? default, 0, true);
         }
         for (var i = 0; i < boxes.Pages.Count; i++)
             if (!rasterized.Contains(i + 1))
                 foreach (var property in boxes.Dictionary(boxes.Pages[i]).EnumerateObject())
-                    if (property.Name is not ("/Parent" or "/Annots")) Walk(property.Value, 0);
+                    if (property.Name is not ("/Parent" or "/Annots")) Walk(property.Value, 0, false);
     }
 
     private (PdfObjectRef Catalog, PdfObjectRef Root) Roots()

@@ -20,7 +20,7 @@ main `d2ce7ff`（PR A #66）から実装。qpdf 12.3.2、pdfcpu 0.16.1、PDFium 
 
 ## 元の本文へ戻る私的参照
 
-設計どおりの初期実装では、対象外ページの`/Private`が対象ページのcontent streamを参照するとHTTP 200となり、元の本文がQDFに残った。この経路はResourcesの刈り込みでは消えない。PR Bで、R以外のページに残る任意の参照をたどり、Rの元page/content、Tのフォント配下の間接objectへの到達を422 `unsupported-pdf`にする検査を追加した。`/Type /Catalog`を持つ別objectを経由する場合も拒否する。qpdfが先に正規化して参照を消すPages辞書のケースは、成功時に元の本文が出力にないことも検証する。
+`c25ac5e`より前の設計どおりの初期実装では、対象外ページの`/Private`が対象ページのcontent streamを参照するとHTTP 200となり、元の本文がQDFに残った。この経路はResourcesの刈り込みでは消えない。`c25ac5e`では、R以外のページに残る任意の参照をたどり、Rの元page/content、Tのフォント配下の間接objectへの到達を422 `unsupported-pdf`にする検査を追加した。`/Type /Catalog`を持つ別objectを経由する場合も拒否する。qpdfが先に正規化して参照を消すPages辞書のケースは、成功時に元の本文が出力にないことも検証する。
 
 画像化集合の式は承認済みのまま維持する。エラーのreason名・title・ヘッダー名はサイト側の契約から変更しない。出力にはページ一覧外のPage objectがないことも検証する。
 
@@ -78,3 +78,30 @@ python3 scripts/redact-thresholds.py amane-pdf-api:redact-validation \
 ```
 
 hostテストのtool/font/PDFium環境変数と、qpdfの一時コピーはCIと同じ設定を使う。手動driverにはhostのqpdf・Poppler・Pillow（OpenJPEG対応）・NumPy・gccが必要。JBIG2生成は検証側のjbig2enc 0.30のみで行い、配布imageへは入れない。閾値の旧値の再現は`--cases dct-progressive,jpx-rgb60 --reference`で行う。通常CIは容量測定を繰り返さず、実符号化のhostテストとDockerの画素比較を実行する。
+
+## 独立レビュー対応（2026-10-17）
+
+独立レビューの反例A/B/Cを、旧head `c25ac5e`のイメージと修正後のイメージで実APIに送って確認した。
+
+| 反例 | c25ac5e | 修正後 |
+| --- | --- | --- |
+| A: 同じ画像の左半分を対象ページ、右半分を対象外ページに表示 | 200、R=1。左半分の未黒塗りRGB行が100行すべてQDFに残存 | 422 `unsupported-pdf`、PDF・成功ヘッダーなし |
+| B: 対象外ページのPieceInfoから対象画像へ私的参照 | 200、未黒塗りRGB行が100行すべてQDFに残存 | 422 `unsupported-pdf`、PDF・成功ヘッダーなし |
+| C: ExtGStateのFont配列で選ぶフォントを別ページのResourcesから共有 | 200、R=1。ToUnicodeの目印とHelveticaフォントが残存 | 200、R=1,2。ToUnicodeの目印・元フォントともQDFに残らない |
+
+A/Bの対策は、Tのページ辞書（Parentを除く）と実効Resourcesから到達する間接objectを保護対象にし、R以外のページがそれを残す場合に拒否する方式にした。ページツリー全体へ広がらないよう、実際のcatalog/root/ページを境界にする。共有画像・Formはクリップや変換行列で一部だけ表示され得るため、描画されている共有objectにも例外を設けない。画像・Formの共有を理由にRを増やす方式は採用せず、承認済みのRの式を維持する。この追加の受付拒否はHuman未確認の実装判断としてPRに明記する。表示内容のない間接objectの共有も保守的に拒否し得る。
+
+Cの対策は、ExtGStateのFont配列の先頭を通常のFont辞書と同じ方法で調べる。Type3のResourcesも同じ経路で検査する。
+
+`RedactSecurityTests`に13件の回帰テストを追加した。共有画像とフォントなしFormの切り抜き、PieceInfoから画像/Form/Resources/Thumb/mask/任意の入れ子への参照の拒否、独立した画像/Formを持つページの成功、ExtGStateのフォント共有の両方向、継承したResourcesの検査を含む。既存のフォント単体テストにもExtGStateの直接・間接フォントを加えた。
+
+修正後のRelease build、Docker build、docker-smoke、renderer-validation、redact-validationを再実行し、すべて成功した。関連する単体・APIテスト69件も成功した。画像の閾値と描画programは変更していないため手動の閾値測定は再実行せず、実符号化境界のAPIテストは全件テストに含める。PDF辞書と実符号化データの成分数の不一致、およびページ内の画像の合計作業量は未検証の限界としてsecurity/設計書へ明記した。
+
+容量測定も同じ制約・fixtureで再実行した。共有フォントで全30ページがRとなる場合は、共有画像があっても正常に処理できる。[生の測定値](redact-validation/review-fix-capacity.json)。
+
+| 実行 | 黒塗り時間 | 結合時間 | memory.peak | tmpfs観測最大（1 ms） |
+| --- | --- | --- | --- | --- |
+| 単独 | 7,312 ms | — | 132,276,224 bytes（126.15 MiB） | 62,918,656 bytes（60.00 MiB） |
+| 50 MiB結合と同時 | 8,322 ms | 1,560 ms | 260,050,944 bytes（248.00 MiB） | 112,259,072 bytes（107.06 MiB） |
+
+両方の黒塗りと結合はHTTP 200、OOM/OOM killとも0、ENOSPCなし。終了後のjobとrendererは0。§13の設計調査時の記録は変更していない。
