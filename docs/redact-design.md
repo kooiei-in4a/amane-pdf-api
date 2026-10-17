@@ -1,6 +1,6 @@
 # 黒塗り（画像化方式）APIの実装設計
 
-2026-10-16 JST。対象は [Issue #35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) の `POST /api/pdf/redact`。状態は**PR A（#66）で描画基盤を実装済み、PR BでAPIを実装**。PR Bの実測は [redact-validation.md](redact-validation.md) に記録する。フォントを共有するページの扱いは2026-10-16にHumanが案Aを承認した（§12.1）。
+2026-10-16 JST。対象は [Issue #35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) の `POST /api/pdf/redact`。PR A（#66）で描画基盤、PR B（#67）で黒塗りAPIを実装し、PR #67は2026-10-17にmainへmerge済みです（merge commit `39d62f8`）。この文書は設計と判断の記録です。現行契約は[README.md](../README.md)、実装後の検証結果は[redact-validation.md](redact-validation.md)を参照してください。フォントを共有するページの扱いは2026-10-16にHumanが案Aを承認しました（§12.1）。
 
 記述の区分:
 

@@ -1,8 +1,14 @@
 # PDF機能拡張の方針（2026-10）
 
-amane-pdf-api と amane-tools-site のPDF機能を拡張するための、戦略、採用した判断、判断の根拠となった検証結果をまとめます。
+amane-pdf-api と amane-tools-site のPDF機能を拡張する際の戦略、採用した判断、判断の根拠となった検証結果を記録します。現在のAPI契約はrootの[README.md](../README.md)、文書の読み方は[docs/README.md](README.md)を参照してください。
 
-個別の仕様と実装設計は各Issueに記載しています。Issueの一覧と進み具合は [#18](https://github.com/kooiei-in4a/amane-pdf-api/issues/18) で管理します。この文書は、判断の理由と根拠を残すためのものです。
+各Issueは要件・完了条件・進捗を管理し、実装設計の正本は対応する `docs/` 内の設計書です（該当する設計書がある場合）。Issueの一覧と進み具合は [#18](https://github.com/kooiei-in4a/amane-pdf-api/issues/18) で管理します。この文書の優先度案は2026-10-07時点の記録であり、現在の未完了項目を示すものではありません。
+
+## 現行APIとの対応
+
+この節の基準は、黒塗りAPIを含むPR #67のmerge commit `39d62f8`（2026-10-17）です。APIに実装済みの機能一覧とHTTP契約は[README.md「現在の状態」](../README.md#現在の状態)を参照してください。計画表のP0〜P2に載っていた暗号化解除、圧縮、情報除去、画像からのPDF作成、分割、共通描画基盤、ページ番号、透かし、電子印鑑、黒塗りなどは、この基準では実装済みです。
+
+初期計画に候補として残る目標サイズ圧縮、PDF比較、単独のページ描画・OCRなどは、この基準のAPI routeには含まれていません。個別Issueの現在状態やサイトでの公開・deploy状況は、この記録やAPIの実装状態から推測せず、それぞれのIssue・Repositoryで確認してください。
 
 ## 前提（2026-10-07時点の事実）
 
@@ -10,7 +16,7 @@ amane-pdf-api と amane-tools-site のPDF機能を拡張するための、戦略
 - amane-tools-site main `2a0ebb8`: 暗号化、最適化、結合、回転を公開しています。日次の利用回数はPDF全体で1つの枠（未ログイン3回・無料プラン10回）です。抽出・削除・並べ替えはAPIにありますが、サイトでは未公開です。
 - コンテナのqpdfは11.9.0（Ubuntu 24.04）、開発環境は12.3.2です。
 
-## 戦略
+## 戦略（2026-10-07時点の当初案）
 
 1. **提出・アップロード上限の需要を取る**: 本格的な圧縮、画像からのPDF作成、分割。行政手続き、就職活動、本人確認、経費精算では、PDF形式とサイズ上限の指定が多くあります。
 2. **パスワード付きPDFの入口と出口をそろえる**: 既存の暗号化に加えて解除を用意します。今は全APIが暗号化PDFを拒否するため、解除がないとパスワード付きPDFは他のツールで扱えません。
@@ -19,7 +25,7 @@ amane-pdf-api と amane-tools-site のPDF機能を拡張するための、戦略
 5. **有料プランの目玉候補を用意する**: 目標サイズを指定する圧縮、差分比較。課金の設計は別に行います。
 6. **需要を計測して次の投資を決める**: 日次枠を共有にしたため、どのツールが使われているかが今は分かりません。操作別の件数を、個人を特定しない集計値として最初に記録します。
 
-## 技術方針
+## 技術方針（当時の方針）
 
 - PDFの検証と書き出しは、引き続きqpdfが担います。新しいツールは外部コマンドとして呼び、既存のtimeout、process tree kill、一時ディレクトリの削除、同時実行枠を共通で使います。
 - 追加するOSSは、permissiveまたは弱いcopyleftのライセンスに限ります。
@@ -33,12 +39,14 @@ amane-pdf-api と amane-tools-site のPDF機能を拡張するための、戦略
   | PDFium（別プロセスから直接P/Invoke） | ページを画像として描く | BSD-3-Clause / Apache-2.0 |
   | Tesseract | OCR | Apache-2.0 |
 
-  PDFiumは[#35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) のPR A（#66）で描画基盤を実装済みです。PR Bが黒塗りAPIを実装し、#33は同じ基盤の上に載せます。固定版・sha256・ライセンスをlockし、JPEGはOSのlibturbojpegで作ります（設計§12.2、Human未確認）。
+この表は計画時の候補を含み、現行imageに入る依存一覧ではありません。現在の固定取得物・配布ライセンスは[THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)と各lockファイルを参照してください。
+
+  PDFiumは[#35](https://github.com/kooiei-in4a/amane-pdf-api/issues/35) のPR A（#66）で描画基盤を実装し、PR B（#67）で黒塗りAPIを追加して、2026-10-17にmainへmergeされました。現行の実装条件は[README.md](../README.md)と[redact-design.md](redact-design.md)、検証結果は[redact-validation.md](redact-validation.md)を参照してください。#33など別APIの実装状況はこの記録の対象外です。
 
 - AGPL / GPLのPDFエンジン（Ghostscript、MuPDF / PyMuPDF、iText、Poppler）は採用しません。このAPIはApache-2.0で公開し、コンテナイメージを配布するためです。
 - ベースイメージをUbuntu 26.04に更新し、qpdfを開発環境と同じ12.3.2にそろえます。
 
-## 採用した判断
+## 採用した判断（決定時の記録）
 
 | 論点 | 採用 | 理由 | 決定 |
 | --- | --- | --- | --- |
@@ -150,7 +158,9 @@ Ubuntu 26.04のコンテナ（qpdf 12.3.2、libjpeg-turbo 2.1.5）で、A4・300
 - iPhoneのSafariは、`<input type="file" accept="image/jpeg,image/png">` のように形式を指定すると、HEICを最初に書いた形式へ自動変換して送ります。Safari 17以降、`image/heic` を書くと逆にJPEG / PNGがHEICへ変換されることがあります。
 - HEVCは特許の対象で、FedoraはHEVCのデコーダーを同梱していません（RPM Fusionで別配布）。
 
-## 優先度
+## 初期の優先度案（2026-10-07時点）
+
+以下は機能拡張を始めた時点の着手順です。完了状態は「現行APIとの対応」節とREADMEで確認してください。
 
 | 優先度 | 意味 | 主な内容 |
 | --- | --- | --- |
@@ -161,7 +171,7 @@ Ubuntu 26.04のコンテナ（qpdf 12.3.2、libjpeg-turbo 2.1.5）で、A4・300
 
 各Issueの番号、依存関係、推奨する着手順は [#18](https://github.com/kooiei-in4a/amane-pdf-api/issues/18) を参照してください。
 
-## 見送るもの
+## 見送るもの（2026-10時点の判断）
 
 | 機能 | 理由 |
 | --- | --- |

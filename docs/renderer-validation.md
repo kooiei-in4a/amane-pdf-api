@@ -1,6 +1,6 @@
 # PDFium描画基盤（Issue #35 PR A）の検証
 
-2026-10-16 JST。対象は PR A の別プロセス描画・起動検証・制限で、黒塗りの公開endpointはまだない。設計調査時の §13 と docs/redact-design-probe/ は記録として保持し、製品コードの検証結果をこの文書へ分ける。
+2026-10-16 JSTに実施したPR Aの別プロセス描画・起動検証・制限の記録です。この時点では黒塗りendpointはまだありませんでしたが、後続のPR BはPR #67として2026-10-17にmainへmerge済みです。黒塗りAPIの実装・検証は[redact-validation.md](redact-validation.md)を参照してください。設計調査時の§13と`redact-design-probe/`は当時の記録として保持します。
 
 ## 自動検証
 
@@ -60,6 +60,6 @@ python3 scripts/renderer-validation.py amane-pdf-api:issue35-renderer \
 
 hostの設定はREADME「開発環境」の固定tool導入手順を使う。Docker比較/測定のdriverだけPillow・NumPyを使用し、runtimeへ追加しない。hostのqpdfが拡張子なし出力をAppArmorで拒否する場合は、CIと同じ一時コピーをPATHへ置く。
 
-## PR Bに残る検証
+## 当時PR Bに残していた検証（後続PR #67で実施）
 
-画像サイズの事前検査、ページ数・容量台帳・出力構造の安全性、公開APIのHTTP契約、30ページ画像化と50 MiB結合の同時実行はPR Bの範囲。描画基盤だけの測定を、それらが完了した根拠にはしない。
+画像サイズの事前検査、ページ数・容量台帳・出力構造の安全性、公開APIのHTTP契約、30ページ画像化と50 MiB結合の同時実行は、記録時点ではPR Bの範囲でした。これらの実装・検証は[redact-validation.md](redact-validation.md)に記録されています。この文書の描画基盤単体の測定と、後続APIの検証範囲を混同しないでください。

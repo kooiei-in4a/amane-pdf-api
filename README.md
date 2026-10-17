@@ -1,8 +1,8 @@
 # amane-pdf-api
 
-PDFを安全に処理するための小さなWeb APIです。
+PDFや画像を、入力検証と容量・時間の制限のもとで処理するWeb APIです。
 
-`amane-tools-site` から受け取ったPDFの暗号化・パスワード解除、lossless構造最適化、結合、ページ回転、ページ抽出・削除・並べ替えを、安全なqpdf処理として提供します。
+暗号化・パスワード解除、最適化・画像圧縮、情報除去、画像からのPDF作成、ページ編集、番号付け・透かし・押印・黒塗りを提供します。処理には機能に応じてqpdf、pdfcpu、PDFium、libjpeg-turboを使用します。APIの接続先となる`amane-tools-site`は別Repositoryです。
 
 ## 現在の状態
 
@@ -647,6 +647,9 @@ src/
   Amane.Pdf.Api/
     Program.cs
     Amane.Pdf.Api.csproj
+  Amane.Pdf.Renderer/
+    Program.cs
+    Amane.Pdf.Renderer.csproj
 tests/
   Amane.Pdf.Api.Tests/
 docs/
@@ -759,6 +762,23 @@ DB、Secret、PDFの永続Volumeは不要です。writable領域は/tmpだけで
 実行時に外向き通信は不要で、`--network none`でも処理可能です。サービス間の到達性と入口側の利用回数制限は実行環境で設定します。
 これらの確認はローカル/CIの検証であり、本番deployやGHCR publishは行いません。
 
+### overlay容量の手動測定
+
+通常CIの2 jobは独立し、各10分timeoutです。docker jobの描画比較では既存test assemblyとSDK runnerをread-only mountし、製品imageへ追加しません。通常の全.NETテストに含まれるOverlayCapacity categoryは小さいfixtureの単独・同時2件の回帰検証です。上限規模の容量測定は次の手動検証で行います。
+
+```bash
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-bmp
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementary \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-all-glyphs
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --text-layout lines-tabs \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-bmp
+python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementary --text-layout lines-tabs \
+  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-all
+```
+
+CPU 1、memory 1.5 GiB、swapなし、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privilegesで実Builderを単独・同時2件測定します。入力配置・起動自己テストはtimer前、Builder開始から最終検査・中間物削除までが測定範囲です。最終出力とjobの削除も検査し、driverのメモリを含むcgroup peakとtmpfs観測最大を記録します。#46のdeploy保留は別途追跡します。
+
 ## セキュリティ
 
 PDFは外部から受け取る信用できない入力として扱います。
@@ -774,6 +794,7 @@ PDFは外部から受け取る信用できない入力として扱います。
 
 コード、API名、製品名、コマンド、標準的な技術用語など、日本語化すると分かりにくくなる部分は英語表記を使用します。
 
+- [docs/README.md](docs/README.md): 文書索引と読み方
 - [docs/security.md](docs/security.md): セキュリティ方針
 - [docs/roadmap.md](docs/roadmap.md): PDF機能拡張の方針、採用した判断と検証記録
 
@@ -781,19 +802,4 @@ PDFは外部から受け取る信用できない入力として扱います。
 
 このプロジェクトは Apache License 2.0 で公開します。
 
-PDF処理に使用するqpdfもApache License 2.0です。第三者ソフトウェアについては [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。
-
-通常CIの2 jobは独立・各10分timeoutを維持します。docker jobの描画比較では既存test assemblyとSDK runnerをread-only mountし、製品imageへ追加しません。通常の全.NETテストに含まれるOverlayCapacity categoryは小さいfixtureの単独/同時2件の回帰検証です。上限規模の容量測定は手動の別検証です。
-
-```bash
-python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity \
-  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-bmp
-python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementary \
-  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-all-glyphs
-python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --text-layout lines-tabs \
-  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-bmp
-python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementary --text-layout lines-tabs \
-  --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-all
-```
-
-CPU 1、memory 1.5 GiB、swapなし、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privilegesで、実Builderを単独/同時2件測定します。入力配置・起動自己テストはtimer前、Builder開始から最終検査・中間物削除までが測定範囲です。最終出力とjobの削除も検査します。driverのメモリを含むcgroup peakとtmpfs観測最大を記録します。#46のdeploy保留を継続します。
+qpdfのライセンスもApache License 2.0です。依存する第三者ソフトウェアの著作権・ライセンスは [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) を参照してください。

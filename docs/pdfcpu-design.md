@@ -2,6 +2,8 @@
 
 2026-10-09 JST。対象はAPIリポジトリの [Issue #25](https://github.com/kooiei-in4a/amane-pdf-api/issues/25)、PR Bの基準はmain `77e8a8caf96bfb124032a331fa7eb77674fd0743`。pdfcpuとBIZ UDPゴシックを導入し、APIが生成する描画レイヤーをqpdfで元のPDFへ合成する共通処理を用意する。新しいHTTP endpointは追加しない。ページ番号・透かし・電子印鑑・画像からのPDF作成は後続Issueで扱う。
 
+これは実装前にまとめた設計記録です。Issue #25の共通描画基盤はPR #50（A）とPR #53（B）で実装・検証され、2026-10-09にmainへマージされました。現行の共通描画挙動は[overlay-validation.md](overlay-validation.md)、後続機能は各APIのREADME節と対応する設計・検証記録を参照してください。
+
 以下は#25をPR AとPR Bへ分けた実装設計である。PR Aでは取得・起動検証・文字描画の基盤を実装し、ページ属性・合成・復元・overlay容量測定はPR Bに含める。実装済みの挙動と手動測定結果は `docs/overlay-validation.md` に記録する。PR Aの実施結果は `docs/pdfcpu-validation.md` に記録する。Issueには仕様と完了条件を置き、実装設計の正本はこのファイルに一本化する。Issue末尾の旧設計は削除し、このファイルの固定commitへ案内する。設計変更もこのファイルに反映して参照commitを更新する。infraとサイトは対象外とし、#46によるdeployの保留を維持する。
 
 この設計書はPR Aに含め、レビューを経てmainへ取り込む。`docs/issue-25-design` ブランチは、PR Aのmerge後にIssueの参照先をmainから到達できるcommitへ更新し、公開ファイルを読み戻して確認するまで残す。squash/rebaseで元の設計commitがmainへ引き継がれない場合も、参照先の移行前にブランチを削除しない。mainから到達できるcommitへの参照移行は、Humanのmerge承認後に行う。

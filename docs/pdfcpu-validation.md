@@ -1,5 +1,7 @@
 # pdfcpu導入の検証記録（Issue #25・PR A）
 
+この文書はPR A時点（2026-10-09）の基盤導入記録です。下記にある「PR Bに残る」検証は記載時点の予定で、後続PRで実施済みです。共通描画基盤の実装・容量測定は[overlay-validation.md](overlay-validation.md)、現在の文書一覧は[docs/README.md](README.md)を参照してください。
+
 2026-10-09 JST。基準mainは `4590c8032759c521bb690b2f9692701d60fadfb5`。
 対象は取得・license・Docker/CI・起動検証・`PdfcpuProcessor`・日本語smokeである。
 新しいHTTP endpoint、ページ属性の解析、overlayとBox復元、容量予約はPR B以降で実装する。
