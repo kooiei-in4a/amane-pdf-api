@@ -2,7 +2,7 @@
 
 PDFや画像を、入力検証と容量・時間の制限のもとで処理するWeb APIです。
 
-暗号化・パスワード解除、最適化・画像圧縮、情報除去、画像からのPDF作成、ページ編集、番号付け・透かし・押印・黒塗りを提供します。処理には機能に応じてqpdf、pdfcpu、PDFium、libjpeg-turboを使用します。APIの接続先となる`amane-tools-site`は別Repositoryです。
+暗号化・権限制限・パスワード解除、最適化・画像圧縮、情報除去、画像からのPDF作成、ページ編集、番号付け・透かし・押印・黒塗りを提供します。処理には機能に応じてqpdf、pdfcpu、PDFium、libjpeg-turboを使用します。APIの接続先となる`amane-tools-site`は別Repositoryです。
 
 ## 現在の状態
 
@@ -10,6 +10,7 @@ PDFや画像を、入力検証と容量・時間の制限のもとで処理す�
 
 - .NET 10 / ASP.NET Core の最小API、`GET /healthz`
 - `POST /api/pdf/protect` によるPDFのAES-256暗号化
+- `POST /api/pdf/restrict` によるPDFの印刷・コピー・編集権限の制限
 - `POST /api/pdf/unlock` による、正しいuser / owner passwordでの暗号化解除
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
 - Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
@@ -173,6 +174,36 @@ unset pdf_password
 ```
 
 このBashの例ではパスワードを対話入力し、stdinからcurlへ渡します。パスワード値をcommand line argvやshell履歴に載せません。
+
+### PDF権限制限
+
+`POST /api/pdf/restrict` は `multipart/form-data` で次の項目を受け付けます。queryは指定できません。
+
+| field | 必須 | 仕様 |
+| --- | --- | --- |
+| `file` | 必須 | filename付きの未暗号化PDF 1件、空不可、最大50 MiB |
+| `ownerPassword` | 必須 | 権限管理用。UTF-8で1〜127 bytes、制御文字不可 |
+| `userPassword` | 任意 | 閲覧用。省略時はパスワードなしで開ける。送信時はownerPasswordと同じバイト数・文字種規則（空値は400） |
+| `print` | 必須 | `full` / `low` / `none` |
+| `copy` | 必須 | `allow` / `deny` |
+| `edit` | 必須 | `allow` / `deny` |
+
+選択肢は大文字小文字を区別して完全一致で判定します。パスワードはtrim・Unicode正規化を行いません。ownerPasswordとuserPasswordの同一値（ordinal比較）、全許可（print=full、copy=allow、edit=allow）、未知・重複・欠落フィールド、テキスト欄へのfilename指定は400です。未入力のuserPasswordはフィールド自体を送信しないでください。
+
+成功時は `200 OK`、`Content-Type: application/pdf`、`Content-Disposition: attachment; filename=restricted.pdf` で返します。AES-256とprivateなqpdf Job JSONを使い、パスワードはargvに載せません。閲覧パスワードなしの権限制限のみPDFを含む既暗号化PDF、空・破損・警告PDFは共通422（reasonなし）、サイズ超過は413です。
+
+```bash
+read -r -s -p 'Owner password: ' owner_password; printf '\n'
+printf '%s' "$owner_password" | curl --fail-with-body \
+  -F file=@input.pdf -F 'ownerPassword=<-' \
+  -F print=none -F copy=deny -F edit=deny \
+  http://127.0.0.1:8080/api/pdf/restrict -o restricted.pdf
+unset owner_password
+```
+
+この例は閲覧パスワードを省略します。権限制限は対応ビューアーが遵守する設定であり、DRMや完全な複製防止ではありません。edit=denyでは注釈・フォーム入力・ページ操作も禁止されます。アクセシビリティ用の抽出は常に許可します。書き換えにより電子署名やPDF/A準拠性は失われ得ます。
+
+閲覧パスワードなしの権限制限のみPDFは、既存unlockでは解除できません（`no-open-password`）。元PDFと管理用パスワードを保管してください。
 
 ### PDFパスワード解除
 
@@ -464,6 +495,8 @@ curl --fail-with-body -F file=@input.pdf \
 
 ### 入力とエラー
 
+権限制限APIは上記の専用フィールドを受け付け、閲覧用userPasswordは省略可能、管理用ownerPasswordは必須です。全許可や同一パスワードは400です。
+
 暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、圧縮、分割、回転、ページ番号、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
 透かしAPIは `file` と `text` 各1件を受け付けます。textはstrict UTF-8で120 bytes、1〜30 text element、許可範囲と固定fontの字形を検査し、空白だけの入力は400です。
 Unicodeはqpdfの`passwordMode=unicode`でUTF-8として渡します。API側ではUnicode正規化やtrimを行いません。
@@ -587,8 +620,8 @@ passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で�
 
 mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
 
-30秒はアップロード完了後のqpdf検査と各PDF処理（unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。ページ番号も入力検査から描画・合成・復元・出力検査まで同じ予算を共有します。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
-暗号化、解除、最適化、圧縮、情報除去、画像からPDF、結合、分割、回転、ページ番号、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
+30秒はアップロード完了後のqpdf検査と各PDF処理（restrictは入力検査と権限制限設定、unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。ページ番号も入力検査から描画・合成・復元・出力検査まで同じ予算を共有します。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
+暗号化、権限制限、解除、最適化、圧縮、情報除去、画像からPDF、結合、分割、回転、ページ番号、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
 merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 1.5 GiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。
 ファイルサイズが50 MiB以内でも、大きな画像のデコードやqpdfのbufferが上限に達すると422になり得ます。破損、警告、処理上限超過をstderrで区別しません。全qpdf呼び出し（unlockの各probe・出力検証、64 bytesのページ数取得を含む）へ同じ制限を適用します。出力検証の失敗は500です。
@@ -751,7 +784,7 @@ CIではGoも検証専用に導入し、`go version -m` と固定module一覧を
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
-smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実FSIZE超過時のdjpeg／cjpeg／ddの通常エラー終了、3つのJPEG copyrightファイルとhealthを検証します。共通起動経路のCORE／AS／FSIZEとSIGXFSZ無視の継承も確認します。正常暗号化、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
+smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実FSIZE超過時のdjpeg／cjpeg／ddの通常エラー終了、3つのJPEG copyrightファイルとhealthを検証します。共通起動経路のCORE／AS／FSIZEとSIGXFSZ無視の継承も確認します。正常暗号化、権限制限成功と全許可400、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
 splitはevery=1、Stored/固定時刻/名前、別TZのDOS時刻、APIと同じenv／prlimit経由の終了コード、HTTPの同値/1 byte超過/実FSIZE超過、cat 500とcleanup/healthを確認します。容量・同時実行・100パートの時間は通常のsmokeへ入れず、`sudo python3 scripts/split-validation.py IMAGE /tmp/split-metrics.json`で別に測定します。[分割の検証記録](docs/split-validation.md)と[FSIZE core対策の検証記録](docs/fsize-core-validation.md)に結果と公開条件を記載しています。
 全コンテナでnon-root、read-only root filesystem、tmpfs /tmp、CPU 1 / memory 1.5 GiB（swapなし）、永続Volumeなしを確認します。外部networkを無効にした別コンテナでもloopback HTTPで実暗号化、解除成功とwrong-password、password確認を行います。
 小さいASで通常PDFの成功と画像PDFの422、標準ASへ増やした同じPDFの成功、自己テスト失敗時の非0終了と固定ログ、util-linux copyrightの存在も確認します。各コンテナは成功・失敗ともfinallyで削除します。qpdfのtimeout/process tree kill、同時実行上限とキャンセルは.NETテストで確認します。

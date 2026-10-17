@@ -55,6 +55,34 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         }
     }
 
+    internal async Task RestrictAsync(TemporaryPdfFiles files, PdfRestriction restriction, CancellationToken cancellationToken)
+    {
+        var job = new
+        {
+            inputFile = files.InputPath,
+            outputFile = files.OutputPath,
+            passwordMode = "unicode",
+            encrypt = new Dictionary<string, object>
+            {
+                ["userPassword"] = restriction.UserPassword,
+                ["ownerPassword"] = restriction.OwnerPassword,
+                ["256bit"] = new Dictionary<string, object>
+                {
+                    ["print"] = restriction.Print,
+                    ["extract"] = restriction.Copy == "allow" ? "y" : "n",
+                    ["modify"] = restriction.Edit == "allow" ? "all" : "none"
+                }
+            }
+        };
+        await using (var stream = TemporaryPdfFiles.CreatePrivateFile(files.JobPath))
+        {
+            await JsonSerializer.SerializeAsync(stream, job, cancellationToken: cancellationToken);
+        }
+        var exitCode = await RunAsync(["--job-json-file=" + files.JobPath], cancellationToken);
+        if (exitCode == 3) throw new PdfInputException();
+        if (exitCode != 0) throw new InvalidOperationException("PDF processing failed.");
+    }
+
     public async Task UnlockAsync(TemporaryPdfFiles files, string password, CancellationToken cancellationToken)
     {
         if (new FileInfo(files.InputPath).Length == 0) throw new PdfUnlockException(PdfUnlockReason.InvalidPdf);

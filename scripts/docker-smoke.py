@@ -32,7 +32,7 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None):
+def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None, restriction=None):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
     inputs = files if files is not None else ([] if file is None else [file])
@@ -49,6 +49,9 @@ def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, r
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\n{text}\r\n'.encode())
     if regions is not None:
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="regions"\r\n\r\n{regions}\r\n'.encode())
+    if restriction is not None:
+        for name, value in restriction.items():
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode())
     if image is not None:
         parts.append((f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="../../untrusted.png"\r\n'
                       'Content-Type: application/octet-stream\r\n\r\n').encode() + image + b'\r\n')
@@ -156,6 +159,30 @@ class ApiContainer:
             assert json.loads(result)["status"] == expected
             for secret in (PASSWORD.encode(), SENTINEL.encode(), b"/tmp/", b"stack", b"qpdf"):
                 assert secret not in result, "Problem Details exposed internal information."
+        self.assert_clean()
+        return result
+
+    def restrict(self, file, print_permission="none", expected=200):
+        body, content_type = multipart(file, password=None, restriction={
+            "ownerPassword": PASSWORD, "print": print_permission, "copy": "allow", "edit": "allow"
+        })
+        status, headers, result = self.request("POST", "/api/pdf/restrict", body, content_type)
+        assert status == expected, f"Expected HTTP {expected}, received {status}."
+        if expected == 200:
+            assert headers.get("Content-Type", "").split(";", 1)[0] == "application/pdf"
+            assert "filename=restricted.pdf" in headers.get("Content-Disposition", "")
+            docker("exec", self.name, "mkdir", "-m", "700", "-p", CHECK_ROOT)
+            docker("exec", "--interactive", self.name, "sh", "-c", f"umask 077; cat > {CHECK_ROOT}/restricted.pdf", data=result)
+            encryption = docker("exec", self.name, "qpdf", "--show-encryption", f"{CHECK_ROOT}/restricted.pdf").stdout
+            for line in (b"R = 6", b"AESv3", b"print low resolution: not allowed",
+                         b"print high resolution: not allowed", b"extract for accessibility: allowed"):
+                assert line in encryption
+            assert docker("exec", self.name, "qpdf", "--requires-password", f"{CHECK_ROOT}/restricted.pdf", check=False).returncode == 3
+            assert docker("exec", self.name, "qpdf", "--password=", "--check", f"{CHECK_ROOT}/restricted.pdf").returncode == 0
+            docker("exec", self.name, "rm", "-rf", CHECK_ROOT)
+        else:
+            assert json.loads(result)["status"] == expected
+            assert PASSWORD.encode() not in result
         self.assert_clean()
         return result
 
@@ -587,6 +614,8 @@ def main(image):
         assert headers["X-Pdf-Redacted-Pages"] == headers["X-Pdf-Rasterized-Pages"] == "1"
         assert api.page_rotations(redacted) == [0]
         api.assert_clean()
+        api.restrict(FIXTURE)
+        api.restrict(FIXTURE, print_permission="full", expected=400)
         encrypted = api.protect(FIXTURE)
         api.verify_encryption(encrypted)
         api.verify_decryption(api.unlock(encrypted))
@@ -642,7 +671,7 @@ def main(image):
         api.protect(b"%PDF-1.4\n" + SENTINEL.encode() + b"\n%%EOF", expected=422)
         api.protect(FIXTURE.replace(b"/Length 41", b"/Length 39"), expected=422)
         api.protect(encrypted, expected=422)
-        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/unlock/optimization/merge/rotation/page selection/passwords/400/422/logs/cleanup PASS")
+        print("Docker E2E: health/non-root/read-only/tmpfs/AES-256/restriction/unlock/optimization/merge/rotation/page selection/passwords/400/422/logs/cleanup PASS")
         post_count += api.post_count
     with running_container(image, (f"Pdf__MaxFileBytes={len(FIXTURE)}",)) as api:
         api.protect(FIXTURE)
