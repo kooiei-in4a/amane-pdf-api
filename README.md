@@ -647,6 +647,9 @@ src/
   Amane.Pdf.Api/
     Program.cs
     Amane.Pdf.Api.csproj
+  Amane.Pdf.Renderer/
+    Program.cs
+    Amane.Pdf.Renderer.csproj
 tests/
   Amane.Pdf.Api.Tests/
 docs/
