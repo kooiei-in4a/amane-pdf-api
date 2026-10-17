@@ -7,11 +7,15 @@ namespace Amane.Pdf.Api;
 public static class MultipartPdfUpload
 {
     public static async Task<string> ReadAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
-        => await ReadCoreAsync(request, files, options, requirePassword: true, cancellationToken)
+        => (await ReadCoreAsync(request, files, options, requirePassword: true, cancellationToken)).Password
             ?? throw new BadHttpRequestException("Missing required field.");
 
     public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
         => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
+
+    internal static async Task<string> ReadFileNameAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken cancellationToken)
+        => (await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken)).FileName;
 
     internal static async Task ReadFileAndImageAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, CancellationToken token)
@@ -126,7 +130,7 @@ public static class MultipartPdfUpload
         return paths;
     }
 
-    private static async Task<string?> ReadCoreAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options,
+    private static async Task<(string? Password, string FileName)> ReadCoreAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options,
         bool requirePassword, CancellationToken cancellationToken)
     {
         var boundary = ReadBoundary(request);
@@ -134,6 +138,7 @@ public static class MultipartPdfUpload
         var reader = new MultipartReader(boundary, body);
         var hasFile = false;
         string? password = null;
+        var fileName = "";
         var buffer = new byte[64 * 1024];
         while (await ReadNextAsync(reader, cancellationToken) is { } section)
         {
@@ -143,6 +148,7 @@ public static class MultipartPdfUpload
             if (name == "file" && isFile && !hasFile)
             {
                 hasFile = true;
+                fileName = ReadFileName(disposition);
                 await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, cancellationToken);
             }
             else if (requirePassword && name == "password" && !isFile && password is null)
@@ -177,7 +183,27 @@ public static class MultipartPdfUpload
         if (!hasFile || (requirePassword && password is null)) throw new BadHttpRequestException("Missing required field.");
         // Count an optional MIME epilogue as part of the request before starting qpdf.
         while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
-        return password;
+        return (password, fileName);
+    }
+
+    private static string ReadFileName(ContentDispositionHeaderValue disposition)
+    {
+        if (disposition.FileNameStar.HasValue) return disposition.FileNameStar.ToString();
+        var decoded = disposition.FileName;
+        var raw = disposition.Parameters.FirstOrDefault(parameter =>
+            parameter.Name.Equals("filename", StringComparison.OrdinalIgnoreCase))?.Value ?? default;
+        // The getter already removes outer quotes and decodes MIME encoded words.
+        // Unescape only quoted pairs, preserving legacy unescaped Windows paths.
+        if (!HeaderUtilities.IsQuoted(raw) || !HeaderUtilities.RemoveQuotes(raw).Equals(decoded, StringComparison.Ordinal))
+            return decoded.ToString();
+        var value = decoded.AsSpan();
+        var result = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (value[i] == '\\' && i + 1 < value.Length && value[i + 1] is '\\' or '"') i++;
+            result.Append(value[i]);
+        }
+        return result.ToString();
     }
 
     private static string ReadBoundary(HttpRequest request)

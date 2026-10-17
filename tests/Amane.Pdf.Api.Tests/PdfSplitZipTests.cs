@@ -84,7 +84,7 @@ public sealed class PdfSplitZipTests
         var processor = new PdfSplitProcessor(new(options!), options!.Value, files);
         var raw = new FaultStream { Stage = stage, CloseFails = closeAlsoFails || stage == "close" };
         var thrown = await Assert.ThrowsAsync<IOException>(() => processor.WriteZipAsync(raw,
-            [new(1, 1, 1), new(2, 1, 1)], CancellationToken.None));
+            [new(1, 1, 1), new(2, 1, 1)], "document", CancellationToken.None));
         Assert.AreSame(stage == "close" ? raw.CloseFailure : raw.Primary, thrown);
         Assert.IsTrue(raw.Closed);
         Assert.AreEqual(1, raw.DisposeCalls);
@@ -105,7 +105,7 @@ public sealed class PdfSplitZipTests
         var raw = new FaultStream();
         var processor = new PdfSplitProcessor(new(options), options.Value, files);
         await Assert.ThrowsAsync<PdfSplitOutputTooLargeException>(() => processor.WriteZipAsync(raw,
-            [new(1, 1, 1), new(2, 1, 1)], CancellationToken.None, zipOverheadBytes: 1));
+            [new(1, 1, 1), new(2, 1, 1)], "document", CancellationToken.None, zipOverheadBytes: 1));
         Assert.IsTrue(raw.Closed);
     }
 
@@ -122,7 +122,7 @@ public sealed class PdfSplitZipTests
         var raw = new FaultStream { Stage = stage, CloseFails = true, CancelOnFault = cancellation };
         var options = (IOptions<PdfOptions>)test.Factory.Services.GetService(typeof(IOptions<PdfOptions>))!;
         await Assert.ThrowsAsync<OperationCanceledException>(() => new PdfSplitProcessor(new(options), options.Value, files)
-            .WriteZipAsync(raw, [new(1, 1, 1), new(2, 1, 1)], cancellation.Token));
+            .WriteZipAsync(raw, [new(1, 1, 1), new(2, 1, 1)], "document", cancellation.Token));
         Assert.IsTrue(raw.Closed);
         Assert.AreEqual(1, raw.Faults);
         Assert.AreEqual(1, raw.DisposeCalls);

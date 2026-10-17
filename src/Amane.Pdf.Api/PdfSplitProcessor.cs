@@ -4,11 +4,11 @@ namespace Amane.Pdf.Api;
 
 internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, TemporaryPdfFiles files)
 {
-    internal async Task SplitAsync(PdfSplitPlan plan, CancellationToken token)
+    internal async Task SplitAsync(PdfSplitPlan plan, string baseName, CancellationToken token)
     {
         await qpdf.ValidateAsync(files, token);
         var parts = plan.CreateParts(await qpdf.GetPageCountAsync(files, token));
-        var accepted = await WriteZipAsync(TemporaryPdfFiles.CreatePrivateFile(files.OutputPath), parts, token);
+        var accepted = await WriteZipAsync(TemporaryPdfFiles.CreatePrivateFile(files.OutputPath), parts, baseName, token);
         token.ThrowIfCancellationRequested();
         // Inspect the completed file after the owning stream has closed.
         var capacity = new PdfSplitCapacity(new FileInfo(files.InputPath).Length,
@@ -19,7 +19,7 @@ internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, 
     }
 
     // Takes ownership of output. Tests can supply a faulting seekable stream without a production hook.
-    internal async Task<long> WriteZipAsync(Stream output, IReadOnlyList<SplitPart> parts, CancellationToken token,
+    internal async Task<long> WriteZipAsync(Stream output, IReadOnlyList<SplitPart> parts, string baseName, CancellationToken token,
         long zipOverheadBytes = PdfSplitCapacity.SplitZipOverheadBytes)
     {
         Stream? ownedOutput = output;
@@ -39,7 +39,7 @@ internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, 
                 using (TemporaryPdfFiles.CreatePrivateFile(path)) { }
                 await qpdf.SplitPartAsync(files.InputPath, part.PageRange, path, budget, token);
                 capacity.AcceptPart(new FileInfo(path).Length);
-                var entry = archive.CreateEntry(part.EntryName, CompressionLevel.NoCompression);
+                var entry = archive.CreateEntry(part.GetEntryName(baseName), CompressionLevel.NoCompression);
                 entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
                 partInput = File.OpenRead(path);
                 // No using: failed copies must not trigger entry/archive finalization during unwinding.

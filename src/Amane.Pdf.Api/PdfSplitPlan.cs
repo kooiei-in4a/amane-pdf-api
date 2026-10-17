@@ -6,7 +6,7 @@ internal sealed record SplitPart(int Index, int Start, int End)
 {
     internal string PageRange => Start == End ? Start.ToString(CultureInfo.InvariantCulture)
         : string.Create(CultureInfo.InvariantCulture, $"{Start}-{End}");
-    internal string EntryName => string.Create(CultureInfo.InvariantCulture, $"part-{Index:D3}_p{PageRange}.pdf");
+    internal string GetEntryName(string baseName) => $"{baseName}_{PageRange}.pdf";
 }
 
 internal sealed class PdfSplitPlan(int? every, PdfPageSelection? ranges, int maxParts)

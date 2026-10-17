@@ -140,12 +140,12 @@ internal sealed class PdfTestContext : IAsyncDisposable
 
     public async Task<byte[]> CreateRotationMarkedPdfAsync(int pageCount)
     {
-        if (pageCount is < 1 or > 4) throw new ArgumentOutOfRangeException(nameof(pageCount));
+        if (pageCount is < 1 or > 8) throw new ArgumentOutOfRangeException(nameof(pageCount));
         var input = Path.Combine(Root, "marker-source.pdf");
         var output = Path.Combine(Root, $"{pageCount}-marked-pages.pdf");
         await File.WriteAllBytesAsync(input, await CreatePagedPdfAsync(pageCount));
         var arguments = Enumerable.Range(2, pageCount - 1)
-            .Select(page => $"--rotate=+{(page - 1) * 90}:{page}")
+            .Select(page => $"--rotate=+{((page - 1) % 4) * 90}:{page}")
             .Append(input)
             .Append(output)
             .ToArray();

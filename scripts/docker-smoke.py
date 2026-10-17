@@ -477,7 +477,7 @@ def split_smoke(image):
             source = api.merge([api.rotate(FIXTURE), FIXTURE])
             result = split_request(api, source)
             with zipfile.ZipFile(io.BytesIO(result)) as archive:
-                assert archive.namelist() == ["part-001_p1.pdf", "part-002_p2.pdf"]
+                assert archive.namelist() == ["untrusted_1.pdf", "untrusted_2.pdf"]
                 for entry, rotation in zip(archive.infolist(), (90, 0)):
                     assert entry.compress_type == zipfile.ZIP_STORED
                     assert entry.date_time == (1980, 1, 1, 0, 0, 0)

@@ -14,8 +14,8 @@ public sealed class PdfSplitPlanTests
     {
         var parts = Parse("EVERY=3").CreateParts(4);
         CollectionAssert.AreEqual(new[] { new SplitPart(1, 1, 3), new SplitPart(2, 4, 4) }, parts.ToArray());
-        Assert.AreEqual("part-001_p1-3.pdf", parts[0].EntryName);
-        Assert.AreEqual("part-002_p4.pdf", parts[1].EntryName);
+        Assert.AreEqual("document_1-3.pdf", parts[0].GetEntryName("document"));
+        Assert.AreEqual("document_4.pdf", parts[1].GetEntryName("document"));
         Assert.AreEqual("1-3", parts[0].PageRange);
     }
 
