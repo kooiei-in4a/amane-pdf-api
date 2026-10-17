@@ -153,27 +153,7 @@ public static class MultipartPdfUpload
             }
             else if (requirePassword && name == "password" && !isFile && password is null)
             {
-                // A bounded UTF-8 field; never buffer an arbitrary form field or file in memory.
-                var bytes = new byte[128];
-                var length = 0;
-                int read;
-                while ((read = await ReadBodyAsync(section.Body, bytes.AsMemory(length), cancellationToken)) != 0)
-                {
-                    length += read;
-                    if (length > 127) throw new BadHttpRequestException("Invalid password length.");
-                }
-                try
-                {
-                    password = new UTF8Encoding(false, true).GetString(bytes, 0, length);
-                }
-                catch (DecoderFallbackException)
-                {
-                    throw new BadHttpRequestException("Invalid password encoding.");
-                }
-                if (string.IsNullOrEmpty(password) || password.Any(char.IsControl))
-                {
-                    throw new BadHttpRequestException("Invalid password.");
-                }
+                password = await ReadPasswordAsync(section, cancellationToken);
             }
             else
             {
@@ -184,6 +164,82 @@ public static class MultipartPdfUpload
         // Count an optional MIME epilogue as part of the request before starting qpdf.
         while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
         return (password, fileName);
+    }
+
+    private static async Task<string> ReadPasswordAsync(MultipartSection section, CancellationToken cancellationToken)
+    {
+        string password;
+        // A bounded UTF-8 field; never buffer an arbitrary form field or file in memory.
+        var bytes = new byte[128];
+        var length = 0;
+        int read;
+        while ((read = await ReadBodyAsync(section.Body, bytes.AsMemory(length), cancellationToken)) != 0)
+        {
+            length += read;
+            if (length > 127) throw new BadHttpRequestException("Invalid password length.");
+        }
+        try
+        {
+            password = new UTF8Encoding(false, true).GetString(bytes, 0, length);
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new BadHttpRequestException("Invalid password encoding.");
+        }
+        if (string.IsNullOrEmpty(password) || password.Any(char.IsControl))
+        {
+            throw new BadHttpRequestException("Invalid password.");
+        }
+        return password;
+    }
+
+    internal static async Task<PdfRestriction> ReadRestrictAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken token)
+    {
+        var boundary = ReadBoundary(request);
+        using var body = new SizeLimitedReadStream(request.Body, options.MaxRequestBytes);
+        var reader = new MultipartReader(boundary, body);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        string? owner = null, user = null, print = null, copy = null, edit = null;
+        var buffer = new byte[64 * 1024];
+        while (await ReadNextAsync(reader, token) is { } section)
+        {
+            var disposition = ReadDisposition(section);
+            var name = HeaderUtilities.RemoveQuotes(disposition.Name).Value;
+            var isFile = disposition.FileName.HasValue || disposition.FileNameStar.HasValue;
+            if (name is not ("file" or "ownerPassword" or "userPassword" or "print" or "copy" or "edit") ||
+                !seen.Add(name) || isFile != (name == "file"))
+                throw new BadHttpRequestException("Unexpected or duplicate multipart field.");
+            switch (name)
+            {
+                case "file":
+                    await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, token);
+                    break;
+                case "ownerPassword": owner = await ReadPasswordAsync(section, token); break;
+                case "userPassword": user = await ReadPasswordAsync(section, token); break;
+                default:
+                    var bytes = new byte[8];
+                    var length = 0;
+                    int read;
+                    while ((read = await ReadBodyAsync(section.Body, bytes.AsMemory(length), token)) != 0)
+                    {
+                        length += read;
+                        if (length == bytes.Length) throw new BadHttpRequestException("Invalid restriction option.");
+                    }
+                    var value = Encoding.UTF8.GetString(bytes, 0, length);
+                    if (name == "print" && value is "full" or "low" or "none") print = value;
+                    else if (name == "copy" && value is "allow" or "deny") copy = value;
+                    else if (name == "edit" && value is "allow" or "deny") edit = value;
+                    else throw new BadHttpRequestException("Invalid restriction option.");
+                    break;
+            }
+        }
+        if (!seen.Contains("file") || owner is null || print is null || copy is null || edit is null)
+            throw new BadHttpRequestException("Missing required field.");
+        if (string.Equals(owner, user, StringComparison.Ordinal) || (print == "full" && copy == "allow" && edit == "allow"))
+            throw new BadHttpRequestException("Invalid restriction.");
+        while (await ReadBodyAsync(body, buffer, token) != 0) { }
+        return new PdfRestriction(owner, user ?? "", print, copy, edit);
     }
 
     private static string ReadFileName(ContentDispositionHeaderValue disposition)
