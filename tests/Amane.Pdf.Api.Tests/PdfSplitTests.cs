@@ -13,9 +13,9 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfSplitTests
 {
     [TestMethod]
-    [DataRow("every=3", "part-001_p1-3.pdf,part-002_p4.pdf", "0,90,180;270")]
-    [DataRow("ranges=4,1-2", "part-001_p4.pdf,part-002_p1-2.pdf", "270;0,90")]
-    [DataRow("EVERY=2", "part-001_p1-2.pdf,part-002_p3-4.pdf", "0,90;180,270")]
+    [DataRow("every=3", "private-name_1-3.pdf,private-name_4.pdf", "0,90,180;270")]
+    [DataRow("ranges=4,1-2", "private-name_4.pdf,private-name_1-2.pdf", "270;0,90")]
+    [DataRow("EVERY=2", "private-name_1-2.pdf,private-name_3-4.pdf", "0,90;180,270")]
     public async Task Split_ReturnsCompleteStoredZipWithRequestedPagesAndNames(string query, string names, string rotations)
     {
         await using var test = new PdfTestContext();
@@ -40,7 +40,39 @@ public sealed class PdfSplitTests
         }
         AssertStoredDosHeaders(bytes, zip.Entries.Count);
         test.AssertClean();
-        AssertNoExposure(test, Encoding.Latin1.GetString(bytes));
+        AssertNoExposure(test, Encoding.Latin1.GetString(bytes), allowOutputName: true);
+    }
+
+    [TestMethod]
+    [DataRow("ranges=1-3,8", "あいうえお_1-3.pdf,あいうえお_8.pdf", "0,90,180;270")]
+    [DataRow("ranges=8,1-3", "あいうえお_8.pdf,あいうえお_1-3.pdf", "270;0,90,180")]
+    [DataRow("every=3", "あいうえお_1-3.pdf,あいうえお_4-6.pdf,あいうえお_7-8.pdf", "0,90,180;270,0,90;180,270")]
+    public async Task JapaneseNames_PreserveRequestedPagesAndOrder(string query, string names, string rotations)
+    {
+        await using var test = new PdfTestContext();
+        using var response = await PostAsync(test, await test.CreateRotationMarkedPdfAsync(8), query,
+            fileName: "あいうえお.pdf");
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("application/zip", response.Content.Headers.ContentType?.MediaType);
+        Assert.AreEqual("split.zip", response.Content.Headers.ContentDisposition?.FileName);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.AreEqual((long)bytes.Length, response.Content.Headers.ContentLength);
+        using var zip = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+        CollectionAssert.AreEqual(names.Split(','), zip.Entries.Select(e => e.FullName).ToArray());
+        var expected = rotations.Split(';');
+        for (var i = 0; i < zip.Entries.Count; i++)
+        {
+            using var data = new MemoryStream();
+            using var entry = zip.Entries[i].Open();
+            await entry.CopyToAsync(data);
+            var pages = expected[i].Split(',').Select(int.Parse).ToArray();
+            await test.AssertValidPdfAsync(data.ToArray(), pages.Length);
+            CollectionAssert.AreEqual(pages, await test.ReadPageRotationsAsync(data.ToArray()));
+        }
+        Assert.AreEqual(0x800, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(6)) & 0x800);
+        AssertStoredDosHeaders(bytes, zip.Entries.Count);
+        Assert.IsFalse(test.Logs.Any(log => log.Contains("あいうえお", StringComparison.Ordinal)));
+        test.AssertClean();
     }
 
     internal static void AssertStoredDosHeaders(byte[] bytes, int count)
@@ -293,9 +325,9 @@ public sealed class PdfSplitTests
         return path;
     }
     internal static async Task<HttpResponseMessage> PostAsync(PdfTestContext test, byte[] input, string query = "every=1",
-        CancellationToken token = default)
+        CancellationToken token = default, string fileName = "../../private-name.pdf")
     {
-        using var form = PdfTestContext.FileForm(input, "../../private-name.pdf");
+        using var form = PdfTestContext.FileForm(input, fileName);
         return await test.Client.PostAsync("/api/pdf/split?" + query, form, token);
     }
     internal static async Task AssertProblemAsync(PdfTestContext test, HttpResponseMessage response, int status, string? reason = null)
@@ -316,11 +348,12 @@ public sealed class PdfSplitTests
         AssertNoExposure(test, body);
         test.AssertClean();
     }
-    internal static void AssertNoExposure(PdfTestContext test, string body)
+    internal static void AssertNoExposure(PdfTestContext test, string body, bool allowOutputName = false)
     {
-        foreach (var text in new[] { "PDF-CONTENT-SENTINEL", "private-name.pdf", test.TempRoot, "split-qpdf.sh" })
+        foreach (var text in new[] { "PDF-CONTENT-SENTINEL", "private-name", test.TempRoot, "split-qpdf.sh" })
         {
-            Assert.IsFalse(body.Contains(text, StringComparison.Ordinal));
+            if (!allowOutputName || text != "private-name")
+                Assert.IsFalse(body.Contains(text, StringComparison.Ordinal));
             Assert.IsFalse(test.Logs.Any(log => log.Contains(text, StringComparison.Ordinal)));
         }
     }
