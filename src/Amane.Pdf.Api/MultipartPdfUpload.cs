@@ -148,8 +148,7 @@ public static class MultipartPdfUpload
             if (name == "file" && isFile && !hasFile)
             {
                 hasFile = true;
-                fileName = HeaderUtilities.RemoveQuotes(disposition.FileNameStar.HasValue
-                    ? disposition.FileNameStar : disposition.FileName).ToString();
+                fileName = ReadFileName(disposition);
                 await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, cancellationToken);
             }
             else if (requirePassword && name == "password" && !isFile && password is null)
@@ -185,6 +184,26 @@ public static class MultipartPdfUpload
         // Count an optional MIME epilogue as part of the request before starting qpdf.
         while (await ReadBodyAsync(body, buffer, cancellationToken) != 0) { }
         return (password, fileName);
+    }
+
+    private static string ReadFileName(ContentDispositionHeaderValue disposition)
+    {
+        if (disposition.FileNameStar.HasValue) return disposition.FileNameStar.ToString();
+        var decoded = disposition.FileName;
+        var raw = disposition.Parameters.FirstOrDefault(parameter =>
+            parameter.Name.Equals("filename", StringComparison.OrdinalIgnoreCase))?.Value ?? default;
+        // The getter already removes outer quotes and decodes MIME encoded words.
+        // Unescape only quoted pairs, preserving legacy unescaped Windows paths.
+        if (!HeaderUtilities.IsQuoted(raw) || !HeaderUtilities.RemoveQuotes(raw).Equals(decoded, StringComparison.Ordinal))
+            return decoded.ToString();
+        var value = decoded.AsSpan();
+        var result = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (value[i] == '\\' && i + 1 < value.Length && value[i + 1] is '\\' or '"') i++;
+            result.Append(value[i]);
+        }
+        return result.ToString();
     }
 
     private static string ReadBoundary(HttpRequest request)

@@ -66,6 +66,12 @@ public sealed class PdfSplitFileNameTests
     }
 
     [TestMethod]
+    [DataRow("filename=\"a\\\"b.pdf\"", "a_b")]
+    [DataRow("filename=\"C:\\\\fakepath\\\\a\\\"b.pdf\"", "a_b")]
+    [DataRow("filename=\"a%22b.pdf\"", "a%22b")]
+    [DataRow("filename*=UTF-8''%22a%22.pdf", "_a_")]
+    [DataRow("filename*=UTF-8''%22a.pdf%22", "_a.pdf_")]
+    [DataRow("filename*=UTF-8''a%5C%22b.pdf", "_b")]
     [DataRow("filename=\"report.v2.PDF\"", "report.v2")]
     [DataRow("filename*=UTF-8''..%252Freport.pdf", "..%2Freport")]
     [DataRow("filename=\"upload.pdf\"", "upload")]
@@ -93,6 +99,28 @@ public sealed class PdfSplitFileNameTests
             Assert.IsFalse(entry.FullName.Contains('/'));
             Assert.IsFalse(entry.FullName.Contains('\\'));
         }
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task BrowserRawUtf8Filename_UsesJapaneseNamesAndUtf8ZipFlag()
+    {
+        await using var test = new PdfTestContext();
+        var input = await test.CreatePagedPdfAsync(2);
+        // Browser-style wire bytes: raw UTF-8 filename, with neither filename* nor MIME encoding.
+        var header = Encoding.UTF8.GetBytes("--split-browser\r\nContent-Disposition: form-data; name=\"file\"; " +
+            "filename=\"あいうえお.pdf\"\r\nContent-Type: application/pdf\r\n\r\n");
+        using var content = new ByteArrayContent(header.Concat(input)
+            .Concat(Encoding.ASCII.GetBytes("\r\n--split-browser--\r\n")).ToArray());
+        content.Headers.TryAddWithoutValidation("Content-Type", "multipart/form-data; boundary=split-browser");
+        using var response = await test.Client.PostAsync("/api/pdf/split?every=1", content);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        using var zip = new ZipArchive(new MemoryStream(bytes));
+        CollectionAssert.AreEqual(new[] { "あいうえお_1.pdf", "あいうえお_2.pdf" },
+            zip.Entries.Select(entry => entry.FullName).ToArray());
+        Assert.AreEqual(0x800, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(6)) & 0x800);
+        Assert.IsFalse(test.Logs.Any(log => log.Contains("あいうえお", StringComparison.Ordinal)));
         test.AssertClean();
     }
 
