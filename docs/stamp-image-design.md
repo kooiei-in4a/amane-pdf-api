@@ -1,6 +1,6 @@
 # 電子印鑑（PNG画像のスタンプ）APIの実装設計
 
-2026-10-13 JST。対象は [Issue #29](https://github.com/kooiei-in4a/amane-pdf-api/issues/29) の `POST /api/pdf/stamp-image`。状態は**PR #64のブランチで実装済み・mainへ未merge**である。2026-10-13の実装指示に基づく採用結果を§13に記載する。§1・§3・§12の設計調査時点の事実と、現在の実装・検証結果を区別する。実装後の検証結果・制約の正本は [stamp-image-validation.md](stamp-image-validation.md) を参照する。
+2026-10-13 JST。対象は [Issue #29](https://github.com/kooiei-in4a/amane-pdf-api/issues/29) の `POST /api/pdf/stamp-image`。この設計の実装はPR #64でmainにmerge済みです（merge commit `5d8b298`、2026-10-13）。本文の§1・§3・§12は調査・設計時点の記録です。現行のAPI契約は[README.md](../README.md)、実装後の検証結果・制約は[stamp-image-validation.md](stamp-image-validation.md)を参照してください。
 
 この文書では、記述を次の3種類に分ける。
 
