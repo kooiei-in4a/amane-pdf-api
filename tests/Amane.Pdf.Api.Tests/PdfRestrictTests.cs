@@ -307,10 +307,13 @@ public sealed class PdfRestrictTests
             ["Pdf:MaxFileBytes"] = PdfTestContext.Fixture.Length.ToString(), ["Pdf:QpdfPath"] = "/missing/qpdf"
         });
         using var form = Form();
+        // Keep individual MIME headers/epilogue below MultipartReader's own limits.
+        // The combined envelope crosses MaxRequestBytes only in the epilogue.
+        foreach (var part in form.Take(4)) part.Headers.Add("X-Padding", new string('H', 15000));
         var data = await form.ReadAsByteArrayAsync();
         var context = new DefaultHttpContext { RequestServices = test.Factory.Services };
         context.Request.ContentType = form.Headers.ContentType!.ToString();
-        context.Request.Body = new MemoryStream([.. data, .. new byte[70 * 1024]]);
+        context.Request.Body = new MemoryStream([.. data, .. new byte[8 * 1024]]);
         context.Response.Body = new MemoryStream();
         await PdfRestrictEndpoint.HandleAsync(context, test.Factory.Services.GetRequiredService<QpdfProcessor>(),
             test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>());
