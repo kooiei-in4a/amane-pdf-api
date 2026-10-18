@@ -137,7 +137,12 @@ public sealed class PdfSplitFileNameTests
     [TestMethod]
     public async Task MaximumUnicodeNameAnd500Parts_FitExistingZipOverhead()
     {
-        await using var test = new PdfTestContext(new() { ["Pdf:MaxSplitParts"] = "500" });
+        // 本番の5倍の分割数で名前とオーバーヘッドを確認し、CPU 1の並行実行では既定30秒を超え得るため、対象外の時間上限は延ばす。
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:MaxSplitParts"] = "500",
+            ["Pdf:QpdfTimeoutSeconds"] = "120"
+        });
         var baseName = new string('あ', 60);
         using var response = await PdfSplitTests.PostAsync(test, await test.CreatePagedPdfAsync(500),
             fileName: baseName + "追加.pdf");
