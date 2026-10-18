@@ -307,12 +307,20 @@ public sealed class PdfStampImageTests
             try { using var response = await request; }
             catch (Exception exception) when (exception is OperationCanceledException or HttpRequestException or IOException) { }
         }
+        // Stopping must finish cleanup before the client observes the abort, without polling.
+        if (kind == "stopping") test.AssertClean();
         if (stage == "draw")
         {
             foreach (var pid in drawPids)
             {
-                try { using var process = System.Diagnostics.Process.GetProcessById(pid); Assert.IsTrue(process.HasExited); }
-                catch (ArgumentException) { }
+                var wait = System.Diagnostics.Stopwatch.StartNew();
+                while (true)
+                {
+                    try { using var process = System.Diagnostics.Process.GetProcessById(pid); if (process.HasExited) break; }
+                    catch (ArgumentException) { break; }
+                    if (wait.Elapsed.TotalSeconds >= 5) Assert.Fail("Child was not reaped");
+                    await Task.Delay(20);
+                }
             }
         }
         else await blocker.AssertStoppedAsync();

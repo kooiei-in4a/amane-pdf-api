@@ -37,11 +37,6 @@ internal static class PdfEndpointHelpers
                     ? "画像からPDFへの変換が制限時間を超過しました。" : "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
                 return;
             }
-            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
-            {
-                context.Abort();
-                return;
-            }
             await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
         }
         catch (PdfRedactException exception)
@@ -123,6 +118,7 @@ internal static class PdfEndpointHelpers
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested)
         {
+            // The process has exited and temporary files have been removed before aborting.
             context.Abort();
         }
         catch (Exception)
