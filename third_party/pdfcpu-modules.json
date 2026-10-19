@@ -1,6 +1,6 @@
 {
-  "go_version": "go1.27.1",
-  "pdfcpu_version": "v0.16.1",
+  "go_version": "go1.27.2",
+  "pdfcpu_version": "v0.16.2",
   "modules": [
     {
       "path": "github.com/clipperhouse/uax29/v2",
@@ -64,6 +64,16 @@
       "in_linux_binary": true,
       "license_files": [
         "modules/github.com_spf13_pflag/LICENSE"
+      ]
+    },
+    {
+      "path": "github.com/xdg-go/stringprep",
+      "version": "v1.0.4",
+      "sum": "h1:XLI/Ng3O1Atzq0oBs3TWm+5ZVgkq2aqdlvP9JtoZ6c8=",
+      "in_linux_binary": true,
+      "license_files": [
+        "modules/github.com_xdg-go_stringprep/LICENSE",
+        "modules/github.com_xdg-go_stringprep/README.md"
       ]
     },
     {

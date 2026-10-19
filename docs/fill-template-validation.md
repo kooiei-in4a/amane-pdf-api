@@ -1,5 +1,7 @@
 # PDFテンプレート差し込み 検証記録
 
+現行の固定版はpdfcpu 0.16.2。更新時の比較とToUnicodeの判断材料は末尾の「0.16.2 への更新の検証（Issue #82）」に追記し、#77/#78の測定は当時の版のまま保持する。
+
 ## 文字表（Issue #77）
 
 2026-10-19に、main `f0c1c93` を起点とする実装commit `40e3848` で検証した。対象は固定フォント文字表のみ。API本体、文字列の規則、配置計算、ToUnicodeの作り直しは #78、サイトへの取り込みはサイト #125 で扱う。
@@ -196,3 +198,66 @@ ToUnicodeの作り直しの途中でjob容量・metadata等の上限を超えた
 新規venvへの全19ライブラリの--require-hashes導入、pip check、改変したSHA-256が拒否されることを確認した。PIL・NumPy・MuPDF・pyHanko・cryptography・asn1cryptoが隔離venv内から読み込まれ、system-site-packagesを参照しないことも確認した。
 
 ホストqpdfには既存CIのPrepare host qpdfと同じ専用コピーを使用した。Dockerは製品imageのqpdfを使用した。結果記録を含むPR最終headのCI全jobと所要時間は[PR #81](https://github.com/kooiei-in4a/amane-pdf-api/pull/81)に記録する。
+
+
+## 0.16.2 への更新の検証（Issue #82）
+
+2026-10-19 JST、比較元`87acad7`。旧版の#77/#78測定と [fill-template-capacity.json](fill-template-capacity.json) は保持し、新しい実測は [pdfcpu-0.16.2-results.json](pdfcpu-0.16.2-results.json) へ分けた。取得物・module差分・挙動の比較表・全CIコマンド・実時間は [pdfcpu-validation.md](pdfcpu-validation.md) に記録する。
+
+### 文字・配置とToUnicode
+
+両版とも全11,425字の欠落・GID・送り幅不一致は0、BMP全域と透かし表の照合もPASS。生成表は変更不要。`%p/%P/%t/%v`、U+005C＋n、単独%の消失と連続%の書換え、未収録字形の欠落も版の置換値以外は同じ。baselineは上端−1802/2048 s、pdfcpu座標はbaseline−ceil(246/2048 s)、送り幅はhmtx×1000/2048切捨てのまま。
+
+| font size | 負pos.yの値 | 直接指定のbaseline（両版） | pos.y=0＋負dyのbaseline（両版） |
+| --- | ---: | ---: | ---: |
+| 6 | -0.279296875 | 501.00000 | 0.72070 |
+| 6.1 | -0.267285156 | 501.00000 | 0.73271 |
+| 12 | -0.558593750 | 502.00000 | 1.44141 |
+| 72 | -0.351562500 | 509.00000 | 8.64844 |
+
+600×1000 ptページで独立にcontent streamを検査した結果。12 ptの期待値は246/2048×12＝1.44140625 ptで、回避ありの誤差は0.00002 pt未満。既存の66 baseline・下端全3揃え・最小ページ・Poppler描画の検証もPASSし、§6.3の変更は不要。
+
+0.16.2の回避なしだけで、338種・4ページ（結合文字、%、U+005C、①㈱￥※〒を含む）の全文字をMuPDFとPopplerの双方で正しく抽出できた。99/100/101/200字形の境界でも正しいbfchar分割と抽出。元CMapの差し替え後もType0=1、100件以下のブロック、対応表・抽出・描画の一致を確認した。旧版・新版の回避ありのCMap対応表と全ページの描画pixelもhash一致。APIの回避処理は保持し、本番コードへ実験スイッチは追加していない。
+
+再現はCIと同じハッシュ固定venvで実行する。
+
+```bash
+python3 -m venv /tmp/amane-fill-template-validation
+/tmp/amane-fill-template-validation/bin/pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
+/tmp/amane-fill-template-validation/bin/python scripts/fill-template-validation.py amane-pdf-api:ci --results /tmp/fill-template-0.16.2.json
+/tmp/amane-fill-template-validation/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:ci --results /tmp/pdfcpu-0.16.2.json
+# 87acad7から作った比較元imageにも同じ更新検証を実行できる。
+/tmp/amane-fill-template-validation/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:issue-82-baseline --expected-version 0.16.1 --results /tmp/pdfcpu-0.16.1.json
+```
+
+### 最大負荷での回避処理の時間と予約率
+
+50 MiB入力、200項目×5行＝1,000要素、全11,425字形、全72 pt、1ページ100要素×10ページ、範囲1〜1000ページ、fields 55,555 bytes。条件とfixtureは#78と同じ。30秒・同時2件・job 124 MiB・AS 1 GiB・GOMEMLIMIT 200 MiBを維持した。
+
+| 0.16.2 Builder | 処理全体 秒 | ToUnicode全体 秒 | 処理時間に占める割合 | job予約ピーク bytes | 124 MiBに対する予約率 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1件同時・job 1 | 1.763 | 0.158 | 8.98% | 120,578,048 | 92.74% |
+| 2件同時・job 1 | 3.665 | 0.216 | 5.88% | 120,578,048 | 92.74% |
+| 2件同時・job 2 | 3.640 | 0.144 | 3.95% | 120,578,048 | 92.74% |
+
+ToUnicode時間は、既存observeの「白紙作成後〜レイヤーmetadata読取終了」から測定したdraw delegate時間を引き、CMap作成・更新JSON・qpdf更新・ファイル差し替え/削除までを加えた値。追加metadata取得を含み、既存の`to-unicode` stage単独の値より範囲が広い。計測コードはテストのみ。
+
+HTTP最大負荷は0.16.1で2.853秒、0.16.2で2.857秒。0.16.2の出力は3,541,852 bytes・1000ページ、標本jobピーク58,957,824 bytes、HTTP cgroup memory.peak 204,812,288 bytes、Builder測定ランナー込み401,743,872 bytes。OOM/oom_kill 0、残存job・子process 0、health正常。標本値は50 ms間隔とDocker execの時間を含み、厳密な瞬間最大値ではない。
+
+予約率は回避処理を含むjob全体の容量台帳ピーク / 124 MiB。ToUnicode専用の予約上限は追加metadata 40 MiB、更新JSON 8 MiB、修正PDF 8 MiB（外部書込みはsentinelと4 KiB切上げを含む）で、これらは順に予約・確定・削除される。予約上限の単純な合算はしない。**回避を外した場合のjobピークや時間短縮量は未測定**で、40 MiB分だけ全体ピークが減るとは判断しない。
+
+### 判断案と、別依頼で外す場合の影響範囲
+
+**案：本PRでは保持し、Humanの判断後に別依頼で外す。** 本家のみで両extractor・境界・複数ページの条件を満たし、APIの再作成による抽出/描画上の追加効果は確認されなかった。外すことで独自CMap生成、出力構造への依存、追加qpdf起動と容量予約を減らせる。現在の回避ありでも時間・容量の上限内なので、本PRで削除を急ぐ必要はない。
+
+| 影響範囲 | 別依頼で必要な作業 |
+| --- | --- |
+| コード | PdfOverlayBuilderのToUnicode作り直し区間・専用中間物・fillTemplate引数の用途を整理し、FillTemplateUnicodeを削除。フォーム検出と入力fieldsの用途は保持 |
+| 容量 | 追加metadata・更新JSON・修正PDFの予約と削除を除き、OverlayCapacityの既存上限を維持して最大負荷・同時2件を再測定。全体ピークの変化を記録 |
+| テスト | FillTemplateFieldsTestsのCMap生成、FillTemplateStructureTestsの参照/Type0検査、PdfFillTemplateTestsのUnicode専用500/cancel/timeout、FillTemplateCapacityTestsの計測を整理。抽出・字形・配置・cleanupとType0/100件境界の外部regressionは維持 |
+| 検証script / CI | fill-template-validation.py、pdfcpu-update-validation.pyの回避あり/なしの比較と計測条件を見直す |
+| 設計 | fill-template-design.md §6.6・§8（および§3・§5.3の文字対応表修正/失敗条件）、必要なら共通設計の処理表を更新 |
+| README / security | APIがCMapを作り直す説明、中間物と500の扱いを更新 |
+| 検証記録 | fill-template-validation.md・pdfcpu-validation.mdへ削除後の実測を追記。今回と既存の測定JSONは当時の記録として残す |
+
+ほかに設計から外れる変更はない。フォント、文字規則、%の書換え、負座標の回避、フォーム検出、時間・容量・同時実行の制限は維持する。回避処理の削除を本PRの完了条件には含めない。

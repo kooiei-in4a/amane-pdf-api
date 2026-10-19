@@ -138,6 +138,7 @@ jobs:
           /usr/bin/python3 -m venv "$RUNNER_TEMP/fill-template-venv"
           "$RUNNER_TEMP/fill-template-venv/bin/pip" install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-validation.py amane-pdf-api:ci
+          "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/pdfcpu-update-validation.py amane-pdf-api:ci
 
       - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
         run: /usr/bin/python3 scripts/from-images-validation.py amane-pdf-api:ci

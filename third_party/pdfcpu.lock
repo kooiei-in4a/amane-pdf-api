@@ -1,13 +1,13 @@
 {
-  "version": "0.16.1",
+  "version": "0.16.2",
   "platform": "linux-amd64",
-  "go_version": "go1.27.1",
+  "go_version": "go1.27.2",
   "artifacts": [
     {
-      "name": "pdfcpu_0.16.1_Linux_x86_64.tar.xz",
-      "url": "https://github.com/pdfcpu/pdfcpu/releases/download/v0.16.1/pdfcpu_0.16.1_Linux_x86_64.tar.xz",
-      "sha256": "757e57036e1da56b789d0243ba72b09be4f26b3ec88e781170896ac36ae04d51",
-      "member": "pdfcpu_0.16.1_Linux_x86_64/pdfcpu"
+      "name": "pdfcpu_0.16.2_Linux_x86_64.tar.xz",
+      "url": "https://github.com/pdfcpu/pdfcpu/releases/download/v0.16.2/pdfcpu_0.16.2_Linux_x86_64.tar.xz",
+      "sha256": "d86bfdbbb4ed1d50ba5bafc923b42813154a64dada33595f9c136261cd108632",
+      "member": "pdfcpu_0.16.2_Linux_x86_64/pdfcpu"
     },
     {
       "name": "BIZUDGothic.zip",

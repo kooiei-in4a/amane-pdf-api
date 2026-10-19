@@ -184,7 +184,7 @@ qpdfのファイル書込みは共通のSIGXFSZ無視・CORE=0・AS・JPEGMEMに
 
 ## pdfcpuとoverlay描画基盤（Linux、#25）
 
-pdfcpu 0.16.1とBIZ UDPゴシックv1.051を公式Releaseから取得し、repositoryのlockにあるURL・SHA-256へ固定します。archiveから固定したmemberだけを取り出し、TTFとOFL、収録licenseもchecksumで検査します。取得・font installはbuild時に限定します。binaryは0555、設定とfont cacheは0444、dirは0555とし、final imageではrootが所有します。RobotoとGo依存物・runtimeのlicenseもimageへ残します。
+pdfcpu 0.16.2とBIZ UDPゴシックv1.051を公式Releaseから取得し、repositoryのlockにあるURL・SHA-256へ固定します。archiveから固定したmemberだけを取り出し、TTFとOFL、収録licenseもchecksumで検査します。取得・font installはbuild時に限定します。binaryは0555、設定とfont cacheは0444、dirは0555とし、final imageではrootが所有します。RobotoとGo依存物・runtimeのlicenseもimageへ残します。
 
 Linuxではpdfcpuの起動検証を必須にします。qpdf/JPEGと同じ起動tokenで、固定30秒以内にversion・日本語font・固定白紙への日本語描画・未暗号化・qpdf check・ページ数を確認します。不具合時はhealthを含む全APIの待受前に終了し、pdfcpu専用の固定メッセージだけで原因を通知します。tool出力・内部path・inner exceptionはログへ出しません。自己テストのjobも成功・失敗とも削除します。非Linuxではこの追加検証を行いません。
 
@@ -216,7 +216,7 @@ uploadとepilogueの完了後、外部toolの前にstrict UTF-8/BOM拒否・深�
 
 入力metadataの既存DOM内でtrailerのRootからCatalogを解決し、AcroForm（空を含む）/Permsと、全オブジェクトの直接辞書・配列・stream辞書内のWidget/Sig/DocTimeStampを再帰走査します。PDF名の#xxを解釈し、object streamの展開は既存qpdf JSON取得に任せます。追加の入力qpdf起動はなく、32 MiB・50,000 object・深さ64内に制限します。フォーム検出（422 form-fields）がページ番号超過（400）に先行します。既存overlay APIにはこの検出を適用しません。全署名構造の網羅的検出は保証しません。
 
-配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。レイヤー生成直後に、そのレイヤーの新しいqpdf JSONからType0フォントが1個であることとToUnicode参照を読み、全描画GID→元文字のCMap（100件ごとのbfchar）へ差し替えます。失敗は500、キャンセルは共通方式です。metadata、更新JSON、差し替えPDFもOverlayCapacityの書込み前予約・実サイズ確定・削除とfinallyの中間物削除に含めます。
+配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。レイヤー生成直後に、そのレイヤーの新しいqpdf JSONからType0フォントが1個であることとToUnicode参照を読み、全描画GID→元文字のCMap（100件ごとのbfchar）へ差し替えます。0.16.2への更新後も#82ではこの回避処理を保持し、削除はHumanの判断後に別の依頼で行います。失敗は500、キャンセルは共通方式です。metadata、更新JSON、差し替えPDFもOverlayCapacityの書込み前予約・実サイズ確定・削除とfinallyの中間物削除に含めます。
 
 フォーム・署名と暗号化PDFは非対応、注釈は前面に残ります。メタデータ・添付・JavaScript等を無害化せず、PDF/A適合性・真正性も保証しません。共有30秒・同時2件、job 124 MiB、子processのAS/FSIZE制限と終了待ちを維持します。[検証記録](fill-template-validation.md)では実署名・ローカルTSAの鍵を一時生成し、終了時に削除します。pyHankoとMuPDFは固定versionのCI専用依存で、本番imageへ追加しません。
 
