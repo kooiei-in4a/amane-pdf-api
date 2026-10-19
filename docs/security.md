@@ -194,7 +194,7 @@ Linuxのページ番号APIは、数値と固定の列挙値だけを受け付け
 
 pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無視、prlimitのCORE=0・AS 1 GiB・FSIZE（PDF予算+1）で起動します。ASは仮想アドレス空間の上限で、コンテナの物理メモリ上限とは別です。GOMEMLIMIT=200MiBはsoft limitで、超過しても強制停止する上限ではなく、RSSの上限保証でもありません。取込・overlayとも共通AS 1 GiBを維持します。固定Go runtimeではASと成功率が単調でないため（[AS別の反復検証](from-images-as-validation.md)）、pdfcpu更新時はAS 1 GiBで境界入力を再検証します。HOME/XDG_CONFIG_HOMEはjob内、GOGC=100・GODEBUG空・GOMAXPROCS=1・GOTRACEBACK=noneへ上書きします。`-c` とofflineを常に指定し、親の設定dir指定に依存しません。version/font stdoutの保持は4 KiB/64 KiBまで、通常stdout/stderrは破棄します。
 
-文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、対象1,000ページまでです。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16・`%`は生成前に拒否します。font size 1〜14,400 pt、有限の座標/offset ±14,400 pt、文字回転 ±360度、色は#RRGGBB、配置は許可した9 anchorまたは座標に限定します。ページ寸法はAPIのcanvasから渡し、JSONのcropで描画計算へ反映します。利用者のBox文字列は透過させません。
+文字系modelの既定値は1要素128 UTF-16単位、1ページ4要素、合計4,000要素、対象1,000ページまでです。差し込みだけ呼び出し元で1要素200 UTF-16単位・1ページ100要素へ変更します。既存APIの値は維持します。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16は生成前に拒否します。`%`の連続n個をn+1個へ書き換え、元の文字数で上限を検査し、書き換え後のJSON全体にbytes予算を適用します。既存APIは入力時に`%`を拒否するか固定のページ番号を生成します。font size 1〜14,400 pt、有限の座標/offset ±14,400 pt、文字回転 ±360度、色は#RRGGBB、配置は許可した9 anchorまたは座標に限定します。ページ寸法はAPIのcanvasから渡し、JSONのcropで描画計算へ反映します。利用者のBox文字列は透過させません。
 
 入力PDF 50 MiB、入力metadata 32 MiB/50,000 object、合成後/最終metadata 40 MiB/75,000 object、JSON深さ64、参照/Parent連鎖32を上限とします。循環・深さ・各容量の超過はoverlay専用422 too-complex、対応範囲外のBox/Rotate/UserUnit/物理寸法はunsupported-pdfです。壊れたtool JSON、無効な生成PDF、出力不在・空・exit 3を含む非0終了は固定500です。126/127を容量超過として扱いません。pdfcpuが部分出力を削除したexit 1も、stderrだけで容量超過と推測しません。
 
@@ -207,6 +207,18 @@ CropBox外の本文はForm BBoxで表示されなくなり、後でCropBoxを広
 透かしAPIは `file` と `text` 各1件だけを受け付けます。text fieldは121 byteの固定バッファで読み、121 byte目で400にします。upload・MIME epilogueの読み取り後、tool起動前にstrict UTF-8、1〜30 text element、許可Rune範囲と固定TTFから生成した字形表を検査します。ASCII `%`・`\`、未収録文字、空白だけの入力を拒否し、trim・正規化はしません。字幅はRune単位で数え、結合濁点にも幅を割り当てます。利用者の文字列は0600のlayer JSONにだけ入り、argv・ログ・Problem Detailsへ出しません。`-`・`,`・引用符もJSON文字列として渡します。
 
 透過はAPIが固定値0.25から生成する白紙のExtGStateで設定します。白紙には利用者の文字を入れず、pdfcpuが追記するContents streamをページごとに独立させます。共有streamによる他ページの文字混入を回帰テストで検査します。透過指定がない既存の描画では白紙の生成形式を維持します。全ページの対象範囲は既に取得したmetadataから決め、入力検査を二重にしません。容量・共有30秒・同時2枠・キャンセル時のprocess tree終了待ち・job削除は共通overlay処理を使います。[透かし検証記録](watermark-validation.md)に実測と文字抽出・viewer上の制約を記載します。
+
+## PDFテンプレート差し込み（Linux、#78）
+
+`file`（filenameあり）と`fields`（filenameなし）だけを各1件受け付け、query・未知・重複・欠落は400です。fieldsは64 KiB+1 byteの固定バッファで読み、超過は413にします。透かし・黒塗りの文字part超過は従来の400を維持します。専用request上限はMaxFileBytes + 64 KiB + multipart余白64 KiBで、既存request上限は変えません。
+
+uploadとepilogueの完了後、外部toolの前にstrict UTF-8/BOM拒否・深さ3・8 key・数値の字句・座標・件数・文字数・行数・ページ行数を検査します。許可文字は固定TTFの字形表とLFのみで、空白だけ、CR、置換される`%p`/`%P`/`%t`/`%v`、バックスラッシュ直後の`n`を拒否します。trim・正規化はしません。文字列は0600のJSONにだけ渡し、argv、ログ、Problem Detailsに出しません。
+
+入力metadataの既存DOM内でtrailerのRootからCatalogを解決し、AcroForm（空を含む）/Permsと、全オブジェクトの直接辞書・配列・stream辞書内のWidget/Sig/DocTimeStampを再帰走査します。PDF名の#xxを解釈し、object streamの展開は既存qpdf JSON取得に任せます。追加の入力qpdf起動はなく、32 MiB・50,000 object・深さ64内に制限します。フォーム検出（422 form-fields）がページ番号超過（400）に先行します。既存overlay APIにはこの検出を適用しません。全署名構造の網羅的検出は保証しません。
+
+配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。レイヤー生成直後に、そのレイヤーの新しいqpdf JSONからType0フォントが1個であることとToUnicode参照を読み、全描画GID→元文字のCMap（100件ごとのbfchar）へ差し替えます。失敗は500、キャンセルは共通方式です。metadata、更新JSON、差し替えPDFもOverlayCapacityの書込み前予約・実サイズ確定・削除とfinallyの中間物削除に含めます。
+
+フォーム・署名と暗号化PDFは非対応、注釈は前面に残ります。メタデータ・添付・JavaScript等を無害化せず、PDF/A適合性・真正性も保証しません。共有30秒・同時2件、job 124 MiB、子processのAS/FSIZE制限と終了待ちを維持します。[検証記録](fill-template-validation.md)では実署名・ローカルTSAの鍵を一時生成し、終了時に削除します。pyHankoとMuPDFは固定versionのCI専用依存で、本番imageへ追加しません。
 
 ## 電子印鑑（PNG画像の押印、Linux）
 

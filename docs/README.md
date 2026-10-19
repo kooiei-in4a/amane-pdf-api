@@ -20,7 +20,7 @@
 | --- | --- |
 | [clean-validation.md](clean-validation.md) | PDF情報除去APIの構造・容量検証 |
 | [compress-validation.md](compress-validation.md) | JPEG画像圧縮の画質・構造・容量検証 |
-| [fill-template-validation.md](fill-template-validation.md) | PDFテンプレート差し込み用の固定フォント文字表の生成・描画・送り幅検証 |
+| [fill-template-validation.md](fill-template-validation.md) | PDFテンプレート差し込みAPIのHTTP・配置・抽出・実署名・容量検証、および固定フォント文字表 |
 | [from-images-validation.md](from-images-validation.md) | 画像からPDFを作るAPIの初期検証と運用への引き継ぎ |
 | [from-images-followup-validation.md](from-images-followup-validation.md) | PNG見積りと画像処理の追加容量検証 |
 | [from-images-as-validation.md](from-images-as-validation.md) | PNG取込時の仮想アドレス空間と同時処理の判断・検証 |

@@ -17,6 +17,7 @@ PDFや画像を、入力検証と容量・時間の制限のもとで処理す�
 - Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
+- Linuxの `POST /api/pdf/fill-template` による既存PDFへの固定レイアウト文字差し込み
 - Linuxの `POST /api/pdf/watermark` による全ページへの透かし文字
 - Linuxの `POST /api/pdf/redact` による指定範囲の画像化方式の黒塗り
 - Linuxの `POST /api/pdf/stamp-image` による指定ページ・表示位置への透過PNG押印
@@ -409,6 +410,39 @@ diagonalは字幅と回転後の外接矩形に加え、pdfcpuが回転前の枠
 
 透かしはPDF編集ソフトで消せるため、情報保護の手段には使えません。透かしの文字は抽出・検索・コピーの対象になります。PDF/A-1にdiagonalの透過を加えると、出力はPDF/A-1に適合しなくなります。検証方法と制約は[透かし検証記録](docs/watermark-validation.md)を参照してください。
 
+### PDFテンプレート差し込み（Linux）
+
+`POST /api/pdf/fill-template` に、PDFの `file`（filenameあり）とUTF-8 JSONの `fields`（filenameなし）を各1件送ります。partの順序は自由で、未知・重複・欠落のpart、queryは400です。成功時は `application/pdf`、固定名 `filled.pdf` を返します。
+
+```bash
+curl --fail-with-body http://localhost:8080/api/pdf/fill-template \
+  -F 'file=@template.pdf;type=application/pdf' \
+  -F 'fields=[{"page":1,"x":0.15,"y":0.2,"width":0.6,"height":0.04,"fontSize":12,"align":"left","text":"株式会社サンプル"}]' \
+  --output filled.pdf
+```
+
+各項目は `page`・`x`・`y`・`width`・`height`・`fontSize`・`align`・`text` の8 keyちょうどです。`page` は1始まりの整数、座標は表示上のページ左上を原点とする0〜1（小数点以下4桁まで）で、幅・高さは正、矩形全体がページ内にある必要があります。`fontSize` は6〜72 pt（小数点以下1桁まで）、`align` は `left` / `center` / `right` です。数値の符号・指数・文字列は受け付けません。strict UTF-8、BOMなし、未知・重複keyを拒否します。
+
+| 上限 | 値 | 超過時 |
+| --- | --- | --- |
+| PDF | 50 MiB | 413 |
+| fields | 64 KiB | 413 |
+| request全体 | MaxFileBytes + 64 KiB + multipart余白64 KiB（MaxFillTemplateRequestBytes） | 413 |
+| 項目数 | 200 | 400 |
+| 1項目の文字数・行数 | 200 UTF-16単位、5行（空行を含む） | 400 |
+| 1ページの描画要素数 | 100行（空行を含む） | 400 |
+| 最小〜最大の指定ページの範囲 | 1,000ページ | 422 `too-complex` |
+
+使える文字は固定フォント（BIZ UDPゴシック）の[差し込み文字表](src/Amane.Pdf.Api/FillTemplateGlyphs.g.cs)とLFだけです。空文字・空白だけ（U+0020 / U+00A0 / U+3000 とLF）は400です。CR・tab・補助平面文字（𠮷・多くの絵文字）・異体字セレクタ・未収録文字、`%p` `%P` `%t` `%v`、バックスラッシュ直後の `n` は使えません。ほかの `%` は末尾・連続・数字の前も元のまま描画・抽出されます。trim・Unicode正規化はしません。結合濁点（NFD）は独立した全角幅の濁点、U+005Cは円記号ではなくバックスラッシュとして表示されます。
+
+文字が矩形に収まらなければ422 `field-overflow`です。自動縮小・自動折り返しはなく、明示したLFだけで改行します。左右余白は各0.05文字分、行間は1.2文字分、縦位置は中央に固定します。項目同士の重なりは許します。失敗した項目番号は返しません。サイト側で送信前に検査してください。ページ番号がPDFのページ数を超えると400です。
+
+フォーム・署名関連の構造（AcroForm、入力欄、XFA、署名、文書タイムスタンプ、`/Perms`）を含むPDFは422 `form-fields`で拒否します。あらゆる署名構造の検出は保証しません。暗号化PDFは非対応、注釈は差し込み文字より前面に表示されます。PDFの無害化・匿名化は行わず、メタデータ・添付・JavaScriptなどは残ります。PDF/A適合性、電子署名・真正性は保証しません。
+
+フォントは1種、黒、横書き、回転なしです。明細行の追加・自動改ページ、画像・印影の差し込み、AcroForm/XFAへの入力、PDF内の文字置換、テンプレートの保存は扱いません。処理全体30秒・共有同時2件の枠を使います。対応外のページ属性は422 `unsupported-pdf`、描画・ToUnicode修正・生成物検査の失敗は500、503・504は共通契約です。
+
+文字抽出用ToUnicodeはレイヤーごとに作り直します。pdfcpu・フォントを更新するときは字幅・ベースライン・文字抽出を再検証してください。[設計書](docs/fill-template-design.md)と[検証記録](docs/fill-template-validation.md)に詳細を記載しています。
+
 ### PDF電子印鑑（Linux）
 
 ```text
@@ -776,6 +810,9 @@ python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
 python3 scripts/overlay-validation.py amane-pdf-api:ci --render
 python3 scripts/page-numbers-validation.py amane-pdf-api:ci
 python3 scripts/watermark-validation.py amane-pdf-api:ci
+python3 -m venv /tmp/amane-fill-template-validation
+/tmp/amane-fill-template-validation/bin/pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
+/tmp/amane-fill-template-validation/bin/python scripts/fill-template-validation.py amane-pdf-api:ci
 python3 scripts/redact-validation.py amane-pdf-api:ci
 ```
 

@@ -49,9 +49,11 @@ public static class MultipartPdfUpload
     }
 
     internal static async Task<byte[]> ReadFileAndTextAsync(HttpRequest request, TemporaryPdfFiles files,
-        string fieldName, int maxTextBytes, long maxFileBytes, long maxRequestBytes, CancellationToken token)
+        string fieldName, int maxTextBytes, long maxFileBytes, long maxRequestBytes, CancellationToken token,
+        int textTooLargeStatus = StatusCodes.Status400BadRequest)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTextBytes);
+        if (textTooLargeStatus is not (400 or 413)) throw new ArgumentOutOfRangeException(nameof(textTooLargeStatus));
         var boundary = ReadBoundary(request);
         using var body = new SizeLimitedReadStream(request.Body, maxRequestBytes);
         var reader = new MultipartReader(boundary, body);
@@ -77,7 +79,7 @@ public static class MultipartPdfUpload
                 while ((read = await ReadBodyAsync(section.Body, bytes.AsMemory(length), token)) != 0)
                 {
                     length += read;
-                    if (length > maxTextBytes) throw new BadHttpRequestException("Invalid text length.");
+                    if (length > maxTextBytes) throw new BadHttpRequestException("Invalid text length.", textTooLargeStatus);
                 }
                 text = bytes[..length];
             }
