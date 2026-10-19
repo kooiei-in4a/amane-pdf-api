@@ -108,7 +108,7 @@ fields  UTF-8 JSON（filenameなし、1件）
 | 422 | `too-complex` | 処理上限の超過 |
 | 422 | `unsupported-pdf` | 対応外のページ属性（既存と同じ） |
 | 422 | なし | 破損・警告・暗号化PDF（既存と同じ） |
-| 500 | — | 描画・文字対応表の修正・出力検証の失敗 |
+| 500 | — | 描画・文字対応表の修正・出力検証の失敗。ToUnicode作り直し途中のjob容量・metadata等の上限超過も含む |
 | 503 / 504 | — | 処理枠不足 / 30秒超過（既存と同じ） |
 
 `field-overflow` では失敗した項目番号を返さず、固定文言とreasonだけを返す（#78実装時に確定）。サイトが送信前に項目ごとの検査を行う。
@@ -165,7 +165,7 @@ pdfcpuの折り返し・揃え・`width` 機能は使わない（重なり・押
 4. レイヤー生成と修正を次の順で行う：
    1. pdfcpu `create` でレイヤーPDFを作る。
    2. `draw` が戻った後、Builderが容量予約・確定・削除を管理し、**レイヤーPDFの文字対応表（ToUnicode）を作り直す**：レイヤーのqpdf JSONからType0フォントの `/ToUnicode` のオブジェクト番号を**毎回読み取り**（フォントがちょうど1つでなければ500）、描いた文字の字形番号と文字コードの対応を全件書いたCMap（100件ごとにブロック分割）で `--update-from-json` により差し替える。JSONは使い回さない。
-   3. レイヤーmetadata JSON・更新JSON・修正PDFもOverlayCapacityとfinallyのintermediatesに含める。修正の失敗は500、キャンセルは共通処理でprocess終了を待つ。
+   3. レイヤーmetadata JSON・更新JSON・修正PDFもOverlayCapacityとfinallyのintermediatesに含める。修正の失敗は500とし、ToUnicode作り直し途中のjob容量・metadata等の上限超過も422 too-complexではなく500になる。最大負荷での予約ピークと124 MiB上限の比較は検証記録に記載する。キャンセルは共通処理でprocess終了を待つ。
 5. 既存の生成物検査、重ね合わせ、属性復元、出力検査を行う。
 6. 成功・失敗・キャンセルのいずれでも一時ファイルを削除する（既存）。
 

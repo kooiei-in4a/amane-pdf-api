@@ -108,14 +108,16 @@ CIではfontToolsと `--check` を使わず、build-test jobの単体テスト�
 
 ### 再現手順
 
-Release build / testの後、次を実行する。Poppler、Pillow、NumPyはホスト側の検証専用。MuPDFはPyMuPDF 1.26.3、署名生成はpyHanko 0.29.1へ固定し、本番imageには含めない。署名とローカルTSAの鍵・証明書は実行時の一時ディレクトリに生成し、秘密鍵は0600、成功・失敗ともディレクトリごと削除する。
+Release build / testの後、次を実行する。Popplerはホストの外部コマンドとして使用する。Python検証ライブラリはPillow・NumPyを含め、全間接依存のversionとSHA-256をlockへ固定する。system-site-packagesを使わない新規venvへ--require-hashesと--only-binary=:all:で導入し、未固定のビルド依存も取得しない。MuPDFはPyMuPDF 1.26.3、署名生成はpyHanko 0.29.1を維持し、本番imageには含めない。署名とローカルTSAの鍵・証明書は実行時の一時ディレクトリに生成し、秘密鍵は0600、成功・失敗ともディレクトリごと削除する。
 
 ```bash
 docker build -t amane-pdf-api:ci .
-python3 -m venv --system-site-packages /tmp/amane-fill-template-validation
-/tmp/amane-fill-template-validation/bin/pip install -r scripts/fill-template-validation-requirements.txt
+python3 -m venv /tmp/amane-fill-template-validation
+/tmp/amane-fill-template-validation/bin/pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
 /tmp/amane-fill-template-validation/bin/python scripts/fill-template-validation.py amane-pdf-api:ci --results /tmp/fill-template-capacity.json
 ```
+
+lockはLinux x86_64 / Python 3.14を対象とし、直接依存を`.in`、全依存とハッシュを`.txt`に記録する。固定版pip-toolsでの再生成手順はlock先頭に記載した。venvのpipとPython自体、Poppler/qpdf、Docker、.NET、ほかの検証スクリプトが使うホストのPIL/NumPyはこのPython lockの対象外。差し込み検証ではホストのPIL/NumPyを参照せず、lock内の版を使う。
 
 スクリプトはHTTP検証に加え、既存overlay検証と同じ方式でReleaseのtest assemblyとSDK runnerをread-only mountする。`FILL_TEMPLATE_CAPACITY_INPUT` / `FILL_TEMPLATE_CAPACITY_FIELDS` を指定したときだけ重いBuilder試験が動くため、既定の`dotnet test`で上限規模の試験を増やさない。
 

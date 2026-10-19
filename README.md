@@ -810,8 +810,8 @@ python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
 python3 scripts/overlay-validation.py amane-pdf-api:ci --render
 python3 scripts/page-numbers-validation.py amane-pdf-api:ci
 python3 scripts/watermark-validation.py amane-pdf-api:ci
-python3 -m venv --system-site-packages /tmp/amane-fill-template-validation
-/tmp/amane-fill-template-validation/bin/pip install -r scripts/fill-template-validation-requirements.txt
+python3 -m venv /tmp/amane-fill-template-validation
+/tmp/amane-fill-template-validation/bin/pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
 /tmp/amane-fill-template-validation/bin/python scripts/fill-template-validation.py amane-pdf-api:ci
 python3 scripts/redact-validation.py amane-pdf-api:ci
 ```

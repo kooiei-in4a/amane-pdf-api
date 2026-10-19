@@ -135,8 +135,8 @@ jobs:
 
       - name: Verify fill template geometry, extraction, signatures and capacity (CI tools only)
         run: |
-          /usr/bin/python3 -m venv --system-site-packages "$RUNNER_TEMP/fill-template-venv"
-          "$RUNNER_TEMP/fill-template-venv/bin/pip" install -r scripts/fill-template-validation-requirements.txt
+          /usr/bin/python3 -m venv "$RUNNER_TEMP/fill-template-venv"
+          "$RUNNER_TEMP/fill-template-venv/bin/pip" install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-validation.py amane-pdf-api:ci
 
       - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
