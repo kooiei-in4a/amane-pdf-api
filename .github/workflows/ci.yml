@@ -90,7 +90,7 @@ jobs:
           persist-credentials: false
 
       - name: Install PDF and CI-only rendering tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf poppler-utils python3-pil python3-numpy
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf poppler-utils python3-pil python3-numpy python3-venv
 
       - name: Verify capacity measurement driver
         run: /usr/bin/python3 scripts/from-images-followup-test.py
@@ -132,6 +132,12 @@ jobs:
 
       - name: Verify fill template glyph IDs, advances and complete BMP coverage (CI tools only)
         run: /usr/bin/python3 scripts/fill-template-glyphs-validation.py amane-pdf-api:ci
+
+      - name: Verify fill template geometry, extraction, signatures and capacity (CI tools only)
+        run: |
+          /usr/bin/python3 -m venv --system-site-packages "$RUNNER_TEMP/fill-template-venv"
+          "$RUNNER_TEMP/fill-template-venv/bin/pip" install -r scripts/fill-template-validation-requirements.txt
+          "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-validation.py amane-pdf-api:ci
 
       - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
         run: /usr/bin/python3 scripts/from-images-validation.py amane-pdf-api:ci

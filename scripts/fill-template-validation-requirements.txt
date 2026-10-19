@@ -1,0 +1,3 @@
+# CI専用。runtime imageには追加しない。
+pyHanko==0.29.1
+PyMuPDF==1.26.3
