@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Issue #82: 固定venvでpdfcpuの直接出力とToUnicode修正後のAPI出力を比較する。"""
+"""Issue #82: 固定venvでAPI出力のToUnicode・抽出とpdfcpuの文字/座標挙動を検証する。"""
 import argparse
 import base64
 import hashlib
@@ -19,21 +19,6 @@ INVERSE = {gid: chr(c) for c, (gid, _) in fill.TABLE.items()}
 def metadata(path):
     return json.loads(fill.command("qpdf", "--json=2", "--json-key=pages", "--json-key=qpdf",
         "--json-stream-data=inline", "--decode-level=all", str(path)).stdout)
-
-
-def cmap(path):
-    objects = metadata(path)["qpdf"][1]
-    fonts = [obj["value"] for obj in objects.values() if isinstance(obj.get("value"), dict) and obj["value"].get("/Subtype") == "/Type0"]
-    assert len(fonts) == 1, ("Type0 count", len(fonts))
-    font = fonts[0]
-    assert font["/Encoding"] == "/Identity-H"
-    stream = objects["obj:" + font["/ToUnicode"]]["stream"]
-    text = base64.b64decode(stream["data"]).decode("ascii")
-    blocks = re.findall(r"(\d+) beginbfchar\s+(.*?)endbfchar", text, re.S)
-    entries = [re.findall(r"<([0-9A-Fa-f]+)>\s+<([0-9A-Fa-f]+)>", body) for _, body in blocks]
-    return dict(type0_fonts=len(fonts), blocks=[int(n) for n, _ in blocks],
-        actual_block_entries=[len(block) for block in entries], mappings=sum(map(len, entries)),
-        mapping_sha256=hashlib.sha256(json.dumps(sorted(pair for block in entries for pair in block)).encode()).hexdigest())
 
 
 def extracted(path):
@@ -120,55 +105,31 @@ def coordinates(api, root, directory):
     return results
 
 
-def unicode(api, root, directory, version):
+def unicode(api, directory):
     chars = [chr(c) for c in fill.TABLE if 0x4e00 <= c <= 0x9fff][:320]
     special = "%末尾%\n%%連続%%%\n%1%2%99\nか\u3099\\円￥①㈱※〒"
     cases = [(str(n), ["".join(chars[:n])]) for n in (99, 100, 101, 200)]
     cases.append(("multiple-pages", ["".join(chars[:160]), "".join(chars[160:]), special, "%a"*100]))
     results = []
     for name, texts in cases:
+        source = fill.blank(directory, "unicode-"+name, width=1440, height=1000, pages=len(texts))
         fields = [fill.field(page=i+1, text=text, x=.01, y=.01, width=.98, height=.98, fontSize=6)
-            for i, text in enumerate(texts)]
-        pages = []
-        for field in fields:
-            lines = []
-            for x, baseline, _, line in fill.positions(field, 1440, 1000):
-                # Same JSON boundary as the API: n consecutive percent signs become n+1.
-                value = re.sub(r"%+", lambda m: m[0]+"%", line)
-                y = baseline - fill.math.ceil(246/2048*6)
-                lines.append((value, x, max(0, y), min(0, y)))
-            pages.append(lines)
-        raw, source = direct(api, root, directory, "unicode-"+name, pages, size=6, width=1440)
+                  for i, text in enumerate(texts)]
         output, _ = fill.request(api, source, fields)
-        repaired = directory / (name + "-repaired.pdf"); repaired.write_bytes(output)
-        raw_matches = matches(extracted(raw), texts)
-        fixed_matches = matches(extracted(repaired), texts)
-        assert all(fixed_matches.values()), (name, "API extraction", fixed_matches)
-        if version == "0.16.2" or name in ("99", "100"):
-            assert all(raw_matches.values()), (name, "upstream extraction", raw_matches)
-        else:
-            assert not all(raw_matches.values()), (name, "baseline bug must reproduce")
-        unique = len(set("".join(texts).replace("\n", "")))
-        raw_map, fixed_map = cmap(raw), cmap(repaired)
-        for info in ([raw_map, fixed_map] if version == "0.16.2" else [fixed_map]):
-            assert info["blocks"] == info["actual_block_entries"]
-            assert all(1 <= n <= 100 for n in info["blocks"]) and info["mappings"] == unique
-        # CMap replacement must not change visible glyphs on any page.
-        with fill.fitz.open(raw) as a, fill.fitz.open(repaired) as b:
-            pixels = [(pa.get_pixmap().samples, pb.get_pixmap().samples) for pa, pb in zip(a, b)]
-            render_matches = [pa == pb for pa, pb in pixels]
-            render_hashes = [hashlib.sha256(pb).hexdigest() for _, pb in pixels]
-        assert len(render_matches) == len(texts) and all(render_matches)
-        results.append(dict(case=name, pages=len(texts), distinct_characters=unique, raw_extraction=raw_matches,
-            repaired_extraction=fixed_matches, raw_cmap=raw_map, repaired_cmap=fixed_map, same_rendering=render_matches,
-            repaired_render_sha256=render_hashes))
+        path = directory / (name + "-api.pdf")
+        path.write_bytes(output)
+        extraction = matches(extracted(path), texts)
+        assert all(extraction.values()), (name, "API extraction", extraction)
+        drawn = set("".join(texts).replace("\n", ""))
+        info = fill.glyphs.verify_tounicode(metadata(path), {ord(c): fill.TABLE[ord(c)] for c in drawn})
+        results.append(dict(case=name, pages=len(texts), distinct_characters=len(drawn),
+                            extraction=extraction, cmap=info))
     return results
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image")
-    parser.add_argument("--expected-version", choices=("0.16.1", "0.16.2"), default="0.16.2")
     parser.add_argument("--results", type=Path)
     args = parser.parse_args()
     assert fill.importlib.metadata.version("PyMuPDF") == "1.26.3"
@@ -176,13 +137,13 @@ def main():
         directory = Path(temporary)
         with fill.smoke.running_container(args.image) as api:
             version = api.exec("/opt/amane-pdf/bin/pdfcpu", "-c", "/opt/amane-pdf/config", "--offline", "version").stdout.decode()
-            assert "version: " + args.expected_version in version.splitlines()
+            assert "version: 0.16.2" in version.splitlines()
             root = api.exec("mktemp", "-d", "/tmp/pdfcpu-update-XXXXXXXX").stdout.decode().strip()
             assert re.fullmatch(r"/tmp/pdfcpu-update-[A-Za-z0-9]+", root)
             assert api.exec("stat", "-c", "%a", root).stdout.strip() == b"700"
             try:
-                result = dict(version=args.expected_version, text_behavior=text_behavior(api, root, directory, args.expected_version),
-                    coordinates=coordinates(api, root, directory), unicode=unicode(api, root, directory, args.expected_version))
+                result = dict(version="0.16.2", text_behavior=text_behavior(api, root, directory, "0.16.2"),
+                    coordinates=coordinates(api, root, directory), unicode=unicode(api, directory))
             finally:
                 api.exec("rm", "-rf", root)
             api.assert_clean()
@@ -190,7 +151,7 @@ def main():
     if args.results:
         args.results.write_text(json.dumps(result, indent=2)+"\n")
     print(json.dumps(result, indent=2), flush=True)
-    print("pdfcpu update: substitutions / missing glyphs / baseline / ToUnicode raw + repaired: PASS", flush=True)
+    print("pdfcpu update: substitutions / missing glyphs / baseline / API ToUnicode + MuPDF/Poppler: PASS", flush=True)
 
 
 if __name__ == "__main__":

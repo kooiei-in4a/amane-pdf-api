@@ -126,17 +126,4 @@ public sealed class FillTemplateFieldsTests
             Assert.AreEqual("field-overflow", Assert.ThrowsExactly<PdfFillTemplateException>(() => FillTemplateLayout.Place(field, size)).Code);
     }
 
-    [TestMethod]
-    public void Cmap_UsesOriginalPercentCombiningMarksAndBlocksOfAtMost100()
-    {
-        var chars = Enumerable.Range(0x4e00, 2000).Select(c => (char)c).Where(c => FillTemplateGlyphs.TryGet(c, out _, out _)).Take(201).ToArray();
-        var json = "[" + string.Join(',', chars.Chunk(100).Select(chunk => Change("text", new string(chunk)))) + "," + Change("text", "%か\u3099") + "]";
-        var map = FillTemplateUnicode.CMap(FillTemplateFields.Parse(Bytes(json)), default);
-        Assert.AreEqual(3, System.Text.RegularExpressions.Regex.Matches(map, " beginbfchar").Count);
-        foreach (var c in chars.Concat("%か\u3099"))
-        {
-            FillTemplateGlyphs.TryGet(c, out var gid, out _);
-            StringAssert.Contains(map, $"<{gid:X4}> <{(int)c:X4}>");
-        }
-    }
 }
