@@ -22,7 +22,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
     internal async Task BuildAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
         Func<OverlayCanvas, CancellationToken, Task> draw, CancellationToken token,
         Action<OverlayStage>? observe = null, double? fillOpacity = null,
-        IReadOnlyList<string>? drawInputs = null, bool layerJson = true, FillTemplateFields? fillTemplate = null)
+        IReadOnlyList<string>? drawInputs = null, bool layerJson = true, bool rejectForms = false)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         if (fillOpacity is { } opacity && (!double.IsFinite(opacity) || opacity <= 0 || opacity >= 1))
@@ -34,10 +34,8 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         var blank = Path.Combine(files.DirectoryPath, "overlay-blank.pdf");
         var layer = Path.Combine(files.DirectoryPath, "overlay-layer.pdf");
         var overlaid = Path.Combine(files.DirectoryPath, "overlaid.pdf");
-        var unicodeUpdate = Path.Combine(files.DirectoryPath, "overlay-unicode.json");
-        var unicodeLayer = Path.Combine(files.DirectoryPath, "overlay-unicode.pdf");
         var intermediates = new[] { metadata, update, blankJson, blank, layer, overlaid,
-            unicodeUpdate, unicodeLayer, files.PdfcpuLayerJsonPath };
+            files.PdfcpuLayerJsonPath };
         var inputs = drawInputs?.Select(Path.GetFullPath).ToArray() ?? [];
         if (inputs.Distinct(StringComparer.Ordinal).Count() != inputs.Length || inputs.Any(path =>
             Path.GetDirectoryName(path) != Path.GetFullPath(files.DirectoryPath) ||
@@ -92,7 +90,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             {
                 count = input.Pages.Count;
                 if (input.Encrypted != false) throw new InvalidOperationException(Failure);
-                if (fillTemplate is not null) PdfFormDetector.RejectForms(input, token);
+                if (rejectForms) PdfFormDetector.RejectForms(input, token);
                 (from, to) = resolveRange(count);
                 if (from < 1 || to < from || to > count) throw new ArgumentException("描画ページ範囲が不正です。");
                 if (to - from + 1 > settings.OverlayMaxPages) throw PdfOverlayInputException.TooComplex();
@@ -112,27 +110,6 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             await draw(canvas, token);
             if (layerJson) capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
             capacity.Commit(layer, pdfBudget);
-            if (fillTemplate is not null)
-            {
-                try
-                {
-                    // Fresh metadata for this layer; all files share the overlay capacity and cleanup.
-                    using (var drawn = await ReadMetadata(layer, settings.OverlayGeneratedJsonLimitBytes, PdfPageBoxes.GeneratedObjectLimit))
-                        await WriteJson(unicodeUpdate, writer => FillTemplateUnicode.WriteUpdate(writer, drawn, fillTemplate, token));
-                    var unicodeBudget = capacity.ReserveWrite(unicodeLayer, settings.OverlayGeneratedLimitBytes, true);
-                    await qpdf.RunOverlayWriteAsync(files, [layer, "--update-from-json=" + unicodeUpdate, unicodeLayer],
-                        unicodeLayer, unicodeBudget, token);
-                    capacity.Commit(unicodeLayer, unicodeBudget);
-                    capacity.Delete(layer);
-                    File.Move(unicodeLayer, layer);
-                    capacity.Delete(unicodeLayer);
-                    capacity.Reserve(layer, new FileInfo(layer).Length);
-                    capacity.Delete(unicodeUpdate);
-                    Mark("to-unicode", new FileInfo(layer).Length);
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception) { throw new InvalidOperationException(Failure); }
-            }
             // Treat the delegate's output as generated data: it must pass the same checks.
             await ValidateGenerated(layer, originals.Length, token);
             Mark("draw", new FileInfo(layer).Length);
