@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
-    .Validate(options => options.MaxFileBytes > 0 && options.MaxFileBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
+    .Validate(options => options.MaxFileBytes > 0 && options.MaxFileBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes - FillTemplateFields.MaxBytes &&
         options.MaxMergeFiles is >= 2 and <= 10 &&
         options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
@@ -49,6 +49,7 @@ if (OperatingSystem.IsLinux())
     app.MapPost("/api/pdf/clean", PdfCleanEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/from-images", PdfFromImagesEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/page-numbers", PdfPageNumbersEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/fill-template", PdfFillTemplateEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/watermark", PdfWatermarkEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/stamp-image", PdfStampImageEndpoint.HandleAsync).RequireRateLimiting("pdf");
 }
