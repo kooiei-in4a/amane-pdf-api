@@ -8,6 +8,8 @@ pdfcpu [v0.16.1](https://github.com/pdfcpu/pdfcpu/tree/v0.16.1) は別プロセ�
 
 透かしの生成表 `WatermarkGlyphs.g.cs`（字幅・字形収録bitset）も、この固定BIZ UDPゴシック由来です。OFL-1.1の表示と原文を同じ場所に保持します。
 
+差し込みの生成表 `FillTemplateGlyphs.g.cs`（文字・字形番号・送り幅）も、この固定BIZ UDPゴシック由来です。OFL-1.1の表示と原文を同じ場所に保持します。
+
 `third_party/pdfcpu-modules.json` は固定go.modのindirectを含む11 module、version、Go module checksum、licenseファイル、Linux binaryへの組込みの有無を記録します。Linux x86_64配布binaryの `go version -m` は9 moduleを示し、jsonschema-goとWindows用mousetrapは組み込まれていません。11件ともlicense原文・付属NOTICE/PATENTSを `third_party/pdfcpu/modules/` に保持します。
 
 | Module | Version | License |
