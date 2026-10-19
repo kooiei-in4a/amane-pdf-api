@@ -34,7 +34,8 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
     }
 
     internal async Task CreateAsync(TemporaryPdfFiles files, PdfcpuLayer layer,
-        string blankPath, string outputPath, long jsonBudget, long pdfBudget, CancellationToken token)
+        string blankPath, string outputPath, long jsonBudget, long pdfBudget, CancellationToken token,
+        int maxTextsPerPage = MaxTextsPerPage, int maxTextLength = MaxTextLength)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         if (jsonBudget is <= 0 or > LayerFileLimitBytes || pdfBudget is <= 0 or > LayerFileLimitBytes)
@@ -46,7 +47,7 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             throw new ArgumentException("描画用pathが不正です。");
         if (new FileInfo(blankPath).Length is <= 0 or > LayerFileLimitBytes)
             throw new InvalidOperationException(Failure);
-        await WriteLayerAsync(files.PdfcpuLayerJsonPath, layer, jsonBudget, token);
+        await WriteLayerAsync(files.PdfcpuLayerJsonPath, layer, jsonBudget, token, maxTextsPerPage, maxTextLength);
         var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
             ["create", files.PdfcpuLayerJsonPath, blankPath, outputPath], pdfBudget + 1), token);
         if (result.ExitCode is 126 or 127) throw new InvalidOperationException(Failure);
@@ -145,8 +146,11 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             throw new ArgumentException("描画用pathが不正です。");
     }
 
-    private static async Task WriteLayerAsync(string path, PdfcpuLayer layer, long budget, CancellationToken token)
+    private static async Task WriteLayerAsync(string path, PdfcpuLayer layer, long budget, CancellationToken token,
+        int maxTextsPerPage, int maxTextLength)
     {
+        if (maxTextsPerPage is < 1 or > MaxTextElements || (maxTextLength < 1 || maxTextLength > LayerFileLimitBytes))
+            throw new ArgumentOutOfRangeException(nameof(maxTextsPerPage));
         if (layer.Pages.Count is < 1 or > 1000 ||
             Enumerable.Range(1, layer.Pages.Count).Any(page => !layer.Pages.ContainsKey(page)))
             throw new ArgumentException("描画ページが不正です。");
@@ -158,7 +162,7 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
         foreach (var texts in layer.Pages.Values)
         {
             token.ThrowIfCancellationRequested();
-            if (texts.Count > MaxTextsPerPage || (elements += texts.Count) > MaxTextElements)
+            if (texts.Count > maxTextsPerPage || (elements += texts.Count) > MaxTextElements)
                 throw new ArgumentException("描画要素数が不正です。");
         }
         // Check before each flush: no more than budget bytes enter the managed buffer
@@ -191,9 +195,9 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
                 foreach (var text in texts)
                 {
                     token.ThrowIfCancellationRequested();
-                    ValidateText(text, budget);
+                    ValidateText(text, budget, maxTextLength);
                     writer.WriteStartObject();
-                    writer.WriteString("value", text.Value);
+                    writer.WriteString("value", EscapePercent(text.Value));
                     if (text.Anchor is not null) writer.WriteString("anchor", text.Anchor);
                     else
                     {
@@ -219,9 +223,9 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
         await buffer.CopyToAsync(file, token);
     }
 
-    private static void ValidateText(PdfcpuText text, long budget)
+    private static void ValidateText(PdfcpuText text, long budget, int maxTextLength)
     {
-        if (string.IsNullOrEmpty(text.Value) || text.Value.Length > MaxTextLength || text.Value.Contains('%') ||
+        if (string.IsNullOrEmpty(text.Value) || text.Value.Length > maxTextLength ||
             text.Value.Count(c => c == '\n') > MaxLineBreaks || text.Value.Count(c => c == '\t') > MaxTabs ||
             text.Value.Any(c => char.IsControl(c) && c is not ('\n' or '\t')) ||
             text.Anchor is not (null or "tl" or "tc" or "tr" or "l" or "c" or "r" or "bl" or "bc" or "br") ||
@@ -238,6 +242,19 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             if (StrictUtf8.GetByteCount(text.Value) > budget) throw new PdfcpuCapacityException();
         }
         catch (EncoderFallbackException) { throw new ArgumentException("描画要素が不正です。"); }
+    }
+
+    // Length is validated on the original UTF-16 string. JSON budget applies after escaping.
+    internal static string EscapePercent(string value)
+    {
+        if (!value.Contains('%')) return value;
+        var result = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            result.Append(value[i]);
+            if (value[i] == '%' && (i + 1 == value.Length || value[i + 1] != '%')) result.Append('%');
+        }
+        return result.ToString();
     }
 
     internal static async Task ValidateStartupAsync(PdfOptions value, CancellationToken token)

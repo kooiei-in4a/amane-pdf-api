@@ -38,6 +38,28 @@ public sealed class PdfcpuProcessorTests
     }
 
     [TestMethod]
+    public async Task PercentEscaping_UsesOriginalLength_AndCallerLimitsAreIndependent()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        Assert.AreEqual("a%%b%%%%1%%", PdfcpuProcessor.EscapePercent("a%b%%%1%"));
+        using var job = new Job(); await job.BlankAsync();
+        var text = string.Concat(Enumerable.Repeat("%a", 100));
+        var layer = new PdfcpuLayer(new Dictionary<int, IReadOnlyList<PdfcpuText>> { [1] = [new(text)] });
+        var processor = new PdfcpuProcessor(Options.Create(job.Options));
+        await processor.CreateAsync(job.Files, layer, job.Blank, job.Files.OutputPath, 8388608, 8388608,
+            default, maxTextsPerPage: 100, maxTextLength: 200);
+        using var json = JsonDocument.Parse(await File.ReadAllBytesAsync(job.Files.PdfcpuLayerJsonPath));
+        Assert.AreEqual(300, json.RootElement.GetProperty("pages").GetProperty("1").GetProperty("content")
+            .GetProperty("text")[0].GetProperty("value").GetString()!.Length);
+        using var shortJob = new Job(); await shortJob.BlankAsync();
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => processor.CreateAsync(shortJob.Files, layer,
+            shortJob.Blank, shortJob.Files.OutputPath, 8388608, 8388608, default, maxTextLength: 199));
+        using var defaultJob = new Job(); await defaultJob.BlankAsync();
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => processor.CreateAsync(defaultJob.Files, layer,
+            defaultJob.Blank, defaultJob.Files.OutputPath, 8388608, 8388608, default));
+    }
+
+    [TestMethod]
     public async Task JsonBudget_ExactBytesSucceeds_OneLessFailsBeforePrivateFileOrProcess()
     {
         if (!OperatingSystem.IsLinux()) return;
@@ -56,7 +78,6 @@ public sealed class PdfcpuProcessorTests
     }
 
     [TestMethod]
-    [DataRow("percent")]
     [DataRow("surrogate")]
     [DataRow("anchor")]
     [DataRow("anchor-and-position")]
@@ -74,7 +95,6 @@ public sealed class PdfcpuProcessorTests
         using var job = new Job();
         var text = invalid switch
         {
-            "percent" => new PdfcpuText("%p"),
             "surrogate" => new PdfcpuText("\ud800"),
             "anchor" => new PdfcpuText("text", Anchor: "file:/secret"),
             "anchor-and-position" => new PdfcpuText("text", X: 1),
