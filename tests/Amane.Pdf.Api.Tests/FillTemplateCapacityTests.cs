@@ -26,10 +26,16 @@ public sealed class FillTemplateCapacityTests
             var results = await Task.WhenAll(jobs.Select(async job =>
             {
                 var stages = new List<OverlayStage>(); var watch = Stopwatch.StartNew();
+                var drawing = new Stopwatch();
                 await job.Builder.BuildAsync(job.Files, fields.ResolveRange,
-                    (canvas, token) => job.Pdfcpu.CreateAsync(job.Files, fields.CreateLayer(canvas), canvas.BlankPath,
-                        canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, token,
-                        maxTextsPerPage: FillTemplateFields.MaxLinesPerPage, maxTextLength: FillTemplateFields.MaxTextLength),
+                    async (canvas, token) =>
+                    {
+                        drawing.Start();
+                        await job.Pdfcpu.CreateAsync(job.Files, fields.CreateLayer(canvas), canvas.BlankPath,
+                            canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, token,
+                            maxTextsPerPage: FillTemplateFields.MaxLinesPerPage, maxTextLength: FillTemplateFields.MaxTextLength);
+                        drawing.Stop();
+                    },
                     deadline.Token, observe: stages.Add, fillTemplate: fields);
                 watch.Stop();
                 Assert.IsTrue(stages.Any(stage => stage.Name == "to-unicode"));
@@ -37,7 +43,15 @@ public sealed class FillTemplateCapacityTests
                 Assert.IsTrue(reserved <= 124 * 1048576);
                 Assert.IsTrue(watch.Elapsed.TotalSeconds < 30);
                 CollectionAssert.AreEquivalent(new[] { job.Files.OutputPath }, Directory.GetFiles(job.Files.DirectoryPath));
-                return new { seconds = watch.Elapsed.TotalSeconds, reserved, stages };
+                // The second metadata mark includes drawing since the preceding blank mark.
+                // Remove the measured delegate time, then add the CMap write/update phase.
+                // This includes metadata parsing and cleanup, rather than timing only qpdf's update.
+                var unicodeMilliseconds = stages.Where(stage => stage.Name == "metadata").Skip(1).First().Milliseconds
+                    - drawing.Elapsed.TotalMilliseconds + stages.Single(stage => stage.Name == "to-unicode").Milliseconds;
+                Assert.IsTrue(unicodeMilliseconds > 0);
+                return new { seconds = watch.Elapsed.TotalSeconds, reserved,
+                    unicode_seconds = unicodeMilliseconds / 1000,
+                    reserved_fraction = (double)reserved / job.Settings.OverlayJobLimitBytes, stages };
             }));
             var result = JsonSerializer.Serialize(new { concurrent, results });
             Console.WriteLine(result);

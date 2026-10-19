@@ -348,7 +348,7 @@ def pdfcpu_smoke(api):
                    "GOGC=100", "GODEBUG=", "GOMAXPROCS=1", "GOTRACEBACK=none"]
     tool = [*environment, *LIMITED_EXEC, "--as=1073741824:1073741824", "--fsize=8388609:8388609", "--",
             prefix + "/bin/pdfcpu", "-c", prefix + "/config", "--offline"]
-    assert "version: 0.16.1" in api.exec(*tool, "version").stdout.decode().splitlines()
+    assert "version: 0.16.2" in api.exec(*tool, "version").stdout.decode().splitlines()
     assert b"BIZUDPGothic-Regular (" in api.exec(*tool, "fonts", "list").stdout
     api.exec("sh", "-c", "test ! -w /opt/amane-pdf/config/pdfcpu/config.yml && "
              "test ! -w /opt/amane-pdf/config/pdfcpu/fonts && "

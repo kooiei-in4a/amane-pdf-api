@@ -10,7 +10,7 @@ import sys
 root = Path(__file__).resolve().parent.parent
 inventory = json.loads((root / "third_party/pdfcpu-modules.json").read_text())
 required = dict(re.findall(r"^\s*(\S+) (v\S+)", (root / "third_party/pdfcpu/go.mod").read_text(), re.M))
-assert len(required) == 11
+assert len(required) == 12
 assert required == {m["path"]: m["version"] for m in inventory["modules"]}
 output = subprocess.run(["go", "version", "-m", sys.argv[1]], stdout=subprocess.PIPE,
     stderr=subprocess.DEVNULL, check=True, text=True, timeout=30).stdout
@@ -33,4 +33,4 @@ for line in (root / "third_party/pdfcpu-licenses.sha256").read_text().splitlines
     expected_hash, name = line.split("  ", 1)
     with (root / "third_party" / name).open("rb") as file:
         assert hashlib.file_digest(file, "sha256").hexdigest() == expected_hash
-print("go.mod: 11 modules; Linux binary: 9 modules; licenses: PASS")
+print("go.mod: 12 modules; Linux binary: 10 modules; licenses: PASS")
