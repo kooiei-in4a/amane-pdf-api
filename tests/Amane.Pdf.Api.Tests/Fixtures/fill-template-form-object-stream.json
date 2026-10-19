@@ -1,0 +1,151 @@
+{
+  "version": 2,
+  "parameters": {
+    "decodelevel": "none"
+  },
+  "pages": [
+    {
+      "contents": [],
+      "images": [],
+      "label": null,
+      "object": "4 0 R",
+      "outlines": [],
+      "pageposfrom1": 1
+    }
+  ],
+  "encrypt": {
+    "capabilities": {
+      "accessibility": true,
+      "extract": true,
+      "modify": true,
+      "modifyannotations": true,
+      "modifyassembly": true,
+      "modifyforms": true,
+      "modifyother": true,
+      "printhigh": true,
+      "printlow": true
+    },
+    "encrypted": false,
+    "ownerpasswordmatched": false,
+    "parameters": {
+      "P": 0,
+      "R": 0,
+      "V": 0,
+      "bits": 0,
+      "filemethod": "none",
+      "key": null,
+      "method": "none",
+      "streammethod": "none",
+      "stringmethod": "none"
+    },
+    "recovereduserpassword": null,
+    "userpasswordmatched": false
+  },
+  "qpdf": [
+    {
+      "jsonversion": 2,
+      "pdfversion": "1.7",
+      "pushedinheritedpageresources": false,
+      "calledgetallpages": true,
+      "maxobjectid": 5
+    },
+    {
+      "obj:1 0 R": {
+        "stream": {
+          "dict": {
+            "/Filter": "/FlateDecode",
+            "/First": 14,
+            "/Length": 168,
+            "/N": 3,
+            "/Type": "/ObjStm"
+          }
+        }
+      },
+      "obj:2 0 R": {
+        "value": {
+          "/Pages": "3 0 R",
+          "/Type": "/Catalog"
+        }
+      },
+      "obj:3 0 R": {
+        "value": {
+          "/Count": 1,
+          "/Kids": [
+            "4 0 R"
+          ],
+          "/Type": "/Pages"
+        }
+      },
+      "obj:4 0 R": {
+        "value": {
+          "/Annots": [
+            {
+              "/Rect": [
+                0,
+                0,
+                10,
+                10
+              ],
+              "/Sub#74ype": "/Wid#67et"
+            }
+          ],
+          "/MediaBox": [
+            0,
+            0,
+            595,
+            842
+          ],
+          "/Parent": "3 0 R",
+          "/Resources": {},
+          "/Type": "/Page"
+        }
+      },
+      "obj:5 0 R": {
+        "stream": {
+          "dict": {
+            "/DecodeParms": {
+              "/Columns": 4,
+              "/Predictor": 12
+            },
+            "/Filter": "/FlateDecode",
+            "/ID": [
+              "b:394132f8bc1e793827273236832e4ec7",
+              "b:b67c445aad635328695428f880134ab1"
+            ],
+            "/Length": 29,
+            "/Root": "2 0 R",
+            "/Size": 6,
+            "/Type": "/XRef",
+            "/W": [
+              1,
+              2,
+              1
+            ]
+          }
+        }
+      },
+      "trailer": {
+        "value": {
+          "/DecodeParms": {
+            "/Columns": 4,
+            "/Predictor": 12
+          },
+          "/Filter": "/FlateDecode",
+          "/ID": [
+            "b:394132f8bc1e793827273236832e4ec7",
+            "b:b67c445aad635328695428f880134ab1"
+          ],
+          "/Length": 29,
+          "/Root": "2 0 R",
+          "/Size": 6,
+          "/Type": "/XRef",
+          "/W": [
+            1,
+            2,
+            1
+          ]
+        }
+      }
+    }
+  ]
+}

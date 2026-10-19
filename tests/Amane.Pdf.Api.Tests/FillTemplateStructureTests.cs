@@ -28,6 +28,12 @@ public sealed class FillTemplateStructureTests
             using var metadata = OverlayFixtures.Parse(root);
             Assert.ThrowsExactly<PdfFillTemplateException>(() => PdfFormDetector.RejectForms(metadata, default));
         }
+        var packedBytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "fill-template-form-object-stream.json"));
+        using (var packed = new PdfPageBoxes(packedBytes, 32 * 1048576, 50000, default))
+        {
+            StringAssert.Contains(packed.Document.RootElement.GetRawText(), "/ObjStm");
+            Assert.ThrowsExactly<PdfFillTemplateException>(() => PdfFormDetector.RejectForms(packed, default));
+        }
         var safe = OverlayFixtures.Metadata();
         OverlayFixtures.Page(safe)["/Data"] = "u:/Subtype /Widget /AcroForm";
         using var clean = OverlayFixtures.Parse(safe);

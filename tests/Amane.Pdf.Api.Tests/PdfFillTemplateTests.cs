@@ -31,6 +31,12 @@ public sealed class PdfFillTemplateTests
             using var response = await test.Client.PostAsync(Endpoint, form);
             await Problem(test, response, 400);
         }
+        foreach (var bytes in new byte[][] { [0xc0, 0xaf], [0xef, 0xbb, 0xbf, (byte)'[', (byte)']'],
+                     Encoding.UTF8.GetBytes("[[[[0]]]]") })
+        {
+            using var form = Form(fields: bytes); using var response = await test.Client.PostAsync(Endpoint, form);
+            await Problem(test, response, 400);
+        }
         foreach (var kind in new[] { "unknown", "duplicate-file", "duplicate-fields", "missing-file", "missing-fields", "fields-filename", "file-no-filename", "case" })
         {
             using var form = new MultipartFormDataContent();
@@ -135,6 +141,20 @@ public sealed class PdfFillTemplateTests
     public async Task Http_ThousandLinesAndCallerLimits_AndExistingWatermarkPercentPolicy()
     {
         await using var test = new PdfTestContext();
+        foreach (var size in new[] { 6m, 6.1m, 71.9m, 72m })
+        {
+            var f = JsonNode.Parse(FillTemplateFieldsTests.Change("fontSize", size))!;
+            f["text"] = "日"; f["x"] = 0; f["y"] = 0; f["width"] = 1; f["height"] = 1;
+            using var form = Form(fields: Encoding.UTF8.GetBytes("[" + f.ToJsonString() + "]"));
+            using var response = await test.Client.PostAsync(Endpoint, form);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            test.AssertClean();
+        }
+        var corner = JsonNode.Parse(FillTemplateFieldsTests.Field)!;
+        corner["x"] = 0.9999m; corner["y"] = 0; corner["width"] = 0.0001m; corner["height"] = 1;
+        using (var form = Form(fields: Encoding.UTF8.GetBytes("[" + corner.ToJsonString() + "]")))
+        using (var response = await test.Client.PostAsync(Endpoint, form))
+            await Problem(test, response, 422, "field-overflow"); // Valid four-decimal coordinates reach layout.
         var fields = Enumerable.Range(0, 200).Select(n =>
         {
             var f = JsonNode.Parse(FillTemplateFieldsTests.Field)!;
