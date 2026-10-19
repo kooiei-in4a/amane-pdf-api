@@ -7,59 +7,59 @@
   "font_size": 72,
   "drawn_pages": 10,
   "span": 1000,
-  "seconds": 2.813,
+  "seconds": 3.359,
   "output_bytes": 3541850,
-  "sampled_job_peak_bytes": 56238080,
-  "container_memory_peak_bytes": 212398080,
+  "sampled_job_peak_bytes": 59215872,
+  "container_memory_peak_bytes": 207147008,
   "builder": {
     "runs": [
       {
         "concurrent": 1,
         "results": [
           {
-            "seconds": 2.0234159,
+            "seconds": 2.1013344,
             "reserved": 120578048,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 104.9659,
+                "Milliseconds": 123.0421,
                 "Bytes": 52428800,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 49.4332,
+                "Milliseconds": 50.6899,
                 "Bytes": 426036,
                 "Objects": 1003
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 36.4744,
+                "Milliseconds": 51.6235,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 17.571,
+                "Milliseconds": 21.7363,
                 "Bytes": 124125,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 530.3155,
+                "Milliseconds": 540.7257,
                 "Bytes": 669241,
                 "Objects": 2022
               },
               {
                 "Name": "to-unicode",
-                "Milliseconds": 96.4229,
-                "Bytes": 2953277,
+                "Milliseconds": 100.2818,
+                "Bytes": 2953279,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 83.5423,
-                "Bytes": 2953277,
+                "Milliseconds": 90.1824,
+                "Bytes": 2953279,
                 "Objects": 0
               },
               {
@@ -70,43 +70,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 395.0179,
+                "Milliseconds": 400.7411,
                 "Bytes": 3651640,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 149.6537,
+                "Milliseconds": 153.18,
                 "Bytes": 1893795,
                 "Objects": 4010
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 29.9793,
+                "Milliseconds": 24.6555,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 89.9507,
+                "Milliseconds": 88.3041,
                 "Bytes": 3541850,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 274.4012,
+                "Milliseconds": 290.1851,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 140.5222,
+                "Milliseconds": 140.1995,
                 "Bytes": 1584185,
                 "Objects": 4010
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 9.514,
+                "Milliseconds": 9.7847,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -124,48 +124,48 @@
         "concurrent": 2,
         "results": [
           {
-            "seconds": 4.2234258,
+            "seconds": 4.5613262,
             "reserved": 120578048,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 249.285,
+                "Milliseconds": 243.2071,
                 "Bytes": 52428800,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 91.3278,
+                "Milliseconds": 44.5253,
                 "Bytes": 426036,
                 "Objects": 1003
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 21.2412,
+                "Milliseconds": 73.1317,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 70.2657,
+                "Milliseconds": 22.1686,
                 "Bytes": 124125,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 908.0849,
+                "Milliseconds": 1005.746,
                 "Bytes": 669241,
                 "Objects": 2022
               },
               {
                 "Name": "to-unicode",
-                "Milliseconds": 181.7643,
+                "Milliseconds": 184.1012,
                 "Bytes": 2953277,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 137.9122,
+                "Milliseconds": 180.6369,
                 "Bytes": 2953277,
                 "Objects": 0
               },
@@ -177,43 +177,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 1088.5488,
+                "Milliseconds": 1188.4235,
                 "Bytes": 3651640,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 317.5502,
+                "Milliseconds": 431.5072,
                 "Bytes": 1893795,
                 "Objects": 4010
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 63.3182,
+                "Milliseconds": 12.1791,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 139.1779,
+                "Milliseconds": 204.567,
                 "Bytes": 3541850,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 571.1098,
+                "Milliseconds": 651.5437,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 314.2198,
+                "Milliseconds": 308.6955,
                 "Bytes": 1584185,
                 "Objects": 4010
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 69.4689,
+                "Milliseconds": 10.7362,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -226,49 +226,49 @@
             ]
           },
           {
-            "seconds": 4.2877147,
+            "seconds": 4.5082483,
             "reserved": 120578048,
             "stages": [
               {
                 "Name": "validate-input",
-                "Milliseconds": 243.8711,
+                "Milliseconds": 259.4844,
                 "Bytes": 52428800,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 91.5568,
+                "Milliseconds": 94.7899,
                 "Bytes": 426036,
                 "Objects": 1003
               },
               {
                 "Name": "input-attributes",
-                "Milliseconds": 21.0312,
+                "Milliseconds": 19.0809,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "blank",
-                "Milliseconds": 73.3603,
+                "Milliseconds": 67.7853,
                 "Bytes": 124125,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 1019.4177,
+                "Milliseconds": 941.3001,
                 "Bytes": 669241,
                 "Objects": 2022
               },
               {
                 "Name": "to-unicode",
-                "Milliseconds": 181.3071,
-                "Bytes": 2953279,
+                "Milliseconds": 182.0821,
+                "Bytes": 2953277,
                 "Objects": 0
               },
               {
                 "Name": "draw",
-                "Milliseconds": 136.5551,
-                "Bytes": 2953279,
+                "Milliseconds": 192.8869,
+                "Bytes": 2953277,
                 "Objects": 0
               },
               {
@@ -279,43 +279,43 @@
               },
               {
                 "Name": "overlay",
-                "Milliseconds": 1088.8645,
+                "Milliseconds": 1126.3405,
                 "Bytes": 3651640,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 310.8008,
+                "Milliseconds": 466.2942,
                 "Bytes": 1893795,
                 "Objects": 4010
               },
               {
                 "Name": "restore-attributes",
-                "Milliseconds": 61.9561,
+                "Milliseconds": 15.8813,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "restore",
-                "Milliseconds": 196.3005,
+                "Milliseconds": 205.198,
                 "Bytes": 3541850,
                 "Objects": 0
               },
               {
                 "Name": "validate-pdf",
-                "Milliseconds": 610.9642,
+                "Milliseconds": 608.9984,
                 "Bytes": 0,
                 "Objects": 0
               },
               {
                 "Name": "metadata",
-                "Milliseconds": 239.6624,
+                "Milliseconds": 312.7694,
                 "Bytes": 1584185,
                 "Objects": 4010
               },
               {
                 "Name": "validate-output",
-                "Milliseconds": 11.9375,
+                "Milliseconds": 15.2009,
                 "Bytes": 0,
                 "Objects": 0
               },
@@ -330,6 +330,101 @@
         ]
       }
     ],
-    "container_memory_peak_bytes": 417615872
+    "container_memory_peak_bytes": 378523648
+  },
+  "measurement": {
+    "commit": "8bae618e5566f40a696d0c52e1095e3ac5017a96",
+    "date": "2026-10-19",
+    "requirements_sha256": "8e96c999eace40e56962eec35b52a09a8e2cad4c046d99109f31643509e07d34",
+    "python": "3.14.4",
+    "system_site_packages": false,
+    "packages": {
+      "asn1crypto": "1.5.1",
+      "certifi": "2026.10.18",
+      "cffi": "2.1.1",
+      "charset-normalizer": "3.5.2",
+      "cryptography": "50.0.2",
+      "idna": "3.20",
+      "lxml": "6.1.3",
+      "numpy": "2.3.5",
+      "oscrypto": "1.3.0",
+      "pillow": "12.1.1",
+      "pycparser": "3.11",
+      "pyHanko": "0.29.1",
+      "pyhanko-certvalidator": "0.27.0",
+      "PyMuPDF": "1.26.3",
+      "PyYAML": "6.0.3",
+      "requests": "2.34.2",
+      "tzlocal": "5.4.4",
+      "uritools": "6.1.3",
+      "urllib3": "2.8.0"
+    },
+    "test_count": 1355,
+    "test_duration": "5 m 37 s",
+    "hash_install": "PASS",
+    "pip_check": "PASS",
+    "tampered_hash_rejected": "PASS",
+    "commands": [
+      {
+        "command": "dotnet build --configuration Release",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 8.389
+      },
+      {
+        "command": "dotnet test --configuration Release",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 341.637
+      },
+      {
+        "command": "docker build -t amane-pdf-api:ci .",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 2.444
+      },
+      {
+        "command": "python3 scripts/docker-smoke.py amane-pdf-api:ci",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 64.18
+      },
+      {
+        "command": "python3 scripts/fill-template-validation.py amane-pdf-api:ci",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 24.103
+      },
+      {
+        "command": "python3 scripts/fill-template-glyphs-validation.py amane-pdf-api:ci",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 10.927
+      },
+      {
+        "command": "python3 scripts/overlay-validation.py amane-pdf-api:ci --render",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 4.67
+      },
+      {
+        "command": "python3 scripts/watermark-validation.py amane-pdf-api:ci",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 51.699
+      },
+      {
+        "command": "python3 scripts/page-numbers-validation.py amane-pdf-api:ci",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 12.726
+      },
+      {
+        "command": "python3 scripts/stamp-image-validation.py amane-pdf-api:ci",
+        "status": "PASS",
+        "exit_code": 0,
+        "seconds": 19.172
+      }
+    ]
   }
 }

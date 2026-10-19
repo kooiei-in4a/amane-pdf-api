@@ -104,7 +104,7 @@ CIではfontToolsと `--check` を使わず、build-test jobの単体テスト�
 
 ## 差し込みAPI（Issue #78）
 
-2026-10-19、main `79bd4e8` を基点として検証した。pdfcpu 0.16.1、qpdf 12.3.2、BIZ UDPゴシック v1.051を維持した。API本体の実装と検証はこの節以降を参照する。
+2026-10-19、レビュー修正後の測定対象commitは[`8bae618`](https://github.com/kooiei-in4a/amane-pdf-api/commit/8bae618e5566f40a696d0c52e1095e3ac5017a96)。Python lock・CI設定・検証スクリプトをこのcommitで確定して全コマンドを再測定した。後続commitは結果の文書・JSON記録だけで、実行構成は同じ。pdfcpu 0.16.1、qpdf 12.3.2、BIZ UDPゴシック v1.051を維持した。
 
 ### 再現手順
 
@@ -155,7 +155,7 @@ ToUnicodeはレイヤーごとに毎回参照番号を取得し、Type0が0個�
 
 ### 設計書§10との負荷条件の対応
 
-DockerはCPU 1、memory 1.5 GiB、swapなし、read-only、tmpfs 256 MiB、非root、cap-drop ALL。入力PDF、fieldsと実測の詳細は[測定JSON](fill-template-capacity.json)に記録した。入力のpaddingはCatalogから参照される未圧縮streamで、合成後は圧縮される。任意の50 MiB PDFの成功保証ではない。
+DockerはCPU 1、memory 1.5 GiB、swapなし、read-only、tmpfs 256 MiB、非root、cap-drop ALL。入力PDF、fieldsと実測の詳細は[測定JSON](fill-template-capacity.json)に記録した。入力のpaddingはCatalogから参照される未圧縮streamで、合成後は圧縮される。任意の50 MiB PDFの成功保証ではない。時間は小数点以下3桁に丸め、JSONには生値も保持する。
 
 | §10の条件 | fixture / 結果 |
 | --- | --- |
@@ -165,28 +165,34 @@ DockerはCPU 1、memory 1.5 GiB、swapなし、read-only、tmpfs 256 MiB、非ro
 | 72 pt | 全項目72 pt |
 | 描画範囲1,000ページ | 最小1・最大1000、間の白紙も生成 |
 | 入力50 MiB | 52,428,800 bytesちょうど |
-| ToUnicode再作成を含む30秒以内 | HTTP 2.813秒。Builder単独2.023秒、同時2件4.223/4.288秒 |
-| job容量 | 予約ピーク120,578,048 bytes（約115 MiB）/job、上限130,023,424 bytes（124 MiB）。HTTPの実ファイル使用量の標本ピーク56,238,080 bytes |
-| メモリ | HTTPコンテナ212,398,080 bytes、単独・同時2件の測定ランナー込み417,615,872 bytes。OOM/oom_killとも0 |
+| ToUnicode再作成を含む30秒以内 | HTTP 3.359秒。Builder単独2.101秒、同時2件4.561/4.508秒 |
+| job容量 | 予約ピーク120,578,048 bytes（約115 MiB）/job、上限130,023,424 bytes（124 MiB）。HTTP実ファイル標本ピーク59,215,872 bytes |
+| メモリ | HTTPコンテナ207,147,008 bytes、単独・同時2件の測定ランナー込み378,523,648 bytes。OOM/oom_killとも0 |
 | 出力と後始末 | HTTP出力3,541,850 bytes・1,000ページ。中間物・job・子processの残存0、health正常 |
 
 実ファイル標本は50 ms間隔の要求とDocker execの所要時間を含むため、厳密な瞬間最大値ではない。容量台帳の予約ピークはBuilderのobserveから直接取得し、Unicode metadata・更新JSON・修正レイヤーを含む。書込み前予約・FSIZE sentinel・4 KiB切上げ・実サイズ確定は既存OverlayCapacityを使う。
 
-### コマンドと既定テスト時間（初回測定）
+ToUnicodeの作り直しの途中でjob容量・metadata等の上限を超えた場合も、現行のcatch (Exception)によって500になる。この箇所では422 too-complexにしない。今回の最大負荷でのjob予約ピークは120,578,048 bytesで、上限の124 MiB（130,023,424 bytes）には届かなかった。APIコード・例外処理は変更していない。
 
-| コマンド | 最終結果 |
-| --- | --- |
-| `dotnet build --configuration Release` | PASS、警告0・エラー0 |
-| `dotnet test --configuration Release` | PASS、1,355件、5分20秒。関連36件もPASS（9秒）。下端補正を含む最終全テストとCIの結果・時間は[PR #81](https://github.com/kooiei-in4a/amane-pdf-api/pull/81)に記録 |
-| `docker build -t amane-pdf-api:ci .` | PASS |
-| `python3 scripts/docker-smoke.py amane-pdf-api:ci` | PASS、36 POST checks、60.126秒 |
-| `python3 scripts/fill-template-validation.py amane-pdf-api:ci` | 固定版venvでPASS。配置・文字抽出・8種フォーム・単独/同時2件負荷・削除・health |
-| `python3 scripts/fill-template-glyphs-validation.py amane-pdf-api:ci` | PASS、9.262秒 |
-| `python3 scripts/overlay-validation.py amane-pdf-api:ci --render` | PASS、4.238秒 |
-| `python3 scripts/watermark-validation.py amane-pdf-api:ci` | PASS、48.054秒 |
-| `python3 scripts/page-numbers-validation.py amane-pdf-api:ci` | PASS、11.614秒 |
-| `python3 scripts/stamp-image-validation.py amane-pdf-api:ci` | PASS、22.125秒 |
+### コマンドと既定テスト時間
 
-比較用の`79bd4e8`は同一ホストで1,334件・5分28秒だった。今回1,355件との差は21件、実時間は8秒短かったが、実行時の負荷・キャッシュ等による変動を含むため高速化を示す数値ではない。差し込みと文字表を含む関連36件は約9〜10秒。通常CIのbuild-testは従来どおり10分のまま、上限負荷はDocker jobから有効化する。
+| コマンド | 結果 | 所要時間（コマンド全体） |
+| --- | --- | --- |
+| `dotnet build --configuration Release` | PASS、警告0・エラー0 | 8.389秒 |
+| `dotnet test --configuration Release` | PASS、1,355件、test runner表示 5 m 37 s | 341.637秒 |
+| `docker build -t amane-pdf-api:ci .` | PASS | 2.444秒 |
+| `python3 scripts/docker-smoke.py amane-pdf-api:ci` | PASS | 64.180秒 |
+| `python3 scripts/fill-template-validation.py amane-pdf-api:ci` | PASS、ハッシュ固定の隔離venv。配置・抽出・8種フォーム・単独/同時2件負荷・削除・health | 24.103秒 |
+| `python3 scripts/fill-template-glyphs-validation.py amane-pdf-api:ci` | PASS | 10.927秒 |
+| `python3 scripts/overlay-validation.py amane-pdf-api:ci --render` | PASS | 4.670秒 |
+| `python3 scripts/watermark-validation.py amane-pdf-api:ci` | PASS | 51.699秒 |
+| `python3 scripts/page-numbers-validation.py amane-pdf-api:ci` | PASS | 12.726秒 |
+| `python3 scripts/stamp-image-validation.py amane-pdf-api:ci` | PASS | 19.172秒 |
 
-ホストのqpdfには既存CIの`Prepare host qpdf`と同じ専用コピーを使用した（/usr/bin/qpdfのAppArmor profileが拡張子なしのraw出力を拒否する環境への対応）。Dockerは製品imageのqpdfを使用した。基点mainの[CI実行](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/39191721366)はbuild-test 351秒（Test step 301秒）、docker 301秒。今回のCI全jobの状態と所要時間は実装PRの検証結果へ記録する。
+上表・負荷表・測定JSON・PR本文は同じ再測定から転記した。測定commitは`8bae618e5566f40a696d0c52e1095e3ac5017a96`、lockのSHA-256は`8e96c999eace40e56962eec35b52a09a8e2cad4c046d99109f31643509e07d34`。JSONのmeasurementにコマンド全体の時間・version・検証対象を記録した。
+
+比較用の`79bd4e8`では1,334件・5分28秒だった（以前の測定）。今回は1,355件、test runner表示5 m 37 s。ホスト負荷・キャッシュ等の変動を含むため、時間差をこのレビュー修正だけの影響とは解釈しない。通常CIのbuild-testは従来どおり10分のまま、上限負荷はDocker jobから有効化する。
+
+新規venvへの全19ライブラリの--require-hashes導入、pip check、改変したSHA-256が拒否されることを確認した。PIL・NumPy・MuPDF・pyHanko・cryptography・asn1cryptoが隔離venv内から読み込まれ、system-site-packagesを参照しないことも確認した。
+
+ホストqpdfには既存CIのPrepare host qpdfと同じ専用コピーを使用した。Dockerは製品imageのqpdfを使用した。結果記録を含むPR最終headのCI全jobと所要時間は[PR #81](https://github.com/kooiei-in4a/amane-pdf-api/pull/81)に記録する。
