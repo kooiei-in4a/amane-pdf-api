@@ -1,0 +1,1864 @@
+{
+  "date_jst": "2026-10-19",
+  "baseline_commit": "87acad7",
+  "candidate_code_commit": "7f3903064b018cfe50391037fc08dbc914b767af",
+  "image_identities": [
+    "sha256:e3668280d7396531690dc7bcd0e38199ed3486ebcae3b3f5fa575ceaae9d2003 amane-pdf-api:issue-82-baseline",
+    "sha256:8e0353a6b04c19b019e8099fcc44c5f662256b4f4d5f2067c222a31e5651fe4a amane-pdf-api:ci"
+  ],
+  "tool_versions": {
+    "dotnet": "10.0.400",
+    "qpdf": "qpdf version 12.3.2",
+    "python": "Python 3.14.4",
+    "go-reader": "go version go1.26.0 linux/amd64",
+    "poppler": "pdftotext version 26.01.0"
+  },
+  "python_packages": {
+    "pyHanko": "0.29.1",
+    "pyhanko-certvalidator": "0.27.0",
+    "cryptography": "50.0.2",
+    "cffi": "2.1.1",
+    "requests": "2.34.2",
+    "certifi": "2026.10.18",
+    "charset-normalizer": "3.5.2",
+    "idna": "3.20",
+    "lxml": "6.1.3",
+    "numpy": "2.3.5",
+    "oscrypto": "1.3.0",
+    "pillow": "12.1.1",
+    "pycparser": "3.11",
+    "PyMuPDF": "1.26.3",
+    "PyYAML": "6.0.3",
+    "tzlocal": "5.4.4",
+    "uritools": "6.1.3",
+    "urllib3": "2.8.0",
+    "asn1crypto": "1.5.1"
+  },
+  "lock_sha256": "d79abd554574476858285797c1ab158264e40ff2286f040a896297253561a053",
+  "archive_sha256": "d86bfdbbb4ed1d50ba5bafc923b42813154a64dada33595f9c136261cd108632",
+  "official_checksums_match": true,
+  "font_sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673",
+  "go_version_m": "pdfcpu: go1.27.2\n\tpath\tgithub.com/pdfcpu/pdfcpu/cmd/pdfcpu\n\tmod\tgithub.com/pdfcpu/pdfcpu\tv0.16.2\t\n\tdep\tgithub.com/clipperhouse/uax29/v2\tv2.7.0\th1:+gs4oBZ2gPfVrKPthwbMzWZDaAFPGYK72F0NJv2v7Vk=\n\tdep\tgithub.com/hhrutter/tiff\tv1.0.7\th1:Oelnv46vb9gycPsotT0q1IoJ6Ywkzd77I1smgQvkP7g=\n\tdep\tgithub.com/mattn/go-runewidth\tv0.0.30\th1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=\n\tdep\tgithub.com/spf13/cobra\tv1.10.2\th1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU=\n\tdep\tgithub.com/spf13/pflag\tv1.0.10\th1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=\n\tdep\tgithub.com/xdg-go/stringprep\tv1.0.4\th1:XLI/Ng3O1Atzq0oBs3TWm+5ZVgkq2aqdlvP9JtoZ6c8=\n\tdep\tgo.yaml.in/yaml/v3\tv3.0.5\th1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw=\n\tdep\tgolang.org/x/crypto\tv0.57.0\th1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=\n\tdep\tgolang.org/x/image\tv0.46.0\th1:b1+oYj0Jbp6K5MDT4i4/eZpYlk3V8SJhhDKh6LBHAyQ=\n\tdep\tgolang.org/x/text\tv0.42.0\th1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-ldflags=\"-s -w -X main.version=0.16.2 -X github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model.VersionStr=0.16.2 -X main.commit=b41a41d5 -X main.date=2026-10-11T20:49:29Z\"\n\tbuild\tDefaultGODEBUG=tracebacklabels=0,x509sslcertoverrideplatform=0\n\tbuild\tCGO_ENABLED=0\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=b41a41d5323f6119ff6a183ad3f287eb4a20a617\n\tbuild\tvcs.time=2026-10-11T20:18:25Z\n\tbuild\tvcs.modified=false\n",
+  "module_diff": [
+    {
+      "path": "github.com/clipperhouse/uax29/v2",
+      "old": "v2.7.0",
+      "new": "v2.7.0",
+      "binary": true,
+      "sum": "h1:+gs4oBZ2gPfVrKPthwbMzWZDaAFPGYK72F0NJv2v7Vk="
+    },
+    {
+      "path": "github.com/google/jsonschema-go",
+      "old": "v0.4.3",
+      "new": "v0.4.3",
+      "binary": false,
+      "sum": "h1:/DBOLZTfDow7pe2GmaJNhltueGTtDKICi8V8p+DQPd0="
+    },
+    {
+      "path": "github.com/hhrutter/tiff",
+      "old": "v1.0.7",
+      "new": "v1.0.7",
+      "binary": true,
+      "sum": "h1:Oelnv46vb9gycPsotT0q1IoJ6Ywkzd77I1smgQvkP7g="
+    },
+    {
+      "path": "github.com/inconshreveable/mousetrap",
+      "old": "v1.1.0",
+      "new": "v1.1.0",
+      "binary": false,
+      "sum": "h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8="
+    },
+    {
+      "path": "github.com/mattn/go-runewidth",
+      "old": "v0.0.30",
+      "new": "v0.0.30",
+      "binary": true,
+      "sum": "h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk="
+    },
+    {
+      "path": "github.com/spf13/cobra",
+      "old": "v1.10.2",
+      "new": "v1.10.2",
+      "binary": true,
+      "sum": "h1:DMTTonx5m65Ic0GOoRY2c16WCbHxOOw6xxezuLaBpcU="
+    },
+    {
+      "path": "github.com/spf13/pflag",
+      "old": "v1.0.10",
+      "new": "v1.0.10",
+      "binary": true,
+      "sum": "h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk="
+    },
+    {
+      "path": "github.com/xdg-go/stringprep",
+      "old": null,
+      "new": "v1.0.4",
+      "binary": true,
+      "sum": "h1:XLI/Ng3O1Atzq0oBs3TWm+5ZVgkq2aqdlvP9JtoZ6c8="
+    },
+    {
+      "path": "go.yaml.in/yaml/v3",
+      "old": "v3.0.5",
+      "new": "v3.0.5",
+      "binary": true,
+      "sum": "h1:N6y/pJk8buWs9NY5ERU2HSMfm+IuD/OtfdAnq6kESPw="
+    },
+    {
+      "path": "golang.org/x/crypto",
+      "old": "v0.57.0",
+      "new": "v0.57.0",
+      "binary": true,
+      "sum": "h1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M="
+    },
+    {
+      "path": "golang.org/x/image",
+      "old": "v0.46.0",
+      "new": "v0.46.0",
+      "binary": true,
+      "sum": "h1:b1+oYj0Jbp6K5MDT4i4/eZpYlk3V8SJhhDKh6LBHAyQ="
+    },
+    {
+      "path": "golang.org/x/text",
+      "old": "v0.42.0",
+      "new": "v0.42.0",
+      "binary": true,
+      "sum": "h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI="
+    }
+  ],
+  "license_comparison": [
+    [
+      "Go-LICENSE.txt",
+      true
+    ],
+    [
+      "Go-PATENTS.txt",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/sys/PATENTS",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/sys/LICENSE",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/net/PATENTS",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/net/LICENSE",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/crypto/PATENTS",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/crypto/LICENSE",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/text/PATENTS",
+      true
+    ],
+    [
+      "go-runtime-vendor/golang.org/x/text/LICENSE",
+      true
+    ],
+    [
+      "pdfcpu-LICENSE.txt",
+      true
+    ],
+    [
+      "pdfcpu-pkcs7-LICENSE.txt",
+      true
+    ],
+    [
+      "pdfcpu-lzw-LICENSE.txt",
+      true
+    ]
+  ],
+  "units": {
+    "baseline": {
+      "failed": 0,
+      "passed": 1355,
+      "skipped": 0
+    },
+    "candidate": {
+      "failed": 0,
+      "passed": 1355,
+      "skipped": 0
+    }
+  },
+  "commands": {
+    "baseline": [
+      {
+        "name": "modules",
+        "command": [
+          "python3",
+          "scripts/verify-pdfcpu-modules.py",
+          "/tmp/issue-82-evidence/pdfcpu-old/bin/pdfcpu"
+        ],
+        "exit_code": 0,
+        "seconds": 0.031935075065121055
+      },
+      {
+        "name": "build",
+        "command": [
+          "dotnet",
+          "build",
+          "--configuration",
+          "Release"
+        ],
+        "exit_code": 0,
+        "seconds": 1.9212171891704202
+      },
+      {
+        "name": "test",
+        "command": [
+          "dotnet",
+          "test",
+          "--configuration",
+          "Release"
+        ],
+        "exit_code": 0,
+        "seconds": 321.81588560785167
+      },
+      {
+        "name": "docker-build",
+        "command": [
+          "docker",
+          "build",
+          "-t",
+          "amane-pdf-api:issue-82-baseline",
+          "."
+        ],
+        "exit_code": 0,
+        "seconds": 1.97078281105496
+      },
+      {
+        "name": "capacity-driver",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/from-images-followup-test.py"
+        ],
+        "exit_code": 0,
+        "seconds": 0.2646307800896466
+      },
+      {
+        "name": "docker-smoke",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/docker-smoke.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 52.081430946011096
+      },
+      {
+        "name": "renderer-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/renderer-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 4.121861540945247
+      },
+      {
+        "name": "redact-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/redact-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 2.419122542021796
+      },
+      {
+        "name": "compress-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/compress-validation.py",
+          "--render",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 31.234206730034202
+      },
+      {
+        "name": "pdfcpu-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/pdfcpu-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 2.4695705419871956
+      },
+      {
+        "name": "overlay-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/overlay-validation.py",
+          "amane-pdf-api:issue-82-baseline",
+          "--render"
+        ],
+        "exit_code": 0,
+        "seconds": 4.125136397080496
+      },
+      {
+        "name": "page-numbers-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/page-numbers-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 10.485028794035316
+      },
+      {
+        "name": "watermark-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/watermark-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 46.13156770495698
+      },
+      {
+        "name": "fill-template-glyphs-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/fill-template-glyphs-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 9.635417296085507
+      },
+      {
+        "name": "fill-template-validation",
+        "command": [
+          "/tmp/issue-82-evidence/venv/bin/python",
+          "scripts/fill-template-validation.py",
+          "amane-pdf-api:issue-82-baseline",
+          "--results",
+          "/tmp/issue-82-evidence/baseline/fill-template-capacity.json"
+        ],
+        "exit_code": 0,
+        "seconds": 20.96953240199946
+      },
+      {
+        "name": "from-images-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/from-images-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 4.727307212073356
+      },
+      {
+        "name": "stamp-image-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/stamp-image-validation.py",
+          "amane-pdf-api:issue-82-baseline"
+        ],
+        "exit_code": 0,
+        "seconds": 15.997260130010545
+      }
+    ],
+    "candidate": [
+      {
+        "name": "install",
+        "command": [
+          "scripts/install-pdfcpu.sh",
+          "/tmp/issue-82-evidence/pdfcpu-final"
+        ],
+        "exit_code": 0,
+        "seconds": 2.7750600250437856
+      },
+      {
+        "name": "modules",
+        "command": [
+          "python3",
+          "scripts/verify-pdfcpu-modules.py",
+          "/tmp/issue-82-evidence/pdfcpu-final/bin/pdfcpu"
+        ],
+        "exit_code": 0,
+        "seconds": 0.03213581093586981
+      },
+      {
+        "name": "build",
+        "command": [
+          "dotnet",
+          "build",
+          "--configuration",
+          "Release"
+        ],
+        "exit_code": 0,
+        "seconds": 8.148969080997631
+      },
+      {
+        "name": "test",
+        "command": [
+          "dotnet",
+          "test",
+          "--configuration",
+          "Release"
+        ],
+        "exit_code": 0,
+        "seconds": 320.70126217301004
+      },
+      {
+        "name": "docker-build",
+        "command": [
+          "docker",
+          "build",
+          "-t",
+          "amane-pdf-api:ci",
+          "."
+        ],
+        "exit_code": 0,
+        "seconds": 10.591893173987046
+      },
+      {
+        "name": "capacity-driver",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/from-images-followup-test.py"
+        ],
+        "exit_code": 0,
+        "seconds": 0.2143400269560516
+      },
+      {
+        "name": "docker-smoke",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/docker-smoke.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 52.02376612089574
+      },
+      {
+        "name": "renderer-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/renderer-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 4.12174696684815
+      },
+      {
+        "name": "redact-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/redact-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 2.419139645062387
+      },
+      {
+        "name": "compress-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/compress-validation.py",
+          "--render",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 29.079782204004005
+      },
+      {
+        "name": "pdfcpu-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/pdfcpu-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 2.469459749991074
+      },
+      {
+        "name": "overlay-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/overlay-validation.py",
+          "amane-pdf-api:ci",
+          "--render"
+        ],
+        "exit_code": 0,
+        "seconds": 4.12644283217378
+      },
+      {
+        "name": "page-numbers-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/page-numbers-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 10.585384497884661
+      },
+      {
+        "name": "watermark-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/watermark-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 45.07967629400082
+      },
+      {
+        "name": "fill-template-glyphs-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/fill-template-glyphs-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 8.780400601914153
+      },
+      {
+        "name": "fill-template-validation",
+        "command": [
+          "/tmp/issue-82-evidence/venv/bin/python",
+          "scripts/fill-template-validation.py",
+          "amane-pdf-api:ci",
+          "--results",
+          "/tmp/issue-82-evidence/candidate/fill-template-capacity.json"
+        ],
+        "exit_code": 0,
+        "seconds": 20.365898903924972
+      },
+      {
+        "name": "from-images-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/from-images-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 4.7744956919923425
+      },
+      {
+        "name": "stamp-image-validation",
+        "command": [
+          "/usr/bin/python3",
+          "scripts/stamp-image-validation.py",
+          "amane-pdf-api:ci"
+        ],
+        "exit_code": 0,
+        "seconds": 15.995622043963522
+      },
+      {
+        "name": "pdfcpu-update-validation",
+        "command": [
+          "/tmp/issue-82-evidence/venv/bin/python",
+          "scripts/pdfcpu-update-validation.py",
+          "amane-pdf-api:ci",
+          "--results",
+          "/tmp/issue-82-evidence/candidate/pdfcpu-update.json"
+        ],
+        "exit_code": 0,
+        "seconds": 6.179132770048454
+      }
+    ]
+  },
+  "unicode": {
+    "baseline": {
+      "version": "0.16.1",
+      "text_behavior": {
+        "placeholders": "PASS",
+        "literal_backslash_n": "two lines",
+        "single_percent": "element omitted",
+        "missing_glyphs": "U+1F600 and U+0378 omitted",
+        "percent_runs": [
+          1,
+          2,
+          3,
+          10,
+          199
+        ]
+      },
+      "coordinates": [
+        {
+          "font_size": 6,
+          "pos_y": -0.279296875,
+          "expected_baseline": 0.720703125,
+          "negative_pos_baseline": 501.0,
+          "split_dy_baseline": 0.7207
+        },
+        {
+          "font_size": 6.1,
+          "pos_y": -0.26728515625000004,
+          "expected_baseline": 0.73271484375,
+          "negative_pos_baseline": 501.0,
+          "split_dy_baseline": 0.73271
+        },
+        {
+          "font_size": 12,
+          "pos_y": -0.55859375,
+          "expected_baseline": 1.44140625,
+          "negative_pos_baseline": 502.0,
+          "split_dy_baseline": 1.4414099999999999
+        },
+        {
+          "font_size": 72,
+          "pos_y": -0.3515625,
+          "expected_baseline": 8.6484375,
+          "negative_pos_baseline": 509.0,
+          "split_dy_baseline": 8.64844
+        }
+      ],
+      "unicode": [
+        {
+          "case": "99",
+          "pages": 1,
+          "distinct_characters": 99,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              99
+            ],
+            "actual_block_entries": [
+              99
+            ],
+            "mappings": 99,
+            "mapping_sha256": "3677665ffd420a7b60eabab0cf78775ec30b813846a24d7bf76f6065a2da49c2"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              99
+            ],
+            "actual_block_entries": [
+              99
+            ],
+            "mappings": 99,
+            "mapping_sha256": "3677665ffd420a7b60eabab0cf78775ec30b813846a24d7bf76f6065a2da49c2"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "9551550d49eb7914ceb731fbd0a8c3f1a0c46b65429813aacb8e34fb19b53a7b"
+          ]
+        },
+        {
+          "case": "100",
+          "pages": 1,
+          "distinct_characters": 100,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              0
+            ],
+            "mappings": 100,
+            "mapping_sha256": "faabd258f2fdc98bd63c8277198dc3a92bf82d614b85e4d7420a1966d2d3d4bb"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100
+            ],
+            "actual_block_entries": [
+              100
+            ],
+            "mappings": 100,
+            "mapping_sha256": "faabd258f2fdc98bd63c8277198dc3a92bf82d614b85e4d7420a1966d2d3d4bb"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "ae07004d239d7f20b924518231936997ecda3f68559334283244aeada8fa1a4a"
+          ]
+        },
+        {
+          "case": "101",
+          "pages": 1,
+          "distinct_characters": 101,
+          "raw_extraction": {
+            "poppler": false,
+            "mupdf": false
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              0
+            ],
+            "mappings": 100,
+            "mapping_sha256": "0982875008a26d77468e23273f9f676d431ff5308f815086ed0fc711286fcf24"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              1
+            ],
+            "mappings": 101,
+            "mapping_sha256": "7411f36d29f7efd7aef4c02988d2b03638ff9a7fc8c580ee966880de33d97821"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "00443f9cad59f0506b0f1a569d64c5ee5fbdc8f4c03ed68e11243ba12e0252aa"
+          ]
+        },
+        {
+          "case": "200",
+          "pages": 1,
+          "distinct_characters": 200,
+          "raw_extraction": {
+            "poppler": false,
+            "mupdf": false
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              0
+            ],
+            "mappings": 100,
+            "mapping_sha256": "a176cb0cee7271234674d2f83fd04a672033b9e91533b872df711f372a03a100"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              100
+            ],
+            "actual_block_entries": [
+              100,
+              100
+            ],
+            "mappings": 200,
+            "mapping_sha256": "d395d0cc3945052df1987cf2926b27089edae15a33d5fc0d97f1febb90895637"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "80e7c2f0a55f1649db15616a6e2364c424f305822a9ce81c6dc575b8667f05e8"
+          ]
+        },
+        {
+          "case": "multiple-pages",
+          "pages": 4,
+          "distinct_characters": 338,
+          "raw_extraction": {
+            "poppler": false,
+            "mupdf": false
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              0
+            ],
+            "mappings": 100,
+            "mapping_sha256": "d97c70c6360939007d94f9e006808cf93e6dea67da608de2a2eb8f74052a5465"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              100,
+              100,
+              38
+            ],
+            "actual_block_entries": [
+              100,
+              100,
+              100,
+              38
+            ],
+            "mappings": 338,
+            "mapping_sha256": "63bd95ff7b459b0541bc4479aac3233c5b1e372351a96cbefb371e50bb78a5cb"
+          },
+          "same_rendering": [
+            true,
+            true,
+            true,
+            true
+          ],
+          "repaired_render_sha256": [
+            "9f2a5cbad6bdf51cfea88af76d8081b81244b12fde6d3ca959bd0edce9b3cb60",
+            "d05c9d12a7c53edcc2761a09dbe853777f9cc58d79b8b8334a2925b2a443760e",
+            "6ea2969a4533649ddeaad097295f9b62651c163600d88bb1cfbcbdbb13b08c14",
+            "543fdd873d88642da86eb8822b62b1ed27601d8ebd891336482b1704866dfca3"
+          ]
+        }
+      ]
+    },
+    "candidate": {
+      "version": "0.16.2",
+      "text_behavior": {
+        "placeholders": "PASS",
+        "literal_backslash_n": "two lines",
+        "single_percent": "element omitted",
+        "missing_glyphs": "U+1F600 and U+0378 omitted",
+        "percent_runs": [
+          1,
+          2,
+          3,
+          10,
+          199
+        ]
+      },
+      "coordinates": [
+        {
+          "font_size": 6,
+          "pos_y": -0.279296875,
+          "expected_baseline": 0.720703125,
+          "negative_pos_baseline": 501.0,
+          "split_dy_baseline": 0.7207
+        },
+        {
+          "font_size": 6.1,
+          "pos_y": -0.26728515625000004,
+          "expected_baseline": 0.73271484375,
+          "negative_pos_baseline": 501.0,
+          "split_dy_baseline": 0.73271
+        },
+        {
+          "font_size": 12,
+          "pos_y": -0.55859375,
+          "expected_baseline": 1.44140625,
+          "negative_pos_baseline": 502.0,
+          "split_dy_baseline": 1.4414099999999999
+        },
+        {
+          "font_size": 72,
+          "pos_y": -0.3515625,
+          "expected_baseline": 8.6484375,
+          "negative_pos_baseline": 509.0,
+          "split_dy_baseline": 8.64844
+        }
+      ],
+      "unicode": [
+        {
+          "case": "99",
+          "pages": 1,
+          "distinct_characters": 99,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              99
+            ],
+            "actual_block_entries": [
+              99
+            ],
+            "mappings": 99,
+            "mapping_sha256": "3677665ffd420a7b60eabab0cf78775ec30b813846a24d7bf76f6065a2da49c2"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              99
+            ],
+            "actual_block_entries": [
+              99
+            ],
+            "mappings": 99,
+            "mapping_sha256": "3677665ffd420a7b60eabab0cf78775ec30b813846a24d7bf76f6065a2da49c2"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "9551550d49eb7914ceb731fbd0a8c3f1a0c46b65429813aacb8e34fb19b53a7b"
+          ]
+        },
+        {
+          "case": "100",
+          "pages": 1,
+          "distinct_characters": 100,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100
+            ],
+            "actual_block_entries": [
+              100
+            ],
+            "mappings": 100,
+            "mapping_sha256": "faabd258f2fdc98bd63c8277198dc3a92bf82d614b85e4d7420a1966d2d3d4bb"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100
+            ],
+            "actual_block_entries": [
+              100
+            ],
+            "mappings": 100,
+            "mapping_sha256": "faabd258f2fdc98bd63c8277198dc3a92bf82d614b85e4d7420a1966d2d3d4bb"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "ae07004d239d7f20b924518231936997ecda3f68559334283244aeada8fa1a4a"
+          ]
+        },
+        {
+          "case": "101",
+          "pages": 1,
+          "distinct_characters": 101,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              1
+            ],
+            "mappings": 101,
+            "mapping_sha256": "7411f36d29f7efd7aef4c02988d2b03638ff9a7fc8c580ee966880de33d97821"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              1
+            ],
+            "actual_block_entries": [
+              100,
+              1
+            ],
+            "mappings": 101,
+            "mapping_sha256": "7411f36d29f7efd7aef4c02988d2b03638ff9a7fc8c580ee966880de33d97821"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "00443f9cad59f0506b0f1a569d64c5ee5fbdc8f4c03ed68e11243ba12e0252aa"
+          ]
+        },
+        {
+          "case": "200",
+          "pages": 1,
+          "distinct_characters": 200,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              100
+            ],
+            "actual_block_entries": [
+              100,
+              100
+            ],
+            "mappings": 200,
+            "mapping_sha256": "d395d0cc3945052df1987cf2926b27089edae15a33d5fc0d97f1febb90895637"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              100
+            ],
+            "actual_block_entries": [
+              100,
+              100
+            ],
+            "mappings": 200,
+            "mapping_sha256": "d395d0cc3945052df1987cf2926b27089edae15a33d5fc0d97f1febb90895637"
+          },
+          "same_rendering": [
+            true
+          ],
+          "repaired_render_sha256": [
+            "80e7c2f0a55f1649db15616a6e2364c424f305822a9ce81c6dc575b8667f05e8"
+          ]
+        },
+        {
+          "case": "multiple-pages",
+          "pages": 4,
+          "distinct_characters": 338,
+          "raw_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "repaired_extraction": {
+            "poppler": true,
+            "mupdf": true
+          },
+          "raw_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              100,
+              100,
+              38
+            ],
+            "actual_block_entries": [
+              100,
+              100,
+              100,
+              38
+            ],
+            "mappings": 338,
+            "mapping_sha256": "63bd95ff7b459b0541bc4479aac3233c5b1e372351a96cbefb371e50bb78a5cb"
+          },
+          "repaired_cmap": {
+            "type0_fonts": 1,
+            "blocks": [
+              100,
+              100,
+              100,
+              38
+            ],
+            "actual_block_entries": [
+              100,
+              100,
+              100,
+              38
+            ],
+            "mappings": 338,
+            "mapping_sha256": "63bd95ff7b459b0541bc4479aac3233c5b1e372351a96cbefb371e50bb78a5cb"
+          },
+          "same_rendering": [
+            true,
+            true,
+            true,
+            true
+          ],
+          "repaired_render_sha256": [
+            "9f2a5cbad6bdf51cfea88af76d8081b81244b12fde6d3ca959bd0edce9b3cb60",
+            "d05c9d12a7c53edcc2761a09dbe853777f9cc58d79b8b8334a2925b2a443760e",
+            "6ea2969a4533649ddeaad097295f9b62651c163600d88bb1cfbcbdbb13b08c14",
+            "543fdd873d88642da86eb8822b62b1ed27601d8ebd891336482b1704866dfca3"
+          ]
+        }
+      ]
+    }
+  },
+  "comparison": {
+    "repaired_cmap_same": true,
+    "repaired_render_pixels_same": true,
+    "coordinate_probes_same": true
+  },
+  "capacity": {
+    "baseline": {
+      "input_bytes": 52428800,
+      "fields_bytes": 55555,
+      "elements": 1000,
+      "fields": 200,
+      "glyphs": 11425,
+      "font_size": 72,
+      "drawn_pages": 10,
+      "span": 1000,
+      "seconds": 2.853,
+      "output_bytes": 3541850,
+      "sampled_job_peak_bytes": 56127488,
+      "container_memory_peak_bytes": 207728640,
+      "builder": {
+        "runs": [
+          {
+            "concurrent": 1,
+            "results": [
+              {
+                "seconds": 1.7591239,
+                "reserved": 120578048,
+                "stages": [
+                  {
+                    "Name": "validate-input",
+                    "Milliseconds": 97.4368,
+                    "Bytes": 52428800,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 43.1102,
+                    "Bytes": 426036,
+                    "Objects": 1003
+                  },
+                  {
+                    "Name": "input-attributes",
+                    "Milliseconds": 30.3957,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "blank",
+                    "Milliseconds": 16.1247,
+                    "Bytes": 124125,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 400.3262,
+                    "Bytes": 669241,
+                    "Objects": 2022
+                  },
+                  {
+                    "Name": "to-unicode",
+                    "Milliseconds": 89.5588,
+                    "Bytes": 2953279,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "draw",
+                    "Milliseconds": 94.9335,
+                    "Bytes": 2953279,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "layer-budget",
+                    "Milliseconds": 0,
+                    "Bytes": 8388608,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "overlay",
+                    "Milliseconds": 349.1763,
+                    "Bytes": 3651640,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 133.3912,
+                    "Bytes": 1893795,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "restore-attributes",
+                    "Milliseconds": 19.7125,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "restore",
+                    "Milliseconds": 82.9117,
+                    "Bytes": 3541850,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "validate-pdf",
+                    "Milliseconds": 255.4397,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 123.8686,
+                    "Bytes": 1584185,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "validate-output",
+                    "Milliseconds": 8.9976,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "job-reserved-peak",
+                    "Milliseconds": 0,
+                    "Bytes": 120578048,
+                    "Objects": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "concurrent": 2,
+            "results": [
+              {
+                "seconds": 3.6373096,
+                "reserved": 120578048,
+                "stages": [
+                  {
+                    "Name": "validate-input",
+                    "Milliseconds": 194.7383,
+                    "Bytes": 52428800,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 31.3995,
+                    "Bytes": 426036,
+                    "Objects": 1003
+                  },
+                  {
+                    "Name": "input-attributes",
+                    "Milliseconds": 67.1417,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "blank",
+                    "Milliseconds": 14.2741,
+                    "Bytes": 124125,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 809.6636,
+                    "Bytes": 669241,
+                    "Objects": 2022
+                  },
+                  {
+                    "Name": "to-unicode",
+                    "Milliseconds": 114.7943,
+                    "Bytes": 2953274,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "draw",
+                    "Milliseconds": 166.0275,
+                    "Bytes": 2953274,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "layer-budget",
+                    "Milliseconds": 0,
+                    "Bytes": 8388608,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "overlay",
+                    "Milliseconds": 700.3599,
+                    "Bytes": 3651640,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 421.6928,
+                    "Bytes": 1893795,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "restore-attributes",
+                    "Milliseconds": 78.531,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "restore",
+                    "Milliseconds": 215.0458,
+                    "Bytes": 3541850,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "validate-pdf",
+                    "Milliseconds": 578.0155,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 229.6391,
+                    "Bytes": 1584185,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "validate-output",
+                    "Milliseconds": 15.8717,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "job-reserved-peak",
+                    "Milliseconds": 0,
+                    "Bytes": 120578048,
+                    "Objects": 0
+                  }
+                ]
+              },
+              {
+                "seconds": 3.6330775,
+                "reserved": 120578048,
+                "stages": [
+                  {
+                    "Name": "validate-input",
+                    "Milliseconds": 193.9959,
+                    "Bytes": 52428800,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 32.8913,
+                    "Bytes": 426036,
+                    "Objects": 1003
+                  },
+                  {
+                    "Name": "input-attributes",
+                    "Milliseconds": 65.0571,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "blank",
+                    "Milliseconds": 15.0274,
+                    "Bytes": 124125,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 802.8112,
+                    "Bytes": 669241,
+                    "Objects": 2022
+                  },
+                  {
+                    "Name": "to-unicode",
+                    "Milliseconds": 111.7462,
+                    "Bytes": 2953279,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "draw",
+                    "Milliseconds": 114.5984,
+                    "Bytes": 2953279,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "layer-budget",
+                    "Milliseconds": 0,
+                    "Bytes": 8388608,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "overlay",
+                    "Milliseconds": 761.5293,
+                    "Bytes": 3651640,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 404.2376,
+                    "Bytes": 1893795,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "restore-attributes",
+                    "Milliseconds": 13.7378,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "restore",
+                    "Milliseconds": 283.6283,
+                    "Bytes": 3541850,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "validate-pdf",
+                    "Milliseconds": 531.3989,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 284.5422,
+                    "Bytes": 1584185,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "validate-output",
+                    "Milliseconds": 17.7583,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "job-reserved-peak",
+                    "Milliseconds": 0,
+                    "Bytes": 120578048,
+                    "Objects": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "container_memory_peak_bytes": 398905344
+      }
+    },
+    "candidate": {
+      "input_bytes": 52428800,
+      "fields_bytes": 55555,
+      "elements": 1000,
+      "fields": 200,
+      "glyphs": 11425,
+      "font_size": 72,
+      "drawn_pages": 10,
+      "span": 1000,
+      "seconds": 2.857,
+      "output_bytes": 3541852,
+      "sampled_job_peak_bytes": 58957824,
+      "container_memory_peak_bytes": 204812288,
+      "builder": {
+        "runs": [
+          {
+            "concurrent": 1,
+            "results": [
+              {
+                "seconds": 1.7625604,
+                "reserved": 120578048,
+                "unicode_seconds": 0.15836150000000004,
+                "reserved_fraction": 0.9273563508064516,
+                "stages": [
+                  {
+                    "Name": "validate-input",
+                    "Milliseconds": 98.9973,
+                    "Bytes": 52428800,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 39.4388,
+                    "Bytes": 426036,
+                    "Objects": 1003
+                  },
+                  {
+                    "Name": "input-attributes",
+                    "Milliseconds": 41.0105,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "blank",
+                    "Milliseconds": 16.238,
+                    "Bytes": 124125,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 413.6632,
+                    "Bytes": 669245,
+                    "Objects": 2022
+                  },
+                  {
+                    "Name": "to-unicode",
+                    "Milliseconds": 109.6001,
+                    "Bytes": 2953277,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "draw",
+                    "Milliseconds": 66.8366,
+                    "Bytes": 2953277,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "layer-budget",
+                    "Milliseconds": 0,
+                    "Bytes": 8388608,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "overlay",
+                    "Milliseconds": 352.9368,
+                    "Bytes": 3651642,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 136.2106,
+                    "Bytes": 1893797,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "restore-attributes",
+                    "Milliseconds": 19.8826,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "restore",
+                    "Milliseconds": 77.8186,
+                    "Bytes": 3541852,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "validate-pdf",
+                    "Milliseconds": 247.0888,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 120.9168,
+                    "Bytes": 1584187,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "validate-output",
+                    "Milliseconds": 8.5973,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "job-reserved-peak",
+                    "Milliseconds": 0,
+                    "Bytes": 120578048,
+                    "Objects": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "concurrent": 2,
+            "results": [
+              {
+                "seconds": 3.6652139,
+                "reserved": 120578048,
+                "unicode_seconds": 0.21551110000000004,
+                "reserved_fraction": 0.9273563508064516,
+                "stages": [
+                  {
+                    "Name": "validate-input",
+                    "Milliseconds": 159.0726,
+                    "Bytes": 52428800,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 83.2793,
+                    "Bytes": 426036,
+                    "Objects": 1003
+                  },
+                  {
+                    "Name": "input-attributes",
+                    "Milliseconds": 13.1822,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "blank",
+                    "Milliseconds": 72.6802,
+                    "Bytes": 124125,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 824.9406,
+                    "Bytes": 669245,
+                    "Objects": 2022
+                  },
+                  {
+                    "Name": "to-unicode",
+                    "Milliseconds": 102.5044,
+                    "Bytes": 2953280,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "draw",
+                    "Milliseconds": 113.4161,
+                    "Bytes": 2953280,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "layer-budget",
+                    "Milliseconds": 0,
+                    "Bytes": 8388608,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "overlay",
+                    "Milliseconds": 761.6569,
+                    "Bytes": 3651642,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 321.85,
+                    "Bytes": 1893797,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "restore-attributes",
+                    "Milliseconds": 77.5635,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "restore",
+                    "Milliseconds": 213.3468,
+                    "Bytes": 3541852,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "validate-pdf",
+                    "Milliseconds": 585.3555,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 324.5036,
+                    "Bytes": 1584187,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "validate-output",
+                    "Milliseconds": 11.7545,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "job-reserved-peak",
+                    "Milliseconds": 0,
+                    "Bytes": 120578048,
+                    "Objects": 0
+                  }
+                ]
+              },
+              {
+                "seconds": 3.6399399,
+                "reserved": 120578048,
+                "unicode_seconds": 0.14384749999999996,
+                "reserved_fraction": 0.9273563508064516,
+                "stages": [
+                  {
+                    "Name": "validate-input",
+                    "Milliseconds": 155.4723,
+                    "Bytes": 52428800,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 81.3036,
+                    "Bytes": 426036,
+                    "Objects": 1003
+                  },
+                  {
+                    "Name": "input-attributes",
+                    "Milliseconds": 13.3971,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "blank",
+                    "Milliseconds": 15.0054,
+                    "Bytes": 124125,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 809.3433,
+                    "Bytes": 669245,
+                    "Objects": 2022
+                  },
+                  {
+                    "Name": "to-unicode",
+                    "Milliseconds": 105.7577,
+                    "Bytes": 2953281,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "draw",
+                    "Milliseconds": 161.3913,
+                    "Bytes": 2953281,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "layer-budget",
+                    "Milliseconds": 0,
+                    "Bytes": 8388608,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "overlay",
+                    "Milliseconds": 698.5941,
+                    "Bytes": 3651642,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 298.2228,
+                    "Bytes": 1893797,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "restore-attributes",
+                    "Milliseconds": 11.8629,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "restore",
+                    "Milliseconds": 286.0943,
+                    "Bytes": 3541852,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "validate-pdf",
+                    "Milliseconds": 586.8891,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "metadata",
+                    "Milliseconds": 405.4002,
+                    "Bytes": 1584187,
+                    "Objects": 4010
+                  },
+                  {
+                    "Name": "validate-output",
+                    "Milliseconds": 11.0765,
+                    "Bytes": 0,
+                    "Objects": 0
+                  },
+                  {
+                    "Name": "job-reserved-peak",
+                    "Milliseconds": 0,
+                    "Bytes": 120578048,
+                    "Objects": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "container_memory_peak_bytes": 401743872
+      }
+    }
+  },
+  "document_changes": {
+    "updated_current_documents": [
+      "README.md",
+      "THIRD_PARTY_NOTICES.md",
+      "docs/security.md",
+      "docs/pdfcpu-design.md",
+      "docs/fill-template-design.md",
+      "docs/README.md"
+    ],
+    "append_new_validation": [
+      "docs/pdfcpu-validation.md",
+      "docs/fill-template-validation.md"
+    ],
+    "preserved_historical_sections": [
+      "docs/pdfcpu-design.md: 設計時の確認結果以降",
+      "docs/pdfcpu-validation.md: Issue #25の導入記録",
+      "docs/fill-template-design.md: 判断の経緯",
+      "docs/fill-template-validation.md: Issue #77/#78の測定"
+    ],
+    "preserved_historical_files": [
+      "docs/watermark-validation.md",
+      "docs/from-images-followup-validation.md",
+      "docs/stamp-image-design.md",
+      "docs/from-images-validation.md",
+      "docs/roadmap.md",
+      "docs/redact-design.md",
+      "docs/stamp-image-validation.md",
+      "docs/redact-validation.md",
+      "docs/from-images-as-validation.md",
+      "docs/stamp-image-design-probe/reproduce.sh",
+      "docs/redact-design-probe/reproduce.sh",
+      "third_party/pdfcpu/Roboto-NOTICE.txt"
+    ],
+    "preserved_measurement_json": "既存の docs 配下の測定JSONすべて（fill-template-capacity.json、*-results.json、redact-validation/*.json等）"
+  },
+  "driver_invocation_errors": [
+    {
+      "name": "compress-validation",
+      "command": [
+        "/usr/bin/python3",
+        "scripts/compress-validation.py",
+        "amane-pdf-api:issue-82-baseline",
+        "--render"
+      ],
+      "exit_code": 2,
+      "seconds": 0.06461421702988446
+    }
+  ]
+}

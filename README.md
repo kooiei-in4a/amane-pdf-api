@@ -600,7 +600,7 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__OverlayOutputLimitBytes` | `65011712`（62 MiB） | overlaid/最終PDFの各上限。job残容量による実効予算も適用 |
 | `Pdf__OverlayJobLimitBytes` | `130023424`（124 MiB） | 入力、全中間物、出力、FSIZE sentinelを4 KiB単位で予約 |
 | `Pdf__OverlayMaxPages` | `1000` | 連続した対象ページの上限 |
-| `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.1の描画tool |
+| `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.2の描画tool |
 | `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
 | `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
 | `Pdf__PdfcpuAddressSpaceLimitBytes` | `1073741824`（1 GiB） | pdfcpu専用RLIMIT_AS。qpdfと別の値 |
@@ -736,7 +736,7 @@ Dockerfile
 - Linuxではprlimit（util-linux）と、`--ignore-signal=XFSZ`に対応する`/usr/bin/env`（通常はOSに同梱）
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Linuxではlibjpeg-turbo-progs（djpeg／cjpegと必要なオプション）
-- Linux x86_64ではpdfcpu 0.16.1とBIZ UDPゴシック（共有installerで取得。curl・Python 3が必要）
+- Linux x86_64ではpdfcpu 0.16.2とBIZ UDPゴシック（共有installerで取得。curl・Python 3が必要）
 - Linux x86_64では固定版PDFium（`scripts/install-pdfium.sh` で取得）
 - Docker（コンテナ確認を行う場合）
 - Python 3（Docker smoke test。追加package不要）
@@ -813,6 +813,7 @@ python3 scripts/watermark-validation.py amane-pdf-api:ci
 python3 -m venv /tmp/amane-fill-template-validation
 /tmp/amane-fill-template-validation/bin/pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
 /tmp/amane-fill-template-validation/bin/python scripts/fill-template-validation.py amane-pdf-api:ci
+/tmp/amane-fill-template-validation/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:ci
 python3 scripts/redact-validation.py amane-pdf-api:ci
 ```
 

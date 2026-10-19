@@ -20,7 +20,7 @@
 
 ## 2. 前提（確認済みの現行構成）
 
-- API：.NET 10。描画は pdfcpu 0.16.1 + BIZ UDPゴシック v1.051、合成・検証は qpdf 12.3.2。DB・認証・永続保存なし。
+- API：.NET 10。描画は pdfcpu 0.16.2 + BIZ UDPゴシック v1.051、合成・検証は qpdf 12.3.2。DB・認証・永続保存なし。
 - 共通描画基盤 `PdfOverlayBuilder` が、入力検査、表示上のページ寸法の算出（CropBox・Rotate・UserUnitを反映）、白紙レイヤーの作成、qpdfでの重ね合わせ、属性の復元、出力検査を行う。透かし・ページ番号・押印で検証済み。
 - サイト：.NET 10 / Blazor / PostgreSQL。PDF中継（`PdfRelay`）はブラウザから届いたmultipartをそのまま転送する。pdf.js 6.3.289 によるプレビューと、黒塗りの矩形指定UI（`pdf-redact-regions.js`）がある。
 - 座標は黒塗りと同じく「表示上のページ左上を原点とする0〜1の値」で扱う。
@@ -169,7 +169,7 @@ pdfcpuの折り返し・揃え・`width` 機能は使わない（重なり・押
 5. 既存の生成物検査、重ね合わせ、属性復元、出力検査を行う。
 6. 成功・失敗・キャンセルのいずれでも一時ファイルを削除する（既存）。
 
-ToUnicodeの作り直しは、pdfcpuが先頭100字形までしか書かない不具合（`pkg/pdfcpu/font/fontDict.go` の `bf`、ちょうど100件で空ブロックも出力）への回避策。2026-10-19の実証で、修正前100/160字 → 修正後のレイヤー・重ね合わせ後とも160/160字の抽出に成功。本家で修正されたら回避処理を外す。
+ToUnicodeの作り直しは、pdfcpu 0.16.1が先頭100字形までしか書かない不具合（`pkg/pdfcpu/font/fontDict.go` の `bf`、ちょうど100件で空ブロックも出力）への回避策。2026-10-19の実証で、修正前100/160字 → 修正後のレイヤー・重ね合わせ後とも160/160字の抽出に成功。pdfcpu 0.16.2では本家の修正（`71d4ddf`）を含むが、#82では作り直しを残して比較検証する。削除は検証記録とPRの判断材料に基づくHumanの判断後、別の依頼で行う。
 
 ### 6.7 ログ・機密性
 
@@ -266,7 +266,7 @@ PDF選択 → pdf.jsプレビュー → 矩形の指定（黒塗りUIを流用�
 |---|---|---|---|
 | [API #77](https://github.com/kooiei-in4a/amane-pdf-api/issues/77) | API | 固定フォントの文字表（文字・字幅・字形番号）を生成する | — |
 | [API #78](https://github.com/kooiei-in4a/amane-pdf-api/issues/78) | API | `POST /api/pdf/fill-template` を追加する | API #77 |
-| [API #79](https://github.com/kooiei-in4a/amane-pdf-api/issues/79) | API | pdfcpu本家へToUnicodeの不具合を報告し、修正版で回避処理を外す | API #78 |
+| [API #79](https://github.com/kooiei-in4a/amane-pdf-api/issues/79) | API | 本家で修正済みのため報告せずclose。更新と回避処理の判断は [#82](https://github.com/kooiei-in4a/amane-pdf-api/issues/82) | API #78 |
 | [サイト #125](https://github.com/kooiei-in4a/amane-tools-site/issues/125) | サイト | 文字表の同期、送信前チェック、中継と利用回数の規則 | API #77、#78 |
 | [サイト #126](https://github.com/kooiei-in4a/amane-tools-site/issues/126) | サイト | ユーザーアップロード方式の画面 | サイト #125 |
 | [サイト #127](https://github.com/kooiei-in4a/amane-tools-site/issues/127) | サイト | サービス提供テンプレート方式 | サイト #126 |

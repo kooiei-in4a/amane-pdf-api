@@ -1,5 +1,7 @@
 # pdfcpu導入の検証記録（Issue #25・PR A）
 
+現行の固定版は0.16.2。更新時の結果は末尾の「0.16.2 への更新の検証（Issue #82）」を参照。以下の#25導入時の版と測定値は当時の記録として保持する。
+
 この文書はPR A時点（2026-10-09）の基盤導入記録です。下記にある「PR Bに残る」検証は記載時点の予定で、後続PRで実施済みです。共通描画基盤の実装・容量測定は[overlay-validation.md](overlay-validation.md)、現在の文書一覧は[docs/README.md](README.md)を参照してください。
 
 2026-10-09 JST。基準mainは `4590c8032759c521bb690b2f9692701d60fadfb5`。
@@ -118,3 +120,105 @@ python3 scripts/pdfcpu-validation.py amane-pdf-api:ci
 CIのtimeoutは10分を維持する。ここに記録した205.4秒はhostの全テストの時間で、CI job全体の時間ではない。
 remote CIは公開承認後にPRで確認する。PR Bの上限規模の容量測定は手動の別検証とし、通常CIとの範囲を区別する。
 #46によるdeployの保留を継続する。
+
+
+## 0.16.2 への更新の検証（Issue #82）
+
+2026-10-19 JST。比較元はmain `87acad7`、更新後の製品コード・テストは `7f39030`。後続の文書commitは実行コードを変えない。[測定JSON](pdfcpu-0.16.2-results.json)にコマンド全体の秒数、module差分、CMap・描画ハッシュ、最大負荷の全stageを保存した。既存の測定JSONは書き換えていない。
+
+### 取得物・依存物・CIのGo
+
+公式 [v0.16.2](https://github.com/pdfcpu/pdfcpu/releases/tag/v0.16.2) のLinux x86_64 archiveを自分でダウンロードしてSHA-256を計算し、公式 [checksums.txt](https://github.com/pdfcpu/pdfcpu/releases/download/v0.16.2/checksums.txt) と一致した。
+
+```text
+d86bfdbbb4ed1d50ba5bafc923b42813154a64dada33595f9c136261cd108632  pdfcpu_0.16.2_Linux_x86_64.tar.xz
+```
+
+lockはversion・URL・member・sha256・go_versionを更新。font archive、OFL、font_sha256は変更なし。導入後TTFのsha256も `595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673` に一致した。
+
+`go version -m` はGo 1.27.1→1.27.2、pdfcpu v0.16.1→v0.16.2。既存11 moduleのversion・sum・組込み区分は同じで、`github.com/xdg-go/stringprep v1.0.4`（`h1:XLI/Ng3O1Atzq0oBs3TWm+5ZVgkq2aqdlvP9JtoZ6c8=`）だけが追加。go.modは11→12 module、Linux binaryは9→10 module。jsonschema-goとmousetrapは引き続き非組込み。新依存のApache-2.0原文とREADMEの著作権表示を収録し、go.mod・module一覧・追加licenseのchecksumも更新した。Go LICENSE/PATENTS・runtime vendor、pdfcpu本体・内部pkcs7/lzwのlicense原文は新しい公式sourceと一致。Robotoのname tableの著作権・ライセンス表示も同じだった。
+
+CIの`setup-go: go-version: 1.26.0`は変更不要。実際にGo 1.26.0で両binaryのmetadataを読み、更新後のmodule検証もPASSした。Goは照合専用で、pdfcpuをコンパイルしない。上流go.modの最低版も1.26.0のまま。runtime imageへGoを追加していない。
+
+上流の[全91 commit](https://github.com/pdfcpu/pdfcpu/compare/v0.16.1...v0.16.2)を確認し、重点は[ToUnicodeの修正](https://github.com/pdfcpu/pdfcpu/commit/71d4ddf60da8cbc47f3ff5e0d0352bbe31ee2664)、[cmap重複拒否](https://github.com/pdfcpu/pdfcpu/commit/817e882e44a6580d1ce84bcccb7a9ba3e442e535)、[WinAnsi幅](https://github.com/pdfcpu/pdfcpu/commit/079e87f38eaba25e3cf68557523ae0b082e3b5b0)。APIは自分で生成した白紙・画像をpdfcpuへ渡し、利用者PDFの検査・合成には既存qpdfを使う構成を維持する。
+
+### 既存挙動の比較
+
+| 確認対象 | 0.16.1 | 0.16.2 | 判定 |
+| --- | --- | --- | --- |
+| 固定BIZ UDPゴシック v1.051のinstall・読込み | 成功 | 成功。cmap format 4/12の重複拒否に当たらない | 変化なし |
+| 差し込み文字表 | 11,425字、欠落・GID・幅不一致0 | 同左。BMP 63,423字の照合も一致（描画11,427字＝表＋共有GIDの2字） | 再生成不要 |
+| 透かし文字表 | 21,498 scalar検査、10,051字描画、幅の過小評価0 | 同左 | 再生成不要 |
+| 字形がない文字 | U+1F600・U+0378を黙って落とす | 同左（「日＋未収録2字＋本」が「日本」） | APIの文字表による事前拒否を維持 |
+| `%p` / `%P` | 物理ページ番号 / 全ページ数へ置換 | 同左 | 禁止した並びを維持 |
+| `%t` / `%v` | 時刻 / 0.16.1へ置換 | 時刻 / 0.16.2へ置換 | 版の値以外は変化なし |
+| U+005Cの直後の`n` | 2行へ分割 | 同左 | 禁止した並びを維持 |
+| 単独`%` | 要素とTjが消える | 同左 | 書換えを維持 |
+| n個の`%`をn+1個で渡す | n=1,2,3,10,199で元どおり | 同左。APIの`%a`×100も抽出一致 | 変化なし |
+| 負のpos.y | ページ中央扱い | 同左。12 ptで直接指定はbaseline 502.0 pt、pos.y=0＋負dyは1.44141 pt | #78の回避を維持 |
+| baseline / pos.y | 上端−1802/2048 s / baseline−ceil(246/2048 s) | 同左。66 baseline＋下端6/6.1/12/72 pt×3揃え・最小ページで誤差0.00002 pt未満 | 変化なし |
+| 送り幅 | hmtx×1000/2048の切捨て | 同左。Type0/Identity-HとCIDのWを照合 | WinAnsi変更による影響なし |
+| create / import / stamp | 全既存検証PASS | 透かし・ページ番号・差し込み / from-images / 電子印鑑の全既存検証PASS | 利用者向けの修正不要 |
+
+`fill-template-glyphs.py --check`は11,425 entries / 68,550 bytes一致、`watermark-glyphs.py --check`も成功（開発専用fontTools 4.67.0）。両生成表のgit差分は0。直接CLIの文字内容はToUnicodeの欠落に影響されないようTjのGIDから独立に復号した。
+
+### ToUnicode（回避処理は保持）
+
+追加した `scripts/pdfcpu-update-validation.py` が、製品imageのpdfcpuを直接呼んだ未修正PDFと、実HTTP APIで作った修正後PDFを比較する。本番コードへ切替を残していない。抽出はMuPDF（PyMuPDF 1.26.3）とPoppler 26.01.0の両方で、ページ内のUnicode正規化や空白除去をせず照合する。
+
+| fixture | 0.16.1・回避なし | 0.16.2・回避なし | APIの回避あり |
+| --- | --- | --- | --- |
+| 99（99種、1ページ） | 全文字一致、宣言99 | 全文字一致、99 | 両版とも全文字一致・Type0=1 |
+| 100（100種、1ページ） | 全文字一致、宣言100/1 | 全文字一致、100 | 両版とも全文字一致・Type0=1 |
+| 101（101種、1ページ） | 100字形で打切り・不一致、宣言100/1 | 全文字一致、100/1 | 両版とも全文字一致・Type0=1 |
+| 200（200種、1ページ） | 100字形で打切り・不一致、宣言100/1 | 全文字一致、100/100 | 両版とも全文字一致・Type0=1 |
+| multiple-pages（338種、4ページ） | 100字形で打切り・不一致、宣言100/1 | 全文字一致、100/100/100/38 | 両版とも全文字一致・Type0=1 |
+
+複数ページの338種は320種の漢字、結合濁点、`%`の末尾・連続・数字前、U+005C、①㈱￥※〒、`%a`×100を含む。旧版の宣言100/1は第2ブロックの実エントリが0という不正な余分のブロック。新版は100件ちょうどでも空ブロックを出さない。
+
+新版のCMapをAPIが差し替えた後も、全fixtureでType0はちょうど1つ、bfcharの宣言数と実件数が一致、各1〜100件。旧版・新版の回避ありCMapの対応表ハッシュとMuPDF描画pixelハッシュは全ページで同じ。各版内の差し替え前後の描画も全ページ同じだった。APIのType0 0個/2個の拒否、毎回の参照番号取得、故障500・cancel/timeout・削除も既存テストでPASS。
+
+最大負荷の所要時間・予約率と、削除案の影響範囲は [fill-template-validation.md](fill-template-validation.md) を参照。判断案は、Humanの承認後に別依頼で回避処理を外すこと。本PRでは保持する。
+
+### 全コマンドの結果と時間比較
+
+Linux x86_64、.NET SDK 10.0.400、qpdf 12.3.2、Python 3.14.4。同一ホストで比較元・更新後を順に実行した各1回のコマンド全体の秒数。比較元image名は`amane-pdf-api:issue-82-baseline`。ホストqpdfはCI同様の一時コピー。DockerのAPI・BuilderはCPU 1、1.5 GiB、swapなし、tmpfs 256 MiB、non-root、read-only、cap-drop ALL、no-new-privilegesを維持。
+
+| コマンド | 0.16.1 秒 | 0.16.2 秒 | 更新後の結果 |
+| --- | ---: | ---: | --- |
+| `scripts/install-pdfcpu.sh <一時ディレクトリ>` | — | 2.775 | PASS |
+| `python3 scripts/verify-pdfcpu-modules.py <一時ディレクトリ>/bin/pdfcpu` | 0.032 | 0.032 | PASS |
+| `dotnet build --configuration Release` | 1.921 | 8.149 | PASS |
+| `dotnet test --configuration Release` | 321.816 | 320.701 | PASS、1355件・skip 0 |
+| `docker build -t amane-pdf-api:ci .` | 1.971 | 10.592 | PASS |
+| `python3 scripts/from-images-followup-test.py` | 0.265 | 0.214 | PASS |
+| `python3 scripts/docker-smoke.py amane-pdf-api:ci` | 52.081 | 52.024 | PASS |
+| `python3 scripts/renderer-validation.py amane-pdf-api:ci` | 4.122 | 4.122 | PASS |
+| `python3 scripts/redact-validation.py amane-pdf-api:ci` | 2.419 | 2.419 | PASS |
+| `python3 scripts/compress-validation.py --render amane-pdf-api:ci` | 31.234 | 29.080 | PASS |
+| `python3 scripts/pdfcpu-validation.py amane-pdf-api:ci` | 2.470 | 2.469 | PASS |
+| `python3 scripts/overlay-validation.py amane-pdf-api:ci --render` | 4.125 | 4.126 | PASS |
+| `python3 scripts/page-numbers-validation.py amane-pdf-api:ci` | 10.485 | 10.585 | PASS |
+| `python3 scripts/watermark-validation.py amane-pdf-api:ci` | 46.132 | 45.080 | PASS |
+| `python3 scripts/fill-template-glyphs-validation.py amane-pdf-api:ci` | 9.635 | 8.780 | PASS |
+| `<venv>/bin/python scripts/fill-template-validation.py amane-pdf-api:ci` | 20.970 | 20.366 | PASS |
+| `python3 scripts/from-images-validation.py amane-pdf-api:ci` | 4.727 | 4.774 | PASS |
+| `python3 scripts/stamp-image-validation.py amane-pdf-api:ci` | 15.997 | 15.996 | PASS |
+| `<venv>/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:ci` | — | 6.179 | PASS |
+
+`fill-template-validation`と`pdfcpu-update-validation`は、system-site-packagesを参照しない新規venvへ `pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt` で固定した全19依存を導入して実行した。`pip check`もPASS。新規の更新検証は同じCI stepへ追加。上表はCI docker jobの全検証stepを含む。通常のRelease testは両版とも1355件、skip 0。
+
+installerは比較元も実行成功（時間未採取）。`--check`による両文字表の再生成照合もPASS。build・Docker buildのcache状態やホスト負荷が異なるので、時間差を更新だけの速度差とは解釈しない。比較driverの初回compress呼出しは引数順の誤りでexit 2だったが、CIと同じ`--render IMAGE`で再実行しPASSした（表は再実行値、JSONに初回も区別して記録）。
+
+### 版表記の更新と過去記録の保持
+
+| 扱い | 対象 |
+| --- | --- |
+| 現行版を更新 | README、docs/README、THIRD_PARTY_NOTICES、security.md、pdfcpu-design.mdの取得物・schema参照・module件数、fill-template-design.mdの現行構成と#82の運用 |
+| 新しい結果を追記 | 本文書とfill-template-validation.mdの本節、新規pdfcpu-0.16.2-results.json |
+| 既存節を当時の記録として保持 | pdfcpu-design.md末尾の設計時測定、本文書の#25、fill-template-validation.mdの#77/#78、fill-template-design.mdの判断履歴 |
+| 日付・測定commitのある設計/検証を保持 | watermark-validation.md、from-images-validation.md、from-images-followup-validation.md、from-images-as-validation.md、stamp-image-design.md、stamp-image-validation.md、redact-design.md、redact-validation.md、roadmap.md |
+| 過去のraw測定を保持 | 既存のdocs配下の測定JSONすべて（fill-template-capacity.json、*-results.json、redact-validation/*.json等）、stamp-image-design-probe/reproduce.sh、redact-design-probe/reproduce.sh |
+| 同梱資源の取得元記録を保持 | Roboto-NOTICE.txtのv0.16.1由来という記載（著作権・ライセンス表示は新版でも一致） |
+
+フォント・qpdf・.NET・APIの契約・各容量制限は変更なし。サイト、本家への投稿、回避処理の削除、merge・tag・Release・deployは対象外。

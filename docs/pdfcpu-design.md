@@ -8,6 +8,8 @@
 
 この設計書はPR Aに含め、レビューを経てmainへ取り込む。`docs/issue-25-design` ブランチは、PR Aのmerge後にIssueの参照先をmainから到達できるcommitへ更新し、公開ファイルを読み戻して確認するまで残す。squash/rebaseで元の設計commitがmainへ引き継がれない場合も、参照先の移行前にブランチを削除しない。mainから到達できるcommitへの参照移行は、Humanのmerge承認後に行う。
 
+#82（2026-10-19）で取得物・schema参照を0.16.2へ更新した。末尾の設計時プローブ・過去の測定値は0.16.1の記録として保持する。更新検証は [pdfcpu-validation.md](pdfcpu-validation.md) を参照。
+
 ## 最新mainに合わせる変更
 
 2026-10-07の初期案から、次の扱いを採用する。
@@ -26,13 +28,13 @@
 
 ## 取得物と配置
 
-pdfcpuは [v0.16.1の公式Release](https://github.com/pdfcpu/pdfcpu/releases/tag/v0.16.1)、フォントは [v1.051の公式Release](https://github.com/googlefonts/morisawa-biz-ud-gothic/releases/tag/v1.051) を固定する。対象platformはLinux x86_64とする。別architectureでは明示的に取得処理を失敗させる。
+pdfcpuは [v0.16.2の公式Release](https://github.com/pdfcpu/pdfcpu/releases/tag/v0.16.2)、フォントは [v1.051の公式Release](https://github.com/googlefonts/morisawa-biz-ud-gothic/releases/tag/v1.051) を固定する。対象platformはLinux x86_64とする。別architectureでは明示的に取得処理を失敗させる。
 
-2026-10-09に公式配布物から確認したSHA-256は次のとおり。pdfcpu tar.xzはReleaseの `checksums.txt` とも一致した。フォントの値は取得した固定Release assetから計算したもので、独立した署名検証の結果ではない。
+2026-10-19の#82で公式配布物から再確認したSHA-256は次のとおり。pdfcpu tar.xzはReleaseの `checksums.txt` とも一致した。フォントの値は取得した固定Release assetから計算したもので、独立した署名検証の結果ではない。
 
 | 取得物 | SHA-256 |
 | --- | --- |
-| `pdfcpu_0.16.1_Linux_x86_64.tar.xz` | `757e57036e1da56b789d0243ba72b09be4f26b3ec88e781170896ac36ae04d51` |
+| `pdfcpu_0.16.2_Linux_x86_64.tar.xz` | `d86bfdbbb4ed1d50ba5bafc923b42813154a64dada33595f9c136261cd108632` |
 | `BIZUDGothic.zip` | `30692df621b92df13b88f1360aed1ab6ae50de441bce751a396c6439045cd759` |
 | `BIZUDPGothic-Regular.ttf` | `595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673` |
 | フォントrepoの `v1.051/OFL.txt` | `e753d7155d53c747d037a445e584c8ecfca6dd79846db610417e282a736b28bc` |
@@ -55,7 +57,7 @@ Dockerのtools stageで取得・フォント組み込みを行い、final stage�
 
 `pdfcpu -c <prefix>/config fonts install <ttf>` をビルド時だけ実行する。`-c` は `pdfcpu` ディレクトリの親を指す。設定の `offline` をtrueにし、実行時にも `--offline` を付ける。初期化でRobotoのfont cacheも作られるため、RobotoのApache-2.0全文と `Copyright 2011 Google Inc. All Rights Reserved.` の表示も収録する。BIZのzipにはOFL本文が入っていないため、上表の公式OFL原文をrepositoryへ保存する。原文の著作権表示は書き換えない。
 
-noticeの対象はpdfcpu本体とfontに限定しない。[v0.16.1のgo.mod](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/go.mod) のrequire全体を、indirectを含む11 moduleの一覧として保存する。取得したbinaryの `go version -m` と照合して、実際に組み込まれたmodule、Go runtime・標準ライブラリ、font等の同梱資源のlicense全文・著作権表示を収録する。照合用Goは開発またはCIの検証toolとして使い、配布imageには追加しない。module一覧はnoticeと一緒に配布し、取得物の更新時にも再生成する。
+noticeの対象はpdfcpu本体とfontに限定しない。[v0.16.2のgo.mod](https://github.com/pdfcpu/pdfcpu/blob/v0.16.2/go.mod) のrequire全体を、indirectを含む12 moduleの一覧として保存する。取得したbinaryの `go version -m` と照合して、実際に組み込まれたmodule、Go runtime・標準ライブラリ、font等の同梱資源のlicense全文・著作権表示を収録する。照合用Goは開発またはCIの検証toolとして使い、配布imageには追加しない。module一覧はnoticeと一緒に配布し、取得物の更新時にも再生成する。
 
 設定ディレクトリは0555、設定とfont cacheは0444、バイナリは0555とする。実行ユーザー `app` で読み取り・実行ができ、書き込みができないことを確認する。取得やfont installをAPI起動時に行わない。
 
@@ -107,7 +109,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf,
 
 後続endpointはBuildAsyncが正常完了した場合だけ出力を返す。最終検査等の失敗でoutput.pdfが残っても送信せず、既存のjob所有者が成功・失敗ともjobをdisposeする。文字modelの利用者入力はBuild前に検証して400へ変換する必要がある。draw内のArgumentExceptionを現行helperへそのまま渡すと内部契約違反の500になるため、endpointでの入力検証と内部エラーを区別する。
 
-`PdfcpuLayer` はページ番号をキーとする `pages → content → text[]` の型付きmodelとする。文字の `value`、`anchor` または位置、`dx` / `dy`、fontのsize・col、`rot` だけを入力modelに持たせる。font nameは自由入力にせず、JSON writerが常に `JapaneseFont` を書く。pdfcpuの任意JSON、URL、外部ファイル参照、画像取得、フォーム要素を透過させない。schemaは [v0.16.1のTextBox](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/textBox.go) と [Content](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/pdfcpu/primitives/content.go) に合わせる。
+`PdfcpuLayer` はページ番号をキーとする `pages → content → text[]` の型付きmodelとする。文字の `value`、`anchor` または位置、`dx` / `dy`、fontのsize・col、`rot` だけを入力modelに持たせる。font nameは自由入力にせず、JSON writerが常に `JapaneseFont` を書く。pdfcpuの任意JSON、URL、外部ファイル参照、画像取得、フォーム要素を透過させない。schemaは [v0.16.2のTextBox](https://github.com/pdfcpu/pdfcpu/blob/v0.16.2/pkg/pdfcpu/primitives/textBox.go) と [Content](https://github.com/pdfcpu/pdfcpu/blob/v0.16.2/pkg/pdfcpu/primitives/content.go) に合わせる。
 
 利用者の文字は0600のJSONにだけ書く。argvに載せない。`%` はpdfcpuの置換文字として扱われるため、利用者の文字に含まれる場合は生成前に拒否する。ページ番号は後続Issueで計算した数字そのものを渡す。文字数・描画要素数・サイズ・回転角・色・配置名は共通処理で制限する。1要素128 UTF-16単位、1ページ4要素、全体4,000要素、対象1,000ページ、font size 1〜14,400 pt、座標/offset ±14,400 pt、文字回転 ±360度である。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16・`%`は拒否する。後続APIもこの範囲内で入力検証する。画像stampやimportの利用者向け仕様は#29/#26で追加する。PR Bで確定する入力上限は文字系（ページ番号・透かし・文字stamp）を対象とする。画像stamp（#29）と画像→PDF（#26）は、アップロードbytes・画素数・レイヤーまたは生成PDFの予算を各Issueで定め、同じ最大入力・容量・時間検証を行う。文字系の8 MiB検証結果を画像系へ流用しない。
 
@@ -122,9 +124,9 @@ pdfcpuのprocess requestは現在のfactoryで作り、`with { WorkingDirectory 
 | `GOMAXPROCS` | `1`。CPU 1の予算に合わせ、hostでも同じ条件にする |
 | `GOTRACEBACK` | `none` |
 
-`PDFCPU_CONFIG_ROOT` が親にあっても明示した `-c` が優先されることを、[v0.16.1の設定解決](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/api/configuration.go#L94) と実toolテストで確認する。存在しないHOME/XDGや異なるGo設定を親へ与えるテストを設け、job外への書き込みがないことを確認する。AS・CORE=0・SIGXFSZ無視・FSIZEを適用し、shellを介さず `ArgumentList` を使う。通常のstdout/stderrは破棄する。
+`PDFCPU_CONFIG_ROOT` が親にあっても明示した `-c` が優先されることを、[v0.16.2の設定解決](https://github.com/pdfcpu/pdfcpu/blob/v0.16.2/pkg/api/configuration.go#L94) と実toolテストで確認する。存在しないHOME/XDGや異なるGo設定を親へ与えるテストを設け、job外への書き込みがないことを確認する。AS・CORE=0・SIGXFSZ無視・FSIZEを適用し、shellを介さず `ArgumentList` を使う。通常のstdout/stderrは破棄する。
 
-pdfcpuは既存の出力pathを拒否する。JSONは `CreatePrivateFile` で作るが、pdfcpu出力を事前に空ファイルとして作らない。job内の新しい固定名にだけ出力し、既存ファイルを上書きする `--force` は使わない。pdfcpuの新規出力は0666とumaskからpermissionが決まるため、生成中は0700のjobで遮断し、成功後はLinuxの `File.SetUnixFileMode` で0600へ揃えてから検査する。失敗時はjobごと削除する。[v0.16.1の出力処理](https://github.com/pdfcpu/pdfcpu/blob/v0.16.1/pkg/api/file.go)
+pdfcpuは既存の出力pathを拒否する。JSONは `CreatePrivateFile` で作るが、pdfcpu出力を事前に空ファイルとして作らない。job内の新しい固定名にだけ出力し、既存ファイルを上書きする `--force` は使わない。pdfcpuの新規出力は0666とumaskからpermissionが決まるため、生成中は0700のjobで遮断し、成功後はLinuxの `File.SetUnixFileMode` で0600へ揃えてから検査する。失敗時はjobごと削除する。[v0.16.2の出力処理](https://github.com/pdfcpu/pdfcpu/blob/v0.16.2/pkg/api/file.go)
 
 ## ページ属性の取得
 
@@ -280,7 +282,7 @@ Popplerは.NETテストの必須toolに含めず、描画比較scriptの依存�
 | 検証 | 確認内容 |
 | --- | --- |
 | 取得 | binary/archive/TTF/licenseのchecksum不一致で非0。Dockerとhostが同じversion・fontを使用 |
-| license | pdfcpu・BIZ・Roboto、go.modのindirectを含む11 moduleと取得binaryのmodule一覧、Go runtime・標準ライブラリ・同梱資源を照合。必要なlicense全文と著作権表示、module一覧、noticeがrepositoryとfinal imageの両方にある |
+| license | pdfcpu・BIZ・Roboto、go.modのindirectを含む12 moduleと取得binaryのmodule一覧、Go runtime・標準ライブラリ・同梱資源を照合。必要なlicense全文と著作権表示、module一覧、noticeがrepositoryとfinal imageの両方にある |
 | 起動 | 固定30秒の共有deadline。version違い、font/config欠落、読み取り不可、不正設定、不適合ASで待受前に失敗。専用例外の直接テストとProgramのログ捕捉で専用固定メッセージ・内部情報非出力・job削除を確認 |
 | 実行request | `-c`、offline、GOMEMLIMIT、HOME/XDG、Go環境の上書き、working directory、AS/CORE/FSIZE/SIGXFSZが実processへ適用される。親の環境は変わらない |
 | 文字の受け渡し | 日本語、quote、改行、先頭 `-`、`,` がJSON経由で渡りargv/logに出ない。`%`は拒否、fontはJapaneseFont固定 |

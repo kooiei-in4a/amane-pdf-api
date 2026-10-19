@@ -26,7 +26,7 @@
 | [from-images-as-validation.md](from-images-as-validation.md) | PNG取込時の仮想アドレス空間と同時処理の判断・検証 |
 | [fsize-core-validation.md](fsize-core-validation.md) | LinuxのFSIZE上限とcore dumpに関するAPI側検証・未確認事項 |
 | [overlay-validation.md](overlay-validation.md) | pdfcpu共通描画基盤のHTTP・描画・容量検証 |
-| [pdfcpu-validation.md](pdfcpu-validation.md) | pdfcpu導入時の起動・フォント・CI検証。PR A時点の記録 |
+| [pdfcpu-validation.md](pdfcpu-validation.md) | pdfcpu導入時の起動・フォント・CI検証（PR A）と、0.16.2更新時の全機能・ToUnicode比較。 |
 | [qpdf-memory-validation.md](qpdf-memory-validation.md) | qpdfのメモリ制限と負荷測定 |
 | [renderer-validation.md](renderer-validation.md) | PDFium別プロセス描画基盤（PR A）の検証。黒塗りAPIの後続検証はredact-validation.mdを参照 |
 | [redact-validation.md](redact-validation.md) | 黒塗りAPIのHTTP契約、安全性、描画・容量検証 |
