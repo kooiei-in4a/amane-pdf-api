@@ -138,8 +138,11 @@ internal static class FillTemplateLayout
                 _ => throw new InvalidOperationException(PdfOverlayBuilder.Failure)
             });
             var baseline = top - 1.2m * s * i - 1802m / 2048m * s;
+            var y = baseline - decimal.Ceiling(246m / 2048m * s);
+            // pdfcpu interprets a negative pos.y as page centering. Keep the
+            // calculated coordinate as a literal offset from zero in that case.
             output.Add(new(lines[i], Anchor: null, X: (double)x,
-                Y: (double)(baseline - decimal.Ceiling(246m / 2048m * s)), FontSize: (double)s));
+                Y: (double)decimal.Max(0, y), Dy: (double)decimal.Min(0, y), FontSize: (double)s));
         }
         return output;
     }

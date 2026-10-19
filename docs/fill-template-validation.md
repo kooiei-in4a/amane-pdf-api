@@ -126,6 +126,7 @@ python3 -m venv --system-site-packages /tmp/amane-fill-template-validation
 - 配置と比較はdecimal。表示寸法を一度decimalへ変換し、pdfcpuへの出力時だけdoubleに戻す。12 ptの「日」の幅12 ptと左右余白1.2 ptを含む13.2×12 ptは成功、幅13.1 pt・高さ11.9 ptはfield-overflow。単体テストではこれに加え幅0.0000005 ptの超過も拒否する。
 - 文字数上限は`%`を書き換える前。`%a`×100は元200 UTF-16単位なので許可し、書き換え後300単位でも描画・抽出が一致する。199の呼出し元上限と既定128の呼出し元では拒否する。JSON bytes予算は書き換え後にも適用する。
 - `field-overflow`は固定文言とreasonだけを返し、項目番号を返さない。設計書§5.3へ反映した。
+- ページ下端では計算したpdfcpu座標が負になり得る。負のpos.yはページ中央指定として解釈され、通常ページでは約半ページ、最小ページでは押し戻しにより約0.57 ptずれることを追加実測した。負の場合だけpos.y=0とdy=計算した負座標に分け、実座標を保つ。6/6.1/12/72 pt×3揃えと13.2×12 ptの最小ページで実baselineを0.00002 pt以内に検査した。設計書§6.3の送信表現変更としてPRの判断事項に記載した。
 - 空行は矩形の高さとページ100行上限に含め、字形のない行の描画要素は生成しない。非空行は1行1要素で、anchor・width・折り返し・pdfcpuの揃えは使わない。
 
 ### 配置・抽出・フォーム
@@ -169,12 +170,12 @@ DockerはCPU 1、memory 1.5 GiB、swapなし、read-only、tmpfs 256 MiB、非ro
 
 実ファイル標本は50 ms間隔の要求とDocker execの所要時間を含むため、厳密な瞬間最大値ではない。容量台帳の予約ピークはBuilderのobserveから直接取得し、Unicode metadata・更新JSON・修正レイヤーを含む。書込み前予約・FSIZE sentinel・4 KiB切上げ・実サイズ確定は既存OverlayCapacityを使う。
 
-### コマンドと既定テスト時間
+### コマンドと既定テスト時間（初回測定）
 
 | コマンド | 最終結果 |
 | --- | --- |
 | `dotnet build --configuration Release` | PASS、警告0・エラー0 |
-| `dotnet test --configuration Release` | PASS、1,355件、5分20秒。補足した境界・実object stream fixtureを含む関連36件の再実行もPASS（9秒） |
+| `dotnet test --configuration Release` | PASS、1,355件、5分20秒。関連36件もPASS（9秒）。下端補正を含む最終全テストとCIの結果・時間は[PR #81](https://github.com/kooiei-in4a/amane-pdf-api/pull/81)に記録 |
 | `docker build -t amane-pdf-api:ci .` | PASS |
 | `python3 scripts/docker-smoke.py amane-pdf-api:ci` | PASS、36 POST checks、60.126秒 |
 | `python3 scripts/fill-template-validation.py amane-pdf-api:ci` | 固定版venvでPASS。配置・文字抽出・8種フォーム・単独/同時2件負荷・削除・health |

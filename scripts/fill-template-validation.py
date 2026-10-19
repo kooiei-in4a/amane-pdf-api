@@ -184,8 +184,35 @@ def boundaries(api, directory):
     # Full page dimensions are exact decimals, so 13.2 pt includes a 12 pt glyph + 1.2 pt padding.
     for w, h, expected in ((13.2, 12, 200), (13.1, 12, 422), (13.2, 11.9, 422)):
         source = blank(directory, "boundary", width=w, height=h)
-        request(api, source, [field(text="日", x=0, y=0, width=1, height=1)], expected, "field-overflow" if expected == 422 else None)
-    print("Overflow: exact fit / width +0.1 pt / height +0.1 pt (decimal comparisons): PASS", flush=True)
+        output, _ = request(api, source, [field(text="日", x=0, y=0, width=1, height=1)], expected, "field-overflow" if expected == 422 else None)
+        if expected == 200:
+            verify_bottom_baseline(directory, output, 246/2048*12)
+    for size in (6, 6.1, 12, 72):
+        source = blank(directory, "page-bottom", width=600, height=1000)
+        for align in ("left", "center", "right"):
+            output, _ = request(api, source, [field(text="日", x=0, y=round(1-size/1000, 4),
+                width=1, height=round(size/1000, 4), fontSize=size, align=align)])
+            verify_bottom_baseline(directory, output, 246/2048*size)
+    print("Overflow: exact fit / width +0.1 pt / height +0.1 pt; page-bottom baselines at 6/6.1/12/72 pt x3 alignments: PASS", flush=True)
+
+
+def verify_bottom_baseline(directory, output, expected):
+    path = directory / "bottom-filled.pdf"
+    path.write_bytes(output)
+    metadata = json.loads(command("qpdf", "--json=2", "--json-key=qpdf", "--json-stream-data=inline",
+                                  "--decode-level=all", str(path)).stdout)
+    found = []
+    for obj in metadata["qpdf"][1].values():
+        stream = obj.get("stream", {})
+        if stream.get("dict", {}).get("/Subtype") != "/Form":
+            continue
+        content = base64.b64decode(stream["data"]).decode("latin1")
+        if " Tj" not in content:
+            continue
+        matrix = re.search(r"([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+) ([-\d.]+) cm", content)
+        offset = re.search(r"([-\d.]+) ([-\d.]+) Td", content)
+        found.append(float(matrix[6]) + float(offset[2]))
+    assert len(found) == 1 and abs(found[0] - expected) < .00002, ("page-bottom baseline", found, expected)
 
 
 def signed_fixtures(directory, source):

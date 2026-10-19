@@ -114,6 +114,14 @@ public sealed class FillTemplateFieldsTests
         var field = new FillTemplateField(1, 0, 0, 0.5m, 0.5m, 12, "left", "日");
         // Width 13.2 = glyph 12 + margin 1.2; height 12 exactly.
         Assert.AreEqual(1, FillTemplateLayout.Place(field, new(26.4, 24)).Count);
+        foreach (var size in new[] { 6m, 6.1m, 12m, 72m })
+        {
+            var bottom = new FillTemplateField(1, 0, 1-size/1000, 1, size/1000, size, "left", "日");
+            var line = FillTemplateLayout.Place(bottom, new(600, 1000)).Single();
+            var offset = 246m / 2048m * size - decimal.Ceiling(246m / 2048m * size);
+            Assert.AreEqual(0d, line.Y); // Avoid pdfcpu's negative-position centering.
+            Assert.AreEqual((double)offset, line.Dy, 1e-10);
+        }
         foreach (var size in new[] { new PdfcpuPageSize(26.2, 24), new PdfcpuPageSize(26.4, 23.8), new PdfcpuPageSize(26.399999, 24) })
             Assert.AreEqual("field-overflow", Assert.ThrowsExactly<PdfFillTemplateException>(() => FillTemplateLayout.Place(field, size)).Code);
     }
