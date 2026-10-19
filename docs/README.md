@@ -8,6 +8,7 @@
 | --- | --- |
 | [roadmap.md](roadmap.md) | PDF機能の方針と判断の経緯。優先度表は2026-10-07時点の計画記録で、現在の未完了項目を表しません。 |
 | [pdfcpu-design.md](pdfcpu-design.md) | pdfcpu導入と共通描画・合成基盤の設計記録。 |
+| [fill-template-design.md](fill-template-design.md) | PDFテンプレート差し込みの確定基本設計（2026-10-19 Human承認）。 |
 | [stamp-image-design.md](stamp-image-design.md) | 透過PNG押印APIの設計と採用判断。現行の検証結果は対応するvalidation記録を参照してください。 |
 | [redact-design.md](redact-design.md) | 画像化方式の黒塗りAPIの設計、安全境界、判断の経緯。 |
 
@@ -19,6 +20,7 @@
 | --- | --- |
 | [clean-validation.md](clean-validation.md) | PDF情報除去APIの構造・容量検証 |
 | [compress-validation.md](compress-validation.md) | JPEG画像圧縮の画質・構造・容量検証 |
+| [fill-template-validation.md](fill-template-validation.md) | PDFテンプレート差し込み用の固定フォント文字表の生成・描画・送り幅検証 |
 | [from-images-validation.md](from-images-validation.md) | 画像からPDFを作るAPIの初期検証と運用への引き継ぎ |
 | [from-images-followup-validation.md](from-images-followup-validation.md) | PNG見積りと画像処理の追加容量検証 |
 | [from-images-as-validation.md](from-images-as-validation.md) | PNG取込時の仮想アドレス空間と同時処理の判断・検証 |
