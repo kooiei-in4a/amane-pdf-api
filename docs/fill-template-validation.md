@@ -1,6 +1,6 @@
 # PDFテンプレート差し込み 検証記録
 
-現行の固定版はpdfcpu 0.16.2。更新時の比較とToUnicodeの判断材料は末尾の「0.16.2 への更新の検証（Issue #82）」に追記し、#77/#78の測定は当時の版のまま保持する。
+現行の固定版はpdfcpu 0.16.2で、そのToUnicodeを直接使う。現在の結果は末尾の「ToUnicode回避処理の削除後の検証」を参照。更新時の比較、#77/#78の測定は当時の記録として保持する。
 
 ## 文字表（Issue #77）
 
@@ -261,3 +261,94 @@ HTTP最大負荷は0.16.1で2.853秒、0.16.2で2.857秒。0.16.2の出力は3,5
 | 検証記録 | fill-template-validation.md・pdfcpu-validation.mdへ削除後の実測を追記。今回と既存の測定JSONは当時の記録として残す |
 
 ほかに設計から外れる変更はない。フォント、文字規則、%の書換え、負座標の回避、フォーム検出、時間・容量・同時実行の制限は維持する。回避処理の削除を本PRの完了条件には含めない。
+
+
+## ToUnicode回避処理の削除後の検証（Issue #82、2026-10-19）
+
+Human決定（2026-10-19）と[PR #83](https://github.com/kooiei-in4a/amane-pdf-api/pull/83)の実測を根拠に、APIのToUnicode再作成を削除した。過去の節と測定JSONは変更せず、[今回のraw測定JSON](fill-template-tounicode-removal-results.json)へ分けて保存する。過去節の比較用script・`--expected-version`の再現には当時のcommitを使う。
+
+測定対象 `6e5ed11`（製品コード `f8688e4`）、比較元はPR #83の0.16.2・回避処理あり。Linux x86_64、.NET SDK 10.0.400、qpdf 12.3.2、Python 3.14.4、Poppler 26.01.0。各コマンドは同一ホストで各1回の実測。時間差にはcache・ホスト負荷・計測driverの変更が含まれ、削除だけによる速度差とは解釈しない。
+
+`dotnet test --configuration Release` は **1355→1353件（削除5・追加3）、skip 0**。所要時間は **320.701→316.098秒（約4.6秒短縮）**。既定のテストでは最大負荷を実行せず、CI docker jobが有効化する。
+
+### CIで守るToUnicode
+
+- a：実HTTP APIで4ページ・338字形（320種の漢字、結合濁点、%の末尾/連続/数字前、`%a`×100、U+005C、①㈱￥※〒）を生成。MuPDF 1.26.3とPopplerでページ内の正規化や空白削除をせず全文字一致。
+- b：API出力のType0はちょうど1つ。bfcharは各1〜100件、宣言数＝実件数、GID→元文字が描画入力と完全一致。99/100/101/200字形の境界も検証。
+- c：`fill-template-glyphs-validation.py`がpdfcpuで全11,425字を45ページに描き、全GID→元文字を独立した文字表と照合。不一致0。100件×114＋25件、Type0=1。全字の欠落・GID・幅不一致も0。BMP 63,423字とMn 33字の既存照合もPASS。文字表の変更なし。
+
+| fixture | ページ | 字形 | bfchar各ブロック | MuPDF / Poppler | 対応不一致 |
+| --- | ---: | ---: | --- | --- | ---: |
+| 99 | 1 | 99 | 99 | 両方全文字一致 | 0 |
+| 100 | 1 | 100 | 100 | 両方全文字一致 | 0 |
+| 101 | 1 | 101 | 100/1 | 両方全文字一致 | 0 |
+| 200 | 1 | 200 | 100/100 | 両方全文字一致 | 0 |
+| multiple-pages | 4 | 338 | 100/100/100/38 | 両方全文字一致 | 0 |
+
+検証a/bは`pdfcpu-update-validation.py`に残し、「回避あり／なし」の比較を削除して実API出力の検査へ置き換えた。既存の`fill-template-validation.py`の複数ページ抽出も維持。cは全字描画scriptへ統合した。3 scriptすべてをCI docker jobのハッシュ固定venvで実行する。文字置換・未収録字形・負pos.y/負dy・baselineの直接pdfcpu検証も維持した。検査器の追加確認では、100字形打切り・宣言数不一致・101件ブロック・空ブロック・誤文字・重複GID・Type0 0/2個をすべて拒否した。
+
+### テストの削除と追加
+
+- `FillTemplateFieldsTests.Cmap_UsesOriginalPercentCombiningMarksAndBlocksOfAtMost100`。
+- `FillTemplateStructureTests.Unicode_ResolvesFreshObjectNumber_AndRequiresExactlyOneType0Font`。
+- `PdfFillTemplateTests.Http_UnicodeFailuresAre500AndRemoveEveryIntermediate`（metadata・font・updateの故障500）。
+- `Http_CancellationAndTimeout_WaitForProcessAndCleanup` の `cancel/unicode` と `timeout/unicode` の2 DataRow。
+- `FillTemplateCapacityTests` のToUnicode専用stopwatch・stage assertion・時間/割合。容量試験自体は単独・同時2件とも維持し、各条件を別コンテナで計測する。
+
+`Http_ExistingOverlayEndpointsKeepFormDetectionDisabled` の3ケースを追加。空AcroFormを含む同じPDFを差し込みでは422 form-fields、透かし・ページ番号・押印では200にする。フォーム構造・入力検証・配置・入力段階のcancel/timeout・後始末の既存テストは維持した。
+
+### 最大負荷の比較
+
+50 MiB、200項目×5行＝1,000要素、全11,425字形、72 pt、1ページ100要素×10ページ、描画範囲1〜1000ページ、fields 55,555 bytes。CPU 1、memory 1.5 GiB、swapなし、read-only、tmpfs 256 MiB、job上限124 MiB、30秒を維持した。
+
+| 経路 / 同時数 / job | PR #83 秒 | 削除後 秒 | PR #83 job予約ピーク bytes | 削除後 job予約ピーク bytes | PR #83 memory.peak bytes | 削除後 memory.peak bytes | OOM / 残存 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| HTTP / 1 | 2.857 | 2.471 | 未採取 | 未採取 | 204,812,288 | 193,126,400 | 全件0 |
+| HTTP / 2 / 1 | — | 4.783 | — | 未採取 | — | 318,119,936（2件共通） | 全件0 |
+| HTTP / 2 / 2 | — | 4.759 | — | 未採取 | — | 318,119,936（2件共通） | 全件0 |
+| Builder / 1 / 1 | 1.763 | 1.637 | 120,578,048 | 120,582,144 | 401,743,872† | 219,795,456 | 全件0 |
+| Builder / 2 / 1 | 3.665 | 3.221 | 120,578,048 | 120,582,144 | 401,743,872† | 375,635,968 | 全件0 |
+| Builder / 2 / 2 | 3.640 | 3.242 | 120,578,048 | 120,582,144 | 401,743,872† | 375,635,968 | 全件0 |
+
+† PR #83のBuilder memory.peakは単独＋同時2件を同じコンテナで順に測った累積値。今回は条件ごとに別コンテナで取得し、どちらもSDK/test runnerを含む。HTTPの単独・同時2件も新規コンテナで測り、同時2件の過去値はない。HTTPは予約台帳を公開しないためjob予約値は未採取で、同じBuilderの実予約ピークと区別する。HTTPの50 ms標本によるjob使用量ピークは単独 56,066,048 bytes、同時2件 59,224,064 bytes（各jobの最大）で、厳密な瞬間最大値・予約値ではない。
+
+全HTTP/BuilderでOOM・oom_kill 0、残存job・子process 0。各HTTPのhealth正常、各出力1000ページ。Builderは最終PDF以外の中間物がなく、job dispose後も残存0を確認した。
+
+### 段階ごとの予約と全体ピーク
+
+全体job予約ピークは **120,578,048→120,582,144 bytes（増減 +4,096 bytes、92.74% / 124 MiB）**。削除した専用段階の予約上限は、レイヤーmetadata 40 MiB＋外部書込みsentinelの4 KiB切上げ、更新JSON 8 MiB、修正PDF 8 MiB＋sentinelの4 KiB切上げ。順番に予約・確定・削除するため合算できず、その分だけ全体ピークが下がることも意味しない。
+
+削除によって全体ピークは減らず、4 KiB増えた。PR #83のレイヤーは2,953,277〜2,953,281 bytes（4 KiB切上げ2,957,312 bytes）で、今回のpdfcpuのCMapを保持したレイヤーは2,959,106〜2,959,169 bytes（同2,961,408 bytes）。この差が全体ピークの4,096 bytes増加に対応する。最大予約を決めるのは重ね合わせ時の入力・属性更新JSON・レイヤー保持と、overlaid.pdfの62 MiB書込み予約＋sentinel。実ファイルの4 KiB切上げとこの予約を測定テストで記録した。
+
+| overlay書込み時の予約 | bytes |
+| --- | ---: |
+| `input.pdf` | 52,428,800 |
+| `overlay-update.json` | 176,128 |
+| `overlay-layer.pdf` | 2,961,408 |
+| `overlaid.pdf write + sentinel` | 65,015,808 |
+| 合計 | 120,582,144 |
+
+
+### 全コマンド
+
+| コマンド（imageは `amane-pdf-api:ci`） | PR #83 秒 | 削除後 秒 | 結果 |
+| --- | ---: | ---: | --- |
+| `dotnet build --configuration Release` | 8.149 | 7.970 | PASS |
+| `dotnet test --configuration Release` | 320.701 | 316.098 | PASS |
+| `docker build -t amane-pdf-api:ci .` | 10.592 | 1.420 | PASS |
+| `python3 scripts/from-images-followup-test.py` | 0.214 | 0.214 | PASS |
+| `python3 scripts/docker-smoke.py amane-pdf-api:ci` | 52.024 | 51.929 | PASS |
+| `python3 scripts/renderer-validation.py amane-pdf-api:ci` | 4.122 | 4.172 | PASS |
+| `python3 scripts/redact-validation.py amane-pdf-api:ci` | 2.419 | 2.419 | PASS |
+| `python3 scripts/compress-validation.py --render amane-pdf-api:ci` | 29.080 | 29.277 | PASS |
+| `python3 scripts/pdfcpu-validation.py amane-pdf-api:ci` | 2.469 | 2.519 | PASS |
+| `python3 scripts/overlay-validation.py amane-pdf-api:ci --render` | 4.126 | 4.126 | PASS |
+| `python3 scripts/page-numbers-validation.py amane-pdf-api:ci` | 10.585 | 10.736 | PASS |
+| `python3 scripts/watermark-validation.py amane-pdf-api:ci` | 45.080 | 44.880 | PASS |
+| `<venv>/bin/python scripts/fill-template-glyphs-validation.py amane-pdf-api:ci` | 8.780 | 8.881 | PASS |
+| `<venv>/bin/python scripts/fill-template-validation.py amane-pdf-api:ci` | 20.366 | 29.594 | PASS |
+| `<venv>/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:ci` | 6.179 | 4.523 | PASS |
+| `python3 scripts/from-images-validation.py amane-pdf-api:ci` | 4.774 | 4.775 | PASS |
+| `python3 scripts/stamp-image-validation.py amane-pdf-api:ci` | 15.996 | 15.946 | PASS |
+
+新規の隔離venvへ`pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt`で全19依存を導入し、`pip check`もPASS。CI docker jobの全検証stepを実行した。再現コマンドはREADMEの開発手順。結果JSONは`fill-template-validation.py --results`、`pdfcpu-update-validation.py --results`、`fill-template-glyphs-validation.py --results`で保存できる。

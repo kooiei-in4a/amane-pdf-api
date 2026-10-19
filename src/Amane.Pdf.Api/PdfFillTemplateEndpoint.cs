@@ -18,7 +18,7 @@ internal static class PdfFillTemplateEndpoint
                 (canvas, drawToken) => pdfcpu.CreateAsync(files, fields!.CreateLayer(canvas), canvas.BlankPath,
                     canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, drawToken,
                     maxTextsPerPage: FillTemplateFields.MaxLinesPerPage, maxTextLength: FillTemplateFields.MaxTextLength),
-                token, fillTemplate: fields),
+                token, rejectForms: true),
             maxRequestBytes: settings.MaxFillTemplateRequestBytes);
     }
 }

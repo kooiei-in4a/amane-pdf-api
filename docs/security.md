@@ -216,7 +216,7 @@ uploadとepilogueの完了後、外部toolの前にstrict UTF-8/BOM拒否・深�
 
 入力metadataの既存DOM内でtrailerのRootからCatalogを解決し、AcroForm（空を含む）/Permsと、全オブジェクトの直接辞書・配列・stream辞書内のWidget/Sig/DocTimeStampを再帰走査します。PDF名の#xxを解釈し、object streamの展開は既存qpdf JSON取得に任せます。追加の入力qpdf起動はなく、32 MiB・50,000 object・深さ64内に制限します。フォーム検出（422 form-fields）がページ番号超過（400）に先行します。既存overlay APIにはこの検出を適用しません。全署名構造の網羅的検出は保証しません。
 
-配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。レイヤー生成直後に、そのレイヤーの新しいqpdf JSONからType0フォントが1個であることとToUnicode参照を読み、全描画GID→元文字のCMap（100件ごとのbfchar）へ差し替えます。0.16.2への更新後も#82ではこの回避処理を保持し、削除はHumanの判断後に別の依頼で行います。失敗は500、キャンセルは共通方式です。metadata、更新JSON、差し替えPDFもOverlayCapacityの書込み前予約・実サイズ確定・削除とfinallyの中間物削除に含めます。
+配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。文字抽出にはpdfcpu 0.16.2のToUnicodeを使います。APIによる文字対応表の作り直しと専用の更新JSON・修正PDFは生成しません。CIでは100種を超える字形を含む実API出力をMuPDF・Popplerで抽出し、Type0・bfcharの件数と全描画GID→元文字の対応を検査します。全11,425字についてもpdfcpuの対応を照合します。描画・生成物検査の失敗は500、容量超過は共通overlayの422 too-complex、キャンセルは共通方式です。
 
 フォーム・署名と暗号化PDFは非対応、注釈は前面に残ります。メタデータ・添付・JavaScript等を無害化せず、PDF/A適合性・真正性も保証しません。共有30秒・同時2件、job 124 MiB、子processのAS/FSIZE制限と終了待ちを維持します。[検証記録](fill-template-validation.md)では実署名・ローカルTSAの鍵を一時生成し、終了時に削除します。pyHankoとMuPDFは固定versionのCI専用依存で、本番imageへ追加しません。
 

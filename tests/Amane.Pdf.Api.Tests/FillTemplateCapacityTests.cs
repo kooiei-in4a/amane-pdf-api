@@ -8,10 +8,14 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class FillTemplateCapacityTests
 {
     [TestMethod]
-    [DataRow(1)]
-    [DataRow(2)]
     [TestCategory("FillTemplateCapacity")]
-    public async Task UpperLimits_IncludeUnicodeInCapacityLedger(int concurrent)
+    public Task UpperLimits_Single() => UpperLimits(1);
+
+    [TestMethod]
+    [TestCategory("FillTemplateCapacity")]
+    public Task UpperLimits_TwoConcurrent() => UpperLimits(2);
+
+    private static async Task UpperLimits(int concurrent)
     {
         // CI's Docker validation opts in; ordinary dotnet test performs no heavy load.
         var source = Environment.GetEnvironmentVariable("FILL_TEMPLATE_CAPACITY_INPUT");
@@ -26,32 +30,35 @@ public sealed class FillTemplateCapacityTests
             var results = await Task.WhenAll(jobs.Select(async job =>
             {
                 var stages = new List<OverlayStage>(); var watch = Stopwatch.StartNew();
-                var drawing = new Stopwatch();
+                Dictionary<string, long>? overlayReservations = null;
+                void Observe(OverlayStage stage)
+                {
+                    stages.Add(stage);
+                    if (stage.Name != "draw") return;
+                    // Blank canvas and drawing JSON are deleted before the overlay write.
+                    overlayReservations = new[] { job.Files.InputPath,
+                        Path.Combine(job.Files.DirectoryPath, "overlay-update.json"),
+                        Path.Combine(job.Files.DirectoryPath, "overlay-layer.pdf") }
+                        .ToDictionary(path => Path.GetFileName(path), path => OverlayCapacity.Allocated(new FileInfo(path).Length));
+                    overlayReservations["overlaid.pdf write + sentinel"] =
+                        OverlayCapacity.Allocated(job.Settings.OverlayOutputLimitBytes + 1);
+                }
                 await job.Builder.BuildAsync(job.Files, fields.ResolveRange,
                     async (canvas, token) =>
                     {
-                        drawing.Start();
                         await job.Pdfcpu.CreateAsync(job.Files, fields.CreateLayer(canvas), canvas.BlankPath,
                             canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, token,
                             maxTextsPerPage: FillTemplateFields.MaxLinesPerPage, maxTextLength: FillTemplateFields.MaxTextLength);
-                        drawing.Stop();
                     },
-                    deadline.Token, observe: stages.Add, fillTemplate: fields);
+                    deadline.Token, observe: Observe, rejectForms: true);
                 watch.Stop();
-                Assert.IsTrue(stages.Any(stage => stage.Name == "to-unicode"));
                 var reserved = stages.Single(stage => stage.Name == "job-reserved-peak").Bytes;
                 Assert.IsTrue(reserved <= 124 * 1048576);
                 Assert.IsTrue(watch.Elapsed.TotalSeconds < 30);
                 CollectionAssert.AreEquivalent(new[] { job.Files.OutputPath }, Directory.GetFiles(job.Files.DirectoryPath));
-                // The second metadata mark includes drawing since the preceding blank mark.
-                // Remove the measured delegate time, then add the CMap write/update phase.
-                // This includes metadata parsing and cleanup, rather than timing only qpdf's update.
-                var unicodeMilliseconds = stages.Where(stage => stage.Name == "metadata").Skip(1).First().Milliseconds
-                    - drawing.Elapsed.TotalMilliseconds + stages.Single(stage => stage.Name == "to-unicode").Milliseconds;
-                Assert.IsTrue(unicodeMilliseconds > 0);
                 return new { seconds = watch.Elapsed.TotalSeconds, reserved,
-                    unicode_seconds = unicodeMilliseconds / 1000,
-                    reserved_fraction = (double)reserved / job.Settings.OverlayJobLimitBytes, stages };
+                    reserved_fraction = (double)reserved / job.Settings.OverlayJobLimitBytes,
+                    overlay_reservations = overlayReservations, stages };
             }));
             var result = JsonSerializer.Serialize(new { concurrent, results });
             Console.WriteLine(result);

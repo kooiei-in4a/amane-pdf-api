@@ -1,6 +1,6 @@
 # pdfcpu導入の検証記録（Issue #25・PR A）
 
-現行の固定版は0.16.2。更新時の結果は末尾の「0.16.2 への更新の検証（Issue #82）」を参照。以下の#25導入時の版と測定値は当時の記録として保持する。
+現行の固定版は0.16.2で、そのToUnicodeを直接使う。現在の結果は末尾の「ToUnicode回避処理の削除後の検証」を参照。以下の#25導入時・#82更新時の版と測定値は当時の記録として保持する。
 
 この文書はPR A時点（2026-10-09）の基盤導入記録です。下記にある「PR Bに残る」検証は記載時点の予定で、後続PRで実施済みです。共通描画基盤の実装・容量測定は[overlay-validation.md](overlay-validation.md)、現在の文書一覧は[docs/README.md](README.md)を参照してください。
 
@@ -222,3 +222,44 @@ installerは比較元も実行成功（時間未採取）。`--check`による�
 | 同梱資源の取得元記録を保持 | Roboto-NOTICE.txtのv0.16.1由来という記載（著作権・ライセンス表示は新版でも一致） |
 
 フォント・qpdf・.NET・APIの契約・各容量制限は変更なし。サイト、本家への投稿、回避処理の削除、merge・tag・Release・deployは対象外。
+
+
+## ToUnicode回避処理の削除後の検証（Issue #82、2026-10-19）
+
+Human決定に従って、PR #83で残していた独自CMap再作成を削除した。フォーム検出は`rejectForms`へ用途を明示し、差し込みだけで有効にする。pdfcpu・フォント・qpdf・.NETと各上限は変更していない。過去の測定・JSONは保持し、[削除後のraw測定](fill-template-tounicode-removal-results.json)を追加した。
+
+測定対象 `6e5ed11`（製品コード `f8688e4`）、比較元はPR #83の0.16.2・回避処理あり。Linux x86_64、.NET SDK 10.0.400、qpdf 12.3.2、Python 3.14.4、Poppler 26.01.0。各コマンドは同一ホストで各1回の実測。時間差にはcache・ホスト負荷・計測driverの変更が含まれ、削除だけによる速度差とは解釈しない。
+
+`dotnet test --configuration Release` は **1355→1353件（削除5・追加3）、skip 0**。所要時間は **320.701→316.098秒（約4.6秒短縮）**。既定のテストでは最大負荷を実行せず、CI docker jobが有効化する。
+
+| コマンド（imageは `amane-pdf-api:ci`） | PR #83 秒 | 削除後 秒 | 結果 |
+| --- | ---: | ---: | --- |
+| `dotnet build --configuration Release` | 8.149 | 7.970 | PASS |
+| `dotnet test --configuration Release` | 320.701 | 316.098 | PASS |
+| `docker build -t amane-pdf-api:ci .` | 10.592 | 1.420 | PASS |
+| `python3 scripts/from-images-followup-test.py` | 0.214 | 0.214 | PASS |
+| `python3 scripts/docker-smoke.py amane-pdf-api:ci` | 52.024 | 51.929 | PASS |
+| `python3 scripts/renderer-validation.py amane-pdf-api:ci` | 4.122 | 4.172 | PASS |
+| `python3 scripts/redact-validation.py amane-pdf-api:ci` | 2.419 | 2.419 | PASS |
+| `python3 scripts/compress-validation.py --render amane-pdf-api:ci` | 29.080 | 29.277 | PASS |
+| `python3 scripts/pdfcpu-validation.py amane-pdf-api:ci` | 2.469 | 2.519 | PASS |
+| `python3 scripts/overlay-validation.py amane-pdf-api:ci --render` | 4.126 | 4.126 | PASS |
+| `python3 scripts/page-numbers-validation.py amane-pdf-api:ci` | 10.585 | 10.736 | PASS |
+| `python3 scripts/watermark-validation.py amane-pdf-api:ci` | 45.080 | 44.880 | PASS |
+| `<venv>/bin/python scripts/fill-template-glyphs-validation.py amane-pdf-api:ci` | 8.780 | 8.881 | PASS |
+| `<venv>/bin/python scripts/fill-template-validation.py amane-pdf-api:ci` | 20.366 | 29.594 | PASS |
+| `<venv>/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:ci` | 6.179 | 4.523 | PASS |
+| `python3 scripts/from-images-validation.py amane-pdf-api:ci` | 4.774 | 4.775 | PASS |
+| `python3 scripts/stamp-image-validation.py amane-pdf-api:ci` | 15.996 | 15.946 | PASS |
+
+全CI docker検証stepはPASS。ToUnicode検証は同じハッシュ固定venvへ統合。`pdfcpu-update-validation.py`は比較処理を削除し、実API出力の99/100/101/200/338字形の両extractor抽出・Type0・bfchar・全対応を検査する。全11,425字のGID→元文字の検証は`fill-template-glyphs-validation.py`の全字描画へ統合し、不一致0。字幅・baseline・文字置換・負座標の検証も維持した。
+
+| fixture | ページ | 字形 | bfchar各ブロック | MuPDF / Poppler | 対応不一致 |
+| --- | ---: | ---: | --- | --- | ---: |
+| 99 | 1 | 99 | 99 | 両方全文字一致 | 0 |
+| 100 | 1 | 100 | 100 | 両方全文字一致 | 0 |
+| 101 | 1 | 101 | 100/1 | 両方全文字一致 | 0 |
+| 200 | 1 | 200 | 100/100 | 両方全文字一致 | 0 |
+| multiple-pages | 4 | 338 | 100/100/100/38 | 両方全文字一致 | 0 |
+
+最大負荷のHTTP単独/同時2件・Builder単独/同時2件は全件30秒未満、OOM/oom_kill 0、残存job・子process 0、health正常。予約ピークは120,578,048→120,582,144 bytes（増減+4,096 bytes）。専用metadata・JSON・修正PDFの予約は消えるが、全体ピークは入力保持と62 MiBの重ね合わせ書込み予約で決まる。比較表・予約内訳とmemory.peakの測定範囲は[差し込み検証記録](fill-template-validation.md)の削除後の節を参照。

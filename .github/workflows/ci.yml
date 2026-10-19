@@ -130,13 +130,11 @@ jobs:
       - name: Verify watermark placement, transparency, extraction and glyph table (CI tools only)
         run: /usr/bin/python3 scripts/watermark-validation.py amane-pdf-api:ci
 
-      - name: Verify fill template glyph IDs, advances and complete BMP coverage (CI tools only)
-        run: /usr/bin/python3 scripts/fill-template-glyphs-validation.py amane-pdf-api:ci
-
-      - name: Verify fill template geometry, extraction, signatures and capacity (CI tools only)
+      - name: Verify fill template glyphs, ToUnicode, geometry, signatures and capacity (CI tools only)
         run: |
           /usr/bin/python3 -m venv "$RUNNER_TEMP/fill-template-venv"
           "$RUNNER_TEMP/fill-template-venv/bin/pip" install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
+          "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-glyphs-validation.py amane-pdf-api:ci
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-validation.py amane-pdf-api:ci
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/pdfcpu-update-validation.py amane-pdf-api:ci
 

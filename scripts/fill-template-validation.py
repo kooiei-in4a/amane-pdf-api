@@ -2,6 +2,7 @@
 """差し込みAPIの実配置・文字抽出・実署名・上限負荷を本番Dockerで検証する。"""
 import argparse
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import datetime
 import importlib.metadata
 import importlib.util
@@ -44,7 +45,7 @@ def field(page=1, text="日本語", **values):
     return dict(page=page, x=.1, y=.1, width=.8, height=.8, fontSize=12, align="left", text=text) | values
 
 
-def request(api, source, fields, expected=200, reason=None):
+def request(api, source, fields, expected=200, reason=None, check_cleanup=True):
     data = json.dumps(fields, ensure_ascii=False, separators=(",", ":"))
     assert len(data.encode()) <= 65536
     body, content_type = smoke.multipart(source, password=None, restriction={"fields": data})
@@ -57,7 +58,8 @@ def request(api, source, fields, expected=200, reason=None):
         assert "filename=filled.pdf" in headers["Content-Disposition"]
     else:
         assert json.loads(output).get("reason") == reason, output
-    api.assert_clean()
+    if check_cleanup:
+        api.assert_clean()
     return output, seconds
 
 
@@ -329,7 +331,7 @@ def capacity_fixture():
     return source, fields, len(encoded)
 
 
-def capacity(api, directory):
+def capacity(api, directory, concurrent=1):
     source, fields, fields_bytes = capacity_fixture()
     peak_job = [0]
     failures = []
@@ -345,19 +347,28 @@ def capacity(api, directory):
             failures.append(str(error))
     sampler = threading.Thread(target=sample); sampler.start()
     try:
-        output, seconds = request(api, source, fields)
+        with ThreadPoolExecutor(max_workers=concurrent) as pool:
+            outputs = list(pool.map(lambda _: request(api, source, fields, check_cleanup=False), range(concurrent)))
     finally:
         finished.set(); sampler.join()
     assert not failures, failures
-    assert seconds < 30
+    assert all(seconds < 30 for _, seconds in outputs)
+    api.assert_clean()
     assert 0 < peak_job[0] < 124*MiB
     memory = int(api.exec("cat", "/sys/fs/cgroup/memory.peak").stdout)
     assert memory <= 1536*MiB
-    path = directory / "capacity-filled.pdf"; path.write_bytes(output)
-    assert command("qpdf", "--show-npages", str(path)).stdout.strip() == b"1000"
+    for i, (output, _) in enumerate(outputs):
+        path = directory / f"capacity-filled-{concurrent}-{i}.pdf"; path.write_bytes(output)
+        assert command("qpdf", "--show-npages", str(path)).stdout.strip() == b"1000"
     metrics = dict(input_bytes=len(source), fields_bytes=fields_bytes, elements=1000, fields=200, glyphs=len(TABLE),
-        font_size=72, drawn_pages=10, span=1000, seconds=round(seconds, 3), output_bytes=len(output),
+        font_size=72, drawn_pages=10, span=1000, concurrent=concurrent,
+        results=[dict(seconds=round(seconds, 3), output_bytes=len(output)) for output, seconds in outputs],
         sampled_job_peak_bytes=peak_job[0], container_memory_peak_bytes=memory)
+    events = dict(line.split() for line in api.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
+    assert events["oom"] == events["oom_kill"] == "0", events
+    processes = api.exec("ps", "-eo", "comm").stdout.decode().splitlines()
+    assert not set(processes) & {"qpdf", "pdfcpu", "prlimit", "djpeg", "cjpeg"}
+    metrics.update(oom=0, oom_kill=0, remaining_jobs=0, remaining_processes=0)
     print("Capacity: " + json.dumps(metrics) + " PASS", flush=True)
     return metrics
 
@@ -372,21 +383,26 @@ def builder_capacity(image, directory):
     (fixture / "capacity.pdf").write_bytes(source)
     (fixture / "fields.json").write_text(json.dumps(fields, ensure_ascii=False, separators=(",", ":")))
     directory.chmod(0o755)
-    container = overlay.Container(image, sdk, [(fixture, "/fixture")], {
-        "FILL_TEMPLATE_CAPACITY_INPUT": "/fixture/capacity.pdf",
-        "FILL_TEMPLATE_CAPACITY_FIELDS": "/fixture/fields.json",
-        "FILL_TEMPLATE_CAPACITY_RESULTS": "/tmp/results", "DOTNET_CLI_HOME": "/tmp/cli"})
-    try:
-        container.tests("FullyQualifiedName~FillTemplateCapacityTests")
-        results = [json.loads(container.exec("cat", f"/tmp/results/fill-template-budget-{n}.json").stdout) for n in (1, 2)]
-        peak = int(container.exec("cat", "/sys/fs/cgroup/memory.peak").stdout)
-        events = dict(line.split() for line in container.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
-        assert events["oom"] == events["oom_kill"] == "0", events
-        container.stopped()
-        print("Builder capacity: " + json.dumps({"runs": results, "container_memory_peak_bytes": peak}) + " PASS", flush=True)
-        return dict(runs=results, container_memory_peak_bytes=peak)
-    finally:
-        container.close()
+    results = []
+    for concurrent, method in ((1, "UpperLimits_Single"), (2, "UpperLimits_TwoConcurrent")):
+        container = overlay.Container(image, sdk, [(fixture, "/fixture")], {
+            "FILL_TEMPLATE_CAPACITY_INPUT": "/fixture/capacity.pdf",
+            "FILL_TEMPLATE_CAPACITY_FIELDS": "/fixture/fields.json",
+            "FILL_TEMPLATE_CAPACITY_RESULTS": "/tmp/results", "DOTNET_CLI_HOME": "/tmp/cli"})
+        try:
+            container.tests("FullyQualifiedName~FillTemplateCapacityTests." + method)
+            run = json.loads(container.exec("cat", f"/tmp/results/fill-template-budget-{concurrent}.json").stdout)
+            peak = int(container.exec("cat", "/sys/fs/cgroup/memory.peak").stdout)
+            assert peak <= 1536*MiB
+            events = dict(line.split() for line in container.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
+            assert events["oom"] == events["oom_kill"] == "0", events
+            run.update(container_memory_peak_bytes=peak, oom=0, oom_kill=0, **container.stopped())
+            results.append(run)
+        finally:
+            container.close()
+    metrics = dict(runs=results)
+    print("Builder capacity: " + json.dumps(metrics) + " PASS", flush=True)
+    return metrics
 
 
 def main():
@@ -403,11 +419,15 @@ def main():
             extraction(api, directory)
             boundaries(api, directory)
             forms(api, directory)
-            metrics = capacity(api, directory)
             assert api.request("GET", "/healthz")[0] == 200
             events = dict(line.split() for line in api.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
             assert events["oom"] == events["oom_kill"] == "0", events
             api.assert_clean()
+        metrics = {"http": []}
+        for concurrent in (1, 2):
+            with smoke.running_container(args.image) as api:
+                metrics["http"].append(capacity(api, directory, concurrent))
+                assert api.request("GET", "/healthz")[0] == 200
         metrics["builder"] = builder_capacity(args.image, directory)
         if args.results:
             args.results.write_text(json.dumps(metrics, indent=2) + "\n")

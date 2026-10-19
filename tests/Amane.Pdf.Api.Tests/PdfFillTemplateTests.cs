@@ -138,6 +138,36 @@ public sealed class PdfFillTemplateTests
     }
 
     [TestMethod]
+    [DataRow("watermark")]
+    [DataRow("page-numbers")]
+    [DataRow("stamp-image")]
+    public async Task Http_ExistingOverlayEndpointsKeepFormDetectionDisabled(string operation)
+    {
+        using var source = new OverlayJob();
+        var root = JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject();
+        OverlayFixtures.Objects(root)["obj:1 0 R"]!["value"]!["/AcroForm"] = new JsonObject();
+        await source.CreateInput(root.ToJsonString());
+        var input = await File.ReadAllBytesAsync(source.Files.InputPath);
+        await using var test = new PdfTestContext();
+        using (var fill = Form(input))
+        using (var rejected = await test.Client.PostAsync(Endpoint, fill))
+            await Problem(test, rejected, 422, "form-fields");
+        using var form = PdfTestContext.FileForm(input);
+        var query = operation switch
+        {
+            "watermark" => "style=corner&color=gray",
+            "page-numbers" => "position=bottom-center&format=number",
+            _ => "page=1&x=0.1&y=0.1&width=0.2"
+        };
+        if (operation == "watermark") form.Add(new StringContent("DRAFT"), "text");
+        if (operation == "stamp-image") form.Add(new ByteArrayContent(StampFixtures.Png()), "image", "stamp.png");
+        using var response = await test.Client.PostAsync("/api/pdf/" + operation + "?" + query, form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task Http_ThousandLinesAndCallerLimits_AndExistingWatermarkPercentPolicy()
     {
         await using var test = new PdfTestContext();
@@ -175,13 +205,11 @@ public sealed class PdfFillTemplateTests
     }
 
     [TestMethod]
-    [DataRow("cancel", "input")]
-    [DataRow("cancel", "unicode")]
-    [DataRow("timeout", "input")]
-    [DataRow("timeout", "unicode")]
-    public async Task Http_CancellationAndTimeout_WaitForProcessAndCleanup(string kind, string stage)
+    [DataRow("cancel")]
+    [DataRow("timeout")]
+    public async Task Http_CancellationAndTimeout_WaitForProcessAndCleanup(string kind)
     {
-        using var blocker = new BlockingQpdf(stage == "input" ? "--check" : "*/overlay-layer.pdf");
+        using var blocker = new BlockingQpdf("--check");
         await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = blocker.Executable,
             ["Pdf:QpdfTimeoutSeconds"] = kind == "timeout" ? "1" : "30" });
         using var cancellation = new CancellationTokenSource();
@@ -199,26 +227,6 @@ public sealed class PdfFillTemplateTests
         while (Directory.Exists(test.TempRoot) && Directory.EnumerateFileSystemEntries(test.TempRoot).Any())
         { Assert.IsTrue(watch.Elapsed.TotalSeconds < 5); await Task.Delay(20); }
         test.AssertClean();
-    }
-
-    [TestMethod]
-    public async Task Http_UnicodeFailuresAre500AndRemoveEveryIntermediate()
-    {
-        using var scripts = new OverlayJob();
-        await using var test = new PdfTestContext();
-        var settings = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
-        foreach (var stage in new[] { "metadata", "font", "update" })
-        {
-            settings.QpdfPath = scripts.Script(
-                "if [ \"$1\" = --json=2 ]; then\n  case \"$7\" in */overlay-layer.pdf)\n" +
-                (stage == "metadata" ? "exit 1\n" : stage == "font" ?
-                    "qpdf \"$@\" || exit 1\nsed -i 's@/Type0@/Type1@g' \"$8\"\nexit 0\n" : "") +
-                ";; esac\nfi\n" +
-                (stage == "update" ? "case \"$1\" in */overlay-layer.pdf) exit 1;; esac\n" : "") +
-                "exec qpdf \"$@\"");
-            using var form = Form(); using var response = await test.Client.PostAsync(Endpoint, form);
-            await Problem(test, response, 500);
-        }
     }
 
     [TestMethod]
