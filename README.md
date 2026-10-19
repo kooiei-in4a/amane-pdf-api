@@ -439,9 +439,9 @@ curl --fail-with-body http://localhost:8080/api/pdf/fill-template \
 
 フォーム・署名関連の構造（AcroForm、入力欄、XFA、署名、文書タイムスタンプ、`/Perms`）を含むPDFは422 `form-fields`で拒否します。あらゆる署名構造の検出は保証しません。暗号化PDFは非対応、注釈は差し込み文字より前面に表示されます。PDFの無害化・匿名化は行わず、メタデータ・添付・JavaScriptなどは残ります。PDF/A適合性、電子署名・真正性は保証しません。
 
-フォントは1種、黒、横書き、回転なしです。明細行の追加・自動改ページ、画像・印影の差し込み、AcroForm/XFAへの入力、PDF内の文字置換、テンプレートの保存は扱いません。処理全体30秒・共有同時2件の枠を使います。対応外のページ属性は422 `unsupported-pdf`、描画・ToUnicode修正・生成物検査の失敗は500、503・504は共通契約です。
+フォントは1種、黒、横書き、回転なしです。明細行の追加・自動改ページ、画像・印影の差し込み、AcroForm/XFAへの入力、PDF内の文字置換、テンプレートの保存は扱いません。処理全体30秒・共有同時2件の枠を使います。対応外のページ属性は422 `unsupported-pdf`、描画・生成物検査の失敗は500、503・504は共通契約です。
 
-文字抽出用ToUnicodeはレイヤーごとに作り直します。pdfcpu・フォントを更新するときは字幅・ベースライン・文字抽出を再検証してください。[設計書](docs/fill-template-design.md)と[検証記録](docs/fill-template-validation.md)に詳細を記載しています。
+文字抽出用ToUnicodeはpdfcpu 0.16.2の出力を使います。100種を超える字形のMuPDF・Poppler抽出と、全11,425字のGID→元文字の対応をCIで検証します。pdfcpu・フォントを更新するときは字幅・ベースライン・文字抽出を再検証してください。[設計書](docs/fill-template-design.md)と[検証記録](docs/fill-template-validation.md)に詳細を記載しています。
 
 ### PDF電子印鑑（Linux）
 
@@ -812,6 +812,7 @@ python3 scripts/page-numbers-validation.py amane-pdf-api:ci
 python3 scripts/watermark-validation.py amane-pdf-api:ci
 python3 -m venv /tmp/amane-fill-template-validation
 /tmp/amane-fill-template-validation/bin/pip install --require-hashes --only-binary=:all: -r scripts/fill-template-validation-requirements.txt
+/tmp/amane-fill-template-validation/bin/python scripts/fill-template-glyphs-validation.py amane-pdf-api:ci
 /tmp/amane-fill-template-validation/bin/python scripts/fill-template-validation.py amane-pdf-api:ci
 /tmp/amane-fill-template-validation/bin/python scripts/pdfcpu-update-validation.py amane-pdf-api:ci
 python3 scripts/redact-validation.py amane-pdf-api:ci
