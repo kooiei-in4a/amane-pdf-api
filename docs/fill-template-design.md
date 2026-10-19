@@ -75,7 +75,7 @@ fields  UTF-8 JSON（filenameなし、1件）
 | `x` `y` `width` `height` | 0〜1、小数点以下4桁まで、指数・符号・文字列は不可。幅・高さは正、矩形全体がページ内（`x+width≤1`、`y+height≤1`） |
 | `fontSize` | 6〜72（pt）、小数点以下1桁まで |
 | `align` | `left` / `center` / `right` |
-| `text` | 9章の文字規則に従う文字列 |
+| `text` | 6.2の文字規則に従う文字列 |
 
 - 各要素のkeyは上記8つちょうど。未知・重複keyは400。
 - 解析は `RedactRegions.cs` と同じ厳格な方式（strict UTF-8、BOM拒否、深さ制限、数値は文字列表現で検査）。
