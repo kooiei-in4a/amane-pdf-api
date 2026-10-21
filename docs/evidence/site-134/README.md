@@ -1,17 +1,18 @@
 # site #134：採用した罫線整理案・実装引き継ぎ
 
-**成果物共有専用。製品実装・API契約・CI・共有mainは変更していません。** ユーザーは罫線整理案、数量の整数部5桁／小数部3桁・末尾0保持、小数点揃え／右揃えの両モードを用意する方針を採用しました。quantityAlignmentの設定仕様も採用済みで、既定decimal、発行時上書き可、発行値＞登録値＞decimal、登録値不正は正しい発行値があっても拒否します。#134全体は未完了です。
+**成果物共有専用。製品実装・API契約・CI・共有mainは変更していません。** ユーザーは罫線整理案、数量の整数部5桁／小数部3桁・末尾0保持、小数点揃え／右揃えの両モードを用意する方針を採用しました。quantityAlignmentの設定仕様も採用済みで、既定decimal、発行時上書き可、発行値＞登録値＞decimal、登録値不正は正しい発行値があっても拒否します。名称・宛先のnameLines／20文字×2行と会社住所同上、部署・担当者・敬称の宛先2行内表示も採用済み。宛先住所専用欄・旧name併存は初版対象外。#134全体は未完了です。
 
 - [site担当向け引き継ぎ文](HANDOFF-site-134.md)：変更対象、#134の残作業、テンプレート調整部分／Issue全体の完成条件。
-- [最新の標準JSON案 v0.2](standard-json-draft-v0.2/README.md)：採用した数量規則・表示変換、登録／発行データ、エラー例・改訂入力例。数量以外には未確定事項が残り、製品未実装。
+- [最新の標準JSON案 v0.3](standard-json-draft-v0.3/README.md)：採用したnameLines・名称／住所上限と数量設定、登録／発行例・項目対応・エラー案。新形式の通し検証は未実施、その他の仕様判断は残る。
+- [旧標準JSON案 v0.2](standard-json-draft-v0.2/README.md)：旧name形式の正常14件・拒否65件を再現する資料。入力・validator・PDFは維持。
 - [旧標準JSON案 v0.1](standard-json-draft/README.md)：過去の検証再現用。旧全体5文字制限を現行案へ引き継がない。
-- [長い会社名・宛先情報の推奨案](NAME-RECIPIENT-SPEC-PROPOSAL.md)：20文字×2行／nameLines、宛先住所・部署・担当者、旧形式の扱いと採否判断。**未採用・製品未実装。**
+- [採用した会社名・宛先仕様](NAME-RECIPIENT-SPEC-PROPOSAL.md)：20文字×2行／nameLines、宛先住所・部署・担当者、旧形式の対象外と残る検証。**採用済み・製品未実装。**
 - [標準JSON v0.2候補全体の通し検証](standard-json-v02-validation/README.md)：採用数量・設定解決を含む事前検証→変換→PDF、正常14件・エラー65件を確認。未確定条件は候補として明記。
 - [設定解決の検証結果](quantity-resolution-validation/README.md)：正常9件の優先順位と実効モードPDF、不正40件の拒否・API呼び出し0を確認。製品保存／HTTPは未検証。
 - [採用した数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)：設定場所・key・既定値・発行上書き／優先順位・不正値のエラーと、残る確認事項。**設計採用済み・製品未実装。**
 - [拡張数量欄の両モード比較](quantity-mode-comparison/README.md)：同じ入力から小数点揃え／右揃えを生成。両帳票1／8明細、99999.999・末尾0・隣接欄・抽出一致を確認。**ローカルfixture検証、製品未実装。**
 - [数量欄拡張・小数点揃えの比較](quantity-decimal-comparison/README.md)：請求書／見積書の1・8明細、現行数量配置との2ページ比較PDF、末尾0保持・隣接欄・99999.999の追加検証。**数量の桁数・表示は採用済み、製品未反映。検証時点の未確定という記述は過去の記録。**
-- [初版の推奨仕様と判断事項](INITIAL-SPEC-RECOMMENDATION.md)：必須・型・上限、取引情報／備考の配分、名称20文字×2行の推奨と宛先住所等の判断点。**数量・罫線以外は未確定、製品未実装。** [名称・住所の追加検証](header-lines-probe/README.md)も参照。
+- [初版の推奨仕様と判断事項](INITIAL-SPEC-RECOMMENDATION.md)：必須・型・上限、取引情報／備考の配分、名称の採用仕様と残る判断点。**名称・数量・罫線以外は未確定、製品未実装。** [名称・住所の追加検証](header-lines-probe/README.md)も参照。
 - [標準JSON案からの実描画検証](standard-json-validation/README.md)：請求書／見積書の1・8明細、取引日／期間と備考、確定金額保持、候補入力エラーの再現と実PDF API応答。
 - [作業Issue #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134) / [親 #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)
 

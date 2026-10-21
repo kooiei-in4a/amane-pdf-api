@@ -1,0 +1,146 @@
+{
+  "scope": "documentation JSON syntax/name limits/quantity grammar and preservation of baseline data only; not resolver/full validator/HTTP/PDF",
+  "source_commit": "2db771b6664c0d3bf704f879cb126b0e4046da55",
+  "pdf_api_calls": 0,
+  "mode_resolver_executed": false,
+  "full_preflight_executed": false,
+  "pdf_generated": false,
+  "examples": {
+    "company-registration.json": {
+      "json_valid": true,
+      "baseline_data_preserved_except_name_shape": true,
+      "name_lines": {
+        "/nameLines": {
+          "lines": 1,
+          "utf16_units_per_line": [
+            10
+          ],
+          "joined_utf16_units": 10
+        },
+        "/addressLines": {
+          "lines": 2,
+          "utf16_units_per_line": [
+            11,
+            6
+          ],
+          "joined_utf16_units": 18
+        }
+      }
+    },
+    "estimate-1.json": {
+      "json_valid": true,
+      "baseline_data_preserved_except_name_shape": true,
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 1,
+          "utf16_units_per_line": [
+            12
+          ],
+          "joined_utf16_units": 12
+        }
+      }
+    },
+    "estimate-8.json": {
+      "json_valid": true,
+      "baseline_data_preserved_except_name_shape": true,
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 1,
+          "utf16_units_per_line": [
+            12
+          ],
+          "joined_utf16_units": 12
+        }
+      }
+    },
+    "invoice-1.json": {
+      "json_valid": true,
+      "baseline_data_preserved_except_name_shape": true,
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 1,
+          "utf16_units_per_line": [
+            12
+          ],
+          "joined_utf16_units": 12
+        }
+      }
+    },
+    "invoice-8.json": {
+      "json_valid": true,
+      "baseline_data_preserved_except_name_shape": true,
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 1,
+          "utf16_units_per_line": [
+            12
+          ],
+          "joined_utf16_units": 12
+        }
+      }
+    },
+    "provided-amounts-unchanged.json": {
+      "json_valid": true,
+      "baseline_data_preserved_except_name_shape": true,
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 1,
+          "utf16_units_per_line": [
+            12
+          ],
+          "joined_utf16_units": 12
+        }
+      }
+    },
+    "company-registration-long.json": {
+      "json_valid": true,
+      "scope": "new documentation example; not rendered",
+      "name_lines": {
+        "/nameLines": {
+          "lines": 2,
+          "utf16_units_per_line": [
+            16,
+            9
+          ],
+          "joined_utf16_units": 26
+        },
+        "/addressLines": {
+          "lines": 2,
+          "utf16_units_per_line": [
+            15,
+            17
+          ],
+          "joined_utf16_units": 33
+        }
+      }
+    },
+    "estimate-8-long.json": {
+      "json_valid": true,
+      "scope": "new documentation example; not rendered",
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 2,
+          "utf16_units_per_line": [
+            16,
+            8
+          ],
+          "joined_utf16_units": 25
+        }
+      }
+    },
+    "invoice-8-long.json": {
+      "json_valid": true,
+      "scope": "new documentation example; not rendered",
+      "name_lines": {
+        "/recipient/nameLines": {
+          "lines": 2,
+          "utf16_units_per_line": [
+            16,
+            12
+          ],
+          "joined_utf16_units": 29
+        }
+      }
+    }
+  }
+}

@@ -4,15 +4,15 @@
 
 ユーザーは、このチャットで提示した**罫線整理案を採用する方針**を承認した。請求書・見積書とも、宛先等の囲み枠を外し、明細は薄い横線、合計は上下線と文字サイズで整理する。
 
-続いて、**数量欄の拡張・小数点揃えを採用**した。数量は文字列のまま整数部最大5桁・小数部最大3桁（最大9文字）とし、`2.50`／`1.000`／`0.010`の末尾0を保持する。整数は小数点基準位置に末尾を揃える。旧「全体5文字」制限は引き継がない。[標準JSON案 v0.2](standard-json-draft-v0.2/README.md)と[比較PDF・配置・実測](quantity-decimal-comparison/README.md)が最新の数量方針。
+続いて、**数量欄の拡張・小数点揃えを採用**した。数量は文字列のまま整数部最大5桁・小数部最大3桁（最大9文字）とし、`2.50`／`1.000`／`0.010`の末尾0を保持する。整数は小数点基準位置に末尾を揃える。旧「全体5文字」制限は引き継がない。[最新の標準JSON案 v0.3](standard-json-draft-v0.3/README.md)と[比較PDF・配置・実測](quantity-decimal-comparison/README.md)が最新の数量方針。
 
 **追加方針：小数点揃えと当初の右揃えの両モードを用意する。** 数量規則・拡張セルは共通とし、配置だけを切り替える。小数点揃えでは上記の整数末尾基準、右揃えでは数量文字列全体の右端を揃える。設定仕様も採用済み。登録帳票設定直下と発行JSONルートの`quantityAlignment`で選び、値は`decimal`／`right`、既定decimal、発行時上書き可、発行値＞登録値＞decimal。登録値不正は正しい発行値があっても拒否する。PDF APIへ渡す新しいalign値ではない。
 
 **採用済みの設定仕様（製品未実装）**：[数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)。発行値と登録値を検証してから優先順位を適用し、登録値が不正なら上書きで救済しない。上書きはその発行だけに適用し登録値を変更しない。省略とnullを区別し、発行エラーは`/quantityAlignment`、登録値不正は`/templateId`と登録元source.path=`/quantityAlignment`を示す。採否判断は完了。[検証用スクリプトの結果](quantity-resolution-validation/README.md)で正常9件の優先順位と実効モードPDF、不正40件の描画前拒否・API呼び出し0を確認済み。製品保存・HTTPの確認は別途。
 
-[長い会社名・宛先の推奨案](NAME-RECIPIENT-SPEC-PROPOSAL.md)を追加。20文字×2行／nameLines、宛先住所の対象範囲、部署・担当者の2行予算、旧形式の扱いは未採用。名称のfields描画は確認済みだが、nameLinesからの通し検証は採用後の残作業。
+**名称・宛先仕様も採用済み（製品未実装）**：[採用仕様](NAME-RECIPIENT-SPEC-PROPOSAL.md)／[最新の標準JSON案v0.3](standard-json-draft-v0.3/README.md)。登録会社nameLines、発行recipient.nameLinesは必須のstring配列1〜2行・各20文字、LF込み41文字。会社addressLinesも必須・同じ上限。部署・担当者・敬称は宛先2行に含める。宛先住所の専用key／欄、部署／担当者の独立key、旧name形式の併存・自動移行は初版対象外。受けて捨てず事前拒否する。
 
-採用範囲は数量の桁数・表示・数量モード設定と罫線方針。会社名／宛先／住所の20文字×2行や`nameLines`、取引・備考配分、その他の必須性・金額／税区分・数量モード以外のHTTP契約は引き続き[判断資料](INITIAL-SPEC-RECOMMENDATION.md)の未確定事項。
+名称のfields描画は確認済みだが、nameLinesからの通し検証は未実施。旧v0.2のJSON・スクリプト・正常14件／拒否65件・PDFは再現用に残す。新しい資料例と名称／数量の定義コピーはv0.3へ分けた。取引・備考配分、その他の必須性・金額／税区分・数量モード以外のHTTP契約は引き続き未確定。
 
 現在は検証用サンプルまで。**製品実装はまだ行わないという依頼に従い、製品コード・API契約・CI・共有mainは未変更。** 本書は、次の担当が変更対象と未確定事項を把握するための引き継ぎである。#134 全体は未完了、Issueはopenのまま。
 
@@ -28,10 +28,10 @@
 | 対象 | 反映する内容 |
 | --- | --- |
 | `scripts/make-pdf-templates.mjs` の `pdfBytes` | 現行は全非fixed項目に灰色の検査用矩形を描く。検査用ガイドと正式帳票の罫線を分け、invoice／estimateの背景を採用案へ変更する。 |
-| 同スクリプトの `definition` | 合計金額 `total` を9→12pt、`label.total` を9→10ptへ。quantity／heading.quantityの論理セルをx=.3800・幅=.0950へ、name／heading.nameの幅を.3200へ。数量maxLengthは5→9。数量8pt・品名9pt、他の列の位置は維持。 |
+| 同スクリプトの `definition` | 合計金額 `total` を9→12pt、`label.total` を9→10ptへ。quantity／heading.quantityの論理セルをx=.3800・幅=.0950へ、name／heading.nameの幅を.3200へ。数量maxLengthは5→9。数量8pt・品名9pt。issuer／recipient／addressは幅.29→.34、multiline・maxLines2・maxLength41へ。3欄のx/y/高さ・9ptは維持。 |
 | `src/Amane.Tools.Site/wwwroot/pdf-templates/invoice/template.pdf` と `estimate/template.pdf` | generatorから再生成。手作業でPDFだけ変更してgeneratorと乖離させない。 |
-| 同ディレクトリの各 `definition.json` | 合計のfontSize、数量・品名のセルと数量maxLength、生成されたtemplate.pdfの `sha256` を整合させる。 |
-| 標準JSON→fieldsの製品側表示変換（未実装） | decimalモードでは固定フォントの送り幅で整数部の幅を求め、数量全体を1 fieldとしてleft配置する。値ごとに開始xと送信矩形幅を調整。整数部5桁／小数部3桁を別々に検査し、末尾0を保持。小数点揃えはdefinitionだけでは成立しない。 |
+| 同ディレクトリの各 `definition.json` | 合計のfontSize、数量・品名セル、名称／住所の幅・型・maxLines/maxLength、生成されたtemplate.pdfの `sha256` を整合させる。 |
+| 標準JSON→fieldsの製品側表示変換（未実装） | decimalモードでは固定フォントの送り幅で整数部の幅を求め、数量全体を1 fieldとしてleft配置する。値ごとに開始xと送信矩形幅を調整。整数部5桁／小数部3桁を別々に検査し、末尾0を保持。小数点揃えはdefinitionだけでは成立しない。名称／会社住所は各行20文字・2行を事前検証してLF結合し、実矩形を検査。宛先の部署・担当者・敬称も同じ2行内。旧key／宛先住所等は拒否。 |
 | `src/Amane.Tools.Site/wwwroot/pdf-templates/files.sha256` | 更新対象資産のハッシュを整合させる。 |
 | 既存テンプレート検証・プレビュー期待値 | ガイド枠に依存する判定を点検し、正式罫線でも文字の欠け・配置を検証できるよう必要最小限を調整する。 |
 
@@ -55,12 +55,13 @@
 ## #134 に残っている作業
 
 1. **標準JSONの残る確定**：数量の文字列保持・整数部5桁／小数部3桁・小数点揃えは採用済み。その他の登録情報／発行データ、必須・型・金額上限・税区分・対応外を決める。数量0／負数を対象外とする案、JPY・非負整数金額・税抜・10%／軽減8%等をまとめて確定したわけではない。
-2. **標準項目の表示先を確定**：取引日／期間はサンプルでは備考へ仮配置している。正式欄・ラベル、自由備考との共存、宛先住所／部署／担当者の扱い、長い会社名・住所・品名、ロゴ／印影の予約領域を決める。罫線案の採用だけでは、これらの表示先は確定しない。
+2. **標準項目の表示先を確定**：取引日／期間はサンプルでは備考へ仮配置している。正式欄・ラベル、自由備考との共存、品名やロゴ／印影の予約領域を決める。名称・会社住所の20×2と宛先範囲は採用済みで、JSONからの確認を残す。
 3. **変換・入力エラーの仕様を決定**：金額を再計算しない変換と、元入力パスを示すサーバー側事前検証を整理する。ブラウザ用 `pdf-document-templates-rules.js` の整数数量・税額計算は流用しない。9明細、必須不足、未対応文字、枠超過、画像上限等のエラー例を決める。無断の削除・置換・正規化・縮小で成功させない。
 4. **採用条件を確定**：既存fill-template 1回→stamp-image 2回を初期方式とし、siteの共有実行枠を踏まえた呼び出し条件、品質・時間・最終サイズの基準を決める。検証時の単独10秒／同時各20秒／2MiBは仮目安。site経由の測定とAPI単体の実測を区別する。長時間の負荷試験は追加しない。
 5. **結果を管理先へ統合**：標準JSON例・項目対応・エラー例・固定SHA・代表PDF・測定条件・採用方式・制限を #134 にまとめ、親 #133 に判断と後続作業を反映する。
-6. **v0.2候補の通し検証は実施済み**：[事前検証→表示変換→PDF](standard-json-v02-validation/README.md)で両帳票1／8明細を含む正常14件・代表エラー65件を確認した。採用数量規則・設定解決も接続し、旧全体5文字制限は使用していない。旧`validate-standard-json.py`は過去の再現用として維持。未確定の候補条件を正式に採否判断し、最終契約へ整合させた再確認を残す。製品実装完了ではない。
+6. **v0.2候補の通し検証は実施済み**：[事前検証→表示変換→PDF](standard-json-v02-validation/README.md)で両帳票1／8明細を含む正常14件・代表エラー65件を確認した。採用数量規則・設定解決も接続し、旧全体5文字制限は使用していない。旧`validate-standard-json.py`は過去の再現用として維持。これは旧name形式の履歴。採用したnameLines形式の通し検証と、残る候補条件の採否判断を残す。製品実装完了ではない。
 7. **採用済み設定のfixture検証は完了**：[設定解決・拒否・実効モードPDF](quantity-resolution-validation/README.md)で正常9件と不正40件を確認。正しい発行指定でも不正登録を拒否し、元入力path／登録元source、拒否時の実client呼び出し0を照合した。v0.2候補全体の事前検証も[後続検証](standard-json-v02-validation/README.md)で確認済み。登録保存・製品HTTPは未確認。製品実装は開始しない。
+8. **採用済みnameLinesの通し検証**：v0.3のJSON・定義コピーから両帳票1／8明細、1行／2行／各20文字境界、部署・担当者・敬称、会社住所、採用済み数量・設定解決・確定金額・透過画像を確認する。21文字／3行／空配列・空行／null・型不正／旧key・新旧同時指定／宛先住所・独立部署／担当者keyを元入力path付きで拒否し、API呼び出し0を示す。会社不正は/companyId＋登録元source、宛先は/recipient/nameLines等。製品実装は開始しない。
 
 数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。数量値のHTTP／codeの正式契約は未確定。quantityAlignmentの設定エラーは採用済み仕様を参照する。
 
@@ -75,6 +76,7 @@
 - 採用した罫線・合計強調を、請求書／見積書の1明細・8明細に反映し、各1ページで線と文字の衝突・欠けがない。
 - 数量欄の拡張・小数点揃えも反映し、`99999`、`99999.999`、`0.001`、`123.45`、`2.50`、`1.000`、`0.010`を入力文字列のまま表示・抽出できる。整数末尾も共通基準に揃い、品名17文字＋軽減記号・単価上限との非交差を確認する。
 - 同じ拡張セル・数量規則で右揃えも選択できる。モードを切り替えても入力文字列・末尾0・確定金額は不変で、選択した配置と定めた既定値・不正値時の挙動が確認できる。採用した設定解決・エラー規則と一致することを検証用コピーで確認する。
+- 名称・会社住所の各20文字×2行を欠けず表示・抽出し、部署・担当者・敬称も宛先2行内。旧name形式や宛先住所等の対象外項目を描画前に拒否できる。新形式の検証結果と過去のfields描画を区別する。
 - generator、PDF、definition、ハッシュが一致し、再生成して同じ資産になる。証明書等の対象外テンプレートや既存一般向け機能への意図しない変更がない。
 - 同じ入力の文字・金額がそのまま抽出できる。画像なし／ロゴ・印影合成後の位置・縦横比・透過・重ね順を確認できる。
 - 既存のテンプレート・表示・API接続に関係する必要な検証が通り、差分と結果がレビュー可能である。
@@ -105,7 +107,8 @@
 | 比較生成スクリプト | [compare-lines.py](compare-lines.py) |
 | 採用した数量設定・登録例 | [設定仕様と解決表](QUANTITY-MODE-SETTINGS-DRAFT.md)、[登録rightの請求書](standard-json-draft-v0.2/settings-examples/invoice.json)／[登録decimalの見積書](standard-json-draft-v0.2/settings-examples/estimate.json)。発行1明細例で逆モードへ上書き、8明細例では上書きを省略。 |
 | v0.2候補全体の通し検証 | [結果・PDF・入力・代表エラー・再現手順](standard-json-v02-validation/README.md)、[改訂スクリプト](validate-standard-json-v02.py)。正常14件・拒否65件、拒否時API0。未確定条件は候補扱い。 |
-| 最新の標準JSON案・数量例 | [v0.2](standard-json-draft-v0.2/README.md)、[請求書8明細](standard-json-draft-v0.2/examples/invoice-8.json)、[見積書8明細](standard-json-draft-v0.2/examples/estimate-8.json) |
+| 最新の標準JSON案・名称／数量例 | [v0.3](standard-json-draft-v0.3/README.md)、[会社長名](standard-json-draft-v0.3/examples/company-registration-long.json)、[請求書8明細・担当者](standard-json-draft-v0.3/examples/invoice-8-long.json)、[見積書8明細・部署](standard-json-draft-v0.3/examples/estimate-8-long.json)。新形式PDFは未生成。 |
+| 採用名称・数量を組み合わせた定義コピー | [請求書](standard-json-draft-v0.3/layout/invoice.definition.json)／[見積書](standard-json-draft-v0.3/layout/estimate.definition.json)。資料用コピーで、ここからの描画は未実施。 |
 | 採用した数量配置の比較PDF | [請求書1明細](quantity-decimal-comparison/invoice-1/comparison.pdf)／[8明細](quantity-decimal-comparison/invoice-8/comparison.pdf)、[見積書1明細](quantity-decimal-comparison/estimate-1/comparison.pdf)／[8明細](quantity-decimal-comparison/estimate-8/comparison.pdf)。1ページ目＝現行数量配置、2ページ目＝採用案。 |
 | 整数5桁＋小数3桁の同時上限 | [請求書99999.999](quantity-decimal-comparison/extended/invoice/final.pdf)／[見積書99999.999](quantity-decimal-comparison/extended/estimate/final.pdf) |
 | 数量の定義・実配置 | [v0.2の請求書定義](standard-json-draft-v0.2/quantity-layout/invoice.definition.json)／[見積書定義](standard-json-draft-v0.2/quantity-layout/estimate.definition.json)は数量maxLength9へ整合した論理セルコピー。数量以外は検証時点の候補のまま。実描画済みのfieldsとquantity-placementは数量比較ディレクトリを参照。旧比較定義のmaxLength5は当時の記録であり、v0.2へ引き継がない。 |
