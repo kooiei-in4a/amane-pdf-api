@@ -6,7 +6,7 @@
 
 **追補：数量配置は2モードを用意する方針。** ユーザーの追加方針により、小数点揃えに加えて当初の右揃えも選択できるようにする。下記の小数点基準の計算はdecimalモードへ適用する。両モードとも整数部5桁・小数部3桁と末尾0保持を共通にし、数量の入力値・型・金額を変えない。設定仕様も採用済みで、既定decimal、発行時上書き可、発行値＞登録値＞decimalとする。登録値が不正なら正しい発行値があっても拒否する。
 
-**今回採用した名称・宛先仕様**：会社の`nameLines`、発行の`recipient.nameLines`は必須のstring配列1〜2行・各1〜20文字（UTF-16 unit）、LF結合後最大41文字。会社`addressLines`も必須・同じ上限。部署・担当者・敬称は宛先2行に含め、独立key／追加行は設けない。宛先住所の専用key／欄と旧`name`形式の併存・自動変換は初版対象外。旧keyや対応外keyは黙って捨てず描画前に拒否する。[採用仕様・根拠](../NAME-RECIPIENT-SPEC-PROPOSAL.md)を参照。取引／備考配分、その他の必須性・金額／税区分・数量モード以外のHTTP契約等は未確定。
+**今回採用した名称・宛先仕様**：会社の`nameLines`、発行の`recipient.nameLines`は必須のstring配列1〜2行・各1〜20文字（UTF-16 unit）、LF結合後最大41文字。会社`addressLines`も必須・同じ上限。部署・担当者・敬称は宛先2行に含め、独立key／追加行は設けない。宛先住所の専用key／欄と旧`name`形式の併存・自動変換は初版対象外。旧keyや対応外keyは黙って捨てず描画前に拒否する。[採用仕様・根拠](../NAME-RECIPIENT-SPEC-PROPOSAL.md)を参照。取引／備考の配分と帳票別必須性も[採用済み](../TRANSACTION-NOTES-SPEC-PROPOSAL.md)。その他の必須性・金額／税区分・数量モード以外のHTTP契約等は未確定。
 
 管理先：[site #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134)、親：[site #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)。根拠の固定版：API `465088ed0b575f055beb6851e98d28ed22fb9928` / site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。採用罫線の共有資料は [既存の成果物一覧](../README.md)。
 
@@ -98,7 +98,7 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 | subject | 任意 | string、1〜16文字、1行 | subject。未指定時の件名ラベルも省く案。 |
 | paymentDueDate | 請求書で任意 | 日付string | 請求書expiry。見積書で指定したらエラー。 |
 | validUntil | 見積書で任意 | 日付string | 見積書expiry。請求書で指定したらエラー。 |
-| transaction | 請求書で必須、見積書で任意を推奨 | 下記2形のどちらか1つ | 必須性と表示方法は未確定。見積書でも送れば必ず表示する。 |
+| transaction | 請求書で必須、見積書で任意・採用済み | date／periodのどちらか1つ | 共有notesへ表示。発行日等から補完しない。 |
 | items | 必須 | object配列、1〜8件 | 順序維持。空行・9行目の切り捨て・自動改ページなし。未使用行はfieldsを送らない。 |
 | items[i].name | 必須 | string、1〜17文字、1行 | 軽減記号を付けた描画文字列は最大18文字。 |
 | items[i].quantity | 必須を継続提案 | string。整数部1〜5桁・任意の小数部1〜3桁、最大9文字。桁数と表示方針は採用済み | 数値型へ変換せず末尾0を保持。小数点揃え／右揃えを選択。 |
@@ -109,7 +109,7 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 | taxSummary[rate].taxableAmount | 必須 | JSON整数、0〜999,999,999,999 | 税率別の確定した税抜対象額。 |
 | taxSummary[rate].taxAmount | 必須 | 同上 | 確定税額。税率から計算しない。 |
 | totalAmount | 必須 | 同上 | 確定合計。明細・対象額・税額から合算しない。 |
-| notesLines | 任意 | string配列0〜3行、各16文字以下。実際の行数はtransactionで減る | 次節の結合後48文字・3行・実矩形の範囲内。 |
+| notesLines | 任意・配分採用済み | string配列、各行1〜16文字。date時0〜2行／period時0〜1行／取引省略時0〜3行 | LF結合後48文字・最大3行・実矩形内。省略／[]は自由備考なし。 |
 
 金額は小数部・指数表記のないJSON整数を推奨（カンマ・円・引用符なし）。上限は安全整数の範囲内で、型・範囲検査だけを行う。`"125"`、`125.5`、`-1`、`1e3`は候補契約では不可。数量はASCIIの十進文字列で、`(0|[1-9][0-9]{0,4})(\.[0-9]{1,3})?`への**全体一致**で整数部／小数部の桁をそれぞれ検査する。単に全体9文字だけで判定しない。型の自動変換・カンマ付加・丸め・末尾0の削除／補完は行わない。
 
@@ -129,31 +129,37 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 
 明細の単位、値引き専用欄、税込金額、任意の税区分、自由表題・色指定、会社情報の発行時override等は継続検討の対象外候補。必要性の判断は今回まとめて確定していない。
 
-## 6. 取引日／期間と備考：1ページを保つ推奨案
+## 6. 取引情報と自由備考：採用仕様
 
-[初版の詳しい推奨とT1〜T4の判断](../TRANSACTION-NOTES-SPEC-PROPOSAL.md)を追加した。共有3行／48文字・配分・請求書必須／見積書任意はいずれも未採用。旧v0.2の境界実測とv0.3の通し結果を分けて示し、今回の整理だけで例・validator・製品を変更していない。
+**ユーザー採用済み・製品未実装。** [採用仕様・根拠](../TRANSACTION-NOTES-SPEC-PROPOSAL.md)。既存notesを固定「取引・備考」の共有枠として使い、取引情報を先頭、自由備考を後ろへLF結合する。合成後は最大3行・48文字（UTF-16 unit、LF込み）。自由備考は各行1〜16文字。専用取引欄は初版対象外で、名称の20文字上限を備考へ流用しない。
 
-`transaction` の形は次のどちらか。両方・空object・片側だけの期間は不可。
+| transaction | 生成する取引情報 | 自由備考の配分 | 合成境界 |
+| --- | --- | --- | --- |
+| date | 取引日 YYYY/MM/DD（1行、14文字） | 0〜2行、各16文字以内 | 14＋16＋16＋LF2＝48文字／3行 |
+| period | 取引期間（4文字）＋YYYY/MM/DD～YYYY/MM/DD（21文字）の2行 | 0〜1行、16文字以内 | 4＋21＋16＋LF2＝43文字／3行 |
+| 省略（見積書のみ） | なし | 0〜3行、各16文字以内、LF込み48文字 | 16＋16＋14＋LF2＝48文字。16×3＋LF2＝50文字は不可 |
 
-```json
-{ "transaction": { "date": "2026-10-20" } }
-```
+請求書はtransaction必須、見積書は任意。date／periodの片方だけを指定し、両指定・空object・null・period片側欠落・未知keyは拒否。日付は実在するYYYY-MM-DD、periodはstart≦end。同日periodも2行のまま、期間の両端の年を省略しない。発行日・期限は独立欄へ表示し、transactionへ補完しない。発行日・取引日・期限の前後関係を新たな制約にしない。
 
-```json
-{ "transaction": { "period": { "start": "2026-10-01", "end": "2026-10-31" } } }
-```
+~~~json
+{"transaction":{"date":"2026-10-20"},"notesLines":["自由備考の一行目","自由備考の二行目"]}
+~~~
 
-**推奨案：既存notesの3行枠を正式に「取引・備考」として使い、生成行数を入力契約で明示する。** 日付／期間をexpiryや発行日に混ぜない。表示先を増やさず固定8行を維持できる。ラベル変更は罫線整理だけの承認には含まれず、今回の追加提案である。
+~~~json
+{"transaction":{"period":{"start":"2026-12-31","end":"2027-01-01"}},"notesLines":["期間後の自由備考"]}
+~~~
 
-| transaction | notesへ生成する先頭行 | 呼び出し元のnotesLines上限 |
-| --- | --- | --- |
-| date | `取引日 2026/10/20` の1行 | 2行 |
-| period | `取引期間` と `2026/10/01～2026/10/31` の2行 | 1行 |
-| 省略（見積書のみを提案） | なし | 3行 |
+notesLines省略／[]は自由備考なし。見積書で取引・備考とも省略したら値・ラベルも省き、内容があればラベルは固定「取引・備考」。空行・全空白・null・非string・要素内CR/LF等は拒否する。行数・文字数と実幅／高さの両方を検査し、自動分割・trim・切捨て・短縮・縮小はしない。会社振込先は別bank枠で共有行数を消費しない。超過時は元入力path付きで描画前に拒否する。
 
-結合後48文字・3行と実際の幅／高さの両方で判定する。期間は両端の年を省略しない。備考が多すぎれば `/notesLines` 等をエラーにし、取引情報・備考を切り捨てない。登録の振込先は別のbank枠なのでこの行数を消費しない。
+追加の全発行JSON例（資料のみ、未描画）：
+- [請求書date＋2備考／48文字](transaction-examples/invoice-date-notes-boundary.json)
+- [請求書・年越しperiod＋1備考／43文字](transaction-examples/invoice-period-notes-boundary.json)
+- [見積書・取引省略＋3備考／48文字](transaction-examples/estimate-no-transaction-notes-boundary.json)
+- [見積書・取引／備考とも省略](transaction-examples/estimate-no-transaction-no-notes.json)
+- [見積書・同日period](transaction-examples/estimate-same-day-period.json)
+- [構文・期待配分・他データ保持の机上確認](transaction-example-check.json)
 
-独立した取引日／期間欄を作る案も残る。自由備考の3行を維持したい場合は、正式欄を含む1ページレイアウトを小さく再検証してから確定する。現時点で新しい矩形を製品へ追加していない。
+旧v0.2の備考境界と、v0.3のnameLines＋通常備考は描画済み。**上記追加例と、名称／数量設定＋備考境界／省略／入力エラーを組み合わせた追加実行は未実施。** 旧入力・validator・PDF・実測は維持し、採用済みと未確認の範囲を分ける。
 
 ## 7. 標準JSONから帳票への項目対応
 
@@ -168,7 +174,7 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 | items[i] の name / quantity / unitPrice / taxRate / amount | row0〜row7.name / quantity / price / rate / amount | 8%のname末尾に表示用の※を1個付加する案（入力文字は削除しない）。数量は文字列を保って選択した小数点揃え／右揃え、単価・金額は3桁カンマ＋円、税率は8%／10%。 |
 | taxSummary[10] / taxSummary[8] | subtotal10 / tax10 / subtotal8 / tax8 | それぞれtaxableAmount / taxAmountを表示する。 |
 | totalAmount | total | 3桁カンマ＋円。採用案の12pt。 |
-| transaction ＋ notesLines | notes ＋ label.notes | 前節に従いLF結合。label.notesを「取引・備考」へ変更する追加提案。 |
+| transaction ＋ notesLines | notes ＋ label.notes | 前節に従いLF結合。label.notesは採用済みの固定「取引・備考」。見積で両方省略なら値・ラベルなし。 |
 | companyId / templateId / currency | 参照解決・許可設定 | 参照等の制御値であり、その文字列自体は帳票へ印字しない。 |
 | quantityAlignment（設定仕様は採用済み） | 数量の配置分岐 | 発行値・登録値・既定値から実効モードを解決。文字列自体は印字せず、入力数量の表記も変えない。 |
 
@@ -232,6 +238,9 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 | 9明細・0明細 | 422 / too-many-items、too-few-items | `/items/8`、`/items`。部分PDFを返さない。 |
 | 氏名に𠮷・結合濁点・禁止文字列 | 422 / unsupported-character、combining-mark-not-supported、forbidden-sequence | `/recipient/nameLines/0`。コードポイント等を案内、代替・正規化なし。 |
 | 2026-02-30、期間の逆転・両形式指定 | 422 / invalid-date、invalid-period、ambiguous-transaction | `/transaction/date`、`/transaction/period/end`、`/transaction` |
+| 請求書transaction欠落 | 422 / required（codeは候補） | /transaction。発行日等から補完しない。 |
+| date＋備考3行 | 422 / notes-budget-exceeded（codeは候補） | /notesLines/2。切捨てず拒否。 |
+| 備考3行各16文字 | 422 / too-long等（codeは候補） | /notesLines。LF込み50文字は48文字超過。 |
 | 期間＋備考2行 | 422 / notes-budget-exceeded | `/notesLines/1`。periodは備考最大1行、入力全体を拒否。 |
 | 文字数・行数以内でも幅超過 | 422 / field-overflow | 元の入力path。自由縮小・折り返しなし。 |
 | 参照先が存在しない／利用できない | 422 / invalid-reference を仮置き | `/companyId`、登録時の `/logoAssetId` 等。認証・参照エラーとのHTTP整理は未確定。 |
@@ -252,12 +261,12 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 ## 11. 未確定事項と次の判断
 
-名称・宛先のN1〜N4は[採用仕様](../NAME-RECIPIENT-SPEC-PROPOSAL.md)として確定。採用済みの名称・数量・設定と、その他の候補条件を区別する。nameLinesからの通し検証・境界拒否もfixtureで確認済み。製品・実HTTPは未確認。採否を未確定へ戻さない。
+名称・宛先のN1〜N4は[採用仕様](../NAME-RECIPIENT-SPEC-PROPOSAL.md)として確定。取引／備考のT1〜T4も採用済み。採用済み名称・数量・設定・取引／備考と、その他の候補条件を区別する。nameLinesからの通し検証・境界拒否もfixtureで確認済み。製品・実HTTPは未確認。採否を未確定へ戻さない。
 
 | 未確定事項 | 推奨する出発点／確定前に確認すること |
 | --- | --- |
 | 型・税／通貨・金額上限 | JPY・税抜・非負整数、単価8桁／他金額12桁、数量の文字列保持・整数部5桁／小数部3桁・小数点揃えは採用済み。税率8/10等の他の範囲は用途上妥当か確認する。 |
-| 取引情報と備考 | notes3行を正式に「取引・備考」とする本案を推奨。自由備考の3行を維持する要件があれば専用欄を再検証。請求書でtransaction必須、見積書では任意とするかも確定する。 |
+| 採用済み取引／備考の未確認範囲 | 共有3行／48文字と配分、専用欄の初版対象外、請求書必須／見積書任意は採用済み。v0.3の名称・数量／設定と、境界／省略・拒否の組合せを追加確認する。 |
 | 採用済み名称・宛先の未確認範囲 | nameLines／会社住所20×2、部署・担当者・敬称の2行内表示、宛先住所専用欄／旧形式併存の対象外は採用済み。改訂JSONからの通し検証・拒否時API0は確認済み。製品テンプレート整合と実HTTPは未実施。 |
 | 必須・ゼロ表示・任意ラベル | 名称・会社住所以外のnumber等の必須、税率別2区分を常に必須・表示とするか、任意ラベルを省く方針、数量0／負数等を対応外にしてよいか確認する。 |
 | ID・版と会社更新、採用済みモードの未検証範囲 | companyId／templateId／asset IDの命名、参照できない時のエラー、生成時の会社・画像・templateの版の固定方法は後続の登録・認証設計と整合させる。数量モードの[設定仕様](../QUANTITY-MODE-SETTINGS-DRAFT.md)は採用済み。設定解決・不正値拒否は[fixtureで確認済み](../quantity-resolution-validation/README.md)。登録保存・製品HTTP・参照解決は未確認。過去版管理は今回実装しない。 |

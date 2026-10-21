@@ -1,0 +1,86 @@
+{
+  "scope": "documentation syntax/expected note budgets only; not full preflight/resolver/API/PDF",
+  "source_commit": "744c3fca8049ea45d49bf3920e189deb62dc1180",
+  "pdf_api_calls": 0,
+  "pdf_generated": false,
+  "full_preflight_executed": false,
+  "examples": {
+    "invoice-date-notes-boundary": {
+      "source_example": "invoice-1.json",
+      "json_valid": true,
+      "generated_lines": [
+        "取引日 2026/10/20",
+        "証証証証証証証証証証証証証証証証",
+        "明明明明明明明明明明明明明明明明"
+      ],
+      "combined_lines": 3,
+      "combined_utf16_units": 48,
+      "quantities_confirmed_amounts_and_mode_settings_preserved": true,
+      "changed_top_level_keys": [
+        "notesLines"
+      ]
+    },
+    "invoice-period-notes-boundary": {
+      "source_example": "invoice-8.json",
+      "json_valid": true,
+      "generated_lines": [
+        "取引期間",
+        "2026/12/31～2027/01/01",
+        "証証証証証証証証証証証証証証証証"
+      ],
+      "combined_lines": 3,
+      "combined_utf16_units": 43,
+      "quantities_confirmed_amounts_and_mode_settings_preserved": true,
+      "changed_top_level_keys": [
+        "issueDate",
+        "notesLines",
+        "paymentDueDate",
+        "transaction"
+      ]
+    },
+    "estimate-no-transaction-notes-boundary": {
+      "source_example": "estimate-1.json",
+      "json_valid": true,
+      "generated_lines": [
+        "証証証証証証証証証証証証証証証証",
+        "明明明明明明明明明明明明明明明明",
+        "先先先先先先先先先先先先先先"
+      ],
+      "combined_lines": 3,
+      "combined_utf16_units": 48,
+      "quantities_confirmed_amounts_and_mode_settings_preserved": true,
+      "changed_top_level_keys": [
+        "notesLines",
+        "transaction"
+      ]
+    },
+    "estimate-no-transaction-no-notes": {
+      "source_example": "estimate-1.json",
+      "json_valid": true,
+      "generated_lines": [],
+      "combined_lines": 0,
+      "combined_utf16_units": 0,
+      "quantities_confirmed_amounts_and_mode_settings_preserved": true,
+      "changed_top_level_keys": [
+        "notesLines",
+        "transaction"
+      ]
+    },
+    "estimate-same-day-period": {
+      "source_example": "estimate-8.json",
+      "json_valid": true,
+      "generated_lines": [
+        "取引期間",
+        "2026/10/20～2026/10/20",
+        "同日も期間のまま表示"
+      ],
+      "combined_lines": 3,
+      "combined_utf16_units": 37,
+      "quantities_confirmed_amounts_and_mode_settings_preserved": true,
+      "changed_top_level_keys": [
+        "notesLines",
+        "transaction"
+      ]
+    }
+  }
+}
