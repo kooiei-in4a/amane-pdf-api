@@ -65,7 +65,7 @@ public sealed class PdfCleanTests
             "PAGE_XMP_RETAINED", "/OBJR", "/Dests", "NON_DICTIONARY_RETAINED", "FORM_VALUE_RETAINED", "OUTLINE_RETAINED", "JAVASCRIPT_RETAINED", "/Collection" }) Assert.IsTrue(text.Contains(marker, StringComparison.Ordinal), marker);
         var original = Path.Combine(test.Root, "original.pdf");
         await File.WriteAllBytesAsync(original, input);
-        Assert.AreEqual(await ContentHashAsync(test, original), await ContentHashAsync(test, path));
+        CollectionAssert.AreEqual(await ContentHashesAsync(test, original), await ContentHashesAsync(test, path));
         using var before = JsonDocument.Parse((await test.QpdfAsync("--json=2", "--json-key=qpdf", original)).Output);
         using var after = JsonDocument.Parse((await test.QpdfAsync("--json=2", "--json-key=qpdf", path)).Output);
         var inputObjects = before.RootElement.GetProperty("qpdf")[1];
@@ -86,22 +86,49 @@ public sealed class PdfCleanTests
         test.AssertClean();
     }
 
-    private static async Task<string> ContentHashAsync(PdfTestContext test, string path)
+    private static async Task<string[]> ContentHashesAsync(PdfTestContext test, string path)
     {
         using var json = JsonDocument.Parse((await test.QpdfAsync("--json=2", "--json-key=pages", "--json-key=qpdf", path)).Output);
-        var reference = json.RootElement.GetProperty("pages")[0].GetProperty("contents")[0].GetString()!.Split(' ')[0];
-        var stream = await test.QpdfAsync("--show-object=" + reference, "--filtered-stream-data", path);
-        Assert.AreEqual(0, stream.ExitCode);
-        var decoded = stream.Output;
+        var hashes = new List<string>();
+        async Task<string> Hash(string reference)
+        {
+            var stream = await test.QpdfBytesAsync("--show-object=" + reference.Split(' ')[0], "--filtered-stream-data", path);
+            Assert.AreEqual(0, stream.ExitCode);
+            return stream.Output.Length + ":" + Convert.ToHexString(SHA256.HashData(stream.Output));
+        }
+        var pageIndex = 0;
+        foreach (var page in json.RootElement.GetProperty("pages").EnumerateArray())
+        {
+            var contentIndex = 0;
+            foreach (var reference in page.GetProperty("contents").EnumerateArray())
+                hashes.Add($"page:{pageIndex}:content:{contentIndex++}:" + await Hash(reference.GetString()!));
+            pageIndex++;
+        }
+        var images = new List<string>();
         foreach (var item in json.RootElement.GetProperty("qpdf")[1].EnumerateObject())
             if (item.Value.TryGetProperty("stream", out var image) &&
                 image.GetProperty("dict").TryGetProperty("/Subtype", out var subtype) && subtype.GetString() == "/Image")
-            {
-                var pixels = await test.QpdfAsync("--show-object=" + item.Name[4..].Split(' ')[0], "--filtered-stream-data", path);
-                Assert.AreEqual(0, pixels.ExitCode);
-                decoded += pixels.Output;
-            }
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(decoded)));
+                images.Add("image:" + await Hash(item.Name[4..]));
+        // Object numbers may change; preserve the image multiset, not its reference order.
+        hashes.AddRange(images.Order(StringComparer.Ordinal));
+        return hashes.ToArray();
+    }
+
+    [TestMethod]
+    public async Task BinaryStreamCapture_PreservesInvalidUtf8Bytes()
+    {
+        if (!Linux()) return;
+        await using var test = new PdfTestContext();
+        byte[] expected = [0xff, 0xfe, 0x80, 0, 0xc0, 0xaf];
+        var path = Path.Combine(test.Root, "binary-stream.pdf");
+        await File.WriteAllBytesAsync(path, CompressFixtures.Objects([
+            CompressFixtures.Text("<< /Type /Catalog /Pages 2 0 R >>"),
+            CompressFixtures.Text("<< /Type /Pages /Count 1 /Kids [3 0 R] >>"),
+            CompressFixtures.Text("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R >>"),
+            CompressFixtures.Stream("", expected)]));
+        var result = await test.QpdfBytesAsync("--show-object=4", "--filtered-stream-data", path);
+        Assert.AreEqual(0, result.ExitCode);
+        CollectionAssert.AreEqual(expected, result.Output);
     }
 
     [TestMethod]
@@ -238,6 +265,7 @@ public sealed class PdfCleanTests
         await File.WriteAllTextAsync(wrapper, $$"""
         #!/bin/sh
         printf '%s\n' "$@" >> '{{test.Root}}/arguments'
+        printf '%s\n' "$1" >> '{{test.Root}}/calls'
         case "$1" in
         --job-json-file=*)
           job=${1#--job-json-file=}; dir=${job%/*}
@@ -266,6 +294,10 @@ public sealed class PdfCleanTests
         var args = await File.ReadAllTextAsync(Path.Combine(test.Root, "arguments"));
         foreach (var forbidden in new[] { "MARKER", "private-name", "removeAttachment", "preserve-unreferenced" }) Assert.IsFalse(args.Contains(forbidden, StringComparison.Ordinal));
         Assert.AreEqual(1, args.Split("--json-key=attachments", StringSplitOptions.None).Length - 1);
+        var calls = await File.ReadAllLinesAsync(Path.Combine(test.Root, "calls"));
+        Assert.IsTrue(calls.Length <= 9, "Clean must stay within its process-start budget.");
+        Assert.AreEqual(2, calls.Count(call => call == "--json=2"), "One input and one combined output inspection.");
+        Assert.AreEqual(1, calls.Count(call => call.StartsWith("--job-json-file=", StringComparison.Ordinal)));
         CollectionAssert.AreEqual(new[] { "700", "600", "600", "600", "600" }, await File.ReadAllLinesAsync(Path.Combine(test.Root, "permissions")));
         var limits = await File.ReadAllTextAsync(Path.Combine(test.Root, "limits"));
         Assert.IsTrue(limits.Contains("570425344", StringComparison.Ordinal));
@@ -302,19 +334,6 @@ public sealed class PdfCleanTests
             if (delta <= 0) await ProblemAsync(test, response, 422, "too-complex");
             else { Assert.AreEqual(HttpStatusCode.OK, response.StatusCode); test.AssertClean(); }
         }
-    }
-
-    [TestMethod]
-    public async Task Success_UsesNineCalls_OneJob_CombinedOutputJson_AndOnlyPrivatePaths()
-    {
-        if (!Linux()) return;
-        using var recorder = new BlockingQpdf("never-match");
-        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = recorder.Executable });
-        using var response = await PostAsync(test, await FixtureAsync(test));
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-        CollectionAssert.AreEqual(new[] { "--is-encrypted", "--check", "--show-npages", "--json=2", "job", "--is-encrypted", "--check", "--show-npages", "--json=2" },
-            recorder.Calls.Select(call => call.StartsWith("--job-json-file=", StringComparison.Ordinal) ? "job" : call).ToArray());
-        test.AssertClean();
     }
 
     [SupportedOSPlatformGuard("linux")]

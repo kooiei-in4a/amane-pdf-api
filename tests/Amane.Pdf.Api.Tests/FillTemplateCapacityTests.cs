@@ -20,7 +20,10 @@ public sealed class FillTemplateCapacityTests
         // CI's Docker validation opts in; ordinary dotnet test performs no heavy load.
         var source = Environment.GetEnvironmentVariable("FILL_TEMPLATE_CAPACITY_INPUT");
         var json = Environment.GetEnvironmentVariable("FILL_TEMPLATE_CAPACITY_FIELDS");
-        if (source is null || json is null) return;
+        if (source is null && json is null)
+            Assert.Inconclusive("上限容量測定にはFILL_TEMPLATE_CAPACITY_INPUTとFILL_TEMPLATE_CAPACITY_FIELDSが必要です。");
+        Assert.IsNotNull(source, "FILL_TEMPLATE_CAPACITY_INPUT is required.");
+        Assert.IsNotNull(json, "FILL_TEMPLATE_CAPACITY_FIELDS is required.");
         var fields = FillTemplateFields.Parse(await File.ReadAllBytesAsync(json));
         var jobs = Enumerable.Range(0, concurrent).Select(_ => new OverlayJob()).ToArray();
         try

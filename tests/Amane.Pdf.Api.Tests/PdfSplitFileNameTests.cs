@@ -135,25 +135,33 @@ public sealed class PdfSplitFileNameTests
     }
 
     [TestMethod]
-    public async Task MaximumUnicodeNameAnd500Parts_FitExistingZipOverhead()
+    public void MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead()
     {
-        // 本番の5倍の分割数で名前とオーバーヘッドを確認し、CPU 1の並行実行では既定30秒を超え得るため、対象外の時間上限は延ばす。
-        await using var test = new PdfTestContext(new()
-        {
-            ["Pdf:MaxSplitParts"] = "500",
-            ["Pdf:QpdfTimeoutSeconds"] = "120"
-        });
-        var baseName = new string('あ', 60);
-        using var response = await PdfSplitTests.PostAsync(test, await test.CreatePagedPdfAsync(500),
-            fileName: baseName + "追加.pdf");
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-        var bytes = await response.Content.ReadAsByteArrayAsync();
+        var options = new PdfOptions { MaxSplitParts = 500 };
+        Assert.IsTrue(PdfSplitCapacity.IsValid(options));
+        var parts = new PdfSplitPlan(1, null, options.MaxSplitParts).CreateParts(500);
+        var baseName = PdfSplitFileName.NormalizeBaseName(new string('あ', 60) + "追加.pdf");
+        Assert.AreEqual(new string('あ', 60), baseName);
+        var payload = PdfTestContext.Fixture;
+        var capacity = new PdfSplitCapacity(0, options.MaxSplitOutputBytes, options.MaxSplitJobBytes);
+        using var output = new MemoryStream();
+        using var bounded = new PdfSplitZipStream(output, capacity, CancellationToken.None);
+        using (var archive = new ZipArchive(bounded, ZipArchiveMode.Create, leaveOpen: true))
+            foreach (var part in parts)
+            {
+                capacity.AcceptPart(payload.Length);
+                var entry = archive.CreateEntry(part.GetEntryName(baseName), CompressionLevel.NoCompression);
+                entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+                using (var stream = entry.Open()) stream.Write(payload);
+                capacity.ReleasePart();
+            }
+        capacity.CheckZipLength(output.Length);
+        var bytes = output.ToArray();
         using var zip = new ZipArchive(new MemoryStream(bytes));
         CollectionAssert.AreEqual(Enumerable.Range(1, 500).Select(i => $"{baseName}_{i}.pdf").ToArray(),
             zip.Entries.Select(e => e.FullName).ToArray());
         Assert.IsTrue(bytes.LongLength - zip.Entries.Sum(e => e.Length) <= PdfSplitCapacity.SplitZipOverheadBytes);
         Assert.AreEqual(0x800, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(6)) & 0x800);
-        test.AssertClean();
     }
 
     [TestMethod]

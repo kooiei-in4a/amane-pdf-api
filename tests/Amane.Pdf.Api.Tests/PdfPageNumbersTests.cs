@@ -31,11 +31,12 @@ public sealed class PdfPageNumbersTests
                 .Select(value => Query + "&" + key + "=" + value))];
         foreach (var query in queries)
         {
-            // Invalid multipart would have a different title if upload parsing ran first.
-            using var body = new StringContent("not multipart");
+            // Keep the upload valid so another 400 cannot hide a missing query validator.
+            using var body = PdfTestContext.FileForm(PdfTestContext.Fixture);
             using var response = await test.Client.PostAsync(Endpoint + "?" + query, body);
             using var problem = await Problem(test, response, HttpStatusCode.BadRequest);
             Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString(), query);
+            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?" + query, body);
         }
     }
 

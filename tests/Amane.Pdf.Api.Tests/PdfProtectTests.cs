@@ -90,17 +90,23 @@ public sealed class PdfProtectTests
     }
 
     [TestMethod]
-    public async Task CancelledJob_CleansFiles()
+    public async Task PreCancelledJob_DoesNotStartQpdf_AndOwnerDisposalRemovesFiles()
     {
-        await using var test = new PdfTestContext();
-        using (var files = new TemporaryPdfFiles(test.TempRoot))
+        var root = Path.Combine(Path.GetTempPath(), "protect-cancel-" + Guid.NewGuid().ToString("N"));
+        try
         {
-            await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
-            using var cancelled = new CancellationTokenSource();
-            cancelled.Cancel();
-            var processor = new QpdfProcessor(Options.Create(new PdfOptions()));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => processor.ProtectAsync(files, "cancel-fixture-password", cancelled.Token));
+            using (var files = new TemporaryPdfFiles(root))
+            {
+                await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
+                using var cancelled = new CancellationTokenSource();
+                cancelled.Cancel();
+                var processor = new QpdfProcessor(Options.Create(new PdfOptions { QpdfPath = "/must-not-start/qpdf" }));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => processor.ProtectAsync(files, "cancel-fixture-password", cancelled.Token));
+                Assert.IsFalse(File.Exists(files.OutputPath));
+                Assert.IsTrue(File.Exists(files.InputPath), "The caller still owns the input before disposal.");
+            }
+            Assert.AreEqual(0, Directory.GetFileSystemEntries(root).Length);
         }
-        test.AssertClean();
+        finally { Directory.Delete(root, recursive: true); }
     }
 }

@@ -11,25 +11,13 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfOverlayResourceTests
 {
     [TestMethod]
-    [DataRow("input", "cancel")]
-    [DataRow("blank", "cancel")]
-    [DataRow("draw", "cancel")]
-    [DataRow("overlay", "cancel")]
-    [DataRow("restore", "cancel")]
-    [DataRow("final", "cancel")]
-    [DataRow("input", "timeout")]
-    [DataRow("blank", "timeout")]
-    [DataRow("draw", "timeout")]
-    [DataRow("overlay", "timeout")]
-    [DataRow("restore", "timeout")]
-    [DataRow("final", "timeout")]
-    [DataRow("input", "stopping")]
-    [DataRow("blank", "stopping")]
-    [DataRow("draw", "stopping")]
-    [DataRow("overlay", "stopping")]
-    [DataRow("restore", "stopping")]
-    [DataRow("final", "stopping")]
-    public async Task EveryStage_CancelTimeoutAndStopping_WaitForProcessTree_AndDeleteJob(string stage, string kind)
+    [DataRow("input")]
+    [DataRow("blank")]
+    [DataRow("draw")]
+    [DataRow("overlay")]
+    [DataRow("restore")]
+    [DataRow("final")]
+    public async Task EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates(string stage)
     {
         if (!OperatingSystem.IsLinux()) return;
         var pattern = stage switch
@@ -55,8 +43,8 @@ public sealed class PdfOverlayResourceTests
                 "pause\n") +
             $";;\nesac\nexec '{real}' \"$@\"\n");
         if (stage == "draw") job.Settings.PdfcpuPath = wrapper; else job.Settings.QpdfPath = wrapper;
-        using var caller = new CancellationTokenSource(); using var stopping = new CancellationTokenSource();
-        using var token = CancellationTokenSource.CreateLinkedTokenSource(caller.Token, stopping.Token);
+        // HTTP tests cover caller/timeout/application-stop wiring. The builder receives one token.
+        using var token = new CancellationTokenSource();
         var processing = job.Builder.BuildAsync(job.Files, 1, 1, job.Draw, token.Token);
         var until = System.Diagnostics.Stopwatch.StartNew();
         while (!File.Exists(Path.Combine(root, "blocked.pids")))
@@ -64,9 +52,7 @@ public sealed class PdfOverlayResourceTests
             Assert.IsFalse(processing.IsCompleted, "The intended stage was not reached");
             Assert.IsTrue(until.Elapsed.TotalSeconds < 10); await Task.Delay(10);
         }
-        if (kind == "stopping") stopping.Cancel();
-        else if (kind == "timeout") token.CancelAfter(20);
-        else caller.Cancel();
+        token.Cancel();
         await Assert.ThrowsAsync<OperationCanceledException>(() => processing);
         var pids = (await File.ReadAllTextAsync(Path.Combine(root, "blocked.pids"))).Split(' ', StringSplitOptions.RemoveEmptyEntries);
         foreach (var text in pids)
@@ -80,11 +66,10 @@ public sealed class PdfOverlayResourceTests
                 await Task.Delay(20);
             }
         }
-        var directory = job.Files.DirectoryPath;
-        job.Files.Dispose();
-        Assert.IsFalse(Directory.Exists(directory));
-        // OverlayJob owns disposal normally; recreate an empty dir for its Dispose.
-        Directory.CreateDirectory(directory);
+        // Inspect before owner disposal: the input is deleted after overlay, while
+        // the final output (possibly partial) remains owned by TemporaryPdfFiles.
+        CollectionAssert.AreEquivalent(new[] { stage is "restore" or "final" ? job.Files.OutputPath : job.Files.InputPath },
+            Directory.GetFiles(job.Files.DirectoryPath));
     }
 
     [TestMethod]

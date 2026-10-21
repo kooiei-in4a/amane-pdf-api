@@ -1,4 +1,5 @@
 using System.Net;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -31,10 +32,11 @@ public sealed class PdfWatermarkTests
                      Query + "&style=corner", Query + "&Style=diagonal", Query + "&color=red", Query + "&text=SECRET",
                      Query + "&extra=1", "style=corner&color=" })
         {
-            using var body = new StringContent("not multipart");
+            using var body = Form(PdfTestContext.Fixture);
             using var response = await test.Client.PostAsync(Endpoint + "?" + query, body);
             using var problem = await Problem(test, response, HttpStatusCode.BadRequest);
             Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString());
+            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?" + query, body);
         }
     }
 
@@ -64,6 +66,13 @@ public sealed class PdfWatermarkTests
             Assert.IsTrue(original.Read(i, default).SameEffective(final.Read(i, default)), $"page {i + 1}");
             var (dictionary, content) = LastDrawnForm(after, i);
             Assert.AreEqual(1, Regex.Matches(content, @"\bTj\b").Count, "Each page must own a distinct text stream.");
+            var colors = Regex.Matches(content, @"([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+rg\b");
+            Assert.IsTrue(colors.Count > 0, "The drawn text must set its fill color.");
+            var expectedColor = color == "gray" ? new[] { 128d / 255, 128d / 255, 128d / 255 } : [192d / 255, 0, 0];
+            foreach (Match actualColor in colors)
+                for (var channel = 0; channel < 3; channel++)
+                    Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), 0.005);
+            Assert.AreEqual(text, DrawnText(after, dictionary, content));
             var resources = dictionary.GetProperty("/Resources");
             if (style == "diagonal")
             {
@@ -323,7 +332,31 @@ public sealed class PdfWatermarkTests
     }
 
     private static string StreamText(JsonElement obj)
-        => Encoding.ASCII.GetString(Convert.FromBase64String(obj.GetProperty("stream").GetProperty("data").GetString()!));
+        => Encoding.Latin1.GetString(Convert.FromBase64String(obj.GetProperty("stream").GetProperty("data").GetString()!));
+
+    private static string DrawnText(JsonDocument document, JsonElement form, string content)
+    {
+        var objects = document.RootElement.GetProperty("qpdf")[1];
+        var fontName = Regex.Match(content, @"(/\S+)\s+[\d.]+\s+Tf").Groups[1].Value;
+        var font = form.GetProperty("/Resources").GetProperty("/Font").GetProperty(fontName);
+        var dictionary = objects.GetProperty("obj:" + font.GetString()).GetProperty("value");
+        var cmap = StreamText(objects.GetProperty("obj:" + dictionary.GetProperty("/ToUnicode").GetString()));
+        var unicode = new Dictionary<int, string>();
+        foreach (Match block in Regex.Matches(cmap, @"beginbfchar\s+(.*?)endbfchar", RegexOptions.Singleline))
+            foreach (Match pair in Regex.Matches(block.Groups[1].Value, @"<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>"))
+                unicode.Add(int.Parse(pair.Groups[1].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture),
+                    Encoding.BigEndianUnicode.GetString(Convert.FromHexString(pair.Groups[2].Value)));
+        var literal = Regex.Match(content, @"\(((?:\\[\s\S]|[^\\)])*)\)\s*Tj").Groups[1].Value;
+        var decoded = Regex.Replace(literal, @"\\([0-7]{1,3}|[nrtbf()\\])", match =>
+        {
+            var escaped = match.Groups[1].Value;
+            return escaped[0] is >= '0' and <= '7' ? ((char)Convert.ToInt32(escaped, 8)).ToString() :
+                escaped switch { "n" => "\n", "r" => "\r", "t" => "\t", "b" => "\b", "f" => "\f", _ => escaped };
+        });
+        var bytes = Encoding.Latin1.GetBytes(decoded);
+        Assert.IsTrue(bytes.Length > 0 && bytes.Length % 2 == 0);
+        return string.Concat(Enumerable.Range(0, bytes.Length / 2).Select(i => unicode[(bytes[2 * i] << 8) | bytes[2 * i + 1]]));
+    }
 
     private static (JsonElement Dictionary, string Content) LastDrawnForm(JsonDocument document, int page)
     {
