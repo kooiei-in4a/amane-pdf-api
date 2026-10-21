@@ -11,7 +11,7 @@
 - [今回の名称・住所の追加検証](header-lines-probe/README.md)：既存の8明細を維持し、1行名／長い名称例／20文字×2行の境界を請求書・見積書で確認。これは位置付きfieldsの描画検証であり、改訂JSON全体のvalidatorを実装・検証したものではない。
 - 固定版：PDF API `465088ed0b575f055beb6851e98d28ed22fb9928`、site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。標準JSONの前回検証資料は成果物commit `8c5e0341ca8e1e309176686269f5969af313d84f`。
 
-**採用した数量方針**：[標準JSON案 v0.2](standard-json-draft-v0.2/README.md)へ整数部5桁／小数部3桁（最大9文字）と末尾0保持・小数点揃えを反映した。[比較PDF](quantity-decimal-comparison/README.md)は既存APIでの根拠。旧全体5文字上限は現行案に引き継がないが、v0.1のvalidator・測定記録は過去の再現用として残す。製品契約・共有mainは未変更。
+**採用した数量方針**：[標準JSON案 v0.2](standard-json-draft-v0.2/README.md)へ整数部5桁／小数部3桁（最大9文字）と末尾0保持・小数点揃えを反映した。[比較PDF](quantity-decimal-comparison/README.md)は既存APIでの根拠。旧全体5文字上限は現行案に引き継がないが、v0.1のvalidator・測定記録は過去の再現用として残す。製品契約・共有mainは未変更。後続方針として小数点揃え／右揃えの2モードを用意する。数量規則・拡張セルを共通とし、既定モードはdecimalを推奨するが未確定。設定key・既定値・発行時の上書き可否と、拡張セルの右揃えを含む両モード検証を残作業へ追加した。
 
 ## 1. 登録情報の推奨
 
