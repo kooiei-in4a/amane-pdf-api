@@ -1,0 +1,1249 @@
+{
+  "api_sha": "465088ed0b575f055beb6851e98d28ed22fb9928",
+  "site_assets_sha": "e08aed241245f9f84a7336302edcb7d6a89a57b1",
+  "evidence_base_commit": "04058831200acbdf3a046271da03dbffca77453b",
+  "scope": "local fixture mode selection and field mapping; not product settings or full v0.2 validation",
+  "logical_quantity_cell": {
+    "x": 0.38,
+    "width": 0.095,
+    "fontSize": 8
+  },
+  "template_sha256": "f3ad7950e5c346c94f13d9d53a37afe9397ca9f14c14b29bb78f703e76ffb09f",
+  "script_sha256": "277194101e680f31413c3b176915df48fa5654f1d4169c9c0e237c06c163e3f3",
+  "environment": "CPU1/RAM1536MiB/no extra swap/tmpfs256MiB/read-only/network none/shared2 queue0; Docker exec loopback HTTP",
+  "timing": "fill-template + stamp-image twice to final PDF body; excludes fixture reads/mapping/save/PDF checks",
+  "image_id": "sha256:67d204ed4e10d643a41ffb248a621ed0a2376660f26f5051d0952c65cc10d0e3",
+  "cases": {
+    "invoice-1": {
+      "modes": {
+        "decimal": {
+          "fill": {
+            "seconds": 0.3281827530008741,
+            "status": 200,
+            "bytes": 214550,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.23524123700917698,
+            "status": 200,
+            "bytes": 218010,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.19968100800178945,
+            "status": 200,
+            "bytes": 221511,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.7631242529896554,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 292,
+            "words": 51,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.0815,
+                "word_x_max_pt": 282.1375,
+                "decimal_or_integer_end_pt": 261.4415,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.906499999999994,
+                "gap_to_price_pt": 36.72649999999999
+              }
+            ],
+            "anchor_spread_pt": 0.0,
+            "dot_ink_center_spread_pt": 0.0,
+            "right_edge_spread_pt": 0.0
+          },
+          "request_sha256": "4b06d33e28090112939514888ecf67e6666b4579273a7f7a401018a2929c7fbd",
+          "fields": 44,
+          "rendered_lines": 47
+        },
+        "right": {
+          "fill": {
+            "seconds": 0.23493351199431345,
+            "status": 200,
+            "bytes": 214551,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.20982790700509213,
+            "status": 200,
+            "bytes": 218011,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.20739217300433666,
+            "status": 200,
+            "bytes": 221512,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.6521687509957701,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 292,
+            "words": 51,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.169,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 261.529,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.994,
+                "gap_to_price_pt": 36.63899999999995
+              }
+            ],
+            "anchor_spread_pt": 0.0,
+            "dot_ink_center_spread_pt": 0.0,
+            "right_edge_spread_pt": 0.0
+          },
+          "request_sha256": "4b06d33e28090112939514888ecf67e6666b4579273a7f7a401018a2929c7fbd",
+          "fields": 44,
+          "rendered_lines": 47
+        }
+      },
+      "same_input": true,
+      "all_extracted_text_matches": true,
+      "whole_page_raw_text_matches": true,
+      "non_quantity_word_positions_match": true,
+      "input_confirmed_values_preserved": true
+    },
+    "invoice-8": {
+      "modes": {
+        "decimal": {
+          "fill": {
+            "seconds": 0.24609369700192474,
+            "status": 200,
+            "bytes": 215318,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.21516586598590948,
+            "status": 200,
+            "bytes": 218778,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.20123808798962273,
+            "status": 200,
+            "bytes": 222279,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.6625095829949714,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 612,
+            "words": 86,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.0815,
+                "word_x_max_pt": 282.1375,
+                "decimal_or_integer_end_pt": 261.4415,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.906499999999994,
+                "gap_to_price_pt": 36.72649999999999
+              },
+              {
+                "key": "row1.quantity",
+                "quantity": "99999",
+                "word_x_min_pt": 231.0815,
+                "word_x_max_pt": 261.4415,
+                "decimal_or_integer_end_pt": 261.4415,
+                "gap_to_name_pt": 35.906499999999994,
+                "gap_to_price_pt": 57.42249999999996
+              },
+              {
+                "key": "row2.quantity",
+                "quantity": "0.001",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 281.145,
+                "decimal_or_integer_end_pt": 261.489,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 69.24199999999999,
+                "gap_to_price_pt": 37.718999999999994
+              },
+              {
+                "key": "row3.quantity",
+                "quantity": "2.50",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 276.113,
+                "decimal_or_integer_end_pt": 261.489,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 60.24199999999999,
+                "gap_to_price_pt": 42.750999999999976
+              },
+              {
+                "key": "row4.quantity",
+                "quantity": "1.000",
+                "word_x_min_pt": 256.4285,
+                "word_x_max_pt": 282.1565,
+                "decimal_or_integer_end_pt": 261.46049999999997,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 70.25349999999997,
+                "gap_to_price_pt": 36.70749999999998
+              },
+              {
+                "key": "row5.quantity",
+                "quantity": "3",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 261.489,
+                "decimal_or_integer_end_pt": 261.489,
+                "gap_to_name_pt": 60.24199999999999,
+                "gap_to_price_pt": 57.375
+              },
+              {
+                "key": "row6.quantity",
+                "quantity": "123.45",
+                "word_x_min_pt": 244.2905,
+                "word_x_max_pt": 276.0905,
+                "decimal_or_integer_end_pt": 261.4665,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 58.1155,
+                "gap_to_price_pt": 42.773499999999956
+              },
+              {
+                "key": "row7.quantity",
+                "quantity": "0.010",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 281.145,
+                "decimal_or_integer_end_pt": 261.489,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 60.24199999999999,
+                "gap_to_price_pt": 37.718999999999994
+              }
+            ],
+            "anchor_spread_pt": 0.0474999999999568,
+            "dot_ink_center_spread_pt": 0.0,
+            "right_edge_spread_pt": 20.714999999999975
+          },
+          "request_sha256": "3fde05b8800cda48dd6056ee5febb91ce1687899c53107a7820b39872565d8a4",
+          "fields": 79,
+          "rendered_lines": 83
+        },
+        "right": {
+          "fill": {
+            "seconds": 0.28073607099941,
+            "status": 200,
+            "bytes": 215324,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.21585728897480294,
+            "status": 200,
+            "bytes": 218784,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.18672359301126562,
+            "status": 200,
+            "bytes": 222285,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.6833267209876794,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 612,
+            "words": 86,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.169,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 261.529,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.994,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row1.quantity",
+                "quantity": "99999",
+                "word_x_min_pt": 251.865,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 282.225,
+                "gap_to_name_pt": 56.69,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row2.quantity",
+                "quantity": "0.001",
+                "word_x_min_pt": 256.497,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 262.569,
+                "dot_ink_center_pt": 263.25,
+                "gap_to_name_pt": 70.322,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row3.quantity",
+                "quantity": "2.50",
+                "word_x_min_pt": 261.529,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 267.601,
+                "dot_ink_center_pt": 268.25,
+                "gap_to_name_pt": 66.35399999999998,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row4.quantity",
+                "quantity": "1.000",
+                "word_x_min_pt": 256.497,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 261.529,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 70.322,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row5.quantity",
+                "quantity": "3",
+                "word_x_min_pt": 276.153,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 282.225,
+                "gap_to_name_pt": 80.97800000000001,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row6.quantity",
+                "quantity": "123.45",
+                "word_x_min_pt": 250.425,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 267.601,
+                "dot_ink_center_pt": 268.25,
+                "gap_to_name_pt": 64.25,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row7.quantity",
+                "quantity": "0.010",
+                "word_x_min_pt": 256.497,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 262.569,
+                "dot_ink_center_pt": 263.25,
+                "gap_to_name_pt": 61.322,
+                "gap_to_price_pt": 36.63899999999995
+              }
+            ],
+            "anchor_spread_pt": 20.696000000000026,
+            "dot_ink_center_spread_pt": 6.0,
+            "right_edge_spread_pt": 0.0
+          },
+          "request_sha256": "3fde05b8800cda48dd6056ee5febb91ce1687899c53107a7820b39872565d8a4",
+          "fields": 79,
+          "rendered_lines": 83
+        }
+      },
+      "same_input": true,
+      "all_extracted_text_matches": true,
+      "whole_page_raw_text_matches": true,
+      "non_quantity_word_positions_match": true,
+      "input_confirmed_values_preserved": true
+    },
+    "estimate-1": {
+      "modes": {
+        "decimal": {
+          "fill": {
+            "seconds": 0.2909626599866897,
+            "status": 200,
+            "bytes": 213470,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.20621347898850217,
+            "status": 200,
+            "bytes": 216930,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.21540050499606878,
+            "status": 200,
+            "bytes": 220431,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.7125878749939147,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 269,
+            "words": 46,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.0815,
+                "word_x_max_pt": 282.1375,
+                "decimal_or_integer_end_pt": 261.4415,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.906499999999994,
+                "gap_to_price_pt": 36.72649999999999
+              }
+            ],
+            "anchor_spread_pt": 0.0,
+            "dot_ink_center_spread_pt": 0.0,
+            "right_edge_spread_pt": 0.0
+          },
+          "request_sha256": "876f97a7e83f5d0e7cac30e51bc7af5d98476426b5f957d6f731dc4671c5ccc3",
+          "fields": 42,
+          "rendered_lines": 44
+        },
+        "right": {
+          "fill": {
+            "seconds": 0.2182847679941915,
+            "status": 200,
+            "bytes": 213471,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.21528582999599166,
+            "status": 200,
+            "bytes": 216931,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.2238714919949416,
+            "status": 200,
+            "bytes": 220432,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.657456064975122,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 269,
+            "words": 46,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.169,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 261.529,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.994,
+                "gap_to_price_pt": 36.63899999999995
+              }
+            ],
+            "anchor_spread_pt": 0.0,
+            "dot_ink_center_spread_pt": 0.0,
+            "right_edge_spread_pt": 0.0
+          },
+          "request_sha256": "876f97a7e83f5d0e7cac30e51bc7af5d98476426b5f957d6f731dc4671c5ccc3",
+          "fields": 42,
+          "rendered_lines": 44
+        }
+      },
+      "same_input": true,
+      "all_extracted_text_matches": true,
+      "whole_page_raw_text_matches": true,
+      "non_quantity_word_positions_match": true,
+      "input_confirmed_values_preserved": true
+    },
+    "estimate-8": {
+      "modes": {
+        "decimal": {
+          "fill": {
+            "seconds": 0.21953431199654005,
+            "status": 200,
+            "bytes": 213787,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.2434246170159895,
+            "status": 200,
+            "bytes": 217247,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.39744561101542786,
+            "status": 200,
+            "bytes": 220748,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.8604152300104033,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 589,
+            "words": 81,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.0815,
+                "word_x_max_pt": 282.1375,
+                "decimal_or_integer_end_pt": 261.4415,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.906499999999994,
+                "gap_to_price_pt": 36.72649999999999
+              },
+              {
+                "key": "row1.quantity",
+                "quantity": "99999",
+                "word_x_min_pt": 231.0815,
+                "word_x_max_pt": 261.4415,
+                "decimal_or_integer_end_pt": 261.4415,
+                "gap_to_name_pt": 35.906499999999994,
+                "gap_to_price_pt": 57.42249999999996
+              },
+              {
+                "key": "row2.quantity",
+                "quantity": "0.001",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 281.145,
+                "decimal_or_integer_end_pt": 261.489,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 69.24199999999999,
+                "gap_to_price_pt": 37.718999999999994
+              },
+              {
+                "key": "row3.quantity",
+                "quantity": "2.50",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 276.113,
+                "decimal_or_integer_end_pt": 261.489,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 60.24199999999999,
+                "gap_to_price_pt": 42.750999999999976
+              },
+              {
+                "key": "row4.quantity",
+                "quantity": "1.000",
+                "word_x_min_pt": 256.4285,
+                "word_x_max_pt": 282.1565,
+                "decimal_or_integer_end_pt": 261.46049999999997,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 70.25349999999997,
+                "gap_to_price_pt": 36.70749999999998
+              },
+              {
+                "key": "row5.quantity",
+                "quantity": "3",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 261.489,
+                "decimal_or_integer_end_pt": 261.489,
+                "gap_to_name_pt": 60.24199999999999,
+                "gap_to_price_pt": 57.375
+              },
+              {
+                "key": "row6.quantity",
+                "quantity": "123.45",
+                "word_x_min_pt": 244.2905,
+                "word_x_max_pt": 276.0905,
+                "decimal_or_integer_end_pt": 261.4665,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 58.1155,
+                "gap_to_price_pt": 42.773499999999956
+              },
+              {
+                "key": "row7.quantity",
+                "quantity": "0.010",
+                "word_x_min_pt": 255.417,
+                "word_x_max_pt": 281.145,
+                "decimal_or_integer_end_pt": 261.489,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 60.24199999999999,
+                "gap_to_price_pt": 37.718999999999994
+              }
+            ],
+            "anchor_spread_pt": 0.0474999999999568,
+            "dot_ink_center_spread_pt": 0.0,
+            "right_edge_spread_pt": 20.714999999999975
+          },
+          "request_sha256": "d3c2e7cf2a1cb5c41738d3c040720a64ecf3ea81de312bab0be07be24e876800",
+          "fields": 77,
+          "rendered_lines": 80
+        },
+        "right": {
+          "fill": {
+            "seconds": 0.33531921400572173,
+            "status": 200,
+            "bytes": 213792,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "logo": {
+            "seconds": 0.23986088400124572,
+            "status": 200,
+            "bytes": 217252,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "seal": {
+            "seconds": 0.2225085840036627,
+            "status": 200,
+            "bytes": 220753,
+            "content_type": "application/pdf",
+            "problem": null
+          },
+          "total_seconds": 0.7976993219926953,
+          "extraction": {
+            "exact_per_rectangle_text": true,
+            "characters": 589,
+            "words": 81,
+            "words_outside_rectangles": [],
+            "pages": 1
+          },
+          "images": [
+            {
+              "image": "logo",
+              "expected_pt": [
+                29.75,
+                33.68,
+                107.1,
+                35.7
+              ],
+              "changed_pixel_bbox": [
+                63,
+                71,
+                270,
+                135
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.3333333333333144
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 255,
+                  "max_channel_error": 0.0
+                }
+              ]
+            },
+            {
+              "image": "seal",
+              "expected_pt": [
+                487.9,
+                218.92000000000002,
+                59.5,
+                59.5
+              ],
+              "changed_pixel_bbox": [
+                979,
+                441,
+                1090,
+                552
+              ],
+              "samples": [
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 128,
+                  "max_channel_error": 0.4117647058823479
+                },
+                {
+                  "alpha": 0,
+                  "max_channel_error": 0.0
+                },
+                {
+                  "alpha": 200,
+                  "max_channel_error": 0.470588235294116
+                }
+              ]
+            }
+          ],
+          "quantity_positions": {
+            "rows": [
+              {
+                "key": "row0.quantity",
+                "quantity": "99999.999",
+                "word_x_min_pt": 231.169,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 261.529,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 44.994,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row1.quantity",
+                "quantity": "99999",
+                "word_x_min_pt": 251.865,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 282.225,
+                "gap_to_name_pt": 56.69,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row2.quantity",
+                "quantity": "0.001",
+                "word_x_min_pt": 256.497,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 262.569,
+                "dot_ink_center_pt": 263.25,
+                "gap_to_name_pt": 70.322,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row3.quantity",
+                "quantity": "2.50",
+                "word_x_min_pt": 261.529,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 267.601,
+                "dot_ink_center_pt": 268.25,
+                "gap_to_name_pt": 66.35399999999998,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row4.quantity",
+                "quantity": "1.000",
+                "word_x_min_pt": 256.497,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 261.529,
+                "dot_ink_center_pt": 262.25,
+                "gap_to_name_pt": 70.322,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row5.quantity",
+                "quantity": "3",
+                "word_x_min_pt": 276.153,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 282.225,
+                "gap_to_name_pt": 80.97800000000001,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row6.quantity",
+                "quantity": "123.45",
+                "word_x_min_pt": 250.425,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 267.601,
+                "dot_ink_center_pt": 268.25,
+                "gap_to_name_pt": 64.25,
+                "gap_to_price_pt": 36.63899999999995
+              },
+              {
+                "key": "row7.quantity",
+                "quantity": "0.010",
+                "word_x_min_pt": 256.497,
+                "word_x_max_pt": 282.225,
+                "decimal_or_integer_end_pt": 262.569,
+                "dot_ink_center_pt": 263.25,
+                "gap_to_name_pt": 61.322,
+                "gap_to_price_pt": 36.63899999999995
+              }
+            ],
+            "anchor_spread_pt": 20.696000000000026,
+            "dot_ink_center_spread_pt": 6.0,
+            "right_edge_spread_pt": 0.0
+          },
+          "request_sha256": "d3c2e7cf2a1cb5c41738d3c040720a64ecf3ea81de312bab0be07be24e876800",
+          "fields": 77,
+          "rendered_lines": 80
+        }
+      },
+      "same_input": true,
+      "all_extracted_text_matches": true,
+      "whole_page_raw_text_matches": true,
+      "non_quantity_word_positions_match": true,
+      "input_confirmed_values_preserved": true
+    }
+  },
+  "post_count": 24,
+  "health_status": 200,
+  "cleanup": "assert_clean passed after each of eight chains"
+}

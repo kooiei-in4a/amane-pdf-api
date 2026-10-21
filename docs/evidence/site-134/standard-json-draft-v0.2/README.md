@@ -175,7 +175,7 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 
 invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・幅=.0950（56.525pt、右端.4750は維持）へ広げる。品名／見出しの幅は.3400→.3200とし、品名17文字＋軽減記号を保持する。数量8pt・品名9pt、他の列の位置は維持。数量のmaxLengthは5→9とし、整数部・小数部の個別上限も入力で検査する。
 
-セルは両モード共通。rightを選んでも旧幅44.625pt・全体5文字制限へ戻さない。前回の比較PDFの「現行」は旧幅の右揃えであり、拡張幅で`99999.999`を右揃えする組み合わせとモード選択の一連の検証は未実施。
+セルは両モード共通。rightを選んでも旧幅44.625pt・全体5文字制限へ戻さない。前回の比較PDFの「現行」は旧幅の右揃え。[拡張セルでの同一入力・両モード比較](../quantity-mode-comparison/README.md)を追加し、請求書／見積書の1・8明細すべてで`99999.999`・末尾0・隣接欄の非交差を確認した。これはローカルfixtureでの切替検証であり、製品設定やv0.2全体のvalidatorは未実装。
 
 小数点基準位置は固定フォントのadvanceから計算し、APIの小数4桁座標丸めを見込む余白を設ける。検証版では261.469pt、丸め余白0.06pt。実際のAPIには数量全体を1 fieldでleft配置し、整数部の幅に応じてxを調整する。definitionのセル幅だけの変更では成立しない。[数量配置スクリプト](../compare-decimal-quantity.py)の`decimal_fields()`、[実送信fields](../quantity-decimal-comparison/invoice-8/proposed/fields.json)、[位置対応表](../quantity-decimal-comparison/invoice-8/quantity-placement.json)を参照する。
 

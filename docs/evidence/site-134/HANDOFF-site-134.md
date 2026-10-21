@@ -42,7 +42,7 @@
 
 数量配置の入口は[compare-decimal-quantity.py](compare-decimal-quantity.py)の`decimal_fields()`。論理セルは数量x=.3800・幅=.0950（56.525pt、右端.4750維持）、品名x=.0550・幅=.3200（190.4pt）で、相互に2.975ptの間隔。検証版の小数点基準は261.469pt、API座標の小数4桁への丸め余白は0.06pt。実送信矩形は[fields.json](quantity-decimal-comparison/invoice-8/proposed/fields.json)／[quantity-placement.json](quantity-decimal-comparison/invoice-8/quantity-placement.json)を参照する。固定フォントやレイアウトを変える場合は送り幅と基準位置を再確認する。
 
-上記のx調整はdecimalモードのみ。rightモードは同じ拡張セルで既存APIのalign=rightを使う。旧幅・5文字制限へ戻さず、末尾0や確定金額も変えない。以前の比較PDFの現行側は旧幅の右揃えなので、拡張セルの右揃え・最大9文字・モード切替は今後の小さな検証対象。
+上記のx調整はdecimalモードのみ。rightモードは同じ拡張セルで既存APIのalign=rightを使う。旧幅・5文字制限へ戻さず、末尾0や確定金額も変えない。以前の比較PDFの現行側は旧幅の右揃え。[今回の同一入力比較](quantity-mode-comparison/README.md)では、拡張セルの両モード・最大9文字・末尾0・隣接欄への影響を両帳票1／8明細で確認済み。切替はローカルfixtureであり、製品設定の保存／読込・既定値・不正値応答は未確認。
 
 既存のブラウザ用整数数量・税額計算をB2Bの表示変換へ流用しない。共通テンプレート資産の更新時も、一般向け機能の入力・計算契約を無断で変更しない。
 
@@ -56,7 +56,7 @@
 4. **採用条件を確定**：既存fill-template 1回→stamp-image 2回を初期方式とし、siteの共有実行枠を踏まえた呼び出し条件、品質・時間・最終サイズの基準を決める。検証時の単独10秒／同時各20秒／2MiBは仮目安。site経由の測定とAPI単体の実測を区別する。長時間の負荷試験は追加しない。
 5. **結果を管理先へ統合**：標準JSON例・項目対応・エラー例・固定SHA・代表PDF・測定条件・採用方式・制限を #134 にまとめ、親 #133 に判断と後続作業を反映する。
 6. **v0.2の検証用変換を確認**：過去の`validate-standard-json.py`はv0.1の全体5文字制限のまま。旧例・測定の再現用として残し、別の改訂用コピーで新しい数量規則と配置をつなぎ、v0.2の両帳票1／8明細を確認する。`99999.999`等のfields描画は確認済みだが、v0.2全体の事前検証→表示変換→API描画を完了扱いにしない。
-7. **両モードの選択仕様を決定**：設定key・既定値・発行時の上書き可否を決める。両モードで同じ数量入力を使用し、拡張セルの右揃え、decimalの小数点／整数末尾、末尾0・確定金額保持、隣接欄との非交差を1／8明細で確認する。不正なモード値を黙って補正しない。
+7. **両モードの選択仕様を決定**：拡張セルでの両モード・同一入力の1／8明細の描画比較は確認済み。設定key・既定値・発行時の上書き可否を決め、正式設定から表示変換へつながる経路を検証する。不正なモード値を黙って補正しない。今回のfixture切替を製品設定の実装完了と扱わない。
 
 数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。HTTP／codeの正式契約は未確定。
 
@@ -103,6 +103,7 @@
 | 採用した数量配置の比較PDF | [請求書1明細](quantity-decimal-comparison/invoice-1/comparison.pdf)／[8明細](quantity-decimal-comparison/invoice-8/comparison.pdf)、[見積書1明細](quantity-decimal-comparison/estimate-1/comparison.pdf)／[8明細](quantity-decimal-comparison/estimate-8/comparison.pdf)。1ページ目＝現行数量配置、2ページ目＝採用案。 |
 | 整数5桁＋小数3桁の同時上限 | [請求書99999.999](quantity-decimal-comparison/extended/invoice/final.pdf)／[見積書99999.999](quantity-decimal-comparison/extended/estimate/final.pdf) |
 | 数量の定義・実配置 | [v0.2の請求書定義](standard-json-draft-v0.2/quantity-layout/invoice.definition.json)／[見積書定義](standard-json-draft-v0.2/quantity-layout/estimate.definition.json)は数量maxLength9へ整合した論理セルコピー。数量以外は検証時点の候補のまま。実描画済みのfieldsとquantity-placementは数量比較ディレクトリを参照。旧比較定義のmaxLength5は当時の記録であり、v0.2へ引き継がない。 |
+| 拡張セルの両モード比較 | [結果・全PDF・入力・共通定義](quantity-mode-comparison/README.md)、[compare-quantity-modes.py](compare-quantity-modes.py)。比較PDFは1ページ目decimal、2ページ目right。 |
 | 数量比較の根拠・再現 | [結果・手順](quantity-decimal-comparison/README.md)、[results.json](quantity-decimal-comparison/results.json)、[compare-decimal-quantity.py](compare-decimal-quantity.py) |
 | 今回の比較成果物一式 | [共有ディレクトリ](README.md)（取得・再現手順を記載） |
 | 初期描画検証全体 | [README.md](README.md)、`reproduce.py`、`results/`、`site-assets/`、共有する代表入力・PDFと測定JSON（制限超過ケースの詳細は既報Issueコメントを参照） |

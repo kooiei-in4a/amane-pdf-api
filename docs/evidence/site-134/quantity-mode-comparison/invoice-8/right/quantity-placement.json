@@ -1,0 +1,114 @@
+[
+  {
+    "key": "row0.quantity",
+    "quantity": "99999.999",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.375,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "99999.999"
+    }
+  },
+  {
+    "key": "row1.quantity",
+    "quantity": "99999",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.406,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "99999"
+    }
+  },
+  {
+    "key": "row2.quantity",
+    "quantity": "0.001",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.437,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "0.001"
+    }
+  },
+  {
+    "key": "row3.quantity",
+    "quantity": "2.50",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.468,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "2.50"
+    }
+  },
+  {
+    "key": "row4.quantity",
+    "quantity": "1.000",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.499,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "1.000"
+    }
+  },
+  {
+    "key": "row5.quantity",
+    "quantity": "3",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.53,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "3"
+    }
+  },
+  {
+    "key": "row6.quantity",
+    "quantity": "123.45",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.561,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "123.45"
+    }
+  },
+  {
+    "key": "row7.quantity",
+    "quantity": "0.010",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.592,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "0.010"
+    }
+  }
+]
