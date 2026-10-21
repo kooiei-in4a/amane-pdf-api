@@ -1,0 +1,130 @@
+[
+  {
+    "key": "row0.quantity",
+    "quantity": "99999",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 30.36,
+    "field": {
+      "page": 1,
+      "x": 0.3877,
+      "y": 0.375,
+      "width": 0.0873,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "99999"
+    }
+  },
+  {
+    "key": "row1.quantity",
+    "quantity": "0.001",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 6.072,
+    "field": {
+      "page": 1,
+      "x": 0.4286,
+      "y": 0.406,
+      "width": 0.0464,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "0.001"
+    }
+  },
+  {
+    "key": "row2.quantity",
+    "quantity": "2.50",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 6.072,
+    "field": {
+      "page": 1,
+      "x": 0.4286,
+      "y": 0.437,
+      "width": 0.0464,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "2.50"
+    }
+  },
+  {
+    "key": "row3.quantity",
+    "quantity": "1.000",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 5.032,
+    "field": {
+      "page": 1,
+      "x": 0.4303,
+      "y": 0.468,
+      "width": 0.0447,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "1.000"
+    }
+  },
+  {
+    "key": "row4.quantity",
+    "quantity": "3",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 6.072,
+    "field": {
+      "page": 1,
+      "x": 0.4286,
+      "y": 0.499,
+      "width": 0.0464,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "3"
+    }
+  },
+  {
+    "key": "row5.quantity",
+    "quantity": "11111",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 25.16,
+    "field": {
+      "page": 1,
+      "x": 0.3965,
+      "y": 0.53,
+      "width": 0.0785,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "11111"
+    }
+  },
+  {
+    "key": "row6.quantity",
+    "quantity": "9.999",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 6.072,
+    "field": {
+      "page": 1,
+      "x": 0.4286,
+      "y": 0.561,
+      "width": 0.0464,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "9.999"
+    }
+  },
+  {
+    "key": "row7.quantity",
+    "quantity": "0.010",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 6.072,
+    "field": {
+      "page": 1,
+      "x": 0.4286,
+      "y": 0.592,
+      "width": 0.0464,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "0.010"
+    }
+  }
+]

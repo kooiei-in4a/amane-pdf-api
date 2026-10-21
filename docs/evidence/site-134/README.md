@@ -4,6 +4,7 @@
 
 - [site担当向け引き継ぎ文](HANDOFF-site-134.md)：変更対象、#134の残作業、テンプレート調整部分／Issue全体の完成条件。
 - [標準JSON案 v0.1](standard-json-draft/README.md)：会社登録／発行データ、項目対応、必須・型・上限、エラー例。**未確定の提案で、製品実装・契約確定ではありません。**
+- [数量欄拡張・小数点揃えの比較](quantity-decimal-comparison/README.md)：請求書／見積書の1・8明細、現行数量配置との2ページ比較PDF、末尾0保持・隣接欄・99999.999の追加検証。**製品未反映・数量上限の採否は未確定。**
 - [初版の推奨仕様と判断事項](INITIAL-SPEC-RECOMMENDATION.md)：必須・型・上限、取引情報／備考の配分、名称20文字×2行の推奨と宛先住所等の判断点。**未承認・未実装。** [名称・住所の追加検証](header-lines-probe/README.md)も参照。
 - [標準JSON案からの実描画検証](standard-json-validation/README.md)：請求書／見積書の1・8明細、取引日／期間と備考、確定金額保持、候補入力エラーの再現と実PDF API応答。
 - [作業Issue #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134) / [親 #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)
