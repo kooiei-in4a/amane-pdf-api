@@ -1,0 +1,18 @@
+[
+  {
+    "key": "row0.quantity",
+    "quantity": "12345.000",
+    "anchor_pt": 261.469,
+    "prefix_advance_pt": 29.32,
+    "field": {
+      "page": 1,
+      "x": 0.3895,
+      "y": 0.375,
+      "width": 0.0855,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "left",
+      "text": "12345.000"
+    }
+  }
+]

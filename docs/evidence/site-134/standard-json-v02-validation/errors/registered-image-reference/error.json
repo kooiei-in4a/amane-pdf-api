@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/companyId",
+      "code": "registered-data-invalid",
+      "source": {
+        "kind": "company",
+        "path": "/logoAssetId",
+        "code": "invalid-reference"
+      }
+    }
+  ]
+}

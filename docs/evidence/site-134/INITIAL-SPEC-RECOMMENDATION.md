@@ -11,7 +11,7 @@
 - [今回の名称・住所の追加検証](header-lines-probe/README.md)：既存の8明細を維持し、1行名／長い名称例／20文字×2行の境界を請求書・見積書で確認。これは位置付きfieldsの描画検証であり、改訂JSON全体のvalidatorを実装・検証したものではない。
 - 固定版：PDF API `465088ed0b575f055beb6851e98d28ed22fb9928`、site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。標準JSONの前回検証資料は成果物commit `8c5e0341ca8e1e309176686269f5969af313d84f`。
 
-**採用した数量方針**：[標準JSON案 v0.2](standard-json-draft-v0.2/README.md)へ整数部5桁／小数部3桁（最大9文字）と末尾0保持・小数点揃えを反映した。[比較PDF](quantity-decimal-comparison/README.md)は既存APIでの根拠。旧全体5文字上限は現行案に引き継がないが、v0.1のvalidator・測定記録は過去の再現用として残す。製品契約・共有mainは未変更。後続方針として小数点揃え／右揃えの2モードを用意する。数量規則・拡張セルを共通とし、設定仕様も採用済みで、既定decimal、quantityAlignmentの発行上書き可、発行値＞登録値＞decimal、登録値不正は正しい発行値があっても拒否する。[拡張セルの両モード描画比較](quantity-mode-comparison/README.md)は両帳票1／8明細で確認済み。設定key・既定値・上書き／優先順位・不正登録拒否の採否は完了。設定解決・エラー拒否は[fixture検証](quantity-resolution-validation/README.md)で確認済み。正式な登録設定の保存／読込・HTTPからの経路とv0.2全体の検証は残る。
+**採用した数量方針**：[標準JSON案 v0.2](standard-json-draft-v0.2/README.md)へ整数部5桁／小数部3桁（最大9文字）と末尾0保持・小数点揃えを反映した。[比較PDF](quantity-decimal-comparison/README.md)は既存APIでの根拠。旧全体5文字上限は現行案に引き継がないが、v0.1のvalidator・測定記録は過去の再現用として残す。製品契約・共有mainは未変更。後続方針として小数点揃え／右揃えの2モードを用意する。数量規則・拡張セルを共通とし、設定仕様も採用済みで、既定decimal、quantityAlignmentの発行上書き可、発行値＞登録値＞decimal、登録値不正は正しい発行値があっても拒否する。[拡張セルの両モード描画比較](quantity-mode-comparison/README.md)は両帳票1／8明細で確認済み。設定key・既定値・上書き／優先順位・不正登録拒否の採否は完了。設定解決・エラー拒否は[fixture検証](quantity-resolution-validation/README.md)で確認済み。[v0.2候補全体の通し検証](standard-json-v02-validation/README.md)も実施済み。候補条件の正式採否、正式な登録設定の保存／読込・HTTPからの経路は残る。
 
 ## 1. 登録情報の推奨
 

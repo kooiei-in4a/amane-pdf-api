@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "",
+      "code": "invalid-json"
+    }
+  ]
+}

@@ -57,8 +57,8 @@
 3. **変換・入力エラーの仕様を決定**：金額を再計算しない変換と、元入力パスを示すサーバー側事前検証を整理する。ブラウザ用 `pdf-document-templates-rules.js` の整数数量・税額計算は流用しない。9明細、必須不足、未対応文字、枠超過、画像上限等のエラー例を決める。無断の削除・置換・正規化・縮小で成功させない。
 4. **採用条件を確定**：既存fill-template 1回→stamp-image 2回を初期方式とし、siteの共有実行枠を踏まえた呼び出し条件、品質・時間・最終サイズの基準を決める。検証時の単独10秒／同時各20秒／2MiBは仮目安。site経由の測定とAPI単体の実測を区別する。長時間の負荷試験は追加しない。
 5. **結果を管理先へ統合**：標準JSON例・項目対応・エラー例・固定SHA・代表PDF・測定条件・採用方式・制限を #134 にまとめ、親 #133 に判断と後続作業を反映する。
-6. **v0.2の検証用変換を確認**：過去の`validate-standard-json.py`はv0.1の全体5文字制限のまま。旧例・測定の再現用として残し、別の改訂用コピーで新しい数量規則と配置をつなぎ、v0.2の両帳票1／8明細を確認する。`99999.999`等のfields描画は確認済みだが、v0.2全体の事前検証→表示変換→API描画を完了扱いにしない。
-7. **採用済み設定のfixture検証は完了**：[設定解決・拒否・実効モードPDF](quantity-resolution-validation/README.md)で正常9件と不正40件を確認。正しい発行指定でも不正登録を拒否し、元入力path／登録元source、拒否時の実client呼び出し0を照合した。登録保存・製品HTTP・v0.2全体の事前検証は未確認。製品実装は開始しない。
+6. **v0.2候補の通し検証は実施済み**：[事前検証→表示変換→PDF](standard-json-v02-validation/README.md)で両帳票1／8明細を含む正常14件・代表エラー65件を確認した。採用数量規則・設定解決も接続し、旧全体5文字制限は使用していない。旧`validate-standard-json.py`は過去の再現用として維持。未確定の候補条件を正式に採否判断し、最終契約へ整合させた再確認を残す。製品実装完了ではない。
+7. **採用済み設定のfixture検証は完了**：[設定解決・拒否・実効モードPDF](quantity-resolution-validation/README.md)で正常9件と不正40件を確認。正しい発行指定でも不正登録を拒否し、元入力path／登録元source、拒否時の実client呼び出し0を照合した。v0.2候補全体の事前検証も[後続検証](standard-json-v02-validation/README.md)で確認済み。登録保存・製品HTTPは未確認。製品実装は開始しない。
 
 数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。数量値のHTTP／codeの正式契約は未確定。quantityAlignmentの設定エラーは採用済み仕様を参照する。
 
@@ -102,6 +102,7 @@
 | 背景PDF／位置定義の比較用コピー | `line-comparison/refined-template.pdf`、`line-comparison/invoice.definition.json`、`line-comparison/estimate.definition.json` |
 | 比較生成スクリプト | [compare-lines.py](compare-lines.py) |
 | 採用した数量設定・登録例 | [設定仕様と解決表](QUANTITY-MODE-SETTINGS-DRAFT.md)、[登録rightの請求書](standard-json-draft-v0.2/settings-examples/invoice.json)／[登録decimalの見積書](standard-json-draft-v0.2/settings-examples/estimate.json)。発行1明細例で逆モードへ上書き、8明細例では上書きを省略。 |
+| v0.2候補全体の通し検証 | [結果・PDF・入力・代表エラー・再現手順](standard-json-v02-validation/README.md)、[改訂スクリプト](validate-standard-json-v02.py)。正常14件・拒否65件、拒否時API0。未確定条件は候補扱い。 |
 | 最新の標準JSON案・数量例 | [v0.2](standard-json-draft-v0.2/README.md)、[請求書8明細](standard-json-draft-v0.2/examples/invoice-8.json)、[見積書8明細](standard-json-draft-v0.2/examples/estimate-8.json) |
 | 採用した数量配置の比較PDF | [請求書1明細](quantity-decimal-comparison/invoice-1/comparison.pdf)／[8明細](quantity-decimal-comparison/invoice-8/comparison.pdf)、[見積書1明細](quantity-decimal-comparison/estimate-1/comparison.pdf)／[8明細](quantity-decimal-comparison/estimate-8/comparison.pdf)。1ページ目＝現行数量配置、2ページ目＝採用案。 |
 | 整数5桁＋小数3桁の同時上限 | [請求書99999.999](quantity-decimal-comparison/extended/invoice/final.pdf)／[見積書99999.999](quantity-decimal-comparison/extended/estimate/final.pdf) |

@@ -1,0 +1,3260 @@
+{
+  "api_sha": "465088ed0b575f055beb6851e98d28ed22fb9928",
+  "site_assets_sha": "e08aed241245f9f84a7336302edcb7d6a89a57b1",
+  "evidence_parent_commit": "fcae4f1942eeb52b0dd1298a189d0bfcc2d6059e",
+  "scope": "full v0.2 candidate fixture validation/mapping + adopted quantity/settings; not product HTTP/storage/auth",
+  "script_sha256": "ef9618ce449908d28009866af47eae30bf8390abdec56a6c7669d20a80e7be56",
+  "template_sha256": "f3ad7950e5c346c94f13d9d53a37afe9397ca9f14c14b29bb78f703e76ffb09f",
+  "environment": {
+    "image_id": "sha256:67d204ed4e10d643a41ffb248a621ed0a2376660f26f5051d0952c65cc10d0e3",
+    "limits": "CPU1/RAM1536MiB/no extra swap/tmpfs256MiB/read-only/network none/shared2 queue0",
+    "transport": "docker exec loopback HTTP, sequential",
+    "python": "3.14.4",
+    "timing": "JSON parse/preflight/map to final body; excludes save/PDF checks/startup"
+  },
+  "cases": {
+    "invoice-1": {
+      "fill": {
+        "seconds": 0.29975229199044406,
+        "status": 200,
+        "bytes": 214337,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.227211275981972,
+        "status": 200,
+        "bytes": 217797,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.19612497900379822,
+        "status": 200,
+        "bytes": 221298,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.724610201024916,
+      "preflight_seconds": 0.0014939740067347884,
+      "total_seconds": 0.7230885469762143,
+      "final_bytes": 221298,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 273,
+        "words": 51,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 282.1375,
+            "decimal_or_integer_end_pt": 261.4415,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 156.2455,
+            "gap_to_price_pt": 73.0865
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 44,
+      "rendered_lines": 47,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "invoice-8": {
+      "fill": {
+        "seconds": 0.23094810100155883,
+        "status": 200,
+        "bytes": 215013,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.1874560030119028,
+        "status": 200,
+        "bytes": 218473,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.19188197699259035,
+        "status": 200,
+        "bytes": 221974,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.6117475609935354,
+      "preflight_seconds": 0.00143950100755319,
+      "total_seconds": 0.610286081006052,
+      "final_bytes": 221974,
+      "effective": {
+        "quantityAlignment": "right",
+        "source": "templateSettings"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 476,
+        "words": 86,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.169,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 156.33300000000003,
+            "gap_to_price_pt": 64.447
+          },
+          {
+            "key": "row1.quantity",
+            "quantity": "0.001",
+            "word_x_min_pt": 256.497,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 262.569,
+            "dot_ink_center_pt": 263.25,
+            "gap_to_name_pt": 171.491,
+            "gap_to_price_pt": 63.40699999999998
+          },
+          {
+            "key": "row2.quantity",
+            "quantity": "2.50",
+            "word_x_min_pt": 261.529,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 267.601,
+            "dot_ink_center_pt": 268.25,
+            "gap_to_name_pt": 185.523,
+            "gap_to_price_pt": 64.447
+          },
+          {
+            "key": "row3.quantity",
+            "quantity": "1.000",
+            "word_x_min_pt": 256.497,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 171.491,
+            "gap_to_price_pt": 64.447
+          },
+          {
+            "key": "row4.quantity",
+            "quantity": "3",
+            "word_x_min_pt": 276.153,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 282.225,
+            "gap_to_name_pt": 200.14700000000002,
+            "gap_to_price_pt": 64.447
+          },
+          {
+            "key": "row5.quantity",
+            "quantity": "11111",
+            "word_x_min_pt": 257.065,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 282.225,
+            "gap_to_name_pt": 172.059,
+            "gap_to_price_pt": 64.447
+          },
+          {
+            "key": "row6.quantity",
+            "quantity": "123.45",
+            "word_x_min_pt": 250.425,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 267.601,
+            "dot_ink_center_pt": 268.25,
+            "gap_to_name_pt": 174.419,
+            "gap_to_price_pt": 64.447
+          },
+          {
+            "key": "row7.quantity",
+            "quantity": "0.010",
+            "word_x_min_pt": 256.497,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 262.569,
+            "dot_ink_center_pt": 263.25,
+            "gap_to_name_pt": 171.491,
+            "gap_to_price_pt": 64.447
+          }
+        ],
+        "anchor_spread_pt": 20.696000000000026,
+        "dot_ink_center_spread_pt": 6.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 79,
+      "rendered_lines": 83,
+      "notes_lines": 3,
+      "notes_characters": 36,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "estimate-1": {
+      "fill": {
+        "seconds": 0.2753034339984879,
+        "status": 200,
+        "bytes": 213205,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.18114267999771982,
+        "status": 200,
+        "bytes": 216665,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18428602599306032,
+        "status": 200,
+        "bytes": 220166,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.6420425889955368,
+      "preflight_seconds": 0.0012910939985886216,
+      "total_seconds": 0.640732139989268,
+      "final_bytes": 220166,
+      "effective": {
+        "quantityAlignment": "right",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 250,
+        "words": 46,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "12345.000",
+            "word_x_min_pt": 232.209,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 157.373,
+            "gap_to_price_pt": 72.99899999999997
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 42,
+      "rendered_lines": 44,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "estimate-8": {
+      "fill": {
+        "seconds": 0.2091483469994273,
+        "status": 200,
+        "bytes": 213477,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.2326239539834205,
+        "status": 200,
+        "bytes": 216937,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18575602400233038,
+        "status": 200,
+        "bytes": 220438,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.6293188120180275,
+      "preflight_seconds": 0.0017685570055618882,
+      "total_seconds": 0.6275283249851782,
+      "final_bytes": 220438,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "templateSettings"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 453,
+        "words": 81,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 282.1375,
+            "decimal_or_integer_end_pt": 261.4415,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 156.2455,
+            "gap_to_price_pt": 64.53450000000004
+          },
+          {
+            "key": "row1.quantity",
+            "quantity": "0.001",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 281.145,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 170.411,
+            "gap_to_price_pt": 64.48700000000002
+          },
+          {
+            "key": "row2.quantity",
+            "quantity": "2.50",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 276.113,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 179.411,
+            "gap_to_price_pt": 70.55900000000003
+          },
+          {
+            "key": "row3.quantity",
+            "quantity": "1.000",
+            "word_x_min_pt": 256.4285,
+            "word_x_max_pt": 282.1565,
+            "decimal_or_integer_end_pt": 261.46049999999997,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 171.42249999999999,
+            "gap_to_price_pt": 64.51550000000003
+          },
+          {
+            "key": "row4.quantity",
+            "quantity": "3",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 261.489,
+            "decimal_or_integer_end_pt": 261.489,
+            "gap_to_name_pt": 179.411,
+            "gap_to_price_pt": 85.18300000000005
+          },
+          {
+            "key": "row5.quantity",
+            "quantity": "11111",
+            "word_x_min_pt": 236.3175,
+            "word_x_max_pt": 261.4775,
+            "decimal_or_integer_end_pt": 261.4775,
+            "gap_to_name_pt": 151.3115,
+            "gap_to_price_pt": 85.1945
+          },
+          {
+            "key": "row6.quantity",
+            "quantity": "123.45",
+            "word_x_min_pt": 244.2905,
+            "word_x_max_pt": 276.0905,
+            "decimal_or_integer_end_pt": 261.4665,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 168.2845,
+            "gap_to_price_pt": 70.5815
+          },
+          {
+            "key": "row7.quantity",
+            "quantity": "0.010",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 281.145,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 170.411,
+            "gap_to_price_pt": 65.52700000000004
+          }
+        ],
+        "anchor_spread_pt": 0.0474999999999568,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 20.678999999999974
+      },
+      "fields": 77,
+      "rendered_lines": 80,
+      "notes_lines": 3,
+      "notes_characters": 36,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "provided-amounts-unchanged": {
+      "fill": {
+        "seconds": 0.2582142259925604,
+        "status": 200,
+        "bytes": 215081,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.18853704299544916,
+        "status": 200,
+        "bytes": 218541,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18319561699172482,
+        "status": 200,
+        "bytes": 222042,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.6312602919933852,
+      "preflight_seconds": 0.0012942389876116067,
+      "total_seconds": 0.6299468859797344,
+      "final_bytes": 222042,
+      "effective": {
+        "quantityAlignment": "right",
+        "source": "templateSettings"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 281,
+        "words": 51,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "1.25",
+            "word_x_min_pt": 262.569,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 267.601,
+            "dot_ink_center_pt": 268.25,
+            "gap_to_name_pt": 187.733,
+            "gap_to_price_pt": 72.99899999999997
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 44,
+      "rendered_lines": 47,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "default-money-boundary": {
+      "fill": {
+        "seconds": 0.21297501999652013,
+        "status": 200,
+        "bytes": 214188,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.18614207601058297,
+        "status": 200,
+        "bytes": 217648,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18123631400521845,
+        "status": 200,
+        "bytes": 221149,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.5819478100165725,
+      "preflight_seconds": 0.001573159999679774,
+      "total_seconds": 0.5803534100123215,
+      "final_bytes": 221149,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "default"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 357,
+        "words": 51,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 282.1375,
+            "decimal_or_integer_end_pt": 261.4415,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 156.2455,
+            "gap_to_price_pt": 36.72649999999999
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 44,
+      "rendered_lines": 47,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "quantity-boundary-decimal": {
+      "fill": {
+        "seconds": 0.21197516098618507,
+        "status": 200,
+        "bytes": 215318,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.18458598799770698,
+        "status": 200,
+        "bytes": 218778,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18535908198100515,
+        "status": 200,
+        "bytes": 222279,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.5837074810115155,
+      "preflight_seconds": 0.0017667530046310276,
+      "total_seconds": 0.5819202309648972,
+      "final_bytes": 222279,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 612,
+        "words": 86,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 282.1375,
+            "decimal_or_integer_end_pt": 261.4415,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 44.906499999999994,
+            "gap_to_price_pt": 36.72649999999999
+          },
+          {
+            "key": "row1.quantity",
+            "quantity": "99999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 261.4415,
+            "decimal_or_integer_end_pt": 261.4415,
+            "gap_to_name_pt": 35.906499999999994,
+            "gap_to_price_pt": 57.42249999999996
+          },
+          {
+            "key": "row2.quantity",
+            "quantity": "0.001",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 281.145,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 69.24199999999999,
+            "gap_to_price_pt": 37.718999999999994
+          },
+          {
+            "key": "row3.quantity",
+            "quantity": "2.50",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 276.113,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 60.24199999999999,
+            "gap_to_price_pt": 42.750999999999976
+          },
+          {
+            "key": "row4.quantity",
+            "quantity": "1.000",
+            "word_x_min_pt": 256.4285,
+            "word_x_max_pt": 282.1565,
+            "decimal_or_integer_end_pt": 261.46049999999997,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 70.25349999999997,
+            "gap_to_price_pt": 36.70749999999998
+          },
+          {
+            "key": "row5.quantity",
+            "quantity": "3",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 261.489,
+            "decimal_or_integer_end_pt": 261.489,
+            "gap_to_name_pt": 60.24199999999999,
+            "gap_to_price_pt": 57.375
+          },
+          {
+            "key": "row6.quantity",
+            "quantity": "123.45",
+            "word_x_min_pt": 244.2905,
+            "word_x_max_pt": 276.0905,
+            "decimal_or_integer_end_pt": 261.4665,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 58.1155,
+            "gap_to_price_pt": 42.773499999999956
+          },
+          {
+            "key": "row7.quantity",
+            "quantity": "0.010",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 281.145,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 60.24199999999999,
+            "gap_to_price_pt": 37.718999999999994
+          }
+        ],
+        "anchor_spread_pt": 0.0474999999999568,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 20.714999999999975
+      },
+      "fields": 79,
+      "rendered_lines": 83,
+      "notes_lines": 3,
+      "notes_characters": 36,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "quantity-boundary-right": {
+      "fill": {
+        "seconds": 0.21975978498812765,
+        "status": 200,
+        "bytes": 215324,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.2499963210138958,
+        "status": 200,
+        "bytes": 218784,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.19216633899486624,
+        "status": 200,
+        "bytes": 222285,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.663473635999253,
+      "preflight_seconds": 0.0015299500082619488,
+      "total_seconds": 0.6619224449968897,
+      "final_bytes": 222285,
+      "effective": {
+        "quantityAlignment": "right",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 612,
+        "words": 86,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.169,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 44.994,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row1.quantity",
+            "quantity": "99999",
+            "word_x_min_pt": 251.865,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 282.225,
+            "gap_to_name_pt": 56.69,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row2.quantity",
+            "quantity": "0.001",
+            "word_x_min_pt": 256.497,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 262.569,
+            "dot_ink_center_pt": 263.25,
+            "gap_to_name_pt": 70.322,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row3.quantity",
+            "quantity": "2.50",
+            "word_x_min_pt": 261.529,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 267.601,
+            "dot_ink_center_pt": 268.25,
+            "gap_to_name_pt": 66.35399999999998,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row4.quantity",
+            "quantity": "1.000",
+            "word_x_min_pt": 256.497,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 70.322,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row5.quantity",
+            "quantity": "3",
+            "word_x_min_pt": 276.153,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 282.225,
+            "gap_to_name_pt": 80.97800000000001,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row6.quantity",
+            "quantity": "123.45",
+            "word_x_min_pt": 250.425,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 267.601,
+            "dot_ink_center_pt": 268.25,
+            "gap_to_name_pt": 64.25,
+            "gap_to_price_pt": 36.63899999999995
+          },
+          {
+            "key": "row7.quantity",
+            "quantity": "0.010",
+            "word_x_min_pt": 256.497,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 262.569,
+            "dot_ink_center_pt": 263.25,
+            "gap_to_name_pt": 61.322,
+            "gap_to_price_pt": 36.63899999999995
+          }
+        ],
+        "anchor_spread_pt": 20.696000000000026,
+        "dot_ink_center_spread_pt": 6.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 79,
+      "rendered_lines": 83,
+      "notes_lines": 3,
+      "notes_characters": 36,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "date-notes-boundary": {
+      "fill": {
+        "seconds": 0.3453478029987309,
+        "status": 200,
+        "bytes": 213479,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.1811553930165246,
+        "status": 200,
+        "bytes": 216939,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18320063600549474,
+        "status": 200,
+        "bytes": 220440,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.7112694190000184,
+      "preflight_seconds": 0.0015461200091522187,
+      "total_seconds": 0.7097038320207503,
+      "final_bytes": 220440,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 295,
+        "words": 52,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 282.1375,
+            "decimal_or_integer_end_pt": 261.4415,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 156.2455,
+            "gap_to_price_pt": 73.0865
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 44,
+      "rendered_lines": 48,
+      "notes_lines": 3,
+      "notes_characters": 48,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "period-notes-boundary": {
+      "fill": {
+        "seconds": 0.20962975599104539,
+        "status": 200,
+        "bytes": 212713,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.2793494290090166,
+        "status": 200,
+        "bytes": 216173,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.20992233301512897,
+        "status": 200,
+        "bytes": 219674,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.7006978070130572,
+      "preflight_seconds": 0.0017740470066200942,
+      "total_seconds": 0.698901518015191,
+      "final_bytes": 219674,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "templateSettings"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 460,
+        "words": 81,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "99999.999",
+            "word_x_min_pt": 231.0815,
+            "word_x_max_pt": 282.1375,
+            "decimal_or_integer_end_pt": 261.4415,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 156.2455,
+            "gap_to_price_pt": 64.53450000000004
+          },
+          {
+            "key": "row1.quantity",
+            "quantity": "0.001",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 281.145,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 170.411,
+            "gap_to_price_pt": 64.48700000000002
+          },
+          {
+            "key": "row2.quantity",
+            "quantity": "2.50",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 276.113,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 179.411,
+            "gap_to_price_pt": 70.55900000000003
+          },
+          {
+            "key": "row3.quantity",
+            "quantity": "1.000",
+            "word_x_min_pt": 256.4285,
+            "word_x_max_pt": 282.1565,
+            "decimal_or_integer_end_pt": 261.46049999999997,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 171.42249999999999,
+            "gap_to_price_pt": 64.51550000000003
+          },
+          {
+            "key": "row4.quantity",
+            "quantity": "3",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 261.489,
+            "decimal_or_integer_end_pt": 261.489,
+            "gap_to_name_pt": 179.411,
+            "gap_to_price_pt": 85.18300000000005
+          },
+          {
+            "key": "row5.quantity",
+            "quantity": "11111",
+            "word_x_min_pt": 236.3175,
+            "word_x_max_pt": 261.4775,
+            "decimal_or_integer_end_pt": 261.4775,
+            "gap_to_name_pt": 151.3115,
+            "gap_to_price_pt": 85.1945
+          },
+          {
+            "key": "row6.quantity",
+            "quantity": "123.45",
+            "word_x_min_pt": 244.2905,
+            "word_x_max_pt": 276.0905,
+            "decimal_or_integer_end_pt": 261.4665,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 168.2845,
+            "gap_to_price_pt": 70.5815
+          },
+          {
+            "key": "row7.quantity",
+            "quantity": "0.010",
+            "word_x_min_pt": 255.417,
+            "word_x_max_pt": 281.145,
+            "decimal_or_integer_end_pt": 261.489,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 170.411,
+            "gap_to_price_pt": 65.52700000000004
+          }
+        ],
+        "anchor_spread_pt": 0.0474999999999568,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 20.678999999999974
+      },
+      "fields": 77,
+      "rendered_lines": 80,
+      "notes_lines": 3,
+      "notes_characters": 43,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "estimate-no-transaction": {
+      "fill": {
+        "seconds": 0.3483713149907999,
+        "status": 200,
+        "bytes": 211830,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.1755156809813343,
+        "status": 200,
+        "bytes": 215290,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.1785283210047055,
+        "status": 200,
+        "bytes": 218791,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.7037529780063778,
+      "preflight_seconds": 0.0013179630041122437,
+      "total_seconds": 0.7024153169768397,
+      "final_bytes": 218791,
+      "effective": {
+        "quantityAlignment": "right",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo",
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 272,
+        "words": 46,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "12345.000",
+            "word_x_min_pt": 232.209,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 157.373,
+            "gap_to_price_pt": 72.99899999999997
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 42,
+      "rendered_lines": 45,
+      "notes_lines": 3,
+      "notes_characters": 48,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 3
+    },
+    "minimal-no-images": {
+      "fill": {
+        "seconds": 0.20299554298981093,
+        "status": 200,
+        "bytes": 208366,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.20441748198936693,
+      "preflight_seconds": 0.0014149060007184744,
+      "total_seconds": 0.20299554298981093,
+      "final_bytes": 208366,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "templateSettings"
+      },
+      "rendered_images": [],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 163,
+        "words": 34,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": {
+        "absent_images": true,
+        "same_as_filled_pdf": true
+      },
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "12345.000",
+            "word_x_min_pt": 232.1525,
+            "word_x_max_pt": 282.1685,
+            "decimal_or_integer_end_pt": 261.4725,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 157.31650000000002,
+            "gap_to_price_pt": 73.0555
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 32,
+      "rendered_lines": 33,
+      "notes_lines": 0,
+      "notes_characters": 0,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        }
+      ],
+      "post_count_delta": 1
+    },
+    "logo-only": {
+      "fill": {
+        "seconds": 0.20994896299089305,
+        "status": 200,
+        "bytes": 211967,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.19263803999638185,
+        "status": 200,
+        "bytes": 215427,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.404114718985511,
+      "preflight_seconds": 0.0015131289837881923,
+      "total_seconds": 0.4025870029872749,
+      "final_bytes": 215427,
+      "effective": {
+        "quantityAlignment": "decimal",
+        "source": "request"
+      },
+      "rendered_images": [
+        "logo"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 217,
+        "words": 42,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": {
+        "image": "logo",
+        "changed_pixel_bbox": [
+          63,
+          71,
+          270,
+          135
+        ],
+        "sample_channel_errors": [
+          0.3333333333333144,
+          0.0,
+          0.0
+        ]
+      },
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "12345.000",
+            "word_x_min_pt": 232.1525,
+            "word_x_max_pt": 282.1685,
+            "decimal_or_integer_end_pt": 261.4725,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 157.31650000000002,
+            "gap_to_price_pt": 73.0555
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 38,
+      "rendered_lines": 40,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+        }
+      ],
+      "post_count_delta": 2
+    },
+    "seal-only": {
+      "fill": {
+        "seconds": 0.2077968900266569,
+        "status": 200,
+        "bytes": 211966,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18473274100688286,
+        "status": 200,
+        "bytes": 215467,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "json_to_pdf_seconds": 0.3938158359960653,
+      "preflight_seconds": 0.0012732709874399006,
+      "total_seconds": 0.39252963103353977,
+      "final_bytes": 215467,
+      "effective": {
+        "quantityAlignment": "right",
+        "source": "request"
+      },
+      "rendered_images": [
+        "seal"
+      ],
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 217,
+        "words": 42,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": {
+        "image": "seal",
+        "changed_pixel_bbox": [
+          979,
+          441,
+          1090,
+          552
+        ],
+        "sample_channel_errors": [
+          0.4117647058823479,
+          0.4117647058823479,
+          0.0,
+          0.470588235294116
+        ]
+      },
+      "quantity_positions": {
+        "rows": [
+          {
+            "key": "row0.quantity",
+            "quantity": "12345.000",
+            "word_x_min_pt": 232.209,
+            "word_x_max_pt": 282.225,
+            "decimal_or_integer_end_pt": 261.529,
+            "dot_ink_center_pt": 262.25,
+            "gap_to_name_pt": 157.373,
+            "gap_to_price_pt": 72.99899999999997
+          }
+        ],
+        "anchor_spread_pt": 0.0,
+        "dot_ink_center_spread_pt": 0.0,
+        "right_edge_spread_pt": 0.0
+      },
+      "fields": 38,
+      "rendered_lines": 40,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "input_objects_unchanged": true,
+      "input_fields_preserved": true,
+      "optional_labels_and_unused_rows_checked": true,
+      "api_calls": [
+        {
+          "method": "POST",
+          "path": "/api/pdf/fill-template"
+        },
+        {
+          "method": "POST",
+          "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+        }
+      ],
+      "post_count_delta": 2
+    }
+  },
+  "errors": {
+    "nine-items": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/8",
+            "code": "too-many-items"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "zero-items": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items",
+            "code": "too-few-items"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-companyId": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-templateId": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/templateId",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-currency": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/currency",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-recipient": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-issueDate": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/issueDate",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-number": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/number",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-items": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-taxSummary": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/taxSummary",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-totalAmount": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/totalAmount",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-amount": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-number": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "invalid-type"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-null": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "invalid-type"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-int6": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-fraction4": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-leading-zero": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-exponent": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-spaces": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-zero": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "quantity-negative": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "amount-negative": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "out-of-range"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "amount-fraction": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "invalid-integer"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "amount-string": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "invalid-integer"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "amount-boolean": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "invalid-integer"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "total-limit": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/totalAmount",
+            "code": "out-of-range"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "unit-price-limit": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/unitPrice",
+            "code": "out-of-range"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "tax-rate": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/taxRate",
+            "code": "unsupported-tax-rate"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-tax-bucket": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/taxSummary/8",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "missing-tax-amount": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/taxSummary/10/taxAmount",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "currency": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/currency",
+            "code": "unsupported-currency"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-address": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/addressLines",
+            "code": "unknown-field"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "company-override": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/company",
+            "code": "unknown-field"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "per-item-mode": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantityAlignment",
+            "code": "unknown-field"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-unsupported": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "unsupported-character"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-combining": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "combining-mark-not-supported"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-placeholder": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "forbidden-sequence"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-literal-newline": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "forbidden-sequence"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-long": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "too-long"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-null": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "invalid-type"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "issue-date": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/issueDate",
+            "code": "invalid-date"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "transaction-date": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction/date",
+            "code": "invalid-date"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "period-reversed": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction/period/end",
+            "code": "invalid-period"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "period-missing-end": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction/period/end",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "transaction-ambiguous": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction",
+            "code": "ambiguous-transaction"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "transaction-missing": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction",
+            "code": "required"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "date-three-notes": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/notesLines/2",
+            "code": "notes-budget-exceeded"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "period-two-notes": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/notesLines/1",
+            "code": "notes-budget-exceeded"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "notes-long": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/notesLines/0",
+            "code": "too-long"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "wrong-expiry": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/validUntil",
+            "code": "not-applicable"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "unknown-company": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "invalid-reference"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "unknown-template": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/templateId",
+            "code": "invalid-reference"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "registered-company-character": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "company",
+              "path": "/name",
+              "code": "unsupported-character"
+            }
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "registered-company-required": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "company",
+              "path": "/addressLines",
+              "code": "required"
+            }
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "registered-image-reference": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "company",
+              "path": "/logoAssetId",
+              "code": "invalid-reference"
+            }
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "recipient-overflow": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "field-overflow"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "registered-company-overflow": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "company",
+              "path": "/name",
+              "code": "field-overflow"
+            }
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "mode-request-null": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/quantityAlignment",
+            "code": "invalid-type"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "mode-registered-null": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/templateId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "templateSettings",
+              "path": "/quantityAlignment",
+              "code": "invalid-type"
+            }
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "mode-request-enum": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/quantityAlignment",
+            "code": "unsupported-quantity-alignment"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "mode-registered-enum": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/templateId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "templateSettings",
+              "path": "/quantityAlignment",
+              "code": "unsupported-quantity-alignment"
+            }
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "malformed": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "",
+            "code": "invalid-json"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "duplicate": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "",
+            "code": "duplicate-key"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "body-limit": {
+      "problem": {
+        "status": 413,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "",
+            "code": "request-too-large"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    },
+    "exponent-money": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "invalid-integer"
+          }
+        ]
+      },
+      "api_call_count": 0,
+      "posts_before": 38,
+      "posts_after": 38,
+      "pdf_created": false
+    }
+  },
+  "api_post_count": 38,
+  "health_status": 200,
+  "cleanup": "assert_clean after each success and final",
+  "summary": {
+    "valid": 14,
+    "rejected": 65,
+    "rejected_api_calls": 0,
+    "quantity_comparison_same_text_and_other_positions": true
+  }
+}

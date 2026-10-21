@@ -10,7 +10,7 @@
 
 管理先：[site #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134)、親：[site #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)。根拠の固定版：API `465088ed0b575f055beb6851e98d28ed22fb9928` / site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。採用罫線の共有資料は [既存の成果物一覧](../README.md)。
 
-**根拠と版の区別**：[小数点揃えの比較PDF・定義・実測](../quantity-decimal-comparison/README.md)では、既存APIで`99999.999`まで表示・抽出できた。[v0.1のJSON描画検証](../standard-json-validation/README.md)と既存`validate-standard-json.py`は全体5文字の過去の再現資料として残す。今回、それらのvalidator・変換をv0.2へ実装し直したわけではない。以下の新しいJSON例は構文・数量規則・確定金額の不変だけを机上確認し、v0.2全体のAPI描画を追加実行していない。
+**根拠と版の区別**：[小数点揃えの比較PDF・定義・実測](../quantity-decimal-comparison/README.md)では、既存APIで`99999.999`まで表示・抽出できた。[v0.1のJSON描画検証](../standard-json-validation/README.md)と既存`validate-standard-json.py`は全体5文字の過去の再現資料として残す。旧版は変更せず、後続の[検証専用スクリプトでのv0.2通し確認](../standard-json-v02-validation/README.md)で、以下の全発行例・採用済み数量／設定解決を含む事前検証→変換→実PDF API描画と代表エラーを確認した。製品実装ではなく、未確定条件の採否も変えない。
 
 ## 1. 登録時と発行時の分離
 
@@ -32,7 +32,7 @@
 - [見積書1明細](examples/estimate-1.json) / [見積書8明細](examples/estimate-8.json)
 - [確定金額を変えないことの確認例](examples/provided-amounts-unchanged.json)：意図的に不整合な試験値。実取引用ではない。
 
-発行例の構造（請求書1明細、登録rightを発行decimalで上書き。8明細例は上書きkeyを省略する。見積書1明細例は登録decimalをrightへ上書きする。以下の解決結果は仕様上の期待値で、設定resolverの実行結果ではない）：
+発行例の構造（請求書1明細、登録rightを発行decimalで上書き。8明細例は上書きkeyを省略する。見積書1明細例は登録decimalをrightへ上書きする。以下の解決結果は[通し検証](../standard-json-v02-validation/README.md)でも確認済み）：
 
 ```json
 {
@@ -179,11 +179,11 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 
 invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・幅=.0950（56.525pt、右端.4750は維持）へ広げる。品名／見出しの幅は.3400→.3200とし、品名17文字＋軽減記号を保持する。数量8pt・品名9pt、他の列の位置は維持。数量のmaxLengthは5→9とし、整数部・小数部の個別上限も入力で検査する。
 
-セルは両モード共通。rightを選んでも旧幅44.625pt・全体5文字制限へ戻さない。前回の比較PDFの「現行」は旧幅の右揃え。[拡張セルでの同一入力・両モード比較](../quantity-mode-comparison/README.md)を追加し、請求書／見積書の1・8明細すべてで`99999.999`・末尾0・隣接欄の非交差を確認した。これはローカルfixtureでの切替検証であり、製品設定やv0.2全体のvalidatorは未実装。
+セルは両モード共通。rightを選んでも旧幅44.625pt・全体5文字制限へ戻さない。前回の比較PDFの「現行」は旧幅の右揃え。[拡張セルでの同一入力・両モード比較](../quantity-mode-comparison/README.md)を追加し、請求書／見積書の1・8明細すべてで`99999.999`・末尾0・隣接欄の非交差を確認した。これはローカルfixtureでの切替検証。後続の[v0.2候補全体の検証](../standard-json-v02-validation/README.md)も完了したが、製品設定・製品validatorは未実装。
 
 小数点基準位置は固定フォントのadvanceから計算し、APIの小数4桁座標丸めを見込む余白を設ける。検証版では261.469pt、丸め余白0.06pt。実際のAPIには数量全体を1 fieldでleft配置し、整数部の幅に応じてxを調整する。definitionのセル幅だけの変更では成立しない。[数量配置スクリプト](../compare-decimal-quantity.py)の`decimal_fields()`、[実送信fields](../quantity-decimal-comparison/invoice-8/proposed/fields.json)、[位置対応表](../quantity-decimal-comparison/invoice-8/quantity-placement.json)を参照する。
 
-数量maxLengthを9へ合わせた検証用の論理セル定義：[請求書](quantity-layout/invoice.definition.json)／[見積書](quantity-layout/estimate.definition.json)。数量以外は比較検証時点の候補を保持しており、名称・備考等の未確定事項を新たに確定したコピーではない。このコピーからPDFを追加生成した実績はなく、過去の比較PDFと区別する。
+数量maxLengthを9へ合わせた検証用の論理セル定義：[請求書](quantity-layout/invoice.definition.json)／[見積書](quantity-layout/estimate.definition.json)。数量以外は比較検証時点の候補を保持しており、名称・備考等の未確定事項を新たに確定したコピーではない。このコピーから[v0.2通し検証のPDF](../standard-json-v02-validation/README.md)を生成した。過去の比較PDF・測定と区別する。
 
 これは入力／表示仕様の採用で、標準JSONへ座標や新しいalign値を加える変更ではない。製品テンプレート・製品変換は未実装。既存のブラウザ用整数数量・税額計算を流用しない。
 
@@ -235,7 +235,7 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 元のsite定義の数量欄は5文字・44.625ptで、`99999.999`を直接fieldsで送ると実APIは422 field-overflowになる。[幅拡張＋小数点揃えの検証](../quantity-decimal-comparison/README.md)では、56.525ptのセルで同時最大桁数を表示・抽出し、品名・単価との非交差を確認した。8明細の小数点画素中心は144dpiで一致、整数末尾も含む基準位置の最大差0.0475pt。末尾0を保持し、確定金額を変更していない。
 
-v0.1からの描画検証と、位置付きfieldsでの数量拡張検証は実施済み。ただし本v0.2の全JSON例から採用配置までの一連の変換と境界エラーは、改訂した**検証専用スクリプト**での確認が残る。今回、新しいPDF・性能測定は追加していない。旧例・旧測定・旧validatorをv0.2対応済みとして流用しない。
+v0.1と位置付きfieldsの数量検証に続き、本v0.2候補の全発行例から採用配置までを[改訂した検証専用スクリプト](../standard-json-v02-validation/README.md)で確認済み。正常14件・代表エラー65件、実PDFと測定は別ディレクトリへ保存した。未確定条件の採否は別判断。旧例・旧測定・旧validatorは過去の再現用として維持する。
 
 [例ファイルの机上確認記録](example-check.json)はJSON構文、改訂した数量の型・桁数とモード値の形式、元例からの確定金額不変を確認したもの。この机上確認では設定解決は実行していない。後続の[設定解決fixture検証](../quantity-resolution-validation/README.md)で、別の境界入力を使った全9組合せ・不正40件・実効モードPDFを確認済み。汎用validatorやHTTP試験ではない。旧[example-audit.json](../standard-json-draft/example-audit.json)はv0.1の記録として残す。
 

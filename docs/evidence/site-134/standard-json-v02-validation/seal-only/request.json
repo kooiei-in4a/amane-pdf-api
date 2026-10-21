@@ -1,0 +1,39 @@
+{
+  "companyId": "company_demo",
+  "templateId": "estimate-standard-v1",
+  "currency": "JPY",
+  "recipient": {
+    "name": "架空取引先株式会社 御中"
+  },
+  "issueDate": "2026-10-22",
+  "number": "EST-2026-0001",
+  "subject": "帳票サンプル",
+  "transaction": {
+    "date": "2026-10-20"
+  },
+  "items": [
+    {
+      "name": "試験品目1",
+      "quantity": "12345.000",
+      "unitPrice": 100,
+      "taxRate": 10,
+      "amount": 125
+    }
+  ],
+  "taxSummary": {
+    "10": {
+      "taxableAmount": 125,
+      "taxAmount": 12
+    },
+    "8": {
+      "taxableAmount": 0,
+      "taxAmount": 0
+    }
+  },
+  "totalAmount": 137,
+  "notesLines": [
+    "試験入力につき振込不要"
+  ],
+  "validUntil": "2026-11-30",
+  "quantityAlignment": "right"
+}
