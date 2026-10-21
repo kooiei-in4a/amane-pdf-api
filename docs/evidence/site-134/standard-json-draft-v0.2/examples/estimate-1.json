@@ -34,5 +34,6 @@
   "notesLines": [
     "試験入力につき振込不要"
   ],
-  "validUntil": "2026-11-30"
+  "validUntil": "2026-11-30",
+  "quantityAlignment": "right"
 }

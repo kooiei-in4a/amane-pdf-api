@@ -1,12 +1,12 @@
 # #134 標準JSON案 v0.2：数量の小数点揃え・整数部5桁／小数部3桁を採用
 
-**数量の桁数・小数点揃え・末尾0保持はユーザー採用済み。標準JSON全体と製品APIは未確定・未実装。** 会社登録と発行入力を分離し、確定金額を再計算せず、固定8明細・1ページで描画する。製品コード・API契約・CI・共有mainは変更していない。
+**数量の桁数・両モード・末尾0保持とquantityAlignmentの設定仕様はユーザー採用済み。その他の標準JSONと製品APIは未確定・未実装。** 会社登録と発行入力を分離し、確定金額を再計算せず、固定8明細・1ページで描画する。製品コード・API契約・CI・共有mainは変更していない。
 
 今回の採用範囲は、`items[i].quantity`を文字列として扱い、整数部最大5桁・小数部最大3桁（小数点込み最大9文字）、入力された末尾0を保持して小数点位置を揃えること。旧「全体5文字」上限を置き換える。小数点なしの整数は、同じ基準位置に末尾を揃える。
 
-**追補：数量配置は2モードを用意する方針。** ユーザーの追加方針により、小数点揃えに加えて当初の右揃えも選択できるようにする。下記の小数点基準の計算はdecimalモードへ適用する。両モードとも整数部5桁・小数部3桁と末尾0保持を共通にし、数量の入力値・型・金額を変えない。既定モードは小数点揃えを推奨するが未確定。
+**追補：数量配置は2モードを用意する方針。** ユーザーの追加方針により、小数点揃えに加えて当初の右揃えも選択できるようにする。下記の小数点基準の計算はdecimalモードへ適用する。両モードとも整数部5桁・小数部3桁と末尾0保持を共通にし、数量の入力値・型・金額を変えない。設定仕様も採用済みで、既定decimal、発行時上書き可、発行値＞登録値＞decimalとする。登録値が不正なら正しい発行値があっても拒否する。
 
-罫線整理方針は既に採用済み。それ以外の必須性・金額／税区分・会社名／宛先の構造・備考配分・HTTP仕様等は継続検討の案であり、今回まとめて承認したものではない。特に会社名／住所の20文字×2行と`nameLines`への改訂は[判断資料](../INITIAL-SPEC-RECOMMENDATION.md)の未確定事項で、本書の既存名称keyをその案への対応済みと扱わない。
+罫線整理方針は既に採用済み。それ以外の必須性・金額／税区分・会社名／宛先の構造・備考配分・数量モード以外のHTTP仕様等は継続検討の案であり、今回まとめて承認したものではない。特に会社名／住所の20文字×2行と`nameLines`への改訂は[判断資料](../INITIAL-SPEC-RECOMMENDATION.md)の未確定事項で、本書の既存名称keyをその案への対応済みと扱わない。
 
 管理先：[site #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134)、親：[site #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)。根拠の固定版：API `465088ed0b575f055beb6851e98d28ed22fb9928` / site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。採用罫線の共有資料は [既存の成果物一覧](../README.md)。
 
@@ -17,8 +17,8 @@
 | 時点 | 送る内容 | 扱い |
 | --- | --- | --- |
 | 会社登録／更新 | name、addressLines、registrationNumber、contact、bankTransferLines、logoAssetId、sealAssetId | サービスが発行するcompanyIdに関連付けて再利用。ID・保存方式・登録APIの経路は未設計。 |
-| 帳票設定の登録 | サービスが用意するtemplateIdと版、固定文言・位置定義・画像予約領域 | 初期の標準JSONにはレイアウト座標・任意PDF・独自schemaを含めない。今回のJSONでは既存の標準設定をtemplateIdで選ぶ。登録APIやカスタマイズ項目の本設計は後続。 |
-| 発行 | companyId、templateId、宛先、発行日、番号、件名、期限、取引日／期間、明細、確定金額、備考 | 会社名・住所・画像を毎回送り直さない。会社情報の発行時上書きは初版候補では認めず、未知keyとして拒否。 |
+| 帳票設定の登録 | サービスが用意するtemplateIdと版、quantityAlignment、固定文言・位置定義・画像予約領域 | 初期の標準JSONにはレイアウト座標・任意PDF・独自schemaを含めない。今回のJSONでは既存の標準設定をtemplateIdで選ぶ。登録APIやカスタマイズ項目の本設計は後続。 |
+| 発行 | companyId、templateId、任意のquantityAlignment、宛先、発行日、番号、件名、期限、取引日／期間、明細、確定金額、備考 | 会社名・住所・画像を毎回送り直さない。会社情報の発行時上書きは初版候補では認めず、未知keyとして拒否。 |
 
 `companyId`・画像IDは利用者のスコープで解決する前提。例の `company_demo` / `logo_demo` / `seal_demo` は架空の参照IDで、登録済みの実IDではない。画像binary・URLはこの発行JSONに含めない。画像登録・保存・所有関係・認証の製品実装は後続Issueの範囲。
 
@@ -27,16 +27,18 @@
 ## 2. JSON例
 
 - [会社の登録情報](examples/company-registration.json)
+- 帳票設定の部分例：[請求書・登録right](settings-examples/invoice.json)／[見積書・登録decimal](settings-examples/estimate.json)。登録APIの完全なpayloadではない。
 - [請求書1明細](examples/invoice-1.json) / [請求書8明細・税率混在・取引期間](examples/invoice-8.json)
 - [見積書1明細](examples/estimate-1.json) / [見積書8明細](examples/estimate-8.json)
 - [確定金額を変えないことの確認例](examples/provided-amounts-unchanged.json)：意図的に不整合な試験値。実取引用ではない。
 
-発行例の構造（請求書1明細）：
+発行例の構造（請求書1明細、登録rightを発行decimalで上書き。8明細例は上書きkeyを省略する。見積書1明細例は登録decimalをrightへ上書きする。以下の解決結果は仕様上の期待値で、設定resolverの実行結果ではない）：
 
 ```json
 {
   "companyId": "company_demo",
   "templateId": "invoice-standard-v1",
+  "quantityAlignment": "decimal",
   "currency": "JPY",
   "recipient": { "name": "架空取引先株式会社 御中" },
   "issueDate": "2026-10-22",
@@ -86,7 +88,7 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 | --- | --- | --- | --- |
 | companyId | 必須 | string、ASCII英数字・`_`・`-`、1〜64文字を仮置き | 登録会社の参照。形式とIDの版指定方法は未確定。 |
 | templateId | 必須 | string、初版候補は `invoice-standard-v1` / `estimate-standard-v1` | これで帳票種別を決め、重複するdocumentTypeは送らない。値・版管理方法は未確定。 |
-| quantityAlignment | 任意・今回の設定提案 | string、`decimal`／`right` | 発行時の上書き案。発行値＞登録値＞decimal。設定契約として未採用・未実装。 |
+| quantityAlignment | 任意・採用済み | string、`decimal`／`right`完全一致 | 発行時上書きを許可。発行値＞登録値＞decimal。登録値不正は上書きで救済しない。製品未実装。 |
 | currency | 必須 | string、`JPY`のみ | 初版候補はJPY・税抜。税込入力・外貨は対象外候補。 |
 | recipient.name | 必須 | string、1〜16文字、1行 | 御中／様を含む完成した表示名。敬称は自動追加しない。 |
 | issueDate | 必須 | 日付string | date（請求日／見積日）。 |
@@ -162,18 +164,18 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 | totalAmount | total | 3桁カンマ＋円。採用案の12pt。 |
 | transaction ＋ notesLines | notes ＋ label.notes | 前節に従いLF結合。label.notesを「取引・備考」へ変更する追加提案。 |
 | companyId / templateId / currency | 参照解決・許可設定 | 参照等の制御値であり、その文字列自体は帳票へ印字しない。 |
-| quantityAlignment（未採用の設定案） | 数量の配置分岐 | 発行値・登録値・既定値から実効モードを解決。文字列自体は印字せず、入力数量の表記も変えない。 |
+| quantityAlignment（設定仕様は採用済み） | 数量の配置分岐 | 発行値・登録値・既定値から実効モードを解決。文字列自体は印字せず、入力数量の表記も変えない。 |
 
 表示規則（※、カンマ、円、日付・ラベル）はあらかじめ公開し、入力値の省略や隠れた修正にしない。品名に元から※があっても勝手に取り除かない。表示用fieldsが増えても、1ページ100行要素・全体200項目・fields JSON64KiB以内を検査する。
 
 ### 採用した数量セル・表示変換
 
-| モード（設定値名は候補） | 数量の配置 | 既存PDF APIへの変換 |
+| モード（採用値） | 数量の配置 | 既存PDF APIへの変換 |
 | --- | --- | --- |
 | `decimal` | 小数点開始位置を共通化。整数は同じ位置に末尾を揃える。 | 整数部の文字幅からxを調整し、数量文字列全体を1 fieldでleft配置。 |
 | `right` | 小数点の位置にかかわらず文字列全体の右端を揃える。当初の表示方式。 | 共通の拡張済み数量セルに文字列全体を送り、既存のalign=rightを使用。 |
 
-**今回の設定推奨案（未採用・未実装）**：登録帳票設定の直下と発行JSONルートに`quantityAlignment`を置き、stringの`decimal`／`right`を許可する。省略時はdecimal、発行時上書きを許可し、優先順位は発行明示値＞登録値＞decimal。指定された不正値は補正せず、元入力path付きで拒否する。設定場所・key・既定値・上書き可否・エラーはまだ採用済みではない。[推奨案・解決表・エラー例・判断点](../QUANTITY-MODE-SETTINGS-DRAFT.md)を参照。帳票全体で1つの実効モードを使う。
+**採用した設定仕様（製品未実装）**：登録帳票設定の直下と発行JSONルートに`quantityAlignment`を置き、stringの`decimal`／`right`を許可する。既定decimal、発行時上書き可、発行明示値＞登録値＞decimal。発行値と登録値を検証してから選び、登録値が不正なら正しい発行値があっても拒否する。省略だけを未指定とし、null・空文字・不正値は補正せずエラー。発行上書きは登録値を変更しない。[採用仕様・解決表・エラー例・残る確認](../QUANTITY-MODE-SETTINGS-DRAFT.md)を参照。帳票全体で1つの実効モードを使う。
 
 invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・幅=.0950（56.525pt、右端.4750は維持）へ広げる。品名／見出しの幅は.3400→.3200とし、品名17文字＋軽減記号を保持する。数量8pt・品名9pt、他の列の位置は維持。数量のmaxLengthは5→9とし、整数部・小数部の個別上限も入力で検査する。
 
@@ -212,6 +214,8 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 | 壊れたJSON・重複key | 400 / invalid-json、duplicate-key | 解析できればpath、特定できなければ空文字（root） |
 | 未知の `recipient.addressLines` 等 | 400 / unknown-field | `/recipient/addressLines`。表示しないまま成功させない。 |
 | amount欠落、quantityが数値 | 422 / required、invalid-type | `/items/0/amount`、`/items/0/quantity` |
+| quantityAlignmentがnull／型不正、未対応値 | 422 / invalid-type、unsupported-quantity-alignment（数量設定は採用済み） | `/quantityAlignment`。省略扱い・trim・型変換なし。 |
+| 登録済みquantityAlignmentが不正 | 422 / registered-data-invalid（採用済み） | `/templateId`と登録元source.path=`/quantityAlignment`。正しい発行上書きがあっても拒否。 |
 | 金額-1・小数・上限超過 | 422 / out-of-range、invalid-integer | `/items/0/amount`、`/totalAmount` |
 | quantity `100000`（整数部6桁）・`1.0000`（小数部4桁） | 422 / quantity-format | `/items/0/quantity`。丸め・短縮しない。`123.45`は有効。 |
 | taxRate=0・currency=USD | 422 / unsupported-tax-rate、unsupported-currency | `/items/0/taxRate`、`/currency` |
@@ -233,7 +237,7 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 v0.1からの描画検証と、位置付きfieldsでの数量拡張検証は実施済み。ただし本v0.2の全JSON例から採用配置までの一連の変換と境界エラーは、改訂した**検証専用スクリプト**での確認が残る。今回、新しいPDF・性能測定は追加していない。旧例・旧測定・旧validatorをv0.2対応済みとして流用しない。
 
-[例ファイルの机上確認記録](example-check.json)はJSON構文、改訂した数量の型・桁数、元例からの確定金額不変を確認したもの。汎用validatorやHTTP試験ではない。旧[example-audit.json](../standard-json-draft/example-audit.json)はv0.1の記録として残す。
+[例ファイルの机上確認記録](example-check.json)はJSON構文、改訂した数量の型・桁数とモード値の形式、元例からの確定金額不変を確認したもの。設定解決は実行していない。汎用validatorやHTTP試験ではない。旧[example-audit.json](../standard-json-draft/example-audit.json)はv0.1の記録として残す。
 
 ## 11. 未確定事項と次の判断
 
@@ -243,7 +247,7 @@ v0.1からの描画検証と、位置付きfieldsでの数量拡張検証は実�
 | 取引情報と備考 | notes3行を正式に「取引・備考」とする本案を推奨。自由備考の3行を維持する要件があれば専用欄を再検証。請求書でtransaction必須、見積書では任意とするかも確定する。 |
 | 長い法人名・住所、宛先住所・部署等 | 16文字の法人名／宛先は用途上短い可能性がある。必要項目を洗い出し、枠拡張・明示複数行・専用欄を決める。現行に表示先がない情報を受けて捨てない。 |
 | 必須・ゼロ表示・任意ラベル | number／住所等の必須、税率別2区分を常に必須・表示とするか、任意ラベルを省く方針、数量0／負数等を対応外にしてよいか確認する。 |
-| ID・版と会社更新、配置モード設定 | companyId／templateId／asset IDの命名、参照できない時のエラー、生成時の会社・画像・templateの版の固定方法は後続の登録・認証設計と整合させる。数量モードは[設定推奨案](../QUANTITY-MODE-SETTINGS-DRAFT.md)の採否を決める。quantityAlignment、既定decimal、発行上書き許可・発行値優先、不正値の明示拒否を推奨。過去版管理は今回実装しない。 |
+| ID・版と会社更新、採用済みモードの未検証範囲 | companyId／templateId／asset IDの命名、参照できない時のエラー、生成時の会社・画像・templateの版の固定方法は後続の登録・認証設計と整合させる。数量モードの[設定仕様](../QUANTITY-MODE-SETTINGS-DRAFT.md)は採用済み。設定解決・不正値拒否の検証と登録保存の実装は残る。過去版管理は今回実装しない。 |
 | エラー・初版契約 | HTTP・code・JSON Pointer、NFD拒否、64KiB候補、未知key拒否、金額間不一致をエラーにしない点を確定。標準JSONの版識別key／API経路は今回未設計。 |
 
 これらを決め、代表JSON・表示先・入力上限／エラー例・正式な品質／時間／容量基準をそろえてから #134 の完了を判断する。提案を作成・共有しただけで #133／#134を閉じない。認証・会社保存・画像保存・可変明細・一括合成の製品実装は開始しない。

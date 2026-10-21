@@ -34,5 +34,6 @@
   "totalAmount": 137,
   "notesLines": [
     "試験入力につき振込不要"
-  ]
+  ],
+  "quantityAlignment": "decimal"
 }

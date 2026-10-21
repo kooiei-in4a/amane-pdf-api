@@ -6,11 +6,11 @@
 
 続いて、**数量欄の拡張・小数点揃えを採用**した。数量は文字列のまま整数部最大5桁・小数部最大3桁（最大9文字）とし、`2.50`／`1.000`／`0.010`の末尾0を保持する。整数は小数点基準位置に末尾を揃える。旧「全体5文字」制限は引き継がない。[標準JSON案 v0.2](standard-json-draft-v0.2/README.md)と[比較PDF・配置・実測](quantity-decimal-comparison/README.md)が最新の数量方針。
 
-**追加方針：小数点揃えと当初の右揃えの両モードを用意する。** 数量規則・拡張セルは共通とし、配置だけを切り替える。小数点揃えでは上記の整数末尾基準、右揃えでは数量文字列全体の右端を揃える。帳票設定で選び、既定は小数点揃えにする案を推奨するが、設定key（候補`quantityAlignment`）、既定値、発行時の上書き可否は未確定。候補値は`decimal`／`right`で、PDF APIの新しいalign値ではない。
+**追加方針：小数点揃えと当初の右揃えの両モードを用意する。** 数量規則・拡張セルは共通とし、配置だけを切り替える。小数点揃えでは上記の整数末尾基準、右揃えでは数量文字列全体の右端を揃える。設定仕様も採用済み。登録帳票設定直下と発行JSONルートの`quantityAlignment`で選び、値は`decimal`／`right`、既定decimal、発行時上書き可、発行値＞登録値＞decimal。登録値不正は正しい発行値があっても拒否する。PDF APIへ渡す新しいalign値ではない。
 
-**設定契約の初版推奨案（未採用）**：[数量モード設定案](QUANTITY-MODE-SETTINGS-DRAFT.md)。登録帳票設定直下と発行JSONルートのquantityAlignment、既定decimal、発行時の任意上書きを許可し、発行明示値＞登録値＞decimalを推奨する。省略とnullを区別し、指定された不正値は発行元path／登録元source付きで拒否する。採否を決めてから検証用コピーで設定解決を確認する。
+**採用済みの設定仕様（製品未実装）**：[数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)。発行値と登録値を検証してから優先順位を適用し、登録値が不正なら上書きで救済しない。上書きはその発行だけに適用し登録値を変更しない。省略とnullを区別し、発行エラーは`/quantityAlignment`、登録値不正は`/templateId`と登録元source.path=`/quantityAlignment`を示す。採否判断は完了し、検証用コピーでの設定解決・拒否の確認を残す。
 
-採用範囲は数量の桁数・表示と罫線方針。会社名／宛先／住所の20文字×2行や`nameLines`、取引・備考配分、その他の必須性・金額／税区分・HTTP契約は引き続き[判断資料](INITIAL-SPEC-RECOMMENDATION.md)の未確定事項。
+採用範囲は数量の桁数・表示・数量モード設定と罫線方針。会社名／宛先／住所の20文字×2行や`nameLines`、取引・備考配分、その他の必須性・金額／税区分・数量モード以外のHTTP契約は引き続き[判断資料](INITIAL-SPEC-RECOMMENDATION.md)の未確定事項。
 
 現在は検証用サンプルまで。**製品実装はまだ行わないという依頼に従い、製品コード・API契約・CI・共有mainは未変更。** 本書は、次の担当が変更対象と未確定事項を把握するための引き継ぎである。#134 全体は未完了、Issueはopenのまま。
 
@@ -58,9 +58,9 @@
 4. **採用条件を確定**：既存fill-template 1回→stamp-image 2回を初期方式とし、siteの共有実行枠を踏まえた呼び出し条件、品質・時間・最終サイズの基準を決める。検証時の単独10秒／同時各20秒／2MiBは仮目安。site経由の測定とAPI単体の実測を区別する。長時間の負荷試験は追加しない。
 5. **結果を管理先へ統合**：標準JSON例・項目対応・エラー例・固定SHA・代表PDF・測定条件・採用方式・制限を #134 にまとめ、親 #133 に判断と後続作業を反映する。
 6. **v0.2の検証用変換を確認**：過去の`validate-standard-json.py`はv0.1の全体5文字制限のまま。旧例・測定の再現用として残し、別の改訂用コピーで新しい数量規則と配置をつなぎ、v0.2の両帳票1／8明細を確認する。`99999.999`等のfields描画は確認済みだが、v0.2全体の事前検証→表示変換→API描画を完了扱いにしない。
-7. **設定推奨案の採否と解決経路を確認**：拡張セルの両モード描画は確認済み。[設定案](QUANTITY-MODE-SETTINGS-DRAFT.md)の設定場所・key・既定値、上書き可否／優先順位、登録値不正時を含むエラーを決める。採否後、解決表の省略／上書き／不正値を検証用JSONで確認し、実効モードを既存配置へつなぐ。今回のfixture切替を製品設定の実装完了と扱わない。
+7. **採用済み設定の解決・拒否を検証**：両モードの描画と設定仕様の採否は確認済み。[採用した解決表](QUANTITY-MODE-SETTINGS-DRAFT.md)の省略／上書き／不正値を検証用JSONで確認し、実効モードを既存配置へつなぐ。正しい発行指定でも不正登録を拒否し、元入力path／登録元sourceを示してPDF APIを呼ばないことを確認する。登録保存・製品HTTPの実装は後続であり、開始しない。
 
-数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。HTTP／codeの正式契約は未確定。
+数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。数量値のHTTP／codeの正式契約は未確定。quantityAlignmentの設定エラーは採用済み仕様を参照する。
 
 既存APIは業務上の8明細制限や必須項目を知らない。9行目を直接座標指定すると200でも注記と重なるため、siteで `items[8]` 等を明示拒否する。APIの400/422には元入力パスがないので、siteで入力パスとfields配列indexを対応させる。
 
@@ -72,7 +72,7 @@
 
 - 採用した罫線・合計強調を、請求書／見積書の1明細・8明細に反映し、各1ページで線と文字の衝突・欠けがない。
 - 数量欄の拡張・小数点揃えも反映し、`99999`、`99999.999`、`0.001`、`123.45`、`2.50`、`1.000`、`0.010`を入力文字列のまま表示・抽出できる。整数末尾も共通基準に揃い、品名17文字＋軽減記号・単価上限との非交差を確認する。
-- 同じ拡張セル・数量規則で右揃えも選択できる。モードを切り替えても入力文字列・末尾0・確定金額は不変で、選択した配置と定めた既定値・不正値時の挙動が確認できる。選択仕様は製品実装前に確定する。
+- 同じ拡張セル・数量規則で右揃えも選択できる。モードを切り替えても入力文字列・末尾0・確定金額は不変で、選択した配置と定めた既定値・不正値時の挙動が確認できる。採用した設定解決・エラー規則と一致することを検証用コピーで確認する。
 - generator、PDF、definition、ハッシュが一致し、再生成して同じ資産になる。証明書等の対象外テンプレートや既存一般向け機能への意図しない変更がない。
 - 同じ入力の文字・金額がそのまま抽出できる。画像なし／ロゴ・印影合成後の位置・縦横比・透過・重ね順を確認できる。
 - 既存のテンプレート・表示・API接続に関係する必要な検証が通り、差分と結果がレビュー可能である。
@@ -101,6 +101,7 @@
 | 文字・画像・サイズ等の照合 | [line-comparison/results.json](line-comparison/results.json) |
 | 背景PDF／位置定義の比較用コピー | `line-comparison/refined-template.pdf`、`line-comparison/invoice.definition.json`、`line-comparison/estimate.definition.json` |
 | 比較生成スクリプト | [compare-lines.py](compare-lines.py) |
+| 採用した数量設定・登録例 | [設定仕様と解決表](QUANTITY-MODE-SETTINGS-DRAFT.md)、[登録rightの請求書](standard-json-draft-v0.2/settings-examples/invoice.json)／[登録decimalの見積書](standard-json-draft-v0.2/settings-examples/estimate.json)。発行1明細例で逆モードへ上書き、8明細例では上書きを省略。 |
 | 最新の標準JSON案・数量例 | [v0.2](standard-json-draft-v0.2/README.md)、[請求書8明細](standard-json-draft-v0.2/examples/invoice-8.json)、[見積書8明細](standard-json-draft-v0.2/examples/estimate-8.json) |
 | 採用した数量配置の比較PDF | [請求書1明細](quantity-decimal-comparison/invoice-1/comparison.pdf)／[8明細](quantity-decimal-comparison/invoice-8/comparison.pdf)、[見積書1明細](quantity-decimal-comparison/estimate-1/comparison.pdf)／[8明細](quantity-decimal-comparison/estimate-8/comparison.pdf)。1ページ目＝現行数量配置、2ページ目＝採用案。 |
 | 整数5桁＋小数3桁の同時上限 | [請求書99999.999](quantity-decimal-comparison/extended/invoice/final.pdf)／[見積書99999.999](quantity-decimal-comparison/extended/estimate/final.pdf) |
