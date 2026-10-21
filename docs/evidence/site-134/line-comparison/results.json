@@ -1,0 +1,469 @@
+{
+  "api_sha": "465088ed0b575f055beb6851e98d28ed22fb9928",
+  "site_sha": "e08aed241245f9f84a7336302edcb7d6a89a57b1",
+  "cases": {
+    "invoice-1": {
+      "fill": {
+        "seconds": 0.29115107099642046,
+        "status": 200,
+        "bytes": 213946,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.21722271101316437,
+        "status": 200,
+        "bytes": 217406,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18153295799857005,
+        "status": 200,
+        "bytes": 220907,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6899265499960165,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 260,
+        "words": 50,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "differences": [
+        {
+          "key": "label.total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 10
+        },
+        {
+          "key": "total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 12
+        }
+      ],
+      "text_matches_current": true,
+      "current_sha256": "59cf432b51fbd9b1ff472bb47d4d3f1ec0d7f400fb438d6981e73f30de70fa41",
+      "refined_sha256": "3b555465b37b9121c10544a8feeccceaf174e58ad3049b90c33551b5bf7e5a09"
+    },
+    "invoice-8": {
+      "fill": {
+        "seconds": 0.2182835950225126,
+        "status": 200,
+        "bytes": 214572,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.1899440530105494,
+        "status": 200,
+        "bytes": 218032,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.19018447399139404,
+        "status": 200,
+        "bytes": 221533,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.5984282620192971,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 425,
+        "words": 85,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "differences": [
+        {
+          "key": "label.total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 10
+        },
+        {
+          "key": "total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 12
+        }
+      ],
+      "text_matches_current": true,
+      "current_sha256": "41d95bd398a0feb9d2e34138eb230695528139a0ef6a81158733441ae87e8cb9",
+      "refined_sha256": "f00c041bdd035b2279d640a18d80ca6eefbe3821503ce93520eb8d3195208654"
+    },
+    "estimate-1": {
+      "fill": {
+        "seconds": 0.2455678539990913,
+        "status": 200,
+        "bytes": 212583,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.18907684300211258,
+        "status": 200,
+        "bytes": 216043,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18282639799872413,
+        "status": 200,
+        "bytes": 219544,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6174828440125566,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 237,
+        "words": 45,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "differences": [
+        {
+          "key": "label.total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 10
+        },
+        {
+          "key": "total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 12
+        }
+      ],
+      "text_matches_current": true,
+      "current_sha256": "b267dfb005659b08298aebefcab5f404d574f0330993546937507c1f40332fdf",
+      "refined_sha256": "5c45df9e35ca3283eeeeb5062096f84f09330c6128392ace0e56f7f6b599b581"
+    },
+    "estimate-8": {
+      "fill": {
+        "seconds": 0.2111456810089294,
+        "status": 200,
+        "bytes": 213198,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.1833100719959475,
+        "status": 200,
+        "bytes": 216658,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.1797773860162124,
+        "status": 200,
+        "bytes": 220159,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.5742444189963862,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 402,
+        "words": 80,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "differences": [
+        {
+          "key": "label.total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 10
+        },
+        {
+          "key": "total",
+          "property": "fontSize",
+          "before": 9,
+          "after": 12
+        }
+      ],
+      "text_matches_current": true,
+      "current_sha256": "fa0a60e337182b1a54b9263151f28669778195dc8cac7af7df66e437e86f61c1",
+      "refined_sha256": "6999df42b736687ec7aabcfafc0f9307db693407d2f0557d47d18db2741ed405"
+    }
+  },
+  "template_sha256": "f3ad7950e5c346c94f13d9d53a37afe9397ca9f14c14b29bb78f703e76ffb09f",
+  "changes": [
+    "non-table boxes removed",
+    "table vertical lines removed; horizontal rules retained",
+    "gray table heading background",
+    "total top/bottom rules; total font 9->12pt and label 9->10pt"
+  ],
+  "unchanged": [
+    "all text and amounts",
+    "all field rectangles",
+    "all fields except two font sizes",
+    "logo/seal files and placement",
+    "fixed 8 detail rows and 1-page layout"
+  ],
+  "image_id": "sha256:67d204ed4e10d643a41ffb248a621ed0a2376660f26f5051d0952c65cc10d0e3"
+}

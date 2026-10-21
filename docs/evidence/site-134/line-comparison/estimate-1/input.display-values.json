@@ -1,0 +1,22 @@
+{
+  "recipient": "架空取引先株式会社 御中",
+  "date": "2026年10月22日",
+  "issuer": "架空帳票研究株式会社",
+  "subject": "帳票描画検証",
+  "number": "TEST-est-1",
+  "expiry": "2026年11月30日",
+  "address": "東京都架空区見本一丁目\n試験ビル二階",
+  "registration": "T0000000000000",
+  "contact": "00-0000-0000",
+  "subtotal10": "12,345円",
+  "tax10": "777円",
+  "subtotal8": "0円",
+  "tax8": "0円",
+  "total": "99,999円",
+  "notes": "取引日 2026/10/20",
+  "row0.name": "試験品目1",
+  "row0.quantity": "1.25",
+  "row0.price": "100円",
+  "row0.rate": "10%",
+  "row0.amount": "98,765円"
+}
