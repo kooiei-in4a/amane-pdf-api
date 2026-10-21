@@ -1,0 +1,18 @@
+{
+  "addressLines": [
+    "東京都架空区見本一丁目",
+    "試験ビル二階"
+  ],
+  "registrationNumber": "T0000000000000",
+  "contact": "00-0000-0000",
+  "bankTransferLines": [
+    "架空銀行 見本支店",
+    "普通 0000000"
+  ],
+  "logoAssetId": "logo_demo",
+  "sealAssetId": "seal_demo",
+  "nameLines": [
+    "一",
+    "二\r三"
+  ]
+}

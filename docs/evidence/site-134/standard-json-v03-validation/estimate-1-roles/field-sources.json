@@ -1,0 +1,69 @@
+{
+  "issuer": {
+    "kind": "company",
+    "path": "/nameLines"
+  },
+  "address": {
+    "kind": "company",
+    "path": "/addressLines"
+  },
+  "recipient": {
+    "path": "/recipient/nameLines"
+  },
+  "date": {
+    "path": "/issueDate"
+  },
+  "number": {
+    "path": "/number"
+  },
+  "total": {
+    "path": "/totalAmount"
+  },
+  "registration": {
+    "kind": "company",
+    "path": "/registrationNumber"
+  },
+  "contact": {
+    "kind": "company",
+    "path": "/contact"
+  },
+  "subject": {
+    "path": "/subject"
+  },
+  "expiry": {
+    "path": "/validUntil"
+  },
+  "notes": {
+    "path": "/notesLines",
+    "relatedPaths": [
+      "/transaction"
+    ]
+  },
+  "row0.name": {
+    "path": "/items/0/name"
+  },
+  "row0.quantity": {
+    "path": "/items/0/quantity"
+  },
+  "row0.price": {
+    "path": "/items/0/unitPrice"
+  },
+  "row0.rate": {
+    "path": "/items/0/taxRate"
+  },
+  "row0.amount": {
+    "path": "/items/0/amount"
+  },
+  "subtotal10": {
+    "path": "/taxSummary/10/taxableAmount"
+  },
+  "tax10": {
+    "path": "/taxSummary/10/taxAmount"
+  },
+  "subtotal8": {
+    "path": "/taxSummary/8/taxableAmount"
+  },
+  "tax8": {
+    "path": "/taxSummary/8/taxAmount"
+  }
+}

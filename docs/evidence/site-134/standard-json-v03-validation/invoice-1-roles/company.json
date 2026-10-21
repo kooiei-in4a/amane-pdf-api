@@ -1,0 +1,18 @@
+{
+  "addressLines": [
+    "東京都架空区見本町一丁目二番地",
+    "架空帳票研究開発試験センター第一棟"
+  ],
+  "registrationNumber": "T0000000000000",
+  "contact": "00-0000-0000",
+  "bankTransferLines": [
+    "架空銀行 見本支店",
+    "普通 0000000"
+  ],
+  "logoAssetId": "logo_demo",
+  "sealAssetId": "seal_demo",
+  "nameLines": [
+    "株式会社架空帳票研究開発センター",
+    "東日本事業統括本部"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/nameLines",
+      "code": "required"
+    }
+  ]
+}

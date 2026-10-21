@@ -10,7 +10,7 @@
 
 管理先：[site #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134)、親：[site #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)。根拠の固定版：API `465088ed0b575f055beb6851e98d28ed22fb9928` / site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。採用罫線の共有資料は [既存の成果物一覧](../README.md)。
 
-**根拠と未確認の区別**：[名称・住所のfields描画](../header-lines-probe/README.md)は両帳票8明細・6 PDFで20文字×2行を確認。[v0.2の通し検証](../standard-json-v02-validation/README.md)は旧name形式で正常14件・拒否65件。**本v0.3のnameLines→事前検証→表示変換→PDFと、改訂境界の拒否は未実行。** 今回は資料・例・検証用定義コピーだけを更新し、validator・製品実装・PDF・性能測定は追加していない。
+**根拠と未確認の区別**：[名称・住所のfields描画](../header-lines-probe/README.md)は両帳票8明細・6 PDFで20文字×2行を確認。[v0.2の通し検証](../standard-json-v02-validation/README.md)は旧name形式で正常14件・拒否65件。**本v0.3のnameLines→事前検証→表示変換→PDFと、改訂境界の拒否は後続の[通し検証](../standard-json-v03-validation/README.md)で確認済み。** 資料採用時の机上確認に続き、後続で検証専用スクリプト・正常18 PDF・拒否66件を確認した。製品未実装。
 
 ## 1. 登録時と発行時の分離
 
@@ -26,7 +26,7 @@
 
 ## 2. JSON例
 
-通常例は旧例の表示文字・確定金額・数量・quantityAlignmentを保持してnameを配列へ改訂。[長い登録会社例](examples/company-registration-long.json)、[請求書8明細・部署／担当者](examples/invoice-8-long.json)、[見積書8明細・部署／敬称](examples/estimate-8-long.json)は追加の資料例。新規PDFは未生成。
+通常例は旧例の表示文字・確定金額・数量・quantityAlignmentを保持してnameを配列へ改訂。[長い登録会社例](examples/company-registration-long.json)、[請求書8明細・部署／担当者](examples/invoice-8-long.json)、[見積書8明細・部署／敬称](examples/estimate-8-long.json)は長名の追加例。[rolesのPDF](../standard-json-v03-validation/README.md)も生成済み。
 
 - [会社の登録情報](examples/company-registration.json)
 - 帳票設定の部分例：[請求書・登録right](settings-examples/invoice.json)／[見積書・登録decimal](settings-examples/estimate.json)。登録APIの完全なpayloadではない。
@@ -34,7 +34,7 @@
 - [見積書1明細](examples/estimate-1.json) / [見積書8明細](examples/estimate-8.json)
 - [確定金額を変えないことの確認例](examples/provided-amounts-unchanged.json)：意図的に不整合な試験値。実取引用ではない。
 
-発行例の構造（請求書1明細、登録rightを発行decimalで上書き。8明細例は上書きkeyを省略する。見積書1明細例は登録decimalをrightへ上書きする。モードの期待値は旧形式の[通し検証](../standard-json-v02-validation/README.md)で確認済みだが、この改訂例自体は未描画）：
+発行例の構造（請求書1明細、登録rightを発行decimalで上書き。8明細例は上書きkeyを省略する。見積書1明細例は登録decimalをrightへ上書きする。モードの期待値は旧形式の[通し検証](../standard-json-v02-validation/README.md)で確認済みだが、この改訂例も[v0.3結果](../standard-json-v03-validation/README.md)で描画済み）：
 
 ```json
 {
@@ -187,7 +187,7 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 小数点基準位置は固定フォントのadvanceから計算し、APIの小数4桁座標丸めを見込む余白を設ける。検証版では261.469pt、丸め余白0.06pt。実際のAPIには数量全体を1 fieldでleft配置し、整数部の幅に応じてxを調整する。definitionのセル幅だけの変更では成立しない。[数量配置スクリプト](../compare-decimal-quantity.py)の`decimal_fields()`、[実送信fields](../quantity-decimal-comparison/invoice-8/proposed/fields.json)、[位置対応表](../quantity-decimal-comparison/invoice-8/quantity-placement.json)を参照する。
 
-名称と数量を組み合わせた検証用定義：[請求書](layout/invoice.definition.json)／[見積書](layout/estimate.definition.json)。v0.2の数量／品名セル・合計fontSizeを継承し、issuer／recipient／addressの幅を.34、multiline・maxLines2・maxLength41へ変更した。各行20文字はJSONの事前検証で別に判定する。x/y/高さ・9pt・背景SHAは維持。**この合成コピーからのPDFは未生成**で、個別の名称検証・数量検証の実績とは区別する。
+名称と数量を組み合わせた検証用定義：[請求書](layout/invoice.definition.json)／[見積書](layout/estimate.definition.json)。v0.2の数量／品名セル・合計fontSizeを継承し、issuer／recipient／addressの幅を.34、multiline・maxLines2・maxLength41へ変更した。各行20文字はJSONの事前検証で別に判定する。x/y/高さ・9pt・背景SHAは維持。**この合成コピーからのPDFは[v0.3結果](../standard-json-v03-validation/README.md)で生成済み**で、個別の名称検証・数量検証の実績とは区別する。
 
 名称配列は空配列・3行・空行／全空白・null・非string・行内CR/LF／制御文字を拒否し、前後空白を文字数と幅へ含める。自動分割・短縮・trim・正規化・縮小は行わない。会社名が2行を使えば部署／担当者の追加行はなく、3行目を黙って落とさない。
 
@@ -244,19 +244,19 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 - [名称・住所の描画](../header-lines-probe/README.md)：固定版の両帳票8明細・6 PDFで20文字×2行、元の宛先幅では422、新しい幅.34で成功。nameLinesの標準JSON validatorの試験ではない。
 - [数量の両モード比較](../quantity-mode-comparison/README.md)と[設定解決の検証](../quantity-resolution-validation/README.md)：採用済み桁数・末尾0・decimal/rightと優先順位／不正登録拒否を確認。
 - [v0.2全体の通し検証](../standard-json-v02-validation/README.md)：旧name形式・正常14件／拒否65件の履歴。入力・スクリプト・PDF・測定を変更せず残す。
-- 本v0.3は新しいJSON例と定義コピーの資料整備。[例の机上確認](example-check.json)は構文・名称の行数／文字数、数量形式、元例からの確定金額・設定不変の確認のみ。resolver・全面validator・API・PDFは実行していない。
+- 本v0.3は新しいJSON例と定義コピーの資料整備。[例の机上確認](example-check.json)は構文・名称の行数／文字数、数量形式、元例からの確定金額・設定不変の確認のみ。この机上確認ではresolver・全面validator・API・PDFは実行していない。後続の[v0.3通し検証](../standard-json-v03-validation/README.md)で解析→全項目検証→変換→実APIと拒否時API0を確認済み。
 
-採用したnameLinesと数量／設定を同じ経路で接続し、両帳票1／8明細・1行／2行／20×2境界とエラー拒否を改訂用スクリプトで確認することが次の残作業。既存のブラウザ用金額計算は使わない。
+採用したnameLinesと数量／設定を同じ経路で接続し、両帳票1／8明細・1行／2行／20×2境界とエラー拒否は[改訂用スクリプト](../validate-standard-json-v03.py)で確認済み。既存のブラウザ用金額計算は使わない。
 
 ## 11. 未確定事項と次の判断
 
-名称・宛先のN1〜N4は[採用仕様](../NAME-RECIPIENT-SPEC-PROPOSAL.md)として確定。採用済みの名称・数量・設定と、その他の候補条件を区別する。未確認なのはnameLinesからの通し検証・境界拒否で、採否を未確定へ戻さない。
+名称・宛先のN1〜N4は[採用仕様](../NAME-RECIPIENT-SPEC-PROPOSAL.md)として確定。採用済みの名称・数量・設定と、その他の候補条件を区別する。nameLinesからの通し検証・境界拒否もfixtureで確認済み。製品・実HTTPは未確認。採否を未確定へ戻さない。
 
 | 未確定事項 | 推奨する出発点／確定前に確認すること |
 | --- | --- |
 | 型・税／通貨・金額上限 | JPY・税抜・非負整数、単価8桁／他金額12桁、数量の文字列保持・整数部5桁／小数部3桁・小数点揃えは採用済み。税率8/10等の他の範囲は用途上妥当か確認する。 |
 | 取引情報と備考 | notes3行を正式に「取引・備考」とする本案を推奨。自由備考の3行を維持する要件があれば専用欄を再検証。請求書でtransaction必須、見積書では任意とするかも確定する。 |
-| 採用済み名称・宛先の未確認範囲 | nameLines／会社住所20×2、部署・担当者・敬称の2行内表示、宛先住所専用欄／旧形式併存の対象外は採用済み。改訂JSONからの通し検証・拒否時API0・テンプレート整合は未実施。 |
+| 採用済み名称・宛先の未確認範囲 | nameLines／会社住所20×2、部署・担当者・敬称の2行内表示、宛先住所専用欄／旧形式併存の対象外は採用済み。改訂JSONからの通し検証・拒否時API0は確認済み。製品テンプレート整合と実HTTPは未実施。 |
 | 必須・ゼロ表示・任意ラベル | 名称・会社住所以外のnumber等の必須、税率別2区分を常に必須・表示とするか、任意ラベルを省く方針、数量0／負数等を対応外にしてよいか確認する。 |
 | ID・版と会社更新、採用済みモードの未検証範囲 | companyId／templateId／asset IDの命名、参照できない時のエラー、生成時の会社・画像・templateの版の固定方法は後続の登録・認証設計と整合させる。数量モードの[設定仕様](../QUANTITY-MODE-SETTINGS-DRAFT.md)は採用済み。設定解決・不正値拒否は[fixtureで確認済み](../quantity-resolution-validation/README.md)。登録保存・製品HTTP・参照解決は未確認。過去版管理は今回実装しない。 |
 | エラー・初版契約 | HTTP・code・JSON Pointer、NFD拒否、64KiB候補、未知key拒否、金額間不一致をエラーにしない点を確定。標準JSONの版識別key／API経路は今回未設計。 |

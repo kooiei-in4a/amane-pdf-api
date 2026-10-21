@@ -3,7 +3,8 @@
 **成果物共有専用。製品実装・API契約・CI・共有mainは変更していません。** ユーザーは罫線整理案、数量の整数部5桁／小数部3桁・末尾0保持、小数点揃え／右揃えの両モードを用意する方針を採用しました。quantityAlignmentの設定仕様も採用済みで、既定decimal、発行時上書き可、発行値＞登録値＞decimal、登録値不正は正しい発行値があっても拒否します。名称・宛先のnameLines／20文字×2行と会社住所同上、部署・担当者・敬称の宛先2行内表示も採用済み。宛先住所専用欄・旧name併存は初版対象外。#134全体は未完了です。
 
 - [site担当向け引き継ぎ文](HANDOFF-site-134.md)：変更対象、#134の残作業、テンプレート調整部分／Issue全体の完成条件。
-- [最新の標準JSON案 v0.3](standard-json-draft-v0.3/README.md)：採用したnameLines・名称／住所上限と数量設定、登録／発行例・項目対応・エラー案。新形式の通し検証は未実施、その他の仕様判断は残る。
+- [v0.3 nameLinesからの通し検証](standard-json-v03-validation/README.md)：20×2・部署／担当者／敬称、数量両モード／設定、正常18件・拒否66件。比較PDF・再現スクリプトあり。製品未実装。
+- [最新の標準JSON案 v0.3](standard-json-draft-v0.3/README.md)：採用したnameLines・名称／住所上限と数量設定、登録／発行例・項目対応・エラー案。新形式のfixture通し検証は実施済み、その他の仕様判断は残る。
 - [旧標準JSON案 v0.2](standard-json-draft-v0.2/README.md)：旧name形式の正常14件・拒否65件を再現する資料。入力・validator・PDFは維持。
 - [旧標準JSON案 v0.1](standard-json-draft/README.md)：過去の検証再現用。旧全体5文字制限を現行案へ引き継がない。
 - [採用した会社名・宛先仕様](NAME-RECIPIENT-SPEC-PROPOSAL.md)：20文字×2行／nameLines、宛先住所・部署・担当者、旧形式の対象外と残る検証。**採用済み・製品未実装。**

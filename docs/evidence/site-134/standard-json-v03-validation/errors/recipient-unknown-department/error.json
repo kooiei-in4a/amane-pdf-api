@@ -1,0 +1,10 @@
+{
+  "status": 400,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/department",
+      "code": "unknown-field"
+    }
+  ]
+}

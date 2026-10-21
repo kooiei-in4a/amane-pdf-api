@@ -1,0 +1,16 @@
+[
+  {
+    "key": "row0.quantity",
+    "quantity": "1.25",
+    "field": {
+      "page": 1,
+      "x": 0.38,
+      "y": 0.375,
+      "width": 0.095,
+      "height": 0.027,
+      "fontSize": 8,
+      "align": "right",
+      "text": "1.25"
+    }
+  }
+]

@@ -1,0 +1,178 @@
+{
+  "issuer": {
+    "kind": "company",
+    "path": "/nameLines"
+  },
+  "address": {
+    "kind": "company",
+    "path": "/addressLines"
+  },
+  "recipient": {
+    "path": "/recipient/nameLines"
+  },
+  "date": {
+    "path": "/issueDate"
+  },
+  "number": {
+    "path": "/number"
+  },
+  "total": {
+    "path": "/totalAmount"
+  },
+  "registration": {
+    "kind": "company",
+    "path": "/registrationNumber"
+  },
+  "contact": {
+    "kind": "company",
+    "path": "/contact"
+  },
+  "bank": {
+    "kind": "company",
+    "path": "/bankTransferLines"
+  },
+  "subject": {
+    "path": "/subject"
+  },
+  "expiry": {
+    "path": "/paymentDueDate"
+  },
+  "notes": {
+    "path": "/notesLines",
+    "relatedPaths": [
+      "/transaction"
+    ]
+  },
+  "row0.name": {
+    "path": "/items/0/name"
+  },
+  "row0.quantity": {
+    "path": "/items/0/quantity"
+  },
+  "row0.price": {
+    "path": "/items/0/unitPrice"
+  },
+  "row0.rate": {
+    "path": "/items/0/taxRate"
+  },
+  "row0.amount": {
+    "path": "/items/0/amount"
+  },
+  "row1.name": {
+    "path": "/items/1/name"
+  },
+  "row1.quantity": {
+    "path": "/items/1/quantity"
+  },
+  "row1.price": {
+    "path": "/items/1/unitPrice"
+  },
+  "row1.rate": {
+    "path": "/items/1/taxRate"
+  },
+  "row1.amount": {
+    "path": "/items/1/amount"
+  },
+  "row2.name": {
+    "path": "/items/2/name"
+  },
+  "row2.quantity": {
+    "path": "/items/2/quantity"
+  },
+  "row2.price": {
+    "path": "/items/2/unitPrice"
+  },
+  "row2.rate": {
+    "path": "/items/2/taxRate"
+  },
+  "row2.amount": {
+    "path": "/items/2/amount"
+  },
+  "row3.name": {
+    "path": "/items/3/name"
+  },
+  "row3.quantity": {
+    "path": "/items/3/quantity"
+  },
+  "row3.price": {
+    "path": "/items/3/unitPrice"
+  },
+  "row3.rate": {
+    "path": "/items/3/taxRate"
+  },
+  "row3.amount": {
+    "path": "/items/3/amount"
+  },
+  "row4.name": {
+    "path": "/items/4/name"
+  },
+  "row4.quantity": {
+    "path": "/items/4/quantity"
+  },
+  "row4.price": {
+    "path": "/items/4/unitPrice"
+  },
+  "row4.rate": {
+    "path": "/items/4/taxRate"
+  },
+  "row4.amount": {
+    "path": "/items/4/amount"
+  },
+  "row5.name": {
+    "path": "/items/5/name"
+  },
+  "row5.quantity": {
+    "path": "/items/5/quantity"
+  },
+  "row5.price": {
+    "path": "/items/5/unitPrice"
+  },
+  "row5.rate": {
+    "path": "/items/5/taxRate"
+  },
+  "row5.amount": {
+    "path": "/items/5/amount"
+  },
+  "row6.name": {
+    "path": "/items/6/name"
+  },
+  "row6.quantity": {
+    "path": "/items/6/quantity"
+  },
+  "row6.price": {
+    "path": "/items/6/unitPrice"
+  },
+  "row6.rate": {
+    "path": "/items/6/taxRate"
+  },
+  "row6.amount": {
+    "path": "/items/6/amount"
+  },
+  "row7.name": {
+    "path": "/items/7/name"
+  },
+  "row7.quantity": {
+    "path": "/items/7/quantity"
+  },
+  "row7.price": {
+    "path": "/items/7/unitPrice"
+  },
+  "row7.rate": {
+    "path": "/items/7/taxRate"
+  },
+  "row7.amount": {
+    "path": "/items/7/amount"
+  },
+  "subtotal10": {
+    "path": "/taxSummary/10/taxableAmount"
+  },
+  "tax10": {
+    "path": "/taxSummary/10/taxAmount"
+  },
+  "subtotal8": {
+    "path": "/taxSummary/8/taxableAmount"
+  },
+  "tax8": {
+    "path": "/taxSummary/8/taxAmount"
+  }
+}
