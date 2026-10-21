@@ -3,6 +3,7 @@
 **成果物共有専用。製品実装・API契約・CI・共有mainは変更していません。** ユーザーは罫線整理案を採用する方針を承認しました。#134全体は未完了です。
 
 - [site担当向け引き継ぎ文](HANDOFF-site-134.md)：変更対象、#134の残作業、テンプレート調整部分／Issue全体の完成条件。
+- [標準JSON案 v0.1](standard-json-draft/README.md)：会社登録／発行データ、項目対応、必須・型・上限、エラー例。**未確定の提案で、製品実装・契約確定ではありません。**
 - [作業Issue #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134) / [親 #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)
 
 ## PDF・定義ファイル

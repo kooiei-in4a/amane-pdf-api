@@ -1,0 +1,79 @@
+{
+  "status": "proposal-data audit only; no product validator or API rendering",
+  "font_data_sha256": "2ac4f132bf74722ae85e0f2256ede923a34962a6ea52e8f8a414bbcc999ac1ce",
+  "cases": {
+    "estimate-1.json": {
+      "items": 1,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "text_and_rectangles": "within candidate limits",
+      "amounts_recalculated": false
+    },
+    "estimate-8.json": {
+      "items": 8,
+      "notes_lines": 3,
+      "notes_characters": 36,
+      "text_and_rectangles": "within candidate limits",
+      "amounts_recalculated": false
+    },
+    "invoice-1.json": {
+      "items": 1,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "text_and_rectangles": "within candidate limits",
+      "amounts_recalculated": false
+    },
+    "invoice-8.json": {
+      "items": 8,
+      "notes_lines": 3,
+      "notes_characters": 36,
+      "text_and_rectangles": "within candidate limits",
+      "amounts_recalculated": false
+    },
+    "provided-amounts-unchanged.json": {
+      "items": 1,
+      "notes_lines": 2,
+      "notes_characters": 26,
+      "text_and_rectangles": "within candidate limits",
+      "amounts_recalculated": false
+    }
+  },
+  "width_examples": [
+    {
+      "field": "row0.price",
+      "text": "99,999,999円",
+      "width_pt": 61.536,
+      "available_pt": 94.4
+    },
+    {
+      "field": "row0.amount",
+      "text": "999,999,999,999円",
+      "width_pt": 88.304,
+      "available_pt": 139.02499999999998
+    },
+    {
+      "field": "tax10",
+      "text": "999,999,999,999円",
+      "width_pt": 99.342,
+      "available_pt": 171.64999999999998
+    },
+    {
+      "field": "total",
+      "text": "999,999,999,999円",
+      "width_pt": 132.456,
+      "available_pt": 171.35
+    },
+    {
+      "field": "notes",
+      "text": "2026/10/01～2026/10/31",
+      "width_pt": 131.616,
+      "available_pt": 171.64999999999998
+    },
+    {
+      "field": "label.notes",
+      "text": "取引・備考",
+      "width_pt": 40.5,
+      "available_pt": 67.52499999999999
+    }
+  ]
+}
