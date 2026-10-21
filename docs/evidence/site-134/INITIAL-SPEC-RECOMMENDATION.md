@@ -104,6 +104,8 @@ periodは`start`と`end`を両方必須、実在日付、start≦end。dateと�
 
 これらは利用者に確認すべき採否であり、既存APIが描画できるかという技術判断と分ける。ID／版識別・正式なHTTPエラー契約・品質／時間／容量の基準も#134の確定作業に残るが、認証・DB・画像保存・公開APIの製品設計まで広げない。
 
+**数量モードの設定は別途判断**：[初版の設定推奨案](QUANTITY-MODE-SETTINGS-DRAFT.md)を整理した。登録帳票設定直下と発行JSONルートのquantityAlignment、既定decimal、発行時上書きを許可し発行値＞登録値＞decimal、全指定値を検証して不正値を明示拒否する案。両モードの採用・描画成立から自動的に確定した設定契約ではない。
+
 ## 6. エラーと採用後の完成条件
 
 エラーは元入力のJSON Pointerを示す推奨を維持する。改訂後の例は`/recipient/nameLines/1`のtoo-long、`/items/8`のtoo-many-items、`/transaction/period/end`のinvalid-period、`/notesLines/1`のnotes-budget-exceeded。登録情報の不備は発行入力の`/companyId`と登録元`source.path=/nameLines/1`等の両方を示す。型の自動変換・trim・置換・縮小・自動改行はしない。
