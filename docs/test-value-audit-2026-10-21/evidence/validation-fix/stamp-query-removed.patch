@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/PdfStampImageEndpoint.cs
++++ b/src/Amane.Pdf.Api/PdfStampImageEndpoint.cs
+@@ -10,7 +10,7 @@
+     {
+         StampImageQuery? query = null;
+         return PdfEndpointHelpers.ExecuteAsync(context, options.Value, "stamped.pdf",
+-            () => query = StampImageQuery.Parse(context.Request.Query),
++            () => query = new StampImageQuery(1, 0.72m, 0.08m, 0.12m),
+             (files, token) => MultipartPdfUpload.ReadFileAndImageAsync(context.Request, files, options.Value, token),
+             async (files, token) =>
+             {

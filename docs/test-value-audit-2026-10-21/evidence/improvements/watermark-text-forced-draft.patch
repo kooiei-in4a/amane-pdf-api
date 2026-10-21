@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs
++++ b/src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs
+@@ -14,7 +14,7 @@
+             async (files, token) => text = WatermarkText.Parse(await MultipartPdfUpload.ReadFileAndTextAsync(
+                 context.Request, files, "text", WatermarkText.MaxBytes, options.Value.MaxFileBytes, options.Value.MaxRequestBytes, token)),
+             (files, token) => overlay.BuildAsync(files, static count => (1, count),
+-                (canvas, drawToken) => pdfcpu.CreateAsync(files, watermark!.CreateLayer(canvas, text!),
++                (canvas, drawToken) => pdfcpu.CreateAsync(files, watermark!.CreateLayer(canvas, "DRAFT"),
+                     canvas.BlankPath, canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, drawToken),
+                 token, fillOpacity: watermark!.Opacity));
+     }

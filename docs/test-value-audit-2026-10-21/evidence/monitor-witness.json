@@ -1,0 +1,16 @@
+[
+  {
+    "module": "from-images-validation.py",
+    "qpdf_command": "--check input.pdf",
+    "fsize": "unlimited",
+    "error": "AssertionError",
+    "samples": 0
+  },
+  {
+    "module": "from-images-followup.py",
+    "qpdf_command": "--check input.pdf",
+    "fsize": "unlimited",
+    "error": null,
+    "samples": 1
+  }
+]

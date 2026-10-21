@@ -1,0 +1,19 @@
+--- a/src/Amane.Pdf.Api/PdfFillTemplateEndpoint.cs
++++ b/src/Amane.Pdf.Api/PdfFillTemplateEndpoint.cs
+@@ -11,9 +11,13 @@
+         var settings = options.Value;
+         return PdfEndpointHelpers.ExecuteAsync(context, settings, "filled.pdf",
+             () => { if (context.Request.QueryString.HasValue) throw new BadHttpRequestException("Unexpected query.", 400); },
+-            async (files, token) => fields = FillTemplateFields.Parse(await MultipartPdfUpload.ReadFileAndTextAsync(
+-                context.Request, files, "fields", FillTemplateFields.MaxBytes, settings.MaxFileBytes,
+-                settings.MaxFillTemplateRequestBytes, token, textTooLargeStatus: 413)),
++            async (files, token) =>
++            {
++                _ = await MultipartPdfUpload.ReadFileAndTextAsync(
++                    context.Request, files, "fields", FillTemplateFields.MaxBytes, settings.MaxFileBytes,
++                    settings.MaxFillTemplateRequestBytes, token, textTooLargeStatus: 413);
++                fields = FillTemplateFields.Parse("[{\"page\":1,\"x\":0.1,\"y\":0.2,\"width\":0.8,\"height\":0.6,\"fontSize\":12,\"align\":\"left\",\"text\":\"ok\"}]"u8.ToArray());
++            },
+             (files, token) => overlay.BuildAsync(files, fields!.ResolveRange,
+                 (canvas, drawToken) => pdfcpu.CreateAsync(files, fields!.CreateLayer(canvas), canvas.BlankPath,
+                     canvas.LayerPath, canvas.JsonBudget, canvas.PdfBudget, drawToken,

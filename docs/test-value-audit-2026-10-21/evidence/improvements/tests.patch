@@ -1,0 +1,729 @@
+diff --git a/tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs b/tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs
+index 9e26ac6..7d95880 100644
+--- a/tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs
+@@ -20,7 +20,10 @@ public sealed class FillTemplateCapacityTests
+         // CI's Docker validation opts in; ordinary dotnet test performs no heavy load.
+         var source = Environment.GetEnvironmentVariable("FILL_TEMPLATE_CAPACITY_INPUT");
+         var json = Environment.GetEnvironmentVariable("FILL_TEMPLATE_CAPACITY_FIELDS");
+-        if (source is null || json is null) return;
++        if (source is null && json is null)
++            Assert.Inconclusive("上限容量測定にはFILL_TEMPLATE_CAPACITY_INPUTとFILL_TEMPLATE_CAPACITY_FIELDSが必要です。");
++        Assert.IsNotNull(source, "FILL_TEMPLATE_CAPACITY_INPUT is required.");
++        Assert.IsNotNull(json, "FILL_TEMPLATE_CAPACITY_FIELDS is required.");
+         var fields = FillTemplateFields.Parse(await File.ReadAllBytesAsync(json));
+         var jobs = Enumerable.Range(0, concurrent).Select(_ => new OverlayJob()).ToArray();
+         try
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs b/tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs
+index bc0c701..6dd7d65 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs
+@@ -65,7 +65,7 @@ public sealed class PdfCleanTests
+             "PAGE_XMP_RETAINED", "/OBJR", "/Dests", "NON_DICTIONARY_RETAINED", "FORM_VALUE_RETAINED", "OUTLINE_RETAINED", "JAVASCRIPT_RETAINED", "/Collection" }) Assert.IsTrue(text.Contains(marker, StringComparison.Ordinal), marker);
+         var original = Path.Combine(test.Root, "original.pdf");
+         await File.WriteAllBytesAsync(original, input);
+-        Assert.AreEqual(await ContentHashAsync(test, original), await ContentHashAsync(test, path));
++        CollectionAssert.AreEqual(await ContentHashesAsync(test, original), await ContentHashesAsync(test, path));
+         using var before = JsonDocument.Parse((await test.QpdfAsync("--json=2", "--json-key=qpdf", original)).Output);
+         using var after = JsonDocument.Parse((await test.QpdfAsync("--json=2", "--json-key=qpdf", path)).Output);
+         var inputObjects = before.RootElement.GetProperty("qpdf")[1];
+@@ -86,22 +86,49 @@ public sealed class PdfCleanTests
+         test.AssertClean();
+     }
+ 
+-    private static async Task<string> ContentHashAsync(PdfTestContext test, string path)
++    private static async Task<string[]> ContentHashesAsync(PdfTestContext test, string path)
+     {
+         using var json = JsonDocument.Parse((await test.QpdfAsync("--json=2", "--json-key=pages", "--json-key=qpdf", path)).Output);
+-        var reference = json.RootElement.GetProperty("pages")[0].GetProperty("contents")[0].GetString()!.Split(' ')[0];
+-        var stream = await test.QpdfAsync("--show-object=" + reference, "--filtered-stream-data", path);
+-        Assert.AreEqual(0, stream.ExitCode);
+-        var decoded = stream.Output;
++        var hashes = new List<string>();
++        async Task<string> Hash(string reference)
++        {
++            var stream = await test.QpdfBytesAsync("--show-object=" + reference.Split(' ')[0], "--filtered-stream-data", path);
++            Assert.AreEqual(0, stream.ExitCode);
++            return stream.Output.Length + ":" + Convert.ToHexString(SHA256.HashData(stream.Output));
++        }
++        var pageIndex = 0;
++        foreach (var page in json.RootElement.GetProperty("pages").EnumerateArray())
++        {
++            var contentIndex = 0;
++            foreach (var reference in page.GetProperty("contents").EnumerateArray())
++                hashes.Add($"page:{pageIndex}:content:{contentIndex++}:" + await Hash(reference.GetString()!));
++            pageIndex++;
++        }
++        var images = new List<string>();
+         foreach (var item in json.RootElement.GetProperty("qpdf")[1].EnumerateObject())
+             if (item.Value.TryGetProperty("stream", out var image) &&
+                 image.GetProperty("dict").TryGetProperty("/Subtype", out var subtype) && subtype.GetString() == "/Image")
+-            {
+-                var pixels = await test.QpdfAsync("--show-object=" + item.Name[4..].Split(' ')[0], "--filtered-stream-data", path);
+-                Assert.AreEqual(0, pixels.ExitCode);
+-                decoded += pixels.Output;
+-            }
+-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(decoded)));
++                images.Add("image:" + await Hash(item.Name[4..]));
++        // Object numbers may change; preserve the image multiset, not its reference order.
++        hashes.AddRange(images.Order(StringComparer.Ordinal));
++        return hashes.ToArray();
++    }
++
++    [TestMethod]
++    public async Task BinaryStreamCapture_PreservesInvalidUtf8Bytes()
++    {
++        if (!Linux()) return;
++        await using var test = new PdfTestContext();
++        byte[] expected = [0xff, 0xfe, 0x80, 0, 0xc0, 0xaf];
++        var path = Path.Combine(test.Root, "binary-stream.pdf");
++        await File.WriteAllBytesAsync(path, CompressFixtures.Objects([
++            CompressFixtures.Text("<< /Type /Catalog /Pages 2 0 R >>"),
++            CompressFixtures.Text("<< /Type /Pages /Count 1 /Kids [3 0 R] >>"),
++            CompressFixtures.Text("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R >>"),
++            CompressFixtures.Stream("", expected)]));
++        var result = await test.QpdfBytesAsync("--show-object=4", "--filtered-stream-data", path);
++        Assert.AreEqual(0, result.ExitCode);
++        CollectionAssert.AreEqual(expected, result.Output);
+     }
+ 
+     [TestMethod]
+@@ -238,6 +265,7 @@ public sealed class PdfCleanTests
+         await File.WriteAllTextAsync(wrapper, $$"""
+         #!/bin/sh
+         printf '%s\n' "$@" >> '{{test.Root}}/arguments'
++        printf '%s\n' "$1" >> '{{test.Root}}/calls'
+         case "$1" in
+         --job-json-file=*)
+           job=${1#--job-json-file=}; dir=${job%/*}
+@@ -266,6 +294,10 @@ public sealed class PdfCleanTests
+         var args = await File.ReadAllTextAsync(Path.Combine(test.Root, "arguments"));
+         foreach (var forbidden in new[] { "MARKER", "private-name", "removeAttachment", "preserve-unreferenced" }) Assert.IsFalse(args.Contains(forbidden, StringComparison.Ordinal));
+         Assert.AreEqual(1, args.Split("--json-key=attachments", StringSplitOptions.None).Length - 1);
++        var calls = await File.ReadAllLinesAsync(Path.Combine(test.Root, "calls"));
++        Assert.IsTrue(calls.Length <= 9, "Clean must stay within its process-start budget.");
++        Assert.AreEqual(2, calls.Count(call => call == "--json=2"), "One input and one combined output inspection.");
++        Assert.AreEqual(1, calls.Count(call => call.StartsWith("--job-json-file=", StringComparison.Ordinal)));
+         CollectionAssert.AreEqual(new[] { "700", "600", "600", "600", "600" }, await File.ReadAllLinesAsync(Path.Combine(test.Root, "permissions")));
+         var limits = await File.ReadAllTextAsync(Path.Combine(test.Root, "limits"));
+         Assert.IsTrue(limits.Contains("570425344", StringComparison.Ordinal));
+@@ -304,19 +336,6 @@ public sealed class PdfCleanTests
+         }
+     }
+ 
+-    [TestMethod]
+-    public async Task Success_UsesNineCalls_OneJob_CombinedOutputJson_AndOnlyPrivatePaths()
+-    {
+-        if (!Linux()) return;
+-        using var recorder = new BlockingQpdf("never-match");
+-        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = recorder.Executable });
+-        using var response = await PostAsync(test, await FixtureAsync(test));
+-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+-        CollectionAssert.AreEqual(new[] { "--is-encrypted", "--check", "--show-npages", "--json=2", "job", "--is-encrypted", "--check", "--show-npages", "--json=2" },
+-            recorder.Calls.Select(call => call.StartsWith("--job-json-file=", StringComparison.Ordinal) ? "job" : call).ToArray());
+-        test.AssertClean();
+-    }
+-
+     [SupportedOSPlatformGuard("linux")]
+     internal static bool Linux()
+     {
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs b/tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs
+index 6d30b24..9fbe20a 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs
+@@ -69,36 +69,6 @@ public sealed class PdfCompressResourceTests
+         test.AssertClean();
+     }
+ 
+-    [TestMethod]
+-    public async Task PageAliasChains_AreDeletedAndTheirSpoolBudgetCanBeReused()
+-    {
+-        if (!PdfCompressTests.Linux()) return;
+-        await using var test = new PdfTestContext();
+-        // The common PDF validator rejects an indirect object whose value is another
+-        // reference. Exercise defensive metadata resolution using post-startup injection.
+-        var json = "{\"qpdf\":[{\"jsonversion\":2},{\"obj:11 0 R\":{\"value\":\"12 0 R\"},\"obj:12 0 R\":{\"value\":\"13 0 R\"},\"obj:13 0 R\":{\"value\":{\"/XObject\":{\"/Im0\":\"4 0 R\"}}}}]}";
+-        var wrapper = await PdfCompressTests.WrapperAsync(test,
+-            "for arg do last=$arg; done\nprintf '%s' '" + json + "' > \"$last\"\n");
+-        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+-        options.QpdfPath = wrapper;
+-        options.CompressSpoolLimitBytes = 3 * 4096;
+-        using var files = new TemporaryPdfFiles(test.Root);
+-        await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
+-        var owner = new PdfCompressProcessor(options, files);
+-        var metadata = new CompressMetadata(owner);
+-        for (var batch = 0; batch < 2; batch++)
+-        {
+-            await metadata.FetchChainsAsync([new(11, 0)], CancellationToken.None);
+-            var paths = metadata.Files.ToArray();
+-            Assert.AreEqual(3, paths.Length);
+-            Assert.AreEqual(3 * 4096L, owner.Capacity.Used);
+-            metadata.DeleteExcept(new HashSet<PdfObjectRef>());
+-            Assert.IsFalse(paths.Any(File.Exists));
+-            Assert.AreEqual(0L, owner.Capacity.Used);
+-        }
+-        test.AssertClean();
+-    }
+-
+     [TestMethod]
+     [DataRow(10, false, false, false, 3)]
+     [DataRow(10, true, false, false, 5)]
+@@ -255,10 +225,43 @@ public sealed class PdfCompressResourceTests
+     {
+         if (!PdfCompressTests.Linux()) return;
+         await using var test = new PdfTestContext(new() { ["Pdf:CompressStdoutLimitBytes"] = "1500" });
++        var wrapper = await PdfCompressTests.WrapperAsync(test, $$"""
++        prefix=; count=0; targets=
++        for arg do
++          case "$arg" in
++          --json-stream-prefix=*) prefix=${arg#--json-stream-prefix=} ;;
++          --json-object=*) count=$((count+1)); targets="$targets $arg" ;;
++          esac
++        done
++        if [ -n "$prefix" ]; then
++          dir=${prefix%/*}; job=${dir%/*}
++          # Every previous extraction directory must be removed before another attempt.
++          for old in "$job"/raw-*; do
++            [ "$old" = "$dir" ] || [ ! -d "$old" ] || exit 97
++          done
++          printf '%s\n' "$count$targets" >> '{{test.Root}}/extractions'
++          qpdf "$@"
++          code=$?
++          if [ "$count" -gt 1 ]; then
++            test -n "$(find "$dir" -type f -print -quit)" || exit 98
++            printf 'observed\n' > '{{test.Root}}/partial-raw'
++          fi
++          exit "$code"
++        fi
++        exec qpdf "$@"
++        """ + "\n");
++        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
+         var jpeg = await CompressFixtures.JpegAsync(test);
+         using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Many(jpeg, 4));
+         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+         Assert.AreEqual("4", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
++        var attempts = await File.ReadAllLinesAsync(Path.Combine(test.Root, "extractions"));
++        Assert.AreEqual(5, attempts.Length, "One overflowing batch followed by four individual attempts.");
++        StringAssert.StartsWith(attempts[0], "4 ");
++        Assert.IsTrue(attempts.Skip(1).All(line => line.StartsWith("1 ", StringComparison.Ordinal)));
++        CollectionAssert.AreEquivalent(attempts[0].Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray(),
++            attempts.Skip(1).Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1]).ToArray());
++        Assert.IsTrue(File.Exists(Path.Combine(test.Root, "partial-raw")), "The overflowing batch must actually leave raw files to clean.");
+         test.AssertClean();
+     }
+ 
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs b/tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs
+index cefcfda..0e59087 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs
+@@ -138,14 +138,28 @@ public sealed class PdfCompressTests
+         await using var test = new PdfTestContext();
+         var jpeg = await CompressFixtures.JpegAsync(test, gray: gray);
+         // Profile validity is intentionally outside candidate eligibility; qpdf does not decode it.
+-        var extras = color.Contains("ICCBased") ? new[] { CompressFixtures.Stream("/N 3 /Alternate /DeviceRGB", new byte[128]) } : null;
++        var profile = Enumerable.Range(0, 128).Select(i => (byte)i).ToArray();
++        var extras = color.Contains("ICCBased") ? new[] { CompressFixtures.Stream("/N 3 /Alternate /DeviceRGB", profile) } : null;
+         var input = CompressFixtures.Pdf(jpeg, gray: gray, color: color, extras: extras);
+         using var response = await PostAsync(test, input);
+         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+         Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+         var result = await InspectAsync(test, await response.Content.ReadAsByteArrayAsync());
+         var image = result.GetProperty("pages")[0].GetProperty("images")[0];
+-        Assert.AreEqual(JsonValueKind.Array, image.GetProperty("colorspace").ValueKind);
++        var objects = result.GetProperty("qpdf")[1];
++        var dictionary = objects.GetProperty("obj:" + image.GetProperty("object").GetString()).GetProperty("stream").GetProperty("dict");
++        var actual = dictionary.GetProperty("/ColorSpace");
++        Assert.AreEqual(2, actual.GetArrayLength());
++        Assert.AreEqual(color.Contains("ICCBased") ? "/ICCBased" : gray ? "/CalGray" : "/CalRGB", actual[0].GetString());
++        if (color.Contains("ICCBased"))
++        {
++            var icc = objects.GetProperty("obj:" + actual[1].GetString()).GetProperty("stream");
++            Assert.AreEqual(3, icc.GetProperty("dict").GetProperty("/N").GetInt32());
++            Assert.AreEqual("/DeviceRGB", icc.GetProperty("dict").GetProperty("/Alternate").GetString());
++            CollectionAssert.AreEqual(profile, Convert.FromBase64String(icc.GetProperty("data").GetString()!));
++        }
++        else
++            CollectionAssert.AreEqual(new[] { 0.9505, 1, 1.0890 }, actual[1].GetProperty("/WhitePoint").EnumerateArray().Select(v => v.GetDouble()).ToArray());
+         test.AssertClean();
+     }
+ 
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs b/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs
+index 37f3274..71eafdf 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs
+@@ -37,6 +37,8 @@ public sealed class PdfFillTemplateTests
+             using var form = Form(fields: bytes); using var response = await test.Client.PostAsync(Endpoint, form);
+             await Problem(test, response, 400);
+         }
++        // Each multipart case has valid fields; only the selected part contract is invalid.
++        var validFields = "[" + FillTemplateFieldsTests.Field + "]";
+         foreach (var kind in new[] { "unknown", "duplicate-file", "duplicate-fields", "missing-file", "missing-fields", "fields-filename", "file-no-filename", "case" })
+         {
+             using var form = new MultipartFormDataContent();
+@@ -44,16 +46,19 @@ public sealed class PdfFillTemplateTests
+                 if (kind == "file-no-filename") form.Add(new ByteArrayContent(PdfTestContext.Fixture), "file");
+                 else form.Add(new ByteArrayContent(PdfTestContext.Fixture), kind == "case" ? "File" : "file", "private-template.pdf");
+             if (kind != "missing-fields")
+-                if (kind == "fields-filename") form.Add(new StringContent("[]"), "fields", "data.json");
+-                else form.Add(new StringContent("[]"), "fields");
++                if (kind == "fields-filename") form.Add(new StringContent(validFields), "fields", "data.json");
++                else form.Add(new StringContent(validFields), "fields");
+             if (kind == "unknown") form.Add(new StringContent("SECRET"), "text");
+             if (kind == "duplicate-file") form.Add(new ByteArrayContent(PdfTestContext.Fixture), "file", "duplicate.pdf");
+-            if (kind == "duplicate-fields") form.Add(new StringContent("[]"), "fields");
++            if (kind == "duplicate-fields") form.Add(new StringContent(validFields), "fields");
+             using var response = await test.Client.PostAsync(Endpoint, form);
++            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode, kind);
+             await Problem(test, response, 400);
+         }
+-        using var query = await test.Client.PostAsync(Endpoint + "?a=1", new StringContent("not multipart"));
++        using var queryBody = Form();
++        using var query = await test.Client.PostAsync(Endpoint + "?a=1", queryBody);
+         await Problem(test, query, 400);
++        await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?a=1", queryBody);
+     }
+ 
+     [TestMethod]
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs b/tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs
+index 510a942..177900a 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs
+@@ -11,25 +11,13 @@ namespace Amane.Pdf.Api.Tests;
+ public sealed class PdfOverlayResourceTests
+ {
+     [TestMethod]
+-    [DataRow("input", "cancel")]
+-    [DataRow("blank", "cancel")]
+-    [DataRow("draw", "cancel")]
+-    [DataRow("overlay", "cancel")]
+-    [DataRow("restore", "cancel")]
+-    [DataRow("final", "cancel")]
+-    [DataRow("input", "timeout")]
+-    [DataRow("blank", "timeout")]
+-    [DataRow("draw", "timeout")]
+-    [DataRow("overlay", "timeout")]
+-    [DataRow("restore", "timeout")]
+-    [DataRow("final", "timeout")]
+-    [DataRow("input", "stopping")]
+-    [DataRow("blank", "stopping")]
+-    [DataRow("draw", "stopping")]
+-    [DataRow("overlay", "stopping")]
+-    [DataRow("restore", "stopping")]
+-    [DataRow("final", "stopping")]
+-    public async Task EveryStage_CancelTimeoutAndStopping_WaitForProcessTree_AndDeleteJob(string stage, string kind)
++    [DataRow("input")]
++    [DataRow("blank")]
++    [DataRow("draw")]
++    [DataRow("overlay")]
++    [DataRow("restore")]
++    [DataRow("final")]
++    public async Task EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates(string stage)
+     {
+         if (!OperatingSystem.IsLinux()) return;
+         var pattern = stage switch
+@@ -55,8 +43,8 @@ public sealed class PdfOverlayResourceTests
+                 "pause\n") +
+             $";;\nesac\nexec '{real}' \"$@\"\n");
+         if (stage == "draw") job.Settings.PdfcpuPath = wrapper; else job.Settings.QpdfPath = wrapper;
+-        using var caller = new CancellationTokenSource(); using var stopping = new CancellationTokenSource();
+-        using var token = CancellationTokenSource.CreateLinkedTokenSource(caller.Token, stopping.Token);
++        // HTTP tests cover caller/timeout/application-stop wiring. The builder receives one token.
++        using var token = new CancellationTokenSource();
+         var processing = job.Builder.BuildAsync(job.Files, 1, 1, job.Draw, token.Token);
+         var until = System.Diagnostics.Stopwatch.StartNew();
+         while (!File.Exists(Path.Combine(root, "blocked.pids")))
+@@ -64,9 +52,7 @@ public sealed class PdfOverlayResourceTests
+             Assert.IsFalse(processing.IsCompleted, "The intended stage was not reached");
+             Assert.IsTrue(until.Elapsed.TotalSeconds < 10); await Task.Delay(10);
+         }
+-        if (kind == "stopping") stopping.Cancel();
+-        else if (kind == "timeout") token.CancelAfter(20);
+-        else caller.Cancel();
++        token.Cancel();
+         await Assert.ThrowsAsync<OperationCanceledException>(() => processing);
+         var pids = (await File.ReadAllTextAsync(Path.Combine(root, "blocked.pids"))).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+         foreach (var text in pids)
+@@ -80,11 +66,10 @@ public sealed class PdfOverlayResourceTests
+                 await Task.Delay(20);
+             }
+         }
+-        var directory = job.Files.DirectoryPath;
+-        job.Files.Dispose();
+-        Assert.IsFalse(Directory.Exists(directory));
+-        // OverlayJob owns disposal normally; recreate an empty dir for its Dispose.
+-        Directory.CreateDirectory(directory);
++        // Inspect before owner disposal: the input is deleted after overlay, while
++        // the final output (possibly partial) remains owned by TemporaryPdfFiles.
++        CollectionAssert.AreEquivalent(new[] { stage is "restore" or "final" ? job.Files.OutputPath : job.Files.InputPath },
++            Directory.GetFiles(job.Files.DirectoryPath));
+     }
+ 
+     [TestMethod]
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs b/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs
+index ecf29b3..d9ccca8 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs
+@@ -31,11 +31,12 @@ public sealed class PdfPageNumbersTests
+                 .Select(value => Query + "&" + key + "=" + value))];
+         foreach (var query in queries)
+         {
+-            // Invalid multipart would have a different title if upload parsing ran first.
+-            using var body = new StringContent("not multipart");
++            // Keep the upload valid so another 400 cannot hide a missing query validator.
++            using var body = PdfTestContext.FileForm(PdfTestContext.Fixture);
+             using var response = await test.Client.PostAsync(Endpoint + "?" + query, body);
+             using var problem = await Problem(test, response, HttpStatusCode.BadRequest);
+             Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString(), query);
++            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?" + query, body);
+         }
+     }
+ 
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs b/tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs
+index 977e069..0e64638 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs
+@@ -90,17 +90,23 @@ public sealed class PdfProtectTests
+     }
+ 
+     [TestMethod]
+-    public async Task CancelledJob_CleansFiles()
++    public async Task PreCancelledJob_DoesNotStartQpdf_AndOwnerDisposalRemovesFiles()
+     {
+-        await using var test = new PdfTestContext();
+-        using (var files = new TemporaryPdfFiles(test.TempRoot))
++        var root = Path.Combine(Path.GetTempPath(), "protect-cancel-" + Guid.NewGuid().ToString("N"));
++        try
+         {
+-            await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
+-            using var cancelled = new CancellationTokenSource();
+-            cancelled.Cancel();
+-            var processor = new QpdfProcessor(Options.Create(new PdfOptions()));
+-            await Assert.ThrowsAsync<OperationCanceledException>(() => processor.ProtectAsync(files, "cancel-fixture-password", cancelled.Token));
++            using (var files = new TemporaryPdfFiles(root))
++            {
++                await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
++                using var cancelled = new CancellationTokenSource();
++                cancelled.Cancel();
++                var processor = new QpdfProcessor(Options.Create(new PdfOptions { QpdfPath = "/must-not-start/qpdf" }));
++                await Assert.ThrowsAsync<OperationCanceledException>(() => processor.ProtectAsync(files, "cancel-fixture-password", cancelled.Token));
++                Assert.IsFalse(File.Exists(files.OutputPath));
++                Assert.IsTrue(File.Exists(files.InputPath), "The caller still owns the input before disposal.");
++            }
++            Assert.AreEqual(0, Directory.GetFileSystemEntries(root).Length);
+         }
+-        test.AssertClean();
++        finally { Directory.Delete(root, recursive: true); }
+     }
+ }
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs b/tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs
+index 1910aed..55ffb6a 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs
+@@ -183,8 +183,7 @@ public sealed class PdfRendererTests
+     }
+ 
+     [TestMethod]
+-    [DataRow(false)] [DataRow(true)]
+-    public async Task CancelAndTimeout_KillRealRenderer_WithExactLimits_AndRemoveTemporaryFiles(bool timeout)
++    public async Task Cancellation_KillsRealRenderer_WithExactLimits_AndRemovesOutput()
+     {
+         if (!PdfCompressTests.Linux()) return;
+         using var job = new RendererJob();
+@@ -220,7 +219,7 @@ public sealed class PdfRendererTests
+         try
+         {
+             Assert.AreNotEqual(0, pid, "The real renderer must reach PDF loading with its exact limits.");
+-            if (timeout) deadline.CancelAfter(50); else deadline.Cancel();
++            deadline.Cancel();
+             await Assert.ThrowsAsync<OperationCanceledException>(() => render);
+             Assert.IsFalse(Directory.Exists($"/proc/{pid}"));
+             Assert.IsFalse(File.Exists(job.Page.OutputPath));
+@@ -230,8 +229,6 @@ public sealed class PdfRendererTests
+             deadline.Cancel();
+             try { await render; } catch (OperationCanceledException) { }
+         }
+-        job.Files.Dispose();
+-        Assert.IsFalse(Directory.EnumerateFileSystemEntries(job.Root).Any());
+     }
+ 
+     [TestMethod]
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs b/tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs
+index 0c80135..e6ec637 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs
+@@ -135,25 +135,33 @@ public sealed class PdfSplitFileNameTests
+     }
+ 
+     [TestMethod]
+-    public async Task MaximumUnicodeNameAnd500Parts_FitExistingZipOverhead()
++    public void MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead()
+     {
+-        // 本番の5倍の分割数で名前とオーバーヘッドを確認し、CPU 1の並行実行では既定30秒を超え得るため、対象外の時間上限は延ばす。
+-        await using var test = new PdfTestContext(new()
+-        {
+-            ["Pdf:MaxSplitParts"] = "500",
+-            ["Pdf:QpdfTimeoutSeconds"] = "120"
+-        });
+-        var baseName = new string('あ', 60);
+-        using var response = await PdfSplitTests.PostAsync(test, await test.CreatePagedPdfAsync(500),
+-            fileName: baseName + "追加.pdf");
+-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+-        var bytes = await response.Content.ReadAsByteArrayAsync();
++        var options = new PdfOptions { MaxSplitParts = 500 };
++        Assert.IsTrue(PdfSplitCapacity.IsValid(options));
++        var parts = new PdfSplitPlan(1, null, options.MaxSplitParts).CreateParts(500);
++        var baseName = PdfSplitFileName.NormalizeBaseName(new string('あ', 60) + "追加.pdf");
++        Assert.AreEqual(new string('あ', 60), baseName);
++        var payload = PdfTestContext.Fixture;
++        var capacity = new PdfSplitCapacity(0, options.MaxSplitOutputBytes, options.MaxSplitJobBytes);
++        using var output = new MemoryStream();
++        using var bounded = new PdfSplitZipStream(output, capacity, CancellationToken.None);
++        using (var archive = new ZipArchive(bounded, ZipArchiveMode.Create, leaveOpen: true))
++            foreach (var part in parts)
++            {
++                capacity.AcceptPart(payload.Length);
++                var entry = archive.CreateEntry(part.GetEntryName(baseName), CompressionLevel.NoCompression);
++                entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
++                using (var stream = entry.Open()) stream.Write(payload);
++                capacity.ReleasePart();
++            }
++        capacity.CheckZipLength(output.Length);
++        var bytes = output.ToArray();
+         using var zip = new ZipArchive(new MemoryStream(bytes));
+         CollectionAssert.AreEqual(Enumerable.Range(1, 500).Select(i => $"{baseName}_{i}.pdf").ToArray(),
+             zip.Entries.Select(e => e.FullName).ToArray());
+         Assert.IsTrue(bytes.LongLength - zip.Entries.Sum(e => e.Length) <= PdfSplitCapacity.SplitZipOverheadBytes);
+         Assert.AreEqual(0x800, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(6)) & 0x800);
+-        test.AssertClean();
+     }
+ 
+     [TestMethod]
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs b/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs
+index f68afc1..4480210 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs
+@@ -89,9 +89,10 @@ public sealed class PdfStampImageTests
+         foreach (var query in new[] { "", "page=1&x=0&y=0", Query + "&x=0", Query + "&unknown=1",
+                      Query.Replace("0.72", "0.١٢"), Query.Replace("0.08", "0.12345"), Query.Replace("page=1", "page=2147483648") })
+         {
+-            using var badBody = new StringContent("PRIVATE_STAMP_INVALID_UPLOAD");
+-            using var response = await test.Client.PostAsync(Endpoint + query, badBody);
++            using var body = Form(PdfTestContext.Fixture, StampFixtures.Png());
++            using var response = await test.Client.PostAsync(Endpoint + query, body);
+             await Problem(test, response, 400);
++            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + query, body);
+         }
+     }
+ 
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs b/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
+index 8e68009..e8a9759 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
+@@ -1,6 +1,8 @@
+ using System.Diagnostics;
+ using System.Net.Http.Headers;
+ using System.Text.Json;
++using System.Text;
++using Microsoft.AspNetCore.Http;
+ using Microsoft.AspNetCore.Hosting;
+ using Microsoft.AspNetCore.Mvc.Testing;
+ using Microsoft.Extensions.Configuration;
+@@ -67,6 +69,49 @@ internal sealed class PdfTestContext : IAsyncDisposable
+     public static MultipartFormDataContent FileForm(byte[]? file = null, string fileName = "sample.pdf")
+         => Form(file, password: null, fileName);
+ 
++    public async Task AssertRejectedBeforeReadingBodyAsync(string pathAndQuery, HttpContent content)
++    {
++        // Observe server reads, rather than client-side multipart serialization.
++        using var body = new UnreadableBody();
++        var uri = new Uri("http://localhost" + pathAndQuery);
++        var response = await Factory.Server.SendAsync(context =>
++        {
++            context.Request.Method = "POST";
++            context.Request.Path = uri.AbsolutePath;
++            context.Request.QueryString = new QueryString(uri.Query);
++            context.Request.ContentType = content.Headers.ContentType!.ToString();
++            context.Request.ContentLength = content.Headers.ContentLength;
++            context.Request.Body = body;
++        });
++        Assert.AreEqual(0, body.ReadCount, pathAndQuery);
++        Assert.AreEqual(400, response.Response.StatusCode, pathAndQuery);
++        AssertClean();
++    }
++
++    private sealed class UnreadableBody : Stream
++    {
++        public int ReadCount { get; private set; }
++        public override bool CanRead => true;
++        public override bool CanSeek => false;
++        public override bool CanWrite => false;
++        public override long Length => throw new NotSupportedException();
++        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
++        public override int Read(byte[] buffer, int offset, int count)
++        {
++            ReadCount++;
++            throw new InvalidOperationException("Request body must not be read.");
++        }
++        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
++        {
++            ReadCount++;
++            throw new InvalidOperationException("Request body must not be read.");
++        }
++        public override void Flush() => throw new NotSupportedException();
++        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
++        public override void SetLength(long value) => throw new NotSupportedException();
++        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
++    }
++
+     public static MultipartFormDataContent MergeForm(params byte[][] inputs)
+     {
+         var form = new MultipartFormDataContent();
+@@ -182,6 +227,12 @@ internal sealed class PdfTestContext : IAsyncDisposable
+     public void AssertClean() => Assert.IsFalse(Directory.Exists(TempRoot) && Directory.EnumerateFileSystemEntries(TempRoot).Any());
+ 
+     public async Task<(int ExitCode, string Output)> QpdfAsync(params string[] arguments)
++    {
++        var result = await QpdfBytesAsync(arguments);
++        return (result.ExitCode, Encoding.UTF8.GetString(result.Output));
++    }
++
++    public async Task<(int ExitCode, byte[] Output)> QpdfBytesAsync(params string[] arguments)
+     {
+         using var process = new Process
+         {
+@@ -194,8 +245,9 @@ internal sealed class PdfTestContext : IAsyncDisposable
+         };
+         foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
+         process.Start();
+-        var output = process.StandardOutput.ReadToEndAsync();
+-        var error = process.StandardError.ReadToEndAsync();
++        using var output = new MemoryStream();
++        var readOutput = process.StandardOutput.BaseStream.CopyToAsync(output);
++        var error = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
+         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+         try
+         {
+@@ -207,7 +259,8 @@ internal sealed class PdfTestContext : IAsyncDisposable
+             await process.WaitForExitAsync();
+         }
+         await error;
+-        return (process.ExitCode, await output);
++        await readOutput;
++        return (process.ExitCode, output.ToArray());
+     }
+ 
+     public async ValueTask DisposeAsync()
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs b/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs
+index b5c4dfb..ff9a299 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs
+@@ -1,4 +1,5 @@
+ using System.Net;
++using System.Globalization;
+ using System.Text;
+ using System.Text.Json;
+ using System.Text.Json.Nodes;
+@@ -31,10 +32,11 @@ public sealed class PdfWatermarkTests
+                      Query + "&style=corner", Query + "&Style=diagonal", Query + "&color=red", Query + "&text=SECRET",
+                      Query + "&extra=1", "style=corner&color=" })
+         {
+-            using var body = new StringContent("not multipart");
++            using var body = Form(PdfTestContext.Fixture);
+             using var response = await test.Client.PostAsync(Endpoint + "?" + query, body);
+             using var problem = await Problem(test, response, HttpStatusCode.BadRequest);
+             Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString());
++            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?" + query, body);
+         }
+     }
+ 
+@@ -64,6 +66,13 @@ public sealed class PdfWatermarkTests
+             Assert.IsTrue(original.Read(i, default).SameEffective(final.Read(i, default)), $"page {i + 1}");
+             var (dictionary, content) = LastDrawnForm(after, i);
+             Assert.AreEqual(1, Regex.Matches(content, @"\bTj\b").Count, "Each page must own a distinct text stream.");
++            var colors = Regex.Matches(content, @"([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+rg\b");
++            Assert.IsTrue(colors.Count > 0, "The drawn text must set its fill color.");
++            var expectedColor = color == "gray" ? new[] { 128d / 255, 128d / 255, 128d / 255 } : [192d / 255, 0, 0];
++            foreach (Match actualColor in colors)
++                for (var channel = 0; channel < 3; channel++)
++                    Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), 0.005);
++            Assert.AreEqual(text, DrawnText(after, dictionary, content));
+             var resources = dictionary.GetProperty("/Resources");
+             if (style == "diagonal")
+             {
+@@ -323,7 +332,31 @@ public sealed class PdfWatermarkTests
+     }
+ 
+     private static string StreamText(JsonElement obj)
+-        => Encoding.ASCII.GetString(Convert.FromBase64String(obj.GetProperty("stream").GetProperty("data").GetString()!));
++        => Encoding.Latin1.GetString(Convert.FromBase64String(obj.GetProperty("stream").GetProperty("data").GetString()!));
++
++    private static string DrawnText(JsonDocument document, JsonElement form, string content)
++    {
++        var objects = document.RootElement.GetProperty("qpdf")[1];
++        var fontName = Regex.Match(content, @"(/\S+)\s+[\d.]+\s+Tf").Groups[1].Value;
++        var font = form.GetProperty("/Resources").GetProperty("/Font").GetProperty(fontName);
++        var dictionary = objects.GetProperty("obj:" + font.GetString()).GetProperty("value");
++        var cmap = StreamText(objects.GetProperty("obj:" + dictionary.GetProperty("/ToUnicode").GetString()));
++        var unicode = new Dictionary<int, string>();
++        foreach (Match block in Regex.Matches(cmap, @"beginbfchar\s+(.*?)endbfchar", RegexOptions.Singleline))
++            foreach (Match pair in Regex.Matches(block.Groups[1].Value, @"<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>"))
++                unicode.Add(int.Parse(pair.Groups[1].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture),
++                    Encoding.BigEndianUnicode.GetString(Convert.FromHexString(pair.Groups[2].Value)));
++        var literal = Regex.Match(content, @"\(((?:\\[\s\S]|[^\\)])*)\)\s*Tj").Groups[1].Value;
++        var decoded = Regex.Replace(literal, @"\\([0-7]{1,3}|[nrtbf()\\])", match =>
++        {
++            var escaped = match.Groups[1].Value;
++            return escaped[0] is >= '0' and <= '7' ? ((char)Convert.ToInt32(escaped, 8)).ToString() :
++                escaped switch { "n" => "\n", "r" => "\r", "t" => "\t", "b" => "\b", "f" => "\f", _ => escaped };
++        });
++        var bytes = Encoding.Latin1.GetBytes(decoded);
++        Assert.IsTrue(bytes.Length > 0 && bytes.Length % 2 == 0);
++        return string.Concat(Enumerable.Range(0, bytes.Length / 2).Select(i => unicode[(bytes[2 * i] << 8) | bytes[2 * i + 1]]));
++    }
+ 
+     private static (JsonElement Dictionary, string Content) LastDrawnForm(JsonDocument document, int page)
+     {
+--- /dev/null
++++ b/tests/Amane.Pdf.Api.Tests/CompressMetadataTests.cs
+@@ -0,0 +1,41 @@
++using Microsoft.Extensions.Options;
++
++namespace Amane.Pdf.Api.Tests;
++
++[TestClass]
++public sealed class CompressMetadataTests
++{
++    [TestMethod]
++    [TestCategory("DefensiveMetadata")]
++    public async Task DefensiveAliasChains_ReleaseSpoolBudget_ForReuse()
++    {
++        if (!PdfCompressTests.Linux()) return;
++        var root = Path.Combine(Path.GetTempPath(), "metadata-alias-" + Guid.NewGuid().ToString("N"));
++        Directory.CreateDirectory(root);
++        try
++        {
++            // Common PDF validation rejects reference-to-reference objects. This tests
++            // defensive resolution and accounting directly, without starting an API host.
++            const string json = """{"qpdf":[{"jsonversion":2},{"obj:11 0 R":{"value":"12 0 R"},"obj:12 0 R":{"value":"13 0 R"},"obj:13 0 R":{"value":{"/XObject":{"/Im0":"4 0 R"}}}}]}""";
++            var wrapper = Path.Combine(root, "metadata.sh");
++            await File.WriteAllTextAsync(wrapper, "#!/bin/sh\nfor arg do last=$arg; done\nprintf '%s' '" + json + "' > \"$last\"\n");
++            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
++            var options = new PdfOptions { QpdfPath = wrapper, CompressSpoolLimitBytes = 3 * 4096 };
++            using var files = new TemporaryPdfFiles(root);
++            await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
++            var owner = new PdfCompressProcessor(options, files);
++            var metadata = new CompressMetadata(owner);
++            for (var batch = 0; batch < 2; batch++)
++            {
++                await metadata.FetchChainsAsync([new(11, 0)], CancellationToken.None);
++                var paths = metadata.Files.ToArray();
++                Assert.AreEqual(3, paths.Length);
++                Assert.AreEqual(3 * 4096L, owner.Capacity.Used);
++                metadata.DeleteExcept(new HashSet<PdfObjectRef>());
++                Assert.IsFalse(paths.Any(File.Exists));
++                Assert.AreEqual(0L, owner.Capacity.Used);
++            }
++        }
++        finally { Directory.Delete(root, recursive: true); }
++    }
++}

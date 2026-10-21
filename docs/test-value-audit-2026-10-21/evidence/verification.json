@@ -1,0 +1,325 @@
+{
+  "audit_date_utc": "2026-10-21",
+  "baseline_commit": "465088ed0b575f055beb6851e98d28ed22fb9928",
+  "scope": {
+    "mstest_files": 55,
+    "mstest_classes": 57,
+    "mstest_methods": 452,
+    "mstest_cases": 1353,
+    "python_files": 38,
+    "python_driver_tests": 8,
+    "python_assertion_scopes": 126,
+    "catalogued_files": 132
+  },
+  "environment": {
+    "os": "Linux",
+    "dotnet_sdk": "10.0.402",
+    "dotnet_runtime": "10.0.13",
+    "qpdf": "12.3.2",
+    "libjpeg_turbo": "2.1.5 (build 20260406)",
+    "pdfcpu": "v0.16.2, commit b41a41d5, go1.27.2",
+    "font_sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673",
+    "dependency_source": "既存Docker image amane-pdf-api:site134-465088e / image prefix 67d204ed4e10からpdfcpu/font/libpdfiumのみ抽出。本監査のAPI/renderer/test assemblyはbaseline sourceからRelease build。",
+    "qpdf_path_note": "Ubuntu AppArmorのpath制約を避けるため同じ/usr/bin/qpdfを一時pathへコピー（CIと同方式）。",
+    "host_limits_note": "host実行はDockerのCPU1/cgroup1.5GiB/tmpfs256MiBを再現していない。"
+  },
+  "build": {
+    "command": "dotnet build --configuration Release -m:1 --disable-build-servers -v:normal",
+    "exit_code": 0,
+    "seconds": 14.47,
+    "warnings": 2,
+    "errors": 0,
+    "warning": "NU1900: NuGet脆弱性情報の取得先へ到達できず。コンパイル成功。"
+  },
+  "baseline": {
+    "command": "dotnet test --configuration Release --no-build -m:1 --logger 'trx;LogFileName=baseline.trx'",
+    "times": {
+      "creation": "2026-10-21T14:56:16.6424832+00:00",
+      "queuing": "2026-10-21T14:56:16.6424832+00:00",
+      "start": "2026-10-21T14:56:16.1201771+00:00",
+      "finish": "2026-10-21T15:01:55.7580665+00:00"
+    },
+    "counters": {
+      "total": "1353",
+      "executed": "1353",
+      "passed": "1353",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "summary": "1353 passed, 0 failed, 0 skipped; 5 m 39 s",
+    "trx_sha256": "b3193770f16d37505165d9aae169b89123c8b2449a07bb817e8942a6b2818729",
+    "conditional_noop_methods": [
+      "FillTemplateCapacityTests.UpperLimits_Single",
+      "FillTemplateCapacityTests.UpperLimits_TwoConcurrent"
+    ]
+  },
+  "python_driver": {
+    "command": "/usr/bin/python3 scripts/from-images-followup-test.py",
+    "tests": 8,
+    "passed": 8,
+    "seconds": 0.057
+  },
+  "jpeg_tools": {
+    "command": "/usr/bin/python3 scripts/compress-validation.py --tools",
+    "exit_code": 0,
+    "result": "JPEG required options: real conversion PASS"
+  },
+  "not_executed": [
+    "今回のDocker image buildとCI Docker検証全体",
+    "手動容量/混在/AS/decoder閾値探索",
+    "glyph生成 --check とmodule metadata検証の再実行"
+  ],
+  "mutations": [
+    {
+      "name": "query-validation-removed",
+      "counters": {
+        "total": "3",
+        "executed": "3",
+        "passed": "3",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "cases": 1,
+          "seconds": 0.6714608,
+          "outcomes": {
+            "Passed": 1
+          }
+        },
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "cases": 1,
+          "seconds": 0.4309738,
+          "outcomes": {
+            "Passed": 1
+          }
+        },
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "cases": 1,
+          "seconds": 0.4137643,
+          "outcomes": {
+            "Passed": 1
+          }
+        }
+      ],
+      "trx_sha256": "c4d2aba3ba5ffdf8e0fdef499d892cc5da26b123a8d9939e4866aba7989f76cc"
+    },
+    {
+      "name": "query-strengthened-mutant",
+      "counters": {
+        "total": "3",
+        "executed": "3",
+        "passed": "0",
+        "failed": "3",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "cases": 1,
+          "seconds": 0.6835128,
+          "outcomes": {
+            "Failed": 1
+          }
+        },
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "cases": 1,
+          "seconds": 0.4420344,
+          "outcomes": {
+            "Failed": 1
+          }
+        },
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "cases": 1,
+          "seconds": 0.434145,
+          "outcomes": {
+            "Failed": 1
+          }
+        }
+      ],
+      "trx_sha256": "8b67eb487658a0dd685def4ac6cd8d0d8f8d50924951d023c4fadf61d6b6930c"
+    },
+    {
+      "name": "query-strengthened-control",
+      "counters": {
+        "total": "3",
+        "executed": "3",
+        "passed": "3",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "cases": 1,
+          "seconds": 0.6894442,
+          "outcomes": {
+            "Passed": 1
+          }
+        },
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "cases": 1,
+          "seconds": 0.4528395,
+          "outcomes": {
+            "Passed": 1
+          }
+        },
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "cases": 1,
+          "seconds": 0.4375051,
+          "outcomes": {
+            "Passed": 1
+          }
+        }
+      ],
+      "trx_sha256": "190c38886768590156cf646d3c016266158bf3d8682ef281a0f9df34c5ac60c8"
+    },
+    {
+      "name": "multipart-validation-removed",
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "1",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "cases": 1,
+          "seconds": 0.7687845,
+          "outcomes": {
+            "Passed": 1
+          }
+        }
+      ],
+      "trx_sha256": "b6845447705ce7fe7a906c22712a70387dce0b205e8d4c1f55e0cfce8ba8c39e"
+    },
+    {
+      "name": "multipart-strengthened-mutant",
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "cases": 1,
+          "seconds": 0.7586667,
+          "outcomes": {
+            "Failed": 1
+          }
+        }
+      ],
+      "trx_sha256": "f2c39f911b36863e89f2cbb37fd6813e74fda83314063c8c438583c8f31f2ff0"
+    },
+    {
+      "name": "multipart-strengthened-control",
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "1",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "cases": 1,
+          "seconds": 0.7619272,
+          "outcomes": {
+            "Passed": 1
+          }
+        }
+      ],
+      "trx_sha256": "687e3bf909dd44dfbb8c068d601512debabd8dee61489f3672a348be332a96a3"
+    }
+  ]
+}
