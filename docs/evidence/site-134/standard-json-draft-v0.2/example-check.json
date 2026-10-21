@@ -1,0 +1,60 @@
+{
+  "scope": "JSON example syntax and quantity grammar only; no API calls or product validator",
+  "pdf_api_calls": 0,
+  "examples": {
+    "company-registration.json": {
+      "json_valid": true,
+      "quantity_strings": [],
+      "all_other_values_including_confirmed_amounts_unchanged": true
+    },
+    "estimate-1.json": {
+      "json_valid": true,
+      "quantity_strings": [
+        "12345.000"
+      ],
+      "all_other_values_including_confirmed_amounts_unchanged": true
+    },
+    "estimate-8.json": {
+      "json_valid": true,
+      "quantity_strings": [
+        "99999.999",
+        "0.001",
+        "2.50",
+        "1.000",
+        "3",
+        "11111",
+        "123.45",
+        "0.010"
+      ],
+      "all_other_values_including_confirmed_amounts_unchanged": true
+    },
+    "invoice-1.json": {
+      "json_valid": true,
+      "quantity_strings": [
+        "99999.999"
+      ],
+      "all_other_values_including_confirmed_amounts_unchanged": true
+    },
+    "invoice-8.json": {
+      "json_valid": true,
+      "quantity_strings": [
+        "99999.999",
+        "0.001",
+        "2.50",
+        "1.000",
+        "3",
+        "11111",
+        "123.45",
+        "0.010"
+      ],
+      "all_other_values_including_confirmed_amounts_unchanged": true
+    },
+    "provided-amounts-unchanged.json": {
+      "json_valid": true,
+      "quantity_strings": [
+        "1.25"
+      ],
+      "all_other_values_including_confirmed_amounts_unchanged": true
+    }
+  }
+}
