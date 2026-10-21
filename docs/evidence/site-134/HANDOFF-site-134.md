@@ -8,7 +8,7 @@
 
 **追加方針：小数点揃えと当初の右揃えの両モードを用意する。** 数量規則・拡張セルは共通とし、配置だけを切り替える。小数点揃えでは上記の整数末尾基準、右揃えでは数量文字列全体の右端を揃える。設定仕様も採用済み。登録帳票設定直下と発行JSONルートの`quantityAlignment`で選び、値は`decimal`／`right`、既定decimal、発行時上書き可、発行値＞登録値＞decimal。登録値不正は正しい発行値があっても拒否する。PDF APIへ渡す新しいalign値ではない。
 
-**採用済みの設定仕様（製品未実装）**：[数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)。発行値と登録値を検証してから優先順位を適用し、登録値が不正なら上書きで救済しない。上書きはその発行だけに適用し登録値を変更しない。省略とnullを区別し、発行エラーは`/quantityAlignment`、登録値不正は`/templateId`と登録元source.path=`/quantityAlignment`を示す。採否判断は完了し、検証用コピーでの設定解決・拒否の確認を残す。
+**採用済みの設定仕様（製品未実装）**：[数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)。発行値と登録値を検証してから優先順位を適用し、登録値が不正なら上書きで救済しない。上書きはその発行だけに適用し登録値を変更しない。省略とnullを区別し、発行エラーは`/quantityAlignment`、登録値不正は`/templateId`と登録元source.path=`/quantityAlignment`を示す。採否判断は完了。[検証用スクリプトの結果](quantity-resolution-validation/README.md)で正常9件の優先順位と実効モードPDF、不正40件の描画前拒否・API呼び出し0を確認済み。製品保存・HTTPの確認は別途。
 
 採用範囲は数量の桁数・表示・数量モード設定と罫線方針。会社名／宛先／住所の20文字×2行や`nameLines`、取引・備考配分、その他の必須性・金額／税区分・数量モード以外のHTTP契約は引き続き[判断資料](INITIAL-SPEC-RECOMMENDATION.md)の未確定事項。
 
@@ -44,7 +44,7 @@
 
 数量配置の入口は[compare-decimal-quantity.py](compare-decimal-quantity.py)の`decimal_fields()`。論理セルは数量x=.3800・幅=.0950（56.525pt、右端.4750維持）、品名x=.0550・幅=.3200（190.4pt）で、相互に2.975ptの間隔。検証版の小数点基準は261.469pt、API座標の小数4桁への丸め余白は0.06pt。実送信矩形は[fields.json](quantity-decimal-comparison/invoice-8/proposed/fields.json)／[quantity-placement.json](quantity-decimal-comparison/invoice-8/quantity-placement.json)を参照する。固定フォントやレイアウトを変える場合は送り幅と基準位置を再確認する。
 
-上記のx調整はdecimalモードのみ。rightモードは同じ拡張セルで既存APIのalign=rightを使う。旧幅・5文字制限へ戻さず、末尾0や確定金額も変えない。以前の比較PDFの現行側は旧幅の右揃え。[今回の同一入力比較](quantity-mode-comparison/README.md)では、拡張セルの両モード・最大9文字・末尾0・隣接欄への影響を両帳票1／8明細で確認済み。切替はローカルfixtureであり、製品設定の保存／読込・既定値・不正値応答は未確認。
+上記のx調整はdecimalモードのみ。rightモードは同じ拡張セルで既存APIのalign=rightを使う。旧幅・5文字制限へ戻さず、末尾0や確定金額も変えない。以前の比較PDFの現行側は旧幅の右揃え。[今回の同一入力比較](quantity-mode-comparison/README.md)では、拡張セルの両モード・最大9文字・末尾0・隣接欄への影響を両帳票1／8明細で確認済み。切替はローカルfixtureであり、製品設定の保存／読込・製品HTTP応答は未確認。既定値・優先順位・拒否規則は[後続のfixture検証](quantity-resolution-validation/README.md)で確認済み。
 
 既存のブラウザ用整数数量・税額計算をB2Bの表示変換へ流用しない。共通テンプレート資産の更新時も、一般向け機能の入力・計算契約を無断で変更しない。
 
@@ -58,7 +58,7 @@
 4. **採用条件を確定**：既存fill-template 1回→stamp-image 2回を初期方式とし、siteの共有実行枠を踏まえた呼び出し条件、品質・時間・最終サイズの基準を決める。検証時の単独10秒／同時各20秒／2MiBは仮目安。site経由の測定とAPI単体の実測を区別する。長時間の負荷試験は追加しない。
 5. **結果を管理先へ統合**：標準JSON例・項目対応・エラー例・固定SHA・代表PDF・測定条件・採用方式・制限を #134 にまとめ、親 #133 に判断と後続作業を反映する。
 6. **v0.2の検証用変換を確認**：過去の`validate-standard-json.py`はv0.1の全体5文字制限のまま。旧例・測定の再現用として残し、別の改訂用コピーで新しい数量規則と配置をつなぎ、v0.2の両帳票1／8明細を確認する。`99999.999`等のfields描画は確認済みだが、v0.2全体の事前検証→表示変換→API描画を完了扱いにしない。
-7. **採用済み設定の解決・拒否を検証**：両モードの描画と設定仕様の採否は確認済み。[採用した解決表](QUANTITY-MODE-SETTINGS-DRAFT.md)の省略／上書き／不正値を検証用JSONで確認し、実効モードを既存配置へつなぐ。正しい発行指定でも不正登録を拒否し、元入力path／登録元sourceを示してPDF APIを呼ばないことを確認する。登録保存・製品HTTPの実装は後続であり、開始しない。
+7. **採用済み設定のfixture検証は完了**：[設定解決・拒否・実効モードPDF](quantity-resolution-validation/README.md)で正常9件と不正40件を確認。正しい発行指定でも不正登録を拒否し、元入力path／登録元source、拒否時の実client呼び出し0を照合した。登録保存・製品HTTP・v0.2全体の事前検証は未確認。製品実装は開始しない。
 
 数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。数量値のHTTP／codeの正式契約は未確定。quantityAlignmentの設定エラーは採用済み仕様を参照する。
 

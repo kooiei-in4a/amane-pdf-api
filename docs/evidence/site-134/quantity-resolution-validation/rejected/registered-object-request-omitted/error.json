@@ -1,0 +1,15 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/templateId",
+      "code": "registered-data-invalid",
+      "source": {
+        "kind": "templateSettings",
+        "path": "/quantityAlignment",
+        "code": "invalid-type"
+      }
+    }
+  ]
+}
