@@ -10,6 +10,8 @@
 
 **採用済みの設定仕様（製品未実装）**：[数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)。発行値と登録値を検証してから優先順位を適用し、登録値が不正なら上書きで救済しない。上書きはその発行だけに適用し登録値を変更しない。省略とnullを区別し、発行エラーは`/quantityAlignment`、登録値不正は`/templateId`と登録元source.path=`/quantityAlignment`を示す。採否判断は完了。[検証用スクリプトの結果](quantity-resolution-validation/README.md)で正常9件の優先順位と実効モードPDF、不正40件の描画前拒否・API呼び出し0を確認済み。製品保存・HTTPの確認は別途。
 
+[長い会社名・宛先の推奨案](NAME-RECIPIENT-SPEC-PROPOSAL.md)を追加。20文字×2行／nameLines、宛先住所の対象範囲、部署・担当者の2行予算、旧形式の扱いは未採用。名称のfields描画は確認済みだが、nameLinesからの通し検証は採用後の残作業。
+
 採用範囲は数量の桁数・表示・数量モード設定と罫線方針。会社名／宛先／住所の20文字×2行や`nameLines`、取引・備考配分、その他の必須性・金額／税区分・数量モード以外のHTTP契約は引き続き[判断資料](INITIAL-SPEC-RECOMMENDATION.md)の未確定事項。
 
 現在は検証用サンプルまで。**製品実装はまだ行わないという依頼に従い、製品コード・API契約・CI・共有mainは未変更。** 本書は、次の担当が変更対象と未確定事項を把握するための引き継ぎである。#134 全体は未完了、Issueはopenのまま。

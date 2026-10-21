@@ -76,6 +76,8 @@ periodは`start`と`end`を両方必須、実在日付、start≦end。dateと�
 
 ## 4. 長い会社名・宛先情報
 
+[名称・宛先の詳しい推奨案とN1〜N4の判断](NAME-RECIPIENT-SPEC-PROPOSAL.md)に整理した。20文字×2行／nameLinesと宛先住所・部署・担当者の扱いは未採用。v0.2通し検証の旧name形式と区別する。
+
 推奨する最小のテンプレート調整は、invoice／estimateの`issuer`・`recipient`・`address`の幅を`.29→.34`とし、名称2欄をmultiline・2行・maxLength41にする。住所もmaxLength41へ。フォント9pt・既存x/y/高さは維持する。2行名の必要高さ19.8ptは元の高さ21.892pt内に収まる。幅202.3ptに対し全角20文字は最大180pt程度で、実測でも表示・文字抽出が成功した。全体の位置・罫線・8明細・合計・画像は移動しない。
 
 これは検証用コピーの調整案。製品では`definition.json`だけを直接書き換えず、生成元・PDF・定義・hash manifestと関連する検証をそろえる。元の指定は[site生成元](https://github.com/kooiei-in4a/amane-tools-site/blob/e08aed241245f9f84a7336302edcb7d6a89a57b1/scripts/make-pdf-templates.mjs#L26)、幅／高さの判定は[API描画処理](https://github.com/kooiei-in4a/amane-pdf-api/blob/465088ed0b575f055beb6851e98d28ed22fb9928/src/Amane.Pdf.Api/FillTemplateFields.cs#L119)に根拠がある。

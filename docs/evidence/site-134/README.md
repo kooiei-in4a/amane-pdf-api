@@ -5,6 +5,7 @@
 - [site担当向け引き継ぎ文](HANDOFF-site-134.md)：変更対象、#134の残作業、テンプレート調整部分／Issue全体の完成条件。
 - [最新の標準JSON案 v0.2](standard-json-draft-v0.2/README.md)：採用した数量規則・表示変換、登録／発行データ、エラー例・改訂入力例。数量以外には未確定事項が残り、製品未実装。
 - [旧標準JSON案 v0.1](standard-json-draft/README.md)：過去の検証再現用。旧全体5文字制限を現行案へ引き継がない。
+- [長い会社名・宛先情報の推奨案](NAME-RECIPIENT-SPEC-PROPOSAL.md)：20文字×2行／nameLines、宛先住所・部署・担当者、旧形式の扱いと採否判断。**未採用・製品未実装。**
 - [標準JSON v0.2候補全体の通し検証](standard-json-v02-validation/README.md)：採用数量・設定解決を含む事前検証→変換→PDF、正常14件・エラー65件を確認。未確定条件は候補として明記。
 - [設定解決の検証結果](quantity-resolution-validation/README.md)：正常9件の優先順位と実効モードPDF、不正40件の拒否・API呼び出し0を確認。製品保存／HTTPは未検証。
 - [採用した数量モード設定](QUANTITY-MODE-SETTINGS-DRAFT.md)：設定場所・key・既定値・発行上書き／優先順位・不正値のエラーと、残る確認事項。**設計採用済み・製品未実装。**
