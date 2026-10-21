@@ -6,6 +6,8 @@
 
 管理先：[site #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134)、親：[site #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)。根拠の固定版：API `465088ed0b575f055beb6851e98d28ed22fb9928` / site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。採用罫線の共有資料は [既存の成果物一覧](../README.md)。
 
+**後続の検証結果**：[本案のJSONから生成した帳票・入力エラー検証](../standard-json-validation/README.md)を追加した。以下の「机上確認のみ／API追加実測は未実施」は案の作成時点の記録であり、後続検証は別資料で区別している。製品変換・製品validatorは引き続き未実装で、候補仕様も未確定。
+
 ## 1. 登録時と発行時の分離
 
 | 時点 | 送る内容 | 扱い |

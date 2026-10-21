@@ -1,0 +1,1388 @@
+{
+  "proposal_commit": "ffa49b4228faa24e0d5166a5eeb07c25d689a58c",
+  "api_sha": "465088ed0b575f055beb6851e98d28ed22fb9928",
+  "site_assets_sha": "e08aed241245f9f84a7336302edcb7d6a89a57b1",
+  "scope": "fixture-only JSON validation/mapping; no product API, persistence or authentication",
+  "cases": {
+    "invoice-1": {
+      "fill": {
+        "seconds": 0.2852865580061916,
+        "status": 200,
+        "bytes": 214187,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.22195928602013737,
+        "status": 200,
+        "bytes": 217647,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18378428800497204,
+        "status": 200,
+        "bytes": 221148,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6910498299985193,
+      "json_to_pdf_seconds": 0.691820629988797,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 268,
+        "words": 51,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引日 2026/10/20\n試験入力につき振込不要",
+        "lines": 2,
+        "characters": 26
+      },
+      "confirmed_values_preserved": true,
+      "fields": 44,
+      "rendered_lines": 47
+    },
+    "invoice-8": {
+      "fill": {
+        "seconds": 0.22826567600714043,
+        "status": 200,
+        "bytes": 214857,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.19319116399856284,
+        "status": 200,
+        "bytes": 218317,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.1904052369936835,
+        "status": 200,
+        "bytes": 221818,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6118786380102392,
+      "json_to_pdf_seconds": 0.6127727479906753,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 459,
+        "words": 86,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引期間\n2026/10/01～2026/10/31\n期間と備考の併記例",
+        "lines": 3,
+        "characters": 36
+      },
+      "confirmed_values_preserved": true,
+      "fields": 79,
+      "rendered_lines": 83
+    },
+    "estimate-1": {
+      "fill": {
+        "seconds": 0.22669715399388224,
+        "status": 200,
+        "bytes": 213119,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.18267471401486546,
+        "status": 200,
+        "bytes": 216579,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.19172695599263534,
+        "status": 200,
+        "bytes": 220080,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6011109460087027,
+      "json_to_pdf_seconds": 0.6018494569871109,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 245,
+        "words": 46,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引日 2026/10/20\n試験入力につき振込不要",
+        "lines": 2,
+        "characters": 26
+      },
+      "confirmed_values_preserved": true,
+      "fields": 42,
+      "rendered_lines": 44
+    },
+    "estimate-8": {
+      "fill": {
+        "seconds": 0.22626362400478683,
+        "status": 200,
+        "bytes": 213314,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.23849471998983063,
+        "status": 200,
+        "bytes": 216774,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.23669551601051353,
+        "status": 200,
+        "bytes": 220275,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.7014649200136773,
+      "json_to_pdf_seconds": 0.7023263910086825,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 436,
+        "words": 81,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引期間\n2026/10/01～2026/10/31\n期間と備考の併記例",
+        "lines": 3,
+        "characters": 36
+      },
+      "confirmed_values_preserved": true,
+      "fields": 77,
+      "rendered_lines": 80
+    },
+    "provided-amounts-unchanged": {
+      "fill": {
+        "seconds": 0.21479206799995154,
+        "status": 200,
+        "bytes": 215081,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.1875980070035439,
+        "status": 200,
+        "bytes": 218541,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.18190667699673213,
+        "status": 200,
+        "bytes": 222042,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.584307142009493,
+      "json_to_pdf_seconds": 0.5850608600012492,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 281,
+        "words": 51,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引日 2026/10/20\n試験入力につき振込不要",
+        "lines": 2,
+        "characters": 26
+      },
+      "confirmed_values_preserved": true,
+      "fields": 44,
+      "rendered_lines": 47
+    },
+    "date-notes-boundary": {
+      "fill": {
+        "seconds": 0.20727391200489365,
+        "status": 200,
+        "bytes": 213331,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.20936720402096398,
+        "status": 200,
+        "bytes": 216791,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.2650638020131737,
+        "status": 200,
+        "bytes": 220292,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6817178929923102,
+      "json_to_pdf_seconds": 0.6824325600173324,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 290,
+        "words": 52,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引日 2026/10/20\n証証証証証証証証証証証証証証証証\n証証証証証証証証証証証証証証証証",
+        "lines": 3,
+        "characters": 48
+      },
+      "confirmed_values_preserved": true,
+      "fields": 44,
+      "rendered_lines": 48
+    },
+    "period-notes-boundary": {
+      "fill": {
+        "seconds": 0.2115458890039008,
+        "status": 200,
+        "bytes": 214069,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.17966673997580074,
+        "status": 200,
+        "bytes": 217529,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.1808353749802336,
+        "status": 200,
+        "bytes": 221030,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.5720603369991295,
+      "json_to_pdf_seconds": 0.5730087510019075,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 466,
+        "words": 86,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引期間\n2026/12/31～2027/01/01\n証証証証証証証証証証証証証証証証",
+        "lines": 3,
+        "characters": 43
+      },
+      "confirmed_values_preserved": true,
+      "fields": 79,
+      "rendered_lines": 83
+    },
+    "estimate-no-transaction": {
+      "fill": {
+        "seconds": 0.2463041490118485,
+        "status": 200,
+        "bytes": 211745,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.19594839002820663,
+        "status": 200,
+        "bytes": 215205,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.21530664901365526,
+        "status": 200,
+        "bytes": 218706,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6575718609965406,
+      "json_to_pdf_seconds": 0.6584262489923276,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 267,
+        "words": 46,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "証証証証証証証証証証証証証証証証\n証証証証証証証証証証証証証証証証\n証証証証証証証証証証証証証証",
+        "lines": 3,
+        "characters": 48
+      },
+      "confirmed_values_preserved": true,
+      "fields": 42,
+      "rendered_lines": 45
+    },
+    "money-boundary": {
+      "fill": {
+        "seconds": 0.2266734599834308,
+        "status": 200,
+        "bytes": 214151,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "logo": {
+        "seconds": 0.21335605200147256,
+        "status": 200,
+        "bytes": 217611,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "seal": {
+        "seconds": 0.2107539069838822,
+        "status": 200,
+        "bytes": 221112,
+        "content_type": "application/pdf",
+        "problem": null
+      },
+      "total_seconds": 0.6507962350151502,
+      "json_to_pdf_seconds": 0.6515223809983581,
+      "extraction": {
+        "exact_per_rectangle_text": true,
+        "characters": 353,
+        "words": 51,
+        "words_outside_rectangles": [],
+        "pages": 1
+      },
+      "images": [
+        {
+          "image": "logo",
+          "expected_pt": [
+            29.75,
+            33.68,
+            107.1,
+            35.7
+          ],
+          "changed_pixel_bbox": [
+            63,
+            71,
+            270,
+            135
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.3333333333333144
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 255,
+              "max_channel_error": 0.0
+            }
+          ]
+        },
+        {
+          "image": "seal",
+          "expected_pt": [
+            487.9,
+            218.92000000000002,
+            59.5,
+            59.5
+          ],
+          "changed_pixel_bbox": [
+            979,
+            441,
+            1090,
+            552
+          ],
+          "samples": [
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 128,
+              "max_channel_error": 0.4117647058823479
+            },
+            {
+              "alpha": 0,
+              "max_channel_error": 0.0
+            },
+            {
+              "alpha": 200,
+              "max_channel_error": 0.470588235294116
+            }
+          ]
+        }
+      ],
+      "notes": {
+        "text": "取引日 2026/10/20\n試験入力につき振込不要",
+        "lines": 2,
+        "characters": 26
+      },
+      "confirmed_values_preserved": true,
+      "fields": 44,
+      "rendered_lines": 47
+    }
+  },
+  "errors": {
+    "nine-items": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/8",
+            "code": "too-many-items"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "empty-items": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items",
+            "code": "too-few-items"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "missing-amount": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "required"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "numeric-quantity": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "invalid-type"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "long-quantity": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/quantity",
+            "code": "quantity-format"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "negative-amount": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "out-of-range"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "fractional-amount": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "invalid-integer"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "money-over-limit": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/totalAmount",
+            "code": "out-of-range"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "unsupported-tax": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/taxRate",
+            "code": "unsupported-tax-rate"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "unknown-recipient-field": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/addressLines",
+            "code": "unknown-field"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "unsupported-character": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "unsupported-character"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "combining-mark": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "combining-mark-not-supported"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "placeholder": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "forbidden-sequence"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "invalid-date": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction/date",
+            "code": "invalid-date"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "reversed-period": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction/period/end",
+            "code": "invalid-period"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "ambiguous-transaction": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction",
+            "code": "ambiguous-transaction"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "missing-invoice-transaction": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/transaction",
+            "code": "required"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "period-and-two-notes": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/notesLines/1",
+            "code": "notes-budget-exceeded"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "date-and-three-notes": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/notesLines/2",
+            "code": "notes-budget-exceeded"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "wrong-expiry": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/validUntil",
+            "code": "not-applicable"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "invalid-company-reference": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "invalid-reference"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "registered-company-character": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/companyId",
+            "code": "registered-data-invalid",
+            "source": {
+              "kind": "company",
+              "path": "/name",
+              "code": "unsupported-character"
+            }
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "narrow-template-fixture": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/recipient/name",
+            "code": "field-overflow"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "invalid-json": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "",
+            "code": "invalid-json"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "duplicate-key": {
+      "problem": {
+        "status": 400,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "",
+            "code": "duplicate-key"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    },
+    "exponent-money": {
+      "problem": {
+        "status": 422,
+        "code": "validation-failed",
+        "errors": [
+          {
+            "path": "/items/0/amount",
+            "code": "invalid-integer"
+          }
+        ]
+      },
+      "pdf_api_calls": 0,
+      "pdf_created": false,
+      "origin": "local fixture validator, not site HTTP"
+    }
+  },
+  "environment": {
+    "image_id": "sha256:67d204ed4e10d643a41ffb248a621ed0a2376660f26f5051d0952c65cc10d0e3",
+    "limits": "existing smoke isolated=True: CPU 1, RAM1536MiB/no extra swap, tmpfs256MiB, read-only, shared2/queue0",
+    "transport": "docker exec loopback HTTP; no site relay",
+    "timing": "JSON parse+mapping to final PDF body; excludes startup/save/render/extraction"
+  },
+  "api_errors": {
+    "raw-overflow": {
+      "seconds": 0.12281206902116537,
+      "status": 422,
+      "bytes": 160,
+      "content_type": "application/problem+json",
+      "problem": {
+        "type": "https://tools.ietf.org/html/rfc4918#section-11.2",
+        "title": "文字が指定した矩形に収まりません。",
+        "status": 422,
+        "reason": "field-overflow"
+      }
+    },
+    "raw-unsupported": {
+      "seconds": 0.06046860700007528,
+      "status": 400,
+      "bytes": 127,
+      "content_type": "application/problem+json",
+      "problem": {
+        "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+        "title": "リクエストの形式が不正です。",
+        "status": 400
+      }
+    },
+    "raw-empty": {
+      "seconds": 0.06370951602002606,
+      "status": 400,
+      "bytes": 127,
+      "content_type": "application/problem+json",
+      "problem": {
+        "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+        "title": "リクエストの形式が不正です。",
+        "status": 400
+      }
+    }
+  },
+  "api_post_count": 30,
+  "health_status": 200,
+  "memory_peak_bytes": 87707648,
+  "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n",
+  "cleanup": "existing assert_clean passed after every success/failure"
+}

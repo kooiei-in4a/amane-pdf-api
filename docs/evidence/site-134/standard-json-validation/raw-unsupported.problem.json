@@ -1,0 +1,5 @@
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "リクエストの形式が不正です。",
+  "status": 400
+}
