@@ -25,11 +25,14 @@ ZIPテストはHTTPの受付や500頁の実抽出を検証するものではな�
 | 入力検証7変異 | 7/7で期待assertと失敗件数が一致。意図した失敗10件、前後の正常対照は各4成功。 |
 | 改善側7変異 | 7/7で期待assertと失敗件数が一致。意図した失敗19件、影響しない行9成功、前後の正常対照は各20成功。 |
 | Release一括 | **1303成功・2skipの時点でtesthost crash、残り35ケース未完了**。assert失敗0だが全件完走ではない。 |
-| 分割再実行 | 自動承認処理がBad Requestで2回失敗し、実行前に停止。安全性の否認ではなく承認システムのエラー。全件確認はPRのCIへ引き継ぐ。 |
+| Release全件・分割再実行 | **3群合計1338成功・2skip・失敗0**。第1群500成功、第2群397成功・2skip、第3群441成功。58クラスを重複なく割り当て、全452メソッド・1340ケースが揃うことを確認。 |
+| コード変更コミットのCI | **build-test／dockerとも成功**。CI一括は1338成功・2skip・失敗0（4分32秒）。Dockerの上限fixtureは単独・2並列とも成功し、残存job/process・OOMは0。 |
+
+分割再実行の最初の2回は、自動承認処理のBad Requestで実行前に停止した。安全性の否認ではなく承認システムのエラーで、環境更新後に再試行し3群とも完了した。[batches.json](batches.json)は58クラスの割当、verification.jsonのfull_suite.runsは各実行の時刻・件数・TRX hash。分割成功を一括完走とは表現しない。
 
 改善側の最初の実行も、既存6変異後のZIP変異のbuild中に終了コード143で中断した。この実行は完了結果に数えず、正常対照を含む7変異を新しい出力先で再実行し完了した。本番変異のAPI DLL hashは正常対照から変化し、実験後は正常対照のhashへ戻ることも確認した。binary helper変異はテスト側の変異なのでAPI DLLは変わらない。
 
-testhost crashは以前にも発生しており、原因未確定のまま記録する。tests.csvは、今回一括実行で当該メソッドの全ケースが完了した行だけ実行結果を更新した。他の行は以前の成功結果とその証拠参照を保持し、全1340ケースが今回成功したとは扱わない。CIの最新状態は[PR #85](https://github.com/kooiei-in4a/amane-pdf-api/pull/85)のChecksで確認する。
+testhost crashは以前にも発生しており、原因未確定のまま記録する。tests.csvは今回の3群による全件結果で更新した。CIは[コード変更コミットb195587の実行](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/39865598926)で一括完走しており、[ci.json](ci.json)にjob ID・件数・容量結果を記録。全テストC#ファイルのhashが現在と一致することも照合した。この後の台帳更新はテストと本番のsourceを変更していない。最新headの状態は[PR #85](https://github.com/kooiei-in4a/amane-pdf-api/pull/85)のChecksを参照。
 
 入力検証7変異と改善側の既存6変異の差分は、[validation-fix](../validation-fix/README.md)と[improvements](../improvements/README.md)のpatchと同じ。追加のZIP変異は[split-entry-comment-inflated.patch](split-entry-comment-inflated.patch)。Failed件数だけでなく、各結果の`expected_failure`と`matched_assertions`を確認する。正常対照は各群の実験前後に実行する。
 

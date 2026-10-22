@@ -1,8 +1,8 @@
 # 全MSTestメソッド台帳
 
-初回commit `465088ed0b575f055beb6851e98d28ed22fb9928`からの改善後の現在値。56ファイル・58クラス・452メソッド、展開1340ケース。レビュー前の完走は1338成功・容量2件skip、容量2件は別途上限fixture付きで成功。レビュー修正後の一括は1303成功・2skipでtesthost crash（35ケース未完了）。今回メソッドの全ケースが完了した行だけ結果を更新し、他は以前の成功結果と証拠参照を保持する。
+初回commit `465088ed0b575f055beb6851e98d28ed22fb9928`からの改善後の現在値。56ファイル・58クラス・452メソッド、展開1340ケース。レビュー修正後は3群で全件を確認し、1338成功・容量2件skip。表とCSVの現在の結果はこの3群による。CIはコード変更コミットで一括1338成功・2skip、Dockerの容量2件も成功。ローカル一括のtesthost crashは履歴に残す。
 
-[最新の再検証](evidence/review-fixes/README.md)。[CSV](tests.csv)に現在の判定根拠/経路/件数/時間とbaseline_*の初回値を併記。source行番号は現在。[統合履歴](retired-tests.csv)に削除した1メソッドの統合先を記録。[改善台帳](low-value.md)13項目は対応済み。
+[最新の再検証](evidence/review-fixes/README.md)。[最新の再検証](evidence/review-fixes/README.md)。[CSV](tests.csv)に現在の判定根拠/経路/件数/時間とbaseline_*の初回値を併記。source行番号は現在。[統合履歴](retired-tests.csv)に削除した1メソッドの統合先を記録。[改善台帳](low-value.md)13項目は対応済み。
 
 ## CleanCapacityTests
 

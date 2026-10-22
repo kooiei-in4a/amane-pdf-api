@@ -22,6 +22,120 @@
     "log_sha256": "d2c92571921cf7a294825bc0f4b4ab16939f8c59291abd40ab26be49b1d943f7"
   },
   "full_suite": {
+    "counters": {
+      "total": "1340",
+      "executed": "1338",
+      "passed": "1338",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "run_errors": [],
+    "mode": "three disjoint class groups",
+    "runs": [
+      {
+        "times": {
+          "creation": "2026-10-22T00:01:19.6338594+00:00",
+          "queuing": "2026-10-22T00:01:19.6338594+00:00",
+          "start": "2026-10-22T00:01:19.0766791+00:00",
+          "finish": "2026-10-22T00:03:04.1568197+00:00"
+        },
+        "counters": {
+          "total": "500",
+          "executed": "500",
+          "passed": "500",
+          "failed": "0",
+          "error": "0",
+          "timeout": "0",
+          "aborted": "0",
+          "inconclusive": "0",
+          "passedButRunAborted": "0",
+          "notRunnable": "0",
+          "notExecuted": "0",
+          "disconnected": "0",
+          "warning": "0",
+          "completed": "0",
+          "inProgress": "0",
+          "pending": "0"
+        },
+        "trx_sha256": "4ab859569c8c1176ff7e1c35038862579ec1fd48fc9afbb9d5b5d2931e583f8f",
+        "run_errors": []
+      },
+      {
+        "times": {
+          "creation": "2026-10-22T00:03:13.6553633+00:00",
+          "queuing": "2026-10-22T00:03:13.6553633+00:00",
+          "start": "2026-10-22T00:03:13.0616153+00:00",
+          "finish": "2026-10-22T00:04:49.1203195+00:00"
+        },
+        "counters": {
+          "total": "399",
+          "executed": "397",
+          "passed": "397",
+          "failed": "0",
+          "error": "0",
+          "timeout": "0",
+          "aborted": "0",
+          "inconclusive": "0",
+          "passedButRunAborted": "0",
+          "notRunnable": "0",
+          "notExecuted": "0",
+          "disconnected": "0",
+          "warning": "0",
+          "completed": "0",
+          "inProgress": "0",
+          "pending": "0"
+        },
+        "trx_sha256": "726ad7c3017bec20fe3c29ccf0fca2c4b6db9ed7113ba36f4f7d5d91e7b57c05",
+        "run_errors": []
+      },
+      {
+        "times": {
+          "creation": "2026-10-22T00:05:29.4924462+00:00",
+          "queuing": "2026-10-22T00:05:29.4924462+00:00",
+          "start": "2026-10-22T00:05:28.9335436+00:00",
+          "finish": "2026-10-22T00:07:52.1610007+00:00"
+        },
+        "counters": {
+          "total": "441",
+          "executed": "441",
+          "passed": "441",
+          "failed": "0",
+          "error": "0",
+          "timeout": "0",
+          "aborted": "0",
+          "inconclusive": "0",
+          "passedButRunAborted": "0",
+          "notRunnable": "0",
+          "notExecuted": "0",
+          "disconnected": "0",
+          "warning": "0",
+          "completed": "0",
+          "inProgress": "0",
+          "pending": "0"
+        },
+        "trx_sha256": "c1776d99571f3854fd8bb9d09aeb992d109089ac0545619d5ddb2dc001b556e1",
+        "run_errors": []
+      }
+    ],
+    "skipped": 2,
+    "exit_code": 0,
+    "completed": true,
+    "expected_cases": 1340,
+    "missing_cases": 0,
+    "status": "3群を順番に実行し全件完了。一括実行とは区別する。"
+  },
+  "aborted_full_suite": {
     "times": {
       "creation": "2026-10-21T23:49:40.6466608+00:00",
       "queuing": "2026-10-21T23:49:40.6466608+00:00",
@@ -49,13 +163,7 @@
     "trx_sha256": "9354c86bc8b24159990e0bb30dd77cdc3ff7aa70c0d6ee32d71b843f936a269c",
     "run_errors": [
       "The active test run was aborted. Reason: Test host process crashed"
-    ],
-    "skipped": 2,
-    "exit_code": 1,
-    "completed": false,
-    "expected_cases": 1340,
-    "missing_cases": 35,
-    "status": "testhost crash。一括完走ではない。"
+    ]
   },
   "runner_unit_tests": {
     "passed": 7,
@@ -163,7 +271,15 @@
     "rerun": "results-improvements.json"
   },
   "split_retry": {
-    "executed": false,
-    "reason": "自動承認処理がBad Requestで2回失敗。安全性の否認ではなく実行前の承認処理エラー。CIで全件を確認する。"
+    "executed": true,
+    "previous_error": "自動承認処理がBad Requestで2回失敗。環境更新後に再試行して3群が完了。"
+  },
+  "ci": {
+    "source_commit": "b195587a1f04a10f77bf76bf4ef45e07564731cb",
+    "url": "https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/39865598926",
+    "snapshot_sha256": "d6f86c0a953462476c7725cb407ef0ce80d641d9c466a90aa5364b1b1a66141f",
+    "source_test_hashes_match": true,
+    "build_test": "success",
+    "docker": "success"
   }
 }
