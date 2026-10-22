@@ -17,8 +17,43 @@ def records(kind):
 
 
 class MutationVerdictTests(unittest.TestCase):
-    def check(self, row, namespace):
-        return CHECK(row, sorted({r['method'] for r in row['results']}), namespace['EXPECTATIONS'][row['name']])
+    def check(self, row, namespace, check_cases=False):
+        # Historical records have no parameter names. Latest records must also satisfy the case mapping.
+        cases = namespace['CASE_OUTCOMES'].get(row['name']) if check_cases else None
+        return CHECK(row, sorted({r['method'] for r in row['results']}), namespace['EXPECTATIONS'][row['name']], cases)
+
+    def test_latest_records_match_assertions_parameter_cases_and_controls(self):
+        for kind, namespace in [('validation', VALIDATION), ('improvements', IMPROVEMENTS)]:
+            path = HERE.parent / 'review-fixes' / f'results-{kind}.json'
+            report = json.loads(path.read_text())
+            rows = report['mutations']
+            self.assertEqual(7, len(rows))
+            self.assertEqual({m[0] for m in namespace['MUTATIONS']}, {r['name'] for r in rows})
+            for row in rows:
+                with self.subTest(group=kind, mutation=row['name']):
+                    self.check(row, namespace, check_cases=True)
+            self.assertEqual(2, len(report['controls']))
+            self.assertEqual({'control-before', 'control-after'}, {r['name'] for r in report['controls']})
+            for row in report['controls']:
+                with self.subTest(group=kind, control=row['name']):
+                    CHECK(row, namespace['ALL'])
+                    self.assertEqual(namespace['CONTROL_CASES'], len(row['results']))
+
+    def test_wrong_missing_or_duplicate_parameter_names_are_rejected(self):
+        path = HERE.parent / 'review-fixes/results-improvements.json'
+        original = next(r for r in json.loads(path.read_text())['mutations'] if r['name'].startswith('overlay-'))
+        for kind in ('swapped', 'missing', 'duplicate'):
+            row = copy.deepcopy(original)
+            passed = next(r for r in row['results'] if r['outcome'] == 'Passed')
+            failed = next(r for r in row['results'] if r['outcome'] == 'Failed')
+            if kind == 'swapped':
+                passed['case_name'], failed['case_name'] = failed['case_name'], passed['case_name']
+            elif kind == 'missing':
+                del passed['case_name']
+            else:
+                failed['case_name'] = passed['case_name']
+            with self.subTest(kind=kind), self.assertRaises(AssertionError):
+                self.check(row, IMPROVEMENTS, check_cases=True)
 
     def test_recorded_validation_failures_match_their_assertions(self):
         for row in records('validation-fix'):

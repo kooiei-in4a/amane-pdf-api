@@ -94,102 +94,122 @@
         {
           "method": "PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead",
           "outcome": "Passed",
-          "duration": "00:00:06.8117328"
+          "duration": "00:00:06.8117328",
+          "case_name": "MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead"
         },
         {
           "method": "PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw",
           "outcome": "Passed",
-          "duration": "00:00:01.5738391"
+          "duration": "00:00:01.5738391",
+          "case_name": "BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.1324232"
+          "duration": "00:00:00.1324232",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"input\")"
         },
         {
           "method": "PdfCleanTests.BinaryStreamCapture_PreservesInvalidUtf8Bytes",
           "outcome": "Passed",
-          "duration": "00:00:00.5606717"
+          "duration": "00:00:00.5606717",
+          "case_name": "BinaryStreamCapture_PreservesInvalidUtf8Bytes"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6240807"
+          "duration": "00:00:00.6240807",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"見本\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6322320"
+          "duration": "00:00:00.6322320",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6110796"
+          "duration": "00:00:00.6110796",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6011009"
+          "duration": "00:00:00.6011009",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"社外秘\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.1230293"
+          "duration": "00:00:00.1230293",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"blank\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6137095"
+          "duration": "00:00:00.6137095",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"取扱注意\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6250168"
+          "duration": "00:00:00.6250168",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"社外秘\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6238447"
+          "duration": "00:00:00.6238447",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Passed",
-          "duration": "00:00:00.6929989"
+          "duration": "00:00:00.6929989",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/CalGray << /WhitePoint [0.9505 1 1.0890] >>]\",True)"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Passed",
-          "duration": "00:00:00.8163203"
+          "duration": "00:00:00.8163203",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/CalRGB << /WhitePoint [0.9505 1 1.0890] >>]\",False)"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.1226543"
+          "duration": "00:00:00.1226543",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"draw\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6033734"
+          "duration": "00:00:00.6033734",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2209668"
+          "duration": "00:00:00.2209668",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"restore\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2419677"
+          "duration": "00:00:00.2419677",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"final\")"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Passed",
-          "duration": "00:00:00.7824518"
+          "duration": "00:00:00.7824518",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/ICCBased 7 0 R]\",False)"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2004584"
+          "duration": "00:00:00.2004584",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"overlay\")"
         }
       ],
       "trx_sha256": "a4c58ada154da5479fd7e037c6b7adf63734cdc0768b829856b872d3f1b9eeb8",
@@ -227,102 +247,122 @@
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6073828"
+          "duration": "00:00:00.6073828",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"社外秘\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6019920"
+          "duration": "00:00:00.6019920",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6017699"
+          "duration": "00:00:00.6017699",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"見本\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6312440"
+          "duration": "00:00:00.6312440",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6061211"
+          "duration": "00:00:00.6061211",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw",
           "outcome": "Passed",
-          "duration": "00:00:01.5894358"
+          "duration": "00:00:01.5894358",
+          "case_name": "BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Passed",
-          "duration": "00:00:00.8143967"
+          "duration": "00:00:00.8143967",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/CalRGB << /WhitePoint [0.9505 1 1.0890] >>]\",False)"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.1317001"
+          "duration": "00:00:00.1317001",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"input\")"
         },
         {
           "method": "PdfCleanTests.BinaryStreamCapture_PreservesInvalidUtf8Bytes",
           "outcome": "Passed",
-          "duration": "00:00:00.5628959"
+          "duration": "00:00:00.5628959",
+          "case_name": "BinaryStreamCapture_PreservesInvalidUtf8Bytes"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.1195972"
+          "duration": "00:00:00.1195972",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"draw\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2140518"
+          "duration": "00:00:00.2140518",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"overlay\")"
         },
         {
           "method": "PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead",
           "outcome": "Passed",
-          "duration": "00:00:06.8069071"
+          "duration": "00:00:06.8069071",
+          "case_name": "MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6289439"
+          "duration": "00:00:00.6289439",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"社外秘\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2405359"
+          "duration": "00:00:00.2405359",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"final\")"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Passed",
-          "duration": "00:00:00.7864210"
+          "duration": "00:00:00.7864210",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/ICCBased 7 0 R]\",False)"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6151152"
+          "duration": "00:00:00.6151152",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"取扱注意\")"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Passed",
-          "duration": "00:00:00.7087138"
+          "duration": "00:00:00.7087138",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/CalGray << /WhitePoint [0.9505 1 1.0890] >>]\",True)"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2174549"
+          "duration": "00:00:00.2174549",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"restore\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6116924"
+          "duration": "00:00:00.6116924",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.1262710"
+          "duration": "00:00:00.1262710",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"blank\")"
         }
       ],
       "trx_sha256": "e99e7f9f33feab70037baa616a5785520ab709c0e134cf08a8bf7d2593499595",
@@ -367,14 +407,16 @@
           "failure": "Assertion failed. Expected strings to be equal.",
           "expected": "\"/ICCBased\"",
           "actual": "\"/CalRGB\"",
-          "assertion": "Assert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())"
+          "assertion": "Assert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/ICCBased 7 0 R]\",False)"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
           "outcome": "Failed",
           "duration": "00:00:01.0880682",
           "message": "CollectionAssert.AreEqual failed. Element at index 0 do not match.\r\nExpected: 0.9505\r\nActual: 1",
-          "failure": "CollectionAssert.AreEqual failed. Element at index 0 do not match."
+          "failure": "CollectionAssert.AreEqual failed. Element at index 0 do not match.",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/CalRGB << /WhitePoint [0.9505 1 1.0890] >>]\",False)"
         },
         {
           "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
@@ -384,7 +426,8 @@
           "failure": "Assertion failed. Expected strings to be equal.",
           "expected": "\"/CalGray\"",
           "actual": "\"/CalRGB\"",
-          "assertion": "Assert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())"
+          "assertion": "Assert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())",
+          "case_name": "SupportedColorSpaces_ArePreserved (\"[/CalGray << /WhitePoint [0.9505 1 1.0890] >>]\",True)"
         }
       ],
       "trx_sha256": "5fdaf9bde6009a26e55487f0065699201833d0a8b2b64d1253e37d20cda41308",
@@ -440,7 +483,8 @@
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6406259"
+          "duration": "00:00:00.6406259",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"見本\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -450,7 +494,8 @@
           "failure": "Assertion failed. Expected values to be equal within tolerance.",
           "expected": "0.7529411764705882",
           "actual": "0.5",
-          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"社外秘\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -460,17 +505,20 @@
           "failure": "Assertion failed. Expected values to be equal within tolerance.",
           "expected": "0.7529411764705882",
           "actual": "0.5",
-          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"取扱注意\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6227001"
+          "duration": "00:00:00.6227001",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.9202584"
+          "duration": "00:00:00.9202584",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"社外秘\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -480,12 +528,14 @@
           "failure": "Assertion failed. Expected values to be equal within tolerance.",
           "expected": "0.7529411764705882",
           "actual": "0.5",
-          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6298826"
+          "duration": "00:00:00.6298826",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -495,7 +545,8 @@
           "failure": "Assertion failed. Expected values to be equal within tolerance.",
           "expected": "0.7529411764705882",
           "actual": "0.5",
-          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"DRAFT\")"
         }
       ],
       "trx_sha256": "fce594fbfe370006e4981645b9ab1ee75d55250fd5517d5b988ab5eadccc61e3",
@@ -553,22 +604,26 @@
           "failure": "Assertion failed. Expected strings to be equal.",
           "expected": "\"社外秘\"",
           "actual": "\"DRAFT\"",
-          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"社外秘\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6143982"
+          "duration": "00:00:00.6143982",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6004013"
+          "duration": "00:00:00.6004013",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6054880"
+          "duration": "00:00:00.6054880",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -578,7 +633,8 @@
           "failure": "Assertion failed. Expected strings to be equal.",
           "expected": "\"社外秘\"",
           "actual": "\"DRAFT\"",
-          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"red\",\"社外秘\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -588,12 +644,14 @@
           "failure": "Assertion failed. Expected strings to be equal.",
           "expected": "\"見本\"",
           "actual": "\"DRAFT\"",
-          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"corner\",\"gray\",\"見本\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
           "outcome": "Passed",
-          "duration": "00:00:00.6205859"
+          "duration": "00:00:00.6205859",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"gray\",\"DRAFT\")"
         },
         {
           "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
@@ -603,7 +661,8 @@
           "failure": "Assertion failed. Expected strings to be equal.",
           "expected": "\"取扱注意\"",
           "actual": "\"DRAFT\"",
-          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "case_name": "AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage (\"diagonal\",\"red\",\"取扱注意\")"
         }
       ],
       "trx_sha256": "75e1157c0a31cbc57455db54133daf4331f101bc89b79f951bb7ac2492775f21",
@@ -658,40 +717,46 @@
           "outcome": "Failed",
           "duration": "00:00:00.2029323",
           "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
-          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>."
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"overlay\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Failed",
           "duration": "00:00:00.1265771",
           "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
-          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>."
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"blank\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Failed",
           "duration": "00:00:00.1685159",
           "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<2>.",
-          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<2>."
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<2>.",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"input\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Failed",
           "duration": "00:00:00.1396391",
           "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
-          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>."
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"draw\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Passed",
-          "duration": "00:00:00.2505250"
+          "duration": "00:00:00.2505250",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"final\")"
         },
         {
           "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
           "outcome": "Failed",
           "duration": "00:00:00.2301629",
           "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<3>.",
-          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<3>."
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<3>.",
+          "case_name": "EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates (\"restore\")"
         }
       ],
       "trx_sha256": "68ee31e663a694fd09a8068ea854a491f4348b96a7902c8f2aba3b8a7dc203bf",
@@ -746,7 +811,8 @@
           "message": "Assertion failed. Expected condition to be false.\nRaw extraction directory from a previous attempt still exists.\n\nactual: true\n\nAssert.IsFalse(File.Exists(Path.Combine(test.Root, \"raw-cleanup-violation\")))",
           "failure": "Assertion failed. Expected condition to be false.",
           "actual": "true",
-          "assertion": "Assert.IsFalse(File.Exists(Path.Combine(test.Root, \"raw-cleanup-violation\")))"
+          "assertion": "Assert.IsFalse(File.Exists(Path.Combine(test.Root, \"raw-cleanup-violation\")))",
+          "case_name": "BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw"
         }
       ],
       "trx_sha256": "817b11aa6ffafe2ddc79857c712f9079df2589cce9caa91bd698b303a2c3a03d",
@@ -799,7 +865,8 @@
           "outcome": "Failed",
           "duration": "00:00:00.5683230",
           "message": "CollectionAssert.AreEqual failed. Element at index 0 do not match.\r\nExpected: 255\r\nActual: 239",
-          "failure": "CollectionAssert.AreEqual failed. Element at index 0 do not match."
+          "failure": "CollectionAssert.AreEqual failed. Element at index 0 do not match.",
+          "case_name": "BinaryStreamCapture_PreservesInvalidUtf8Bytes"
         }
       ],
       "trx_sha256": "23374e4890d3530b57148762d6c2368582d34a99eea69584b493f69508216e47",
@@ -852,7 +919,8 @@
           "outcome": "Failed",
           "duration": "00:00:06.6819150",
           "message": "Assertion failed.\nProduction ZIP overhead budget must fit 500 maximum Unicode names.",
-          "failure": "Assertion failed."
+          "failure": "Assertion failed.",
+          "case_name": "MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead"
         }
       ],
       "trx_sha256": "265b4d6a0a62c29a8888ce6fab1da9320a0cdac0881cf0b85d5212c34c326c0f",
@@ -874,5 +942,6 @@
       "source_sha256": "8f5bacd0b0c3c2541d054c3600114fff8057a794dd928a980809e22142c7edf8",
       "patch_sha256": "0f90cb910c24b423e59851f50cee000f94c7a3f4b6d6fb1d10d31822a3da8521"
     }
-  ]
+  ],
+  "case_names_provenance": "7e01862時点に記録したSHA-256と一致する元TRXからcase_nameを追記。既存のoutcome/時刻/失敗内容/assembly hashは不変。14変異を再実行したという意味ではない。"
 }

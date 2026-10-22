@@ -166,10 +166,10 @@
     ]
   },
   "runner_unit_tests": {
-    "passed": 7,
+    "passed": 9,
     "failed": 0,
-    "log_sha256": "670a39115e7523a8984e4842e16547cb2094b03fad392b037b4b9dc8b2656e62",
-    "source_sha256": "e3425659faba3147cdf145df5cf0992d55edf1707a0a88c70d48d624e3f295d2"
+    "log_sha256": "5f0635b83af38a6c5d516fcb60dc3fa63c9c6ca4854e51a6a29ca33c92ccef16",
+    "source_sha256": "649975ae022eb8ea781322619837dc9a285f9bad96ee666c78386ba081e1b746"
   },
   "tests_patch_sha256": "59b121654e22392e5c6421acf5c66ccef81ca9d52768b9d8cdf970bcd7f6653b",
   "current_test_source_sha256": {
@@ -236,8 +236,8 @@
     "tests/Amane.Pdf.Api.Tests/StampPlacementTests.cs": "73402d21e498ab46563ea9421c48c5305ea8ee069c6adce9b7e8a2936396c733",
     "tests/Amane.Pdf.Api.Tests/WatermarkTextTests.cs": "09b5e1014712bb3316713825abcf705b5b75b712ba5111d142718d9bdfd437ce"
   },
-  "runner_sha256": "d5a602d4ab3c4e5c21eff35b4e4de138248c41fccc24e131da534fcb0e284d2c",
-  "shared_runner_sha256": "40c89e75ec996c25d0d410847c3dca57c26594774dd6d5f23480623d0eb939de",
+  "runner_sha256": "a8376b0bd25af4a311e890b25a3e5396dd3ade38d46682a7ee7a785dff058ee4",
+  "shared_runner_sha256": "f6b2c042b770471b1464f15ea26b63d889d092a1f847443c6991de02a766ae94",
   "test_methods": 452,
   "test_cases": 1340,
   "resolved_findings": 13,
@@ -281,5 +281,32 @@
     "source_test_hashes_match": true,
     "build_test": "success",
     "docker": "success"
+  },
+  "recorded_mutations_runner_sha256": "d5a602d4ab3c4e5c21eff35b4e4de138248c41fccc24e131da534fcb0e284d2c",
+  "recorded_mutations_shared_runner_sha256": "40c89e75ec996c25d0d410847c3dca57c26594774dd6d5f23480623d0eb939de",
+  "runner_unit_tests_before_rereview": {
+    "passed": 7,
+    "failed": 0,
+    "log_sha256": "670a39115e7523a8984e4842e16547cb2094b03fad392b037b4b9dc8b2656e62",
+    "source_sha256": "e3425659faba3147cdf145df5cf0992d55edf1707a0a88c70d48d624e3f295d2"
+  },
+  "rereview_followup": {
+    "source_base_commit": "7e0186285bad2b080ce3546677c689c35fda99b5",
+    "latest_mutation_records_checked": 14,
+    "latest_controls_checked": 4,
+    "case_names": "hashが一致する元TRXから追記。既存の記録は再実行結果として扱わない。",
+    "overlay_fresh_run": "results-overlay-case-check.json",
+    "overlay_case_outcomes_matched": true,
+    "control_before_passed": 6,
+    "control_after_passed": 6,
+    "build": {
+      "errors": 0,
+      "warnings": 1,
+      "warning_codes": [
+        "NU1900"
+      ],
+      "log_sha256": "e4e2ad8c26e3036c58bdd3f50d71d958f22f3a32d604a99873ba281609cba0af"
+    },
+    "ci_step": "Verify mutation verdict runner"
   }
 }

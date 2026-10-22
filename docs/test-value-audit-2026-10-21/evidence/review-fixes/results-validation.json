@@ -94,22 +94,26 @@
         {
           "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
           "outcome": "Passed",
-          "duration": "00:00:00.7669160"
+          "duration": "00:00:00.7669160",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
         },
         {
           "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
           "outcome": "Passed",
-          "duration": "00:00:00.4382316"
+          "duration": "00:00:00.4382316",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         },
         {
           "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
           "outcome": "Passed",
-          "duration": "00:00:00.4662423"
+          "duration": "00:00:00.4662423",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
         },
         {
           "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
           "outcome": "Passed",
-          "duration": "00:00:00.4266095"
+          "duration": "00:00:00.4266095",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         }
       ],
       "trx_sha256": "e81728450db72675fd8f7c733507dba89a1b19d670d9c34a385fe085bc050e3a",
@@ -147,22 +151,26 @@
         {
           "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
           "outcome": "Passed",
-          "duration": "00:00:00.4378356"
+          "duration": "00:00:00.4378356",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         },
         {
           "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
           "outcome": "Passed",
-          "duration": "00:00:00.4402894"
+          "duration": "00:00:00.4402894",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         },
         {
           "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
           "outcome": "Passed",
-          "duration": "00:00:00.4519226"
+          "duration": "00:00:00.4519226",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
         },
         {
           "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
           "outcome": "Passed",
-          "duration": "00:00:00.7480634"
+          "duration": "00:00:00.7480634",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
         }
       ],
       "trx_sha256": "d2dd012d8bb8893bfb9b35af366fbf2bfd71c980bd9e6537cc82fec9cc77cf69",
@@ -207,7 +215,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "BadRequest",
           "actual": "InternalServerError",
-          "assertion": "Assert.AreEqual(status, response.StatusCode)"
+          "assertion": "Assert.AreEqual(status, response.StatusCode)",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
         }
       ],
       "trx_sha256": "7cb3f6ad857911efcfecd2803722657ad2be5b065c7cae3e8ac5c5f9f24d2c2a",
@@ -265,7 +274,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "BadRequest",
           "actual": "InternalServerError",
-          "assertion": "Assert.AreEqual(status, response.StatusCode)"
+          "assertion": "Assert.AreEqual(status, response.StatusCode)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         }
       ],
       "trx_sha256": "04ca1234096bfd1260403691e4f5094cc0f744bd1953ed058ab7d6b1d753c999",
@@ -323,7 +333,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "400",
           "actual": "500",
-          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)"
+          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         }
       ],
       "trx_sha256": "e6fd36d2d6b88536a10d884651a3c810b8bab17186b01f0d4c36bc916f28c56f",
@@ -381,7 +392,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "BadRequest",
           "actual": "InternalServerError",
-          "assertion": "Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode)"
+          "assertion": "Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
         }
       ],
       "trx_sha256": "ee8dfef3da299d870f290abc8560a490e83d45ca7f247c976f65ac8bedd4e652",
@@ -439,7 +451,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "400",
           "actual": "500",
-          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)"
+          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
         }
       ],
       "trx_sha256": "c92383d29f13abd0a6154f3dcb492b46a9e4e047b8d5a0e7be2dc5012bd3faa3",
@@ -497,7 +510,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "400",
           "actual": "500",
-          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)"
+          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
         }
       ],
       "trx_sha256": "7264ea75007447271b18be8c1cb9ffc3c2a613f62a25d79808ea761d3f07187f",
@@ -555,7 +569,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "0",
           "actual": "1",
-          "assertion": "Assert.AreEqual(0, body.ReadCount)"
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
         },
         {
           "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
@@ -565,7 +580,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "0",
           "actual": "1",
-          "assertion": "Assert.AreEqual(0, body.ReadCount)"
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
         },
         {
           "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
@@ -575,7 +591,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "0",
           "actual": "1",
-          "assertion": "Assert.AreEqual(0, body.ReadCount)"
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         },
         {
           "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
@@ -585,7 +602,8 @@
           "failure": "Assertion failed. Expected values to be equal.",
           "expected": "0",
           "actual": "1",
-          "assertion": "Assert.AreEqual(0, body.ReadCount)"
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
         }
       ],
       "trx_sha256": "8e308f4573d93ebacd628f70ac570f405a23832ad0879141c5436b5b716aadc4",
@@ -609,5 +627,6 @@
       "source_sha256": "00a2c71c7cd0abd7b0a4c66069fdacdc73847860c0a442f3e0475d8380c5f990",
       "patch_sha256": "df58636a87e739d83c5a4de804c47f59b6b7c34283eefaf05c6e06563abc9e1a"
     }
-  ]
+  ],
+  "case_names_provenance": "7e01862時点に記録したSHA-256と一致する元TRXからcase_nameを追記。既存のoutcome/時刻/失敗内容/assembly hashは不変。14変異を再実行したという意味ではない。"
 }

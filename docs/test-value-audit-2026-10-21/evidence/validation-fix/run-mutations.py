@@ -19,6 +19,7 @@ STAMP = 'PdfStampImageTests.InvalidQueryPrecedesUploadAndTools'
 FILL = 'PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools'
 ALL = [PAGE, WATER, STAMP, FILL]
 CONTROL_CASES = 4
+CASE_OUTCOMES = {}
 MULTIPART_START = '    internal static async Task<byte[]> ReadFileAndTextAsync('
 MULTIPART_END = '    public static Task<IReadOnlyList<string>> ReadMergeFilesAsync('
 MUTATIONS = [
@@ -74,12 +75,16 @@ EXPECTATIONS = {
 }
 
 
-def validate_run(row, methods, expectation=None):
+def validate_run(row, methods, expectation=None, case_outcomes=None):
     """失敗件数とassertを照合し、無関係な失敗・空の発見・中断を拒否する。"""
     assert not row['run_errors'], row
     assert row['counters']['aborted'] == row['counters']['error'] == '0', row
     assert {r['method'] for r in row['results']} == set(methods), row
     assert row['results'] and all(r['outcome'] in ('Passed', 'Failed') for r in row['results']), row
+    if case_outcomes is not None:
+        names = [r.get('case_name') for r in row['results']]
+        assert len(names) == len(set(names)), row
+        assert {r.get('case_name'): r['outcome'] for r in row['results']} == case_outcomes, row
     failures = [r for r in row['results'] if r['outcome'] == 'Failed']
     assert row['exit_code'] == (1 if expectation else 0), row
     if expectation is None:
@@ -104,7 +109,8 @@ def summarize(path):
     for result in root.findall('t:Results/t:UnitTestResult', NS):
         definition = definitions[result.attrib['testId']]
         row = dict(method=definition['className'].split('.')[-1] + '.' + definition['name'],
-                   outcome=result.attrib['outcome'], duration=result.attrib['duration'])
+                   outcome=result.attrib['outcome'], duration=result.attrib['duration'],
+                   case_name=result.attrib['testName'])
         error = result.find('t:Output/t:ErrorInfo/t:Message', NS)
         if error is not None:
             row['message'] = error.text
@@ -156,12 +162,16 @@ def main():
             row.update(name=name, exit_code=result.returncode,
                        api_assembly_sha256=sha(copy / TESTS / 'bin/Release/net10.0/Amane.Pdf.Api.dll'))
             expectation = EXPECTATIONS[name] if failed else None
-            validate_run(row, methods, expectation)
+            case_outcomes = CASE_OUTCOMES.get(name) if failed else None
+            validate_run(row, methods, expectation, case_outcomes)
             if not failed:
                 assert len(row['results']) == CONTROL_CASES, row
             if failed:
                 row['expected_failure'] = dict(total=expectation[0], failed=expectation[1], patterns=expectation[2])
                 row['matched_assertions'] = True
+                if case_outcomes is not None:
+                    row['expected_case_outcomes'] = case_outcomes
+                    row['matched_case_outcomes'] = True
             print(name + ': ' + str(sum(r['outcome'] == 'Failed' for r in row['results'])) + ' failed / ' +
                   str(sum(r['outcome'] == 'Passed' for r in row['results'])) + ' passed', flush=True)
             return row

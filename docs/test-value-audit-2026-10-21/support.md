@@ -61,6 +61,6 @@ Pythonの13 probeは[scripts.md](scripts.md)に個別記載した。特にgen_ge
 | --- | --- |
 | [test csproj](../../tests/Amane.Pdf.Api.Tests/Amane.Pdf.Api.Tests.csproj) | net10.0、MSTest adapter/framework、実API参照、rendererの先行build、PDF/JSON fixtureコピー、runsettingsの指定。 |
 | [ci.runsettings](../../tests/ci.runsettings) | 2 workers・class単位並列。DoNotParallelizeの計測/プロセス状態変更を尊重。dotnetの-m:1はMSBuild数でありMSTest worker数を1にするものではない。 |
-| [ci.yml](../../.github/workflows/ci.yml) | host build/testとDocker suiteの分離、JPEG実変換、依存/版、Python driver、独立描画・文字・署名・容量の呼出条件を確認。具体的なCI runの成功を今回照会してはいない。 |
+| [ci.yml](../../.github/workflows/ci.yml) | host build/testとDocker suiteの分離、JPEG実変換、依存/版、Python driver、独立描画・文字・署名・容量の呼出条件を確認。初回監査時はCI結果を照会せず、その後の成功記録は[ci.json](evidence/review-fixes/ci.json)に保存。再レビュー後は変異判定テスト9件もbuild-testで実行する。 |
 
 独立した失敗要因を一つのfixtureに混ぜると、別の拒否で本来狙う検証を隠す。対応済みLV01/LV02の強化では「狙った一点だけ不正、他は正常」を入力fixtureにも適用する。

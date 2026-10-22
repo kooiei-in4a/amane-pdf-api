@@ -16,6 +16,12 @@ zip_names = 'PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZi
 namespace['API'] = ''
 namespace['ALL'] = [watermark, colors, overlay, fallback, binary, zip_names]
 namespace['CONTROL_CASES'] = 20
+namespace['CASE_OUTCOMES'] = {
+    'overlay-intermediate-cleanup-removed': {
+        overlay.split('.')[-1] + f' ("{stage}")': 'Passed' if stage == 'final' else 'Failed'
+        for stage in ('input', 'blank', 'draw', 'overlay', 'restore', 'final')
+    },
+}
 namespace['MUTATIONS'] = [
     ('colorspace-whitepoint-replaced', 'src/Amane.Pdf.Api/PdfCompressProcessor.cs',
      '            dict["/Width"] = rewritten.Width;',

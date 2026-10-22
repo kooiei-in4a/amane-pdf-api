@@ -21,7 +21,7 @@ ZIPテストはHTTPの受付や500頁の実抽出を検証するものではな�
 | --- | --- |
 | Release build | 成功、0 error、NU1900 warning 1件。 |
 | 修正した2テスト | 2成功。500entryは約6.755秒（1回のhost観測で、CI短縮時間の保証ではない）。 |
-| runner判定テスト | 7成功。 |
+| runner判定テスト | 再レビュー後は9成功。前回の7件に最新記録・parameter識別の確認を追加。 |
 | 入力検証7変異 | 7/7で期待assertと失敗件数が一致。意図した失敗10件、前後の正常対照は各4成功。 |
 | 改善側7変異 | 7/7で期待assertと失敗件数が一致。意図した失敗19件、影響しない行9成功、前後の正常対照は各20成功。 |
 | Release一括 | **1303成功・2skipの時点でtesthost crash、残り35ケース未完了**。assert失敗0だが全件完走ではない。 |
@@ -36,9 +36,21 @@ testhost crashは以前にも発生しており、原因未確定のまま記録
 
 入力検証7変異と改善側の既存6変異の差分は、[validation-fix](../validation-fix/README.md)と[improvements](../improvements/README.md)のpatchと同じ。追加のZIP変異は[split-entry-comment-inflated.patch](split-entry-comment-inflated.patch)。Failed件数だけでなく、各結果の`expected_failure`と`matched_assertions`を確認する。正常対照は各群の実験前後に実行する。
 
-[runner判定テスト](../validation-fix/test_mutation_runner.py)の7メソッドは、記録済みのassert照合、旧fallback判定の拒否、環境由来の失敗の拒否、一部の正しい失敗による別失敗の隠蔽の拒否、影響を受けない行の維持、未検出/空発見/中断/終了コード/別assertの拒否、正常対照での失敗の拒否を守る。監査用に追加した検証で、初回対象のPython38本には含めない。
+[runner判定テスト](../validation-fix/test_mutation_runner.py)の元の7メソッドは、記録済みのassert照合、旧fallback判定の拒否、環境由来の失敗の拒否、一部の正しい失敗による別失敗の隠蔽の拒否、影響を受けない行の維持、未検出/空発見/中断/終了コード/別assertの拒否、正常対照での失敗の拒否を守る。監査用に追加した検証で、初回対象のPython38本には含めない。
 
 以前の実行結果・hash・tests.patchは各段階の履歴として保持する。特にimprovementsの旧raw変異は、実際にはheaderの期待4/実際0で失敗した記録であり、現在の専用cleanup assertによる結果と区別する。
+
+## 再レビューで残った軽微な2点への対応
+
+判定テストを9メソッドへ増やし、最新のresults-validation/results-improvements.jsonの**全14変異と前後4回の正常対照**を現在の判定関数へ渡すsubTestを追加した。変異名が各7種すべて揃うことと、正常対照がbefore/after各1件であることも確認する。CIのbuild-testにも`Verify mutation verdict runner`を追加し、この9件を実行する。
+
+runnerはTRXの`testName`を`case_name`として保持する。overlay変異では6stageの名前と成否を一対一で照合し、**finalだけPassed、input/blank/draw/overlay/restoreはFailed**を要求する。件数と失敗messageが同じでも、成功行のstageを入れ替えた場合、ケース名が欠落・重複した場合は拒否する。2つ目の追加テストはこの3種の誤判定を防ぐ。
+
+最新の14変異と4正常対照には、記録済みSHA-256と一致する元TRXからcase_nameを追記した。追記前のoutcome・時刻・失敗内容・assembly hashはすべて元TRXと一致することを確認し、変更していない。この14変異を今回すべて再実行したという意味ではない。古いvalidation-fix/improvementsの記録はparameter名を持たない履歴として保持し、従来のassert照合を続ける。
+
+さらにoverlayだけは新しいrunnerで隔離変異を再実行し、前後の正常対照各6成功、変異は期待したassertで5失敗・finalだけ1成功を確認した。[新しい結果](results-overlay-case-check.json)にはexpected_case_outcomesとmatched_case_outcomesを保存している。実験は改善runnerの対象をoverlay1変異・1メソッド・正常対照6ケースへ絞ったもので、本番srcとC#テストは変更していない。Release buildも0 error・NU1900 warning 1件で成功した。
+
+verification.jsonのrunner hashは現在のファイルを表す。従来の14変異を実行したrunnerのhashはrecorded_mutations_*へ、前回7件の判定結果はrunner_unit_tests_before_rereviewへ保持し、追記・再照合と実験の再実行を区別する。
 
 ## 再現
 
