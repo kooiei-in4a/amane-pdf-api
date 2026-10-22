@@ -1,12 +1,12 @@
-# #134 標準JSON案 v0.3：nameLines・名称／会社住所20文字×2行を採用
+# #134 標準JSON案 v0.3：初版仕様R1〜R8採用済み
 
-**名称・宛先の採用仕様を反映した資料改訂。数量の桁数・両モード・末尾0保持・quantityAlignmentと罫線の採用決定も維持する。製品未実装。** v0.3はこの資料の版名で、公開APIの版・schemaVersionを新設したものではない。[v0.2](../standard-json-draft-v0.2/README.md)とその入力・スクリプト・PDFは過去の検証再現用に残す。 会社登録と発行入力を分離し、確定金額を再計算せず、固定8明細・1ページで描画する。製品コード・API契約・CI・共有mainは変更していない。
+**初版R1〜R8の一括採用を反映した資料改訂。数量の桁数・両モード・末尾0保持・quantityAlignmentと罫線の採用決定も維持する。製品未実装。** v0.3はこの資料の版名で、公開APIの版・schemaVersionを新設したものではない。[v0.2](../standard-json-draft-v0.2/README.md)とその入力・スクリプト・PDFは過去の検証再現用に残す。 会社登録と発行入力を分離し、確定金額を再計算せず、固定8明細・1ページで描画する。製品コード・API契約・CI・共有mainは変更していない。
 
-今回の採用範囲は、`items[i].quantity`を文字列として扱い、整数部最大5桁・小数部最大3桁（小数点込み最大9文字）、入力された末尾0を保持して小数点位置を揃えること。旧「全体5文字」上限を置き換える。小数点なしの整数は、同じ基準位置に末尾を揃える。
+採用済みの数量仕様は、`items[i].quantity`を文字列として扱い、整数部最大5桁・小数部最大3桁（小数点込み最大9文字）、入力された末尾0を保持して小数点位置を揃えること。旧「全体5文字」上限を置き換える。小数点なしの整数は、同じ基準位置に末尾を揃える。
 
 **追補：数量配置は2モードを用意する方針。** ユーザーの追加方針により、小数点揃えに加えて当初の右揃えも選択できるようにする。下記の小数点基準の計算はdecimalモードへ適用する。両モードとも整数部5桁・小数部3桁と末尾0保持を共通にし、数量の入力値・型・金額を変えない。設定仕様も採用済みで、既定decimal、発行時上書き可、発行値＞登録値＞decimalとする。登録値が不正なら正しい発行値があっても拒否する。
 
-**今回採用した名称・宛先仕様**：会社の`nameLines`、発行の`recipient.nameLines`は必須のstring配列1〜2行・各1〜20文字（UTF-16 unit）、LF結合後最大41文字。会社`addressLines`も必須・同じ上限。部署・担当者・敬称は宛先2行に含め、独立key／追加行は設けない。宛先住所の専用key／欄と旧`name`形式の併存・自動変換は初版対象外。旧keyや対応外keyは黙って捨てず描画前に拒否する。[採用仕様・根拠](../NAME-RECIPIENT-SPEC-PROPOSAL.md)を参照。取引／備考の配分と帳票別必須性も[採用済み](../TRANSACTION-NOTES-SPEC-PROPOSAL.md)。その他の必須性・金額／税区分・数量モード以外のHTTP契約等は未確定。
+**今回採用した名称・宛先仕様**：会社の`nameLines`、発行の`recipient.nameLines`は必須のstring配列1〜2行・各1〜20文字（UTF-16 unit）、LF結合後最大41文字。会社`addressLines`も必須・同じ上限。部署・担当者・敬称は宛先2行に含め、独立key／追加行は設けない。宛先住所の専用key／欄と旧`name`形式の併存・自動変換は初版対象外。旧keyや対応外keyは黙って捨てず描画前に拒否する。[採用仕様・根拠](../NAME-RECIPIENT-SPEC-PROPOSAL.md)を参照。取引／備考の配分と帳票別必須性も[採用済み](../TRANSACTION-NOTES-SPEC-PROPOSAL.md)。必須性・税区分・金額上限・数量0／負数・ゼロ表示・文字制約・入力エラー形式・品質基準も[R1〜R8](../INITIAL-SPEC-ADOPTED.md)として採用済み。[最終検証](../FINAL-VALIDATION-site-134.md)は未実施。ID／版・保存・認証・運用エラーの契約は後続。
 
 管理先：[site #134](https://github.com/kooiei-in4a/amane-tools-site/issues/134)、親：[site #133](https://github.com/kooiei-in4a/amane-tools-site/issues/133)。根拠の固定版：API `465088ed0b575f055beb6851e98d28ed22fb9928` / site資産 `e08aed241245f9f84a7336302edcb7d6a89a57b1`。採用罫線の共有資料は [既存の成果物一覧](../README.md)。
 
@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | 会社登録／更新 | nameLines、addressLines、registrationNumber、contact、bankTransferLines、logoAssetId、sealAssetId | サービスが発行するcompanyIdに関連付けて再利用。ID・保存方式・登録APIの経路は未設計。 |
 | 帳票設定の登録 | サービスが用意するtemplateIdと版、quantityAlignment、固定文言・位置定義・画像予約領域 | 初期の標準JSONにはレイアウト座標・任意PDF・独自schemaを含めない。今回のJSONでは既存の標準設定をtemplateIdで選ぶ。登録APIやカスタマイズ項目の本設計は後続。 |
-| 発行 | companyId、templateId、任意のquantityAlignment、宛先、発行日、番号、件名、期限、取引日／期間、明細、確定金額、備考 | 会社名・住所・画像を毎回送り直さない。会社情報の発行時上書きは初版候補では認めず、未知keyとして拒否。 |
+| 発行 | companyId、templateId、任意のquantityAlignment、宛先、発行日、番号、件名、期限、取引日／期間、明細、確定金額、備考 | 会社名・住所・画像を毎回送り直さない。会社情報の発行時上書きは初版では認めず、未知keyとして拒否。 |
 
 `companyId`・画像IDは利用者のスコープで解決する前提。例の `company_demo` / `logo_demo` / `seal_demo` は架空の参照IDで、登録済みの実IDではない。画像binary・URLはこの発行JSONに含めない。画像登録・保存・所有関係・認証の製品実装は後続Issueの範囲。
 
@@ -60,58 +60,58 @@
 }
 ```
 
-## 3. 共通の入力規則案
+## 3. 共通の入力規則（R6採用済み）
 
-- UTF-8 JSON object、登録／発行それぞれ64 KiBまでを候補にする。未知key、同名key重複、null、型の自動変換は認めない。任意項目は原則keyを省略し、空文字は使わない。`notesLines: []` は備考なしとして許可する。
+- UTF-8 JSON object、登録／発行それぞれ64 KiB（65,536 bytes）までとする。未知key、同名key重複、null、型の自動変換は認めない。任意項目は原則keyを省略し、空文字は使わない。`notesLines: []` は備考なしとして許可する。
 - 文字数はUTF-16 code unitで数える。文字表にあるBMP文字だけを使い、無断trim・Unicode正規化・折り返し・縮小・切り捨てをしない。前後空白も表示幅・文字数に含め、全空白の文字列は拒否する。
 - 各文字列の中の改行・制御文字は不可。複数行は明示した文字列配列をLFで結合する。配列の各行は空白のみ不可。
 - 文字数と行数を満たしても、**最終文字列を固定フォント・実際の矩形・fontSizeで検査する**。APIの1項目200文字・5行を、そのまま帳票の許容値にしない。
-- 未対応文字（例：𠮷、絵文字、異体字セレクタ）、`%p/%P/%t/%v`、バックスラッシュ直後のnは拒否する。通常の%は許可。結合濁点・半濁点U+3099/U+309Aは表示の差を避けるため初版候補では明示拒否し、合成済み文字への修正を案内する（API自体は受理し独立幅で描く。これはsiteに追加する候補制約）。
-- 日付は実在する `YYYY-MM-DD`（年0001〜9999、時刻・timezoneなし）。期間はstart≦end。発行日と取引日を相互補完しない。期限と発行日の前後関係は業務上の追加制約を課さない案とし、必要性は別途確認する。
+- 未対応文字（例：𠮷、絵文字、異体字セレクタ）、`%p/%P/%t/%v`、バックスラッシュ直後のnは拒否する。通常の%は許可。結合濁点・半濁点U+3099/U+309Aは表示の差を避けるため初版では明示拒否し、合成済み文字への修正を案内する（API自体は受理し独立幅で描く。これはsiteに追加する採用制約）。
+- 日付は実在する `YYYY-MM-DD`（年0001〜9999、時刻・timezoneなし）。期間はstart≦end。発行日と取引日を相互補完しない。期限と発行日の前後関係は業務上の追加制約を課さない。
 
-## 4. 会社登録情報：必須・型・上限案
+## 4. 会社登録情報：必須・型・上限（R1採用済み）
 
-| key | 必須 | 型・候補上限 | 表示先／注意 |
+| key | 必須 | 型・上限 | 表示先／注意 |
 | --- | --- | --- | --- |
 | nameLines | 必須・採用済み | string配列1〜2行、各1〜20文字、LF結合後41文字以内 | issuerへLF結合。1行でも配列。旧nameとの併存なし。 |
 | addressLines | 必須・上限採用済み | string配列1〜2行、各1〜20文字、LF結合後41文字以内 | addressへLF結合。会社住所専用。20＋20＋LF＝41。 |
 | registrationNumber | 任意 | string、`T`＋ASCII数字13桁 | registration。形式検査のみで登録の実在性・帳票の法的充足を判定するものではない。 |
-| contact | 任意 | string、1〜16文字、1行 | contact。電話／メールを分ける新しい欄は初版候補に含めない。 |
+| contact | 任意 | string、1〜16文字、1行 | contact。電話／メールを分ける新しい欄は初版に含めない。 |
 | bankTransferLines | 任意 | string配列1〜3行、各16文字以下、LF結合後48文字以下 | 請求書bank。見積書には適用しない登録設定であることを明示する。 |
 | logoAssetId / sealAssetId | 任意 | string、ASCII英数字・`_`・`-`、1〜64文字を仮置き | 登録済みPNGの参照。省略時は画像なし。ID形式は後続の保存・認証設計で確定。 |
 
-登録されている任意項目が省略された場合は、値とそのラベルを省く案。表示する登録情報に問題があれば発行時も拒否し、会社登録のどの項目を直すか示す。登録時の文字検査に加えて、選んだテンプレートの矩形検査も発行時に行う。
+登録されている任意項目が省略された場合は、値とそのラベルを省く。表示する登録情報に問題があれば発行時も拒否し、会社登録のどの項目を直すか示す。登録時の文字検査に加えて、選んだテンプレートの矩形検査も発行時に行う。
 
 PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保持・ページ内配置が前提。正式な画像予約領域との衝突検査は帳票設定側で決める。ここでは画像サイズ・保存APIを追加実装しない。
 
-## 5. 発行時データ：必須・型・上限案
+## 5. 発行時データ：必須・型・上限（R1〜R5採用済み）
 
-| key | 必須 | 型・候補上限 | 条件 |
+| key | 必須 | 型・上限 | 条件 |
 | --- | --- | --- | --- |
 | companyId | 必須 | string、ASCII英数字・`_`・`-`、1〜64文字を仮置き | 登録会社の参照。形式とIDの版指定方法は未確定。 |
 | templateId | 必須 | string、初版候補は `invoice-standard-v1` / `estimate-standard-v1` | これで帳票種別を決め、重複するdocumentTypeは送らない。値・版管理方法は未確定。 |
 | quantityAlignment | 任意・採用済み | string、`decimal`／`right`完全一致 | 発行時上書きを許可。発行値＞登録値＞decimal。登録値不正は上書きで救済しない。製品未実装。 |
-| currency | 必須 | string、`JPY`のみ | 初版候補はJPY・税抜。税込入力・外貨は対象外候補。 |
+| currency | 必須 | string、`JPY`のみ | 初版はJPY・税抜。税込入力・外貨は対象外。 |
 | recipient.nameLines | 必須・採用済み | string配列1〜2行、各1〜20文字、LF結合後41文字以内 | 部署・担当者・敬称も含む完成した表示行。敬称を補完しない。旧recipient.nameとの併存なし。 |
 | issueDate | 必須 | 日付string | date（請求日／見積日）。 |
 | number | 必須 | string、1〜16文字、1行 | 呼び出し元の確定番号。採番・一意性検査はしない。 |
-| subject | 任意 | string、1〜16文字、1行 | subject。未指定時の件名ラベルも省く案。 |
+| subject | 任意 | string、1〜16文字、1行 | subject。未指定時の件名ラベルも省く。 |
 | paymentDueDate | 請求書で任意 | 日付string | 請求書expiry。見積書で指定したらエラー。 |
 | validUntil | 見積書で任意 | 日付string | 見積書expiry。請求書で指定したらエラー。 |
 | transaction | 請求書で必須、見積書で任意・採用済み | date／periodのどちらか1つ | 共有notesへ表示。発行日等から補完しない。 |
 | items | 必須 | object配列、1〜8件 | 順序維持。空行・9行目の切り捨て・自動改ページなし。未使用行はfieldsを送らない。 |
 | items[i].name | 必須 | string、1〜17文字、1行 | 軽減記号を付けた描画文字列は最大18文字。 |
-| items[i].quantity | 必須を継続提案 | string。整数部1〜5桁・任意の小数部1〜3桁、最大9文字。桁数と表示方針は採用済み | 数値型へ変換せず末尾0を保持。小数点揃え／右揃えを選択。 |
+| items[i].quantity | 必須・採用済み | string。整数部1〜5桁・任意の小数部1〜3桁、最大9文字。桁数と表示方針は採用済み | 数値型へ変換せず末尾0を保持。小数点揃え／右揃えを選択。 |
 | items[i].unitPrice | 必須 | JSON整数、0〜99,999,999 | 確定した税抜単価。丸めなし。 |
-| items[i].taxRate | 必須 | JSON整数、8または10 | 非課税・免税・対象外・0%等は初版対象外候補。 |
+| items[i].taxRate | 必須 | JSON整数、8または10 | 非課税・免税・不課税・0%等は初版対象外として拒否。 |
 | items[i].amount | 必須 | JSON整数、0〜999,999,999,999 | 呼び出し元の確定した税抜明細金額。 |
-| taxSummary | 必須 | `10` / `8` の2キーを持つobject | 両方を明示する案。該当しない税率にも呼び出し元が0を渡す。サービスは0補完しない。 |
+| taxSummary | 必須 | `10` / `8` の2キーを持つobject | 両方を明示する。該当しない税率にも呼び出し元が0を渡す。サービスは0補完しない。 |
 | taxSummary[rate].taxableAmount | 必須 | JSON整数、0〜999,999,999,999 | 税率別の確定した税抜対象額。 |
 | taxSummary[rate].taxAmount | 必須 | 同上 | 確定税額。税率から計算しない。 |
 | totalAmount | 必須 | 同上 | 確定合計。明細・対象額・税額から合算しない。 |
 | notesLines | 任意・配分採用済み | string配列、各行1〜16文字。date時0〜2行／period時0〜1行／取引省略時0〜3行 | LF結合後48文字・最大3行・実矩形内。省略／[]は自由備考なし。 |
 
-金額は小数部・指数表記のないJSON整数を推奨（カンマ・円・引用符なし）。上限は安全整数の範囲内で、型・範囲検査だけを行う。`"125"`、`125.5`、`-1`、`1e3`は候補契約では不可。数量はASCIIの十進文字列で、`(0|[1-9][0-9]{0,4})(\.[0-9]{1,3})?`への**全体一致**で整数部／小数部の桁をそれぞれ検査する。単に全体9文字だけで判定しない。型の自動変換・カンマ付加・丸め・末尾0の削除／補完は行わない。
+金額は小数部・指数表記・符号のないJSON整数とする（カンマ・円・引用符なし）。符号表記（`-0`を含む）も拒否する。金額0は単価・明細・対象額・税額・合計のすべてで0円と表示し、空欄にしない。上限は安全整数の範囲内で、型・範囲検査だけを行う。`"125"`、`125.5`、`-1`、`1e3`は不可。数量はASCIIの十進文字列で、`(0|[1-9][0-9]{0,4})(\.[0-9]{1,3})?`への**全体一致**で整数部／小数部の桁をそれぞれ検査する。単に全体9文字だけで判定しない。型の自動変換・カンマ付加・丸め・末尾0の削除／補完は行わない。
 
 | 例 | 扱い |
 | --- | --- |
@@ -121,13 +121,13 @@ PNGは既存APIの1 MiB・各辺2000px以内、幅比0.02〜0.5、縦横比保�
 | `"100000"`、`"100000.001"` | 整数部6桁のため`/items/0/quantity`のquantity-format。 |
 | `"1.0000"` | 小数部4桁のため同じエラー。 |
 | 数値`1.25`、null | invalid-type。数値から文字列へ変換しない。 |
-| `"01.5"`、`"1e3"`、`"+1"`、`"1,000"`、`"1."`、空白付き | 従来の形式案ではquantity-format。 |
+| `"01.5"`、`"1e3"`、`"+1"`、`"1,000"`、`"1."`、空白付き | 採用形式ではquantity-format。 |
 
-数量0（`"0"`／`"0.000"`）・負数を対象外とする正の数量案は継続するが、今回の桁数・表示の採用で業務上の必須性や0／負数対応まで新たに確定したものではない。従来どおり対象外とするかは残る業務判断へ含める。
+数量は正数のみ（R4採用済み）。`"0"`／`"0.000"`・負数は拒否し、`"0.001"`は受理。上記の形式への全体一致に加えて、ゼロ表現を検査する。数値型への変換はせず末尾0を保持する。金額0の許可とは独立した条件。
 
 **採用済みの初版対象外**：宛先住所の専用key／欄、部署・担当者の独立key、旧会社name／recipient.name。部署・担当者・敬称はrecipient.nameLinesの2行予算内で表示する。旧新同時指定を含め対象外keyは描画前に明示拒否し、nameLinesへ自動移行しない。
 
-明細の単位、値引き専用欄、税込金額、任意の税区分、自由表題・色指定、会社情報の発行時override等は継続検討の対象外候補。必要性の判断は今回まとめて確定していない。
+R1〜R8は上記項目表を初版基準として採用。税抜・JPY・軽減8%と10%に限定し、負数金額・外貨・税込入力・非課税等は拒否。単位・値引き専用欄・自由表題／色・発行時会社overrideはこの標準JSONにkeyや表示先を設けず、未知keyを拒否する。将来必要になった場合は範囲変更として別途検討する。
 
 ## 6. 取引情報と自由備考：採用仕様
 
@@ -165,14 +165,14 @@ notesLines省略／[]は自由備考なし。見積書で取引・備考とも�
 
 | 標準データ／設定 | 既存definition key | 表示変換 |
 | --- | --- | --- |
-| templateId | title | 固定「請求書」／「見積書」。任意表題は受け付けない案。 |
+| templateId | title | 固定「請求書」／「見積書」。任意表題は受け付けない。 |
 | 登録nameLines / addressLines / registrationNumber / contact | issuer / address / registration / contact | 名称・住所は配列順にLF結合。登録番号・連絡先はそのまま。 |
 | 登録bankTransferLines | bank（請求書のみ） | LF結合。見積書には適用しない会社設定。 |
 | 登録logoAssetId / sealAssetId | stamp-imageへ渡す画像 | templateが決めた配置、文字→ロゴ→印影。画像なしなら呼び出しを省く。 |
 | recipient.nameLines / issueDate / number / subject | recipient / date / number / subject | 宛先はLF結合。日付のみ `YYYY年MM月DD日`。敬称補完・採番なし。 |
 | paymentDueDate / validUntil | 帳票種別に対応するexpiry | 同じ日付表記。違う帳票用のkeyは拒否。 |
-| items[i] の name / quantity / unitPrice / taxRate / amount | row0〜row7.name / quantity / price / rate / amount | 8%のname末尾に表示用の※を1個付加する案（入力文字は削除しない）。数量は文字列を保って選択した小数点揃え／右揃え、単価・金額は3桁カンマ＋円、税率は8%／10%。 |
-| taxSummary[10] / taxSummary[8] | subtotal10 / tax10 / subtotal8 / tax8 | それぞれtaxableAmount / taxAmountを表示する。 |
+| items[i] の name / quantity / unitPrice / taxRate / amount | row0〜row7.name / quantity / price / rate / amount | 8%のname末尾に表示用の※を1個付加する（入力文字は削除しない）。数量は文字列を保って選択した小数点揃え／右揃え、単価・金額は3桁カンマ＋円、税率は8%／10%。 |
+| taxSummary[10] / taxSummary[8] | subtotal10 / tax10 / subtotal8 / tax8 | 両区分と各taxableAmount / taxAmountは必須。0も0円と表示し、固定ラベルを残す。省略からの0補完はしない。 |
 | totalAmount | total | 3桁カンマ＋円。採用案の12pt。 |
 | transaction ＋ notesLines | notes ＋ label.notes | 前節に従いLF結合。label.notesは採用済みの固定「取引・備考」。見積で両方省略なら値・ラベルなし。 |
 | companyId / templateId / currency | 参照解決・許可設定 | 参照等の制御値であり、その文字列自体は帳票へ印字しない。 |
@@ -205,13 +205,13 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 呼び出し元が、単価、明細金額、税率別対象額・税額、合計を確定して送る。siteは型・範囲・文字・表示枠・参照・構造を検証して表示文字列へ変換し、PDF APIは描画する。
 
-`quantity × unitPrice = amount`、明細合計＝税率別対象額、税額＝対象額×税率、合計＝対象額＋税額、という**金額間整合性の再計算・補正・自動拒否は行わない推奨案**。丸め方・税計算単位・discount計算等のパラメータは持たない。数量は計算せず表示だけに使う。
+`quantity × unitPrice = amount`、明細合計＝税率別対象額、税額＝対象額×税率、合計＝対象額＋税額、という**金額間整合性の再計算・補正・自動拒否は行わない（採用済み）**。丸め方・税計算単位・discount計算等のパラメータは持たない。数量は計算せず表示だけに使う。
 
-[確定値保持例](examples/provided-amounts-unchanged.json) は `quantity="1.25"` / `unitPrice=100` に対して `amount=98765`、10%対象額12345、税額777、合計99999を送る。候補契約では金額間の不一致を理由にエラーにせず、`98,765円`、`12,345円`、`777円`、`99,999円`を表示する。これは実取引の正しさの保証ではない。
+[確定値保持例](examples/provided-amounts-unchanged.json) は `quantity="1.25"` / `unitPrice=100` に対して `amount=98765`、10%対象額12345、税額777、合計99999を送る。採用仕様では金額間の不一致を理由にエラーにせず、`98,765円`、`12,345円`、`777円`、`99,999円`を表示する。これは実取引の正しさの保証ではない。
 
-## 9. エラー仕様案と代表例
+## 9. 入力エラー仕様と代表例（R7採用済み・製品未実装）
 
-以下は**siteの将来の標準入力エラー案**であり、既存PDF APIの400/422応答形式を変更するものではない。`path` は0始まりの配列indexを含むJSON Pointerを使う案。本文・入力値・PDF内部pathは応答やログへ埋め込まない。
+以下は**siteで実装する採用済み標準入力エラー形式**であり、既存PDF APIの400/422応答形式を変更するものではない。`path` は0始まりの配列indexを含むJSON Pointerを使う。本文・入力値・PDF内部pathは応答やログへ埋め込まない。
 
 ```json
 {
@@ -223,32 +223,35 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 }
 ```
 
-| 入力例 | HTTP案 / code | path例／扱い |
+| 入力例 | HTTP / code | path例／扱い |
 | --- | --- | --- |
-| nameLinesの各行21文字／3行 | 422 / too-long、line-count（codeは候補） | `/recipient/nameLines/1`、`/recipient/nameLines`等。登録会社は`/companyId`と登録元sourceを示す。 |
-| 旧name／recipient.name、宛先住所、独立した部署／担当者key | 400 / unknown-field（codeは候補） | `/name`、`/recipient/name`、`/recipient/addressLines`等。旧新同時指定も拒否。 |
+| nameLinesの各行21文字／3行 | 422 / too-long、line-count（採用済み） | `/recipient/nameLines/1`、`/recipient/nameLines`等。登録会社は`/companyId`と登録元sourceを示す。 |
+| 旧name／recipient.name、宛先住所、独立した部署／担当者key | 400 / unknown-field（採用済み） | `/name`、`/recipient/name`、`/recipient/addressLines`等。旧新同時指定も拒否。 |
 | 壊れたJSON・重複key | 400 / invalid-json、duplicate-key | 解析できればpath、特定できなければ空文字（root） |
 | 未知の `recipient.addressLines` 等 | 400 / unknown-field | `/recipient/addressLines`。表示しないまま成功させない。 |
 | amount欠落、quantityが数値 | 422 / required、invalid-type | `/items/0/amount`、`/items/0/quantity` |
 | quantityAlignmentがnull／型不正、未対応値 | 422 / invalid-type、unsupported-quantity-alignment（数量設定は採用済み） | `/quantityAlignment`。省略扱い・trim・型変換なし。 |
 | 登録済みquantityAlignmentが不正 | 422 / registered-data-invalid（採用済み） | `/templateId`と登録元source.path=`/quantityAlignment`。正しい発行上書きがあっても拒否。 |
 | 金額-1・小数・上限超過 | 422 / out-of-range、invalid-integer | `/items/0/amount`、`/totalAmount` |
+| quantity `"0"`／`"0.000"` | 422 / out-of-range | `/items/0/quantity`。正数のみ。負数は形式違反のquantity-format。 |
 | quantity `100000`（整数部6桁）・`1.0000`（小数部4桁） | 422 / quantity-format | `/items/0/quantity`。丸め・短縮しない。`123.45`は有効。 |
 | taxRate=0・currency=USD | 422 / unsupported-tax-rate、unsupported-currency | `/items/0/taxRate`、`/currency` |
 | 9明細・0明細 | 422 / too-many-items、too-few-items | `/items/8`、`/items`。部分PDFを返さない。 |
 | 氏名に𠮷・結合濁点・禁止文字列 | 422 / unsupported-character、combining-mark-not-supported、forbidden-sequence | `/recipient/nameLines/0`。コードポイント等を案内、代替・正規化なし。 |
 | 2026-02-30、期間の逆転・両形式指定 | 422 / invalid-date、invalid-period、ambiguous-transaction | `/transaction/date`、`/transaction/period/end`、`/transaction` |
-| 請求書transaction欠落 | 422 / required（codeは候補） | /transaction。発行日等から補完しない。 |
-| date＋備考3行 | 422 / notes-budget-exceeded（codeは候補） | /notesLines/2。切捨てず拒否。 |
-| 備考3行各16文字 | 422 / too-long等（codeは候補） | /notesLines。LF込み50文字は48文字超過。 |
+| 請求書transaction欠落 | 422 / required（採用済み） | /transaction。発行日等から補完しない。 |
+| date＋備考3行 | 422 / notes-budget-exceeded（採用済み） | /notesLines/2。切捨てず拒否。 |
+| 備考3行各16文字 | 422 / too-long（採用済み） | /notesLines。LF込み50文字は48文字超過。 |
 | 期間＋備考2行 | 422 / notes-budget-exceeded | `/notesLines/1`。periodは備考最大1行、入力全体を拒否。 |
 | 文字数・行数以内でも幅超過 | 422 / field-overflow | 元の入力path。自由縮小・折り返しなし。 |
 | 参照先が存在しない／利用できない | 422 / invalid-reference を仮置き | `/companyId`、登録時の `/logoAssetId` 等。認証・参照エラーとのHTTP整理は未確定。 |
-| 登録会社名が選択templateに収まらない | 422 / registered-data-invalid | 発行payloadの `/companyId` に加え、`source: {"kind":"company","path":"/nameLines/0","code":"field-overflow"}` として直す登録項目を示す案。 |
+| 登録会社名が選択templateに収まらない | 422 / registered-data-invalid | 発行payloadの `/companyId` に加え、`source: {"kind":"company","path":"/nameLines/0","code":"field-overflow"}` として直す登録項目を示す。 |
 | request UTF-8 64KiB超過 | 413 / request-too-large | root。具体的な入口上限は後続API設計で整合。 |
-| 金額間だけが不整合 | エラーにしない案 | 再計算しない。型・範囲に合う確定値をそのまま表示。 |
+| 金額間だけが不整合 | エラーにしない | 再計算しない。型・範囲に合う確定値をそのまま表示。 |
 
-構造→型／候補上限→参照解決→全文字と矩形→全体予算の順で事前検証する案。APIが返す一般的な400／field-overflowしかない場合も、推測した別項目へ付け替えない。siteで事前検証できなかった失敗は帳票全体の生成失敗として扱い、内部のfields index・本文をそのまま返さない。認証・503/504・再試行等の運用契約は今回確定しない。
+400はJSON構文・重複／未知key、413は本文上限超過、422は必須・型・値・文字・矩形・不正登録値。本文はstatus／code／errorsで、errorsは**最初の1件のみ**。要素はpath／code／修正理由messageと必要なlimit／source。rootは空文字、複数違反の優先順位は公開契約にしない。数量モードの既存採用code・sourceは変えない。事前拒否は全体失敗・実PDF API呼び出し0・部分PDFなし。後段の描画／通信障害を入力エラーへ付け替えない。
+
+構造→型／上限→参照解決→全文字と矩形→全体予算の順で事前検証する。APIが返す一般的な400／field-overflowしかない場合も、推測した別項目へ付け替えない。siteで事前検証できなかった失敗は帳票全体の生成失敗として扱い、内部のfields index・本文をそのまま返さない。認証・503/504・再試行等の運用契約は今回確定しない。
 
 ## 10. 上限の根拠と確認範囲
 
@@ -259,17 +262,20 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 採用したnameLinesと数量／設定を同じ経路で接続し、両帳票1／8明細・1行／2行／20×2境界とエラー拒否は[改訂用スクリプト](../validate-standard-json-v03.py)で確認済み。既存のブラウザ用金額計算は使わない。
 
-## 11. 未確定事項と次の判断
+## 11. 品質・時間・容量の受入基準（R8採用済み）
 
-名称・宛先のN1〜N4は[採用仕様](../NAME-RECIPIENT-SPEC-PROPOSAL.md)として確定。取引／備考のT1〜T4も採用済み。採用済み名称・数量・設定・取引／備考と、その他の候補条件を区別する。nameLinesからの通し検証・境界拒否もfixtureで確認済み。製品・実HTTPは未確認。採否を未確定へ戻さない。
+- 両帳票1／8明細・数量両モードは各1ページ、qpdf成功、入力から独立に作る期待値と全欄抽出一致。数量・末尾0・確定金額保持、非意図的な欠け／重なりなし。decimal基準位置誤差は0.1pt以内。
+- ロゴ／印影の透過・半透過・比率・配置・重ね順・予約領域の非衝突、画像なしも確認。画像上限は既存APIの1MiB・各辺2000px等を維持。
+- CPU1／RAM1536MiB等の固定検証条件で、入力JSON事前検証開始〜最終PDF受信まで単独10秒以内、既存共有2枠の同時2チェーンは各20秒以内。起動・保存・抽出検査を除外、画像あり／なしを分けて記録。
+- 最終1ページPDFは2MiB以内。終了後のjob・子process残存なし。
+- Popplerで抽出・画像を検査。製品反映時には既存ブラウザプレビューで代表4帳票を確認する。Acrobat・実印刷・site経由測定・他機能との競合は未確認として引き継ぐ。実印刷は#134の必須条件に追加しない。
 
-| 未確定事項 | 推奨する出発点／確定前に確認すること |
-| --- | --- |
-| 型・税／通貨・金額上限 | JPY・税抜・非負整数、単価8桁／他金額12桁、数量の文字列保持・整数部5桁／小数部3桁・小数点揃えは採用済み。税率8/10等の他の範囲は用途上妥当か確認する。 |
-| 採用済み取引／備考の未確認範囲 | 共有3行／48文字と配分、専用欄の初版対象外、請求書必須／見積書任意は採用済み。v0.3の名称・数量／設定と、境界／省略・拒否の組合せを追加確認する。 |
-| 採用済み名称・宛先の未確認範囲 | nameLines／会社住所20×2、部署・担当者・敬称の2行内表示、宛先住所専用欄／旧形式併存の対象外は採用済み。改訂JSONからの通し検証・拒否時API0は確認済み。製品テンプレート整合と実HTTPは未実施。 |
-| 必須・ゼロ表示・任意ラベル | 名称・会社住所以外のnumber等の必須、税率別2区分を常に必須・表示とするか、任意ラベルを省く方針、数量0／負数等を対応外にしてよいか確認する。 |
-| ID・版と会社更新、採用済みモードの未検証範囲 | companyId／templateId／asset IDの命名、参照できない時のエラー、生成時の会社・画像・templateの版の固定方法は後続の登録・認証設計と整合させる。数量モードの[設定仕様](../QUANTITY-MODE-SETTINGS-DRAFT.md)は採用済み。設定解決・不正値拒否は[fixtureで確認済み](../quantity-resolution-validation/README.md)。登録保存・製品HTTP・参照解決は未確認。過去版管理は今回実装しない。 |
-| エラー・初版契約 | HTTP・code・JSON Pointer、NFD拒否、64KiB候補、未知key拒否、金額間不一致をエラーにしない点を確定。標準JSONの版識別key／API経路は今回未設計。 |
+既存v0.3実測の0.583〜1.136秒／217,277〜225,433 bytesと、過去の同時2チェーン約1秒は根拠として維持する。採用後の最終組合せ・同時試験は未実施。基準は条件付き検証の受入値で、本番SLA・最大画像・site経由を保証しない。
 
-これらを決め、代表JSON・表示先・入力上限／エラー例・正式な品質／時間／容量基準をそろえてから #134 の完了を判断する。提案を作成・共有しただけで #133／#134を閉じない。認証・会社保存・画像保存・可変明細・一括合成の製品実装は開始しない。
+## 12. 採用後の残作業と、後続設計
+
+R1〜R8と既存の名称／数量／設定／取引／備考は採用済み。残るのは[最終検証F1〜F6](../FINAL-VALIDATION-site-134.md)で、仕様採否を未確定へ戻さない。取引と備考の境界／省略＋nameLines／数量設定の組合せ、0金額・両税率・任意ラベル／画像省略、数値上限、事前拒否の正式形式とAPI0、採用基準に対する単独／共有枠内同時測定を、小さな追加検証でそろえる。
+
+後続に残す設計はcompanyId／templateId／asset IDの正式値、版識別・参照／権限・生成時スナップショットの製品設計、公開API経路、保存／更新／認証・混雑／timeout等のHTTP契約。これらはR1〜R8で公開APIとして確定したものではない。例のIDは架空・仮置きのまま。登録／発行本文64KiBと保存／HTTP入口の整合、実HTTP応答、製品テンプレート・ブラウザの確認は後続実装で行う。
+
+今回の採用更新ではvalidator・製品・PDF API・新規PDFを実行していない。過去の成功を採用後の追加確認済みへ読み替えず、F1〜F6を残して両Issueをopenとする。認証・会社保存・画像保存・可変明細・一括合成は先行実装しない。
