@@ -1,0 +1,94 @@
+{
+  "companyId": "company_demo",
+  "templateId": "estimate-standard-v1",
+  "currency": "JPY",
+  "recipient": {
+    "nameLines": [
+      "先先先先先先先先先先先先先先先先先先先先",
+      "宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛"
+    ]
+  },
+  "issueDate": "2027-01-02",
+  "number": "EST-2026-0008",
+  "subject": "帳票サンプル",
+  "transaction": {
+    "period": {
+      "start": "2026-12-31",
+      "end": "2027-01-01"
+    }
+  },
+  "items": [
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "99999.999",
+      "unitPrice": 99999999,
+      "taxRate": 10,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "99999",
+      "unitPrice": 99999999,
+      "taxRate": 8,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "0.001",
+      "unitPrice": 99999999,
+      "taxRate": 10,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "2.50",
+      "unitPrice": 99999999,
+      "taxRate": 8,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "1.000",
+      "unitPrice": 99999999,
+      "taxRate": 10,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "3",
+      "unitPrice": 99999999,
+      "taxRate": 8,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "123.45",
+      "unitPrice": 99999999,
+      "taxRate": 10,
+      "amount": 999999999999
+    },
+    {
+      "name": "品品品品品品品品品品品品品品品品品",
+      "quantity": "0.010",
+      "unitPrice": 99999999,
+      "taxRate": 8,
+      "amount": 999999999999
+    }
+  ],
+  "taxSummary": {
+    "10": {
+      "taxableAmount": 999999999999,
+      "taxAmount": 999999999999
+    },
+    "8": {
+      "taxableAmount": 999999999999,
+      "taxAmount": 999999999999
+    }
+  },
+  "totalAmount": 999999999999,
+  "notesLines": [
+    "備備備備備備備備備備備備備備備備"
+  ],
+  "validUntil": "2026-11-30",
+  "quantityAlignment": "decimal"
+}

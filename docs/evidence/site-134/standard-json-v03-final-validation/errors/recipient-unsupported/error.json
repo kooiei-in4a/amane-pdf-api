@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/nameLines/1",
+      "code": "unsupported-character",
+      "message": "固定フォントの対応文字へ入力を修正してください。"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/items/0/amount",
+      "code": "invalid-integer",
+      "message": "金額は符号・小数部・指数のないJSON整数で指定してください。"
+    }
+  ]
+}

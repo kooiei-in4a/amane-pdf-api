@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/totalAmount",
+      "code": "out-of-range",
+      "message": "数量は正数、金額は指定された非負整数範囲で指定してください。"
+    }
+  ]
+}

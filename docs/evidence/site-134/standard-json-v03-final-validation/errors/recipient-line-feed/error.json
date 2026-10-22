@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/nameLines/1",
+      "code": "invalid-line-break",
+      "message": "配列の1行内に改行を含めないでください。"
+    }
+  ]
+}

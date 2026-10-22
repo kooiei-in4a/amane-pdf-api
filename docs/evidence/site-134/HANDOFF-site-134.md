@@ -16,7 +16,7 @@
 
 **取引情報・備考も採用済み（製品未実装）**：[採用仕様](TRANSACTION-NOTES-SPEC-PROPOSAL.md)／[標準JSON v0.3](standard-json-draft-v0.3/README.md)。共有最大3行・48文字（LF込み）、自由備考は各行16文字でdate時最大2行、period時最大1行、取引省略時最大3行・LF込み48文字。専用欄は初版対象外。transactionは請求書必須／見積書任意。取引情報を先頭、自由備考を後ろへLF結合し、固定ラベル「取引・備考」。見積書で両方省略なら値・ラベルなし。発行日等から補完せず、超過分を削除・縮小しない。
 
-**初版R1〜R8も一括採用済み**：[採用記録](INITIAL-SPEC-ADOPTED.md)。標準JSONv0.3の必須表、JPY・税抜・軽減8%／10%、単価8桁／他金額12桁の非負整数、正数量のみ、両税率の確定値と0円表示、未対応文字・NFD結合濁点拒否、400／413／422＋first-error＋JSON Pointer／source、単独10秒／同時各20秒／2MiB等を採用した。元の名称・数量・設定・取引／備考・罫線は維持。新規描画・validator修正は今回なし。
+**初版R1〜R8も一括採用済み**：[採用記録](INITIAL-SPEC-ADOPTED.md)。標準JSONv0.3の必須表、JPY・税抜・軽減8%／10%、単価8桁／他金額12桁の非負整数、正数量のみ、両税率の確定値と0円表示、未対応文字・NFD結合濁点拒否、400／413／422＋first-error＋JSON Pointer／source、単独10秒／同時各20秒／2MiB等を採用した。元の名称・数量・設定・取引／備考・罫線は維持。採用更新後の[最終fixture検証](standard-json-v03-final-validation/README.md)は正常24＋同時2・拒否135件で実施済み。製品修正はなし。
 
 現在は検証用サンプルまで。**製品実装はまだ行わないという依頼に従い、製品コード・API契約・CI・共有mainは未変更。** 本書は、次の担当が変更対象と未確定事項を把握するための引き継ぎである。#134 全体は未完了、Issueはopenのまま。
 
@@ -58,7 +58,7 @@
 
 ## #134 に残っている作業
 
-**仕様の採否はR1〜R8まで完了。残るのは最終仕様にそろえる検証と報告。** 詳細・入力・証拠・後続との境界は[最終検証F1〜F6](FINAL-VALIDATION-site-134.md)を参照する。
+**仕様の採否はR1〜R8まで完了。下記F1〜F5は[最終結果](standard-json-v03-final-validation/README.md)で確認済み。F6の親要約反映と後続引き継ぎを残す。** 以下は確認対象・完成条件の一覧。 詳細・入力・証拠・後続との境界は[最終検証F1〜F6](FINAL-VALIDATION-site-134.md)を参照する。
 
 1. **F1 最終組合せ描画**：両帳票1／8明細×数量両モードを基本に、nameLines20×2、備考48文字／期間43文字、取引／備考省略、年越し／同日periodを少数ケースで網羅し、設定解決・確定金額・画像と同じ経路で確認する。
 2. **F2 ゼロ・任意・画像**：正数量のまま金額0と両税率の0円／ラベルを表示。任意項目の値／ラベル省略、画像なし／片方のみを確認する。
@@ -67,7 +67,7 @@
 5. **F5 受入基準**：最終入力で単独と既存共有2枠内の同時2チェーンを少数測定し、10秒／各20秒／2MiBと品質・後始末を確認する。長時間負荷試験は追加しない。
 6. **F6 統合報告**：固定SHA・入力・PDF・再現手順・検査／測定結果・制限を#134にまとめ、親#133へ判断と後続を反映する。
 
-[v0.3正常18／拒否66](standard-json-v03-validation/README.md)、[数量解決正常9／拒否40](quantity-resolution-validation/README.md)、[旧v0.2正常14／拒否65](standard-json-v02-validation/README.md)は既存の根拠。入力・PDF・スクリプト・実測は過去の条件のまま残し、今回の一括採用だけで最終検証済みにはしない。
+[v0.3正常18／拒否66](standard-json-v03-validation/README.md)、[数量解決正常9／拒否40](quantity-resolution-validation/README.md)、[旧v0.2正常14／拒否65](standard-json-v02-validation/README.md)は既存の根拠。入力・PDF・スクリプト・実測は過去の条件のまま残し、一括採用時の履歴と、その後の[最終検証24＋2／135件](standard-json-v03-final-validation/README.md)を区別する。
 
 
 数量のエラー例は`/items/0/quantity`：`100000`（整数部6桁）・`1.0000`（小数部4桁）はquantity-format、数値型`1.25`はinvalid-type。`123.45`／`99999.999`を旧5文字制限で拒否しない。単なる9文字制限へ置き換えるだけでは整数部／小数部の上限を守れない。数量形式は422 quantity-format、数値型は422 invalid-type、ゼロは422 out-of-range、負数はquantity-formatとする採用形式。製品HTTPは未確認。quantityAlignmentの設定エラーは採用済み仕様を参照する。

@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/transaction/date",
+      "code": "invalid-date",
+      "message": "実在するYYYY-MM-DDの日付を指定してください。"
+    }
+  ]
+}

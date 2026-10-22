@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/transaction/period/end",
+      "code": "invalid-period",
+      "message": "期間の開始日を終了日以前にしてください。"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/nameLines/0",
+      "code": "field-overflow",
+      "message": "文字が表示枠を超えています。"
+    }
+  ]
+}

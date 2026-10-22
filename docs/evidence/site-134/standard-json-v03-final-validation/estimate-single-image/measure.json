@@ -1,0 +1,118 @@
+{
+  "fill": {
+    "seconds": 0.2119699209870305,
+    "status": 200,
+    "bytes": 213205,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "seal": {
+    "seconds": 0.17999470300856046,
+    "status": 200,
+    "bytes": 216706,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "json_to_pdf_seconds": 0.39348893499118276,
+  "preflight_seconds": 0.001512287009973079,
+  "total_seconds": 0.39196462399559096,
+  "final_bytes": 216706,
+  "effective": {
+    "quantityAlignment": "right",
+    "source": "request"
+  },
+  "rendered_images": [
+    "seal"
+  ],
+  "extraction": {
+    "exact_per_rectangle_text": true,
+    "characters": 250,
+    "words": 46,
+    "words_outside_rectangles": [],
+    "pages": 1
+  },
+  "images": {
+    "image": "seal",
+    "changed_pixel_bbox": [
+      979,
+      441,
+      1090,
+      552
+    ],
+    "sample_channel_errors": [
+      0.4117647058823479,
+      0.4117647058823479,
+      0.0,
+      0.470588235294116
+    ]
+  },
+  "header_layout": {
+    "issuer": {
+      "lines": 1,
+      "utf16_units": 10,
+      "line_advance_pt": [
+        90.0
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "recipient": {
+      "lines": 1,
+      "utf16_units": 12,
+      "line_advance_pt": [
+        101.997
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "address": {
+      "lines": 2,
+      "utf16_units": 18,
+      "line_advance_pt": [
+        99.0,
+        53.541
+      ],
+      "no_intersection_with_other_words": true
+    }
+  },
+  "quantity_positions": {
+    "rows": [
+      {
+        "key": "row0.quantity",
+        "quantity": "12345.000",
+        "word_x_min_pt": 232.209,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 261.529,
+        "dot_ink_center_pt": 262.25,
+        "gap_to_name_pt": 157.373,
+        "gap_to_price_pt": 72.99899999999997
+      }
+    ],
+    "anchor_spread_pt": 0.0,
+    "dot_ink_center_spread_pt": 0.0,
+    "right_edge_spread_pt": 0.0
+  },
+  "fields": 42,
+  "rendered_lines": 44,
+  "notes_lines": 2,
+  "notes_characters": 26,
+  "input_objects_unchanged": true,
+  "input_fields_preserved": true,
+  "optional_labels_and_unused_rows_checked": true,
+  "word_image_intersections": 0,
+  "reserved_image_regions_checked": [
+    "seal"
+  ],
+  "api_calls": [
+    {
+      "case": "estimate-single-image",
+      "method": "POST",
+      "path": "/api/pdf/fill-template"
+    },
+    {
+      "case": "estimate-single-image",
+      "method": "POST",
+      "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+    }
+  ],
+  "post_count_delta": 2,
+  "acceptance_passed": true
+}

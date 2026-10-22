@@ -1,0 +1,772 @@
+[
+  {
+    "page": 1,
+    "x": 0.3,
+    "y": 0.045,
+    "width": 0.6,
+    "height": 0.04,
+    "fontSize": 18,
+    "align": "left",
+    "text": "見積書"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.105,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "宛名"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.105,
+    "width": 0.34,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "先先先先先先先先先先先先先先先先先先先先\n宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛宛"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.105,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "見積日"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.105,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "2027年01月02日"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.145,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "件名"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.145,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "帳票サンプル"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.145,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "見積番号"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.145,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "EST-2026-0008"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.185,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "発行者"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.185,
+    "width": 0.34,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "証証証証証証証証証証証証証証証証証証証証\n明明明明明明明明明明明明明明明明明明明明"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.185,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "有効期限"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.185,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "2026年11月30日"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.225,
+    "width": 0.115,
+    "height": 0.045,
+    "fontSize": 9,
+    "align": "left",
+    "text": "住所"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.225,
+    "width": 0.34,
+    "height": 0.045,
+    "fontSize": 9,
+    "align": "left",
+    "text": "所所所所所所所所所所所所所所所所所所所所\n在在在在在在在在在在在在在在在在在在在在"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.225,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "登録番号"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.225,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "T0000000000000"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.285,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "連絡先"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.285,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "00-0000-0000"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.34,
+    "width": 0.32,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品名"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.34,
+    "width": 0.095,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "right",
+    "text": "数量"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.34,
+    "width": 0.16,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "right",
+    "text": "単価"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.34,
+    "width": 0.06,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "left",
+    "text": "税率"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.34,
+    "width": 0.235,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "right",
+    "text": "金額"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.375,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.375,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99999.999"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.375,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.375,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "10%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.375,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.406,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品※"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.406,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99999"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.406,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.406,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "8%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.406,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.437,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.437,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "0.001"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.437,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.437,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "10%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.437,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.468,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品※"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.468,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "2.50"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.468,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.468,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "8%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.468,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.499,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.499,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "1.000"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.499,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.499,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "10%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.499,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.53,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品※"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.53,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "3"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.53,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.53,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "8%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.53,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.561,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.561,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "123.45"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.561,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.561,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "10%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.561,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.592,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品品品品品品品品品品品品品品品品品※"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.592,
+    "width": 0.095,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "0.010"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.592,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "99,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.592,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "8%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.592,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.632,
+    "width": 0.6,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "left",
+    "text": "※は軽減税率対象"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.675,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "10%対象額"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.675,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.675,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "10%消費税"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.675,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.715,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "8%対象額"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.715,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.715,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "8%消費税"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.715,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.755,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 10,
+    "align": "left",
+    "text": "合計"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.755,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 12,
+    "align": "right",
+    "text": "999,999,999,999円"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.805,
+    "width": 0.115,
+    "height": 0.065,
+    "fontSize": 9,
+    "align": "left",
+    "text": "取引・備考"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.805,
+    "width": 0.29,
+    "height": 0.065,
+    "fontSize": 9,
+    "align": "left",
+    "text": "取引期間\n2026/12/31～2027/01/01\n備備備備備備備備備備備備備備備備"
+  }
+]

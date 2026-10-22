@@ -1,0 +1,117 @@
+{
+  "fill": {
+    "seconds": 0.20798514201305807,
+    "status": 200,
+    "bytes": 214337,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "logo": {
+    "seconds": 0.17584097699727863,
+    "status": 200,
+    "bytes": 217797,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "json_to_pdf_seconds": 0.385419679019833,
+  "preflight_seconds": 0.0015806250157766044,
+  "total_seconds": 0.3838261190103367,
+  "final_bytes": 217797,
+  "effective": {
+    "quantityAlignment": "decimal",
+    "source": "request"
+  },
+  "rendered_images": [
+    "logo"
+  ],
+  "extraction": {
+    "exact_per_rectangle_text": true,
+    "characters": 273,
+    "words": 51,
+    "words_outside_rectangles": [],
+    "pages": 1
+  },
+  "images": {
+    "image": "logo",
+    "changed_pixel_bbox": [
+      63,
+      71,
+      270,
+      135
+    ],
+    "sample_channel_errors": [
+      0.3333333333333144,
+      0.0,
+      0.0
+    ]
+  },
+  "header_layout": {
+    "issuer": {
+      "lines": 1,
+      "utf16_units": 10,
+      "line_advance_pt": [
+        90.0
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "recipient": {
+      "lines": 1,
+      "utf16_units": 12,
+      "line_advance_pt": [
+        101.997
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "address": {
+      "lines": 2,
+      "utf16_units": 18,
+      "line_advance_pt": [
+        99.0,
+        53.541
+      ],
+      "no_intersection_with_other_words": true
+    }
+  },
+  "quantity_positions": {
+    "rows": [
+      {
+        "key": "row0.quantity",
+        "quantity": "99999.999",
+        "word_x_min_pt": 231.0815,
+        "word_x_max_pt": 282.1375,
+        "decimal_or_integer_end_pt": 261.4415,
+        "dot_ink_center_pt": 262.25,
+        "gap_to_name_pt": 156.2455,
+        "gap_to_price_pt": 73.0865
+      }
+    ],
+    "anchor_spread_pt": 0.0,
+    "dot_ink_center_spread_pt": 0.0,
+    "right_edge_spread_pt": 0.0
+  },
+  "fields": 44,
+  "rendered_lines": 47,
+  "notes_lines": 2,
+  "notes_characters": 26,
+  "input_objects_unchanged": true,
+  "input_fields_preserved": true,
+  "optional_labels_and_unused_rows_checked": true,
+  "word_image_intersections": 0,
+  "reserved_image_regions_checked": [
+    "logo"
+  ],
+  "api_calls": [
+    {
+      "case": "invoice-single-image",
+      "method": "POST",
+      "path": "/api/pdf/fill-template"
+    },
+    {
+      "case": "invoice-single-image",
+      "method": "POST",
+      "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+    }
+  ],
+  "post_count_delta": 2,
+  "acceptance_passed": true
+}

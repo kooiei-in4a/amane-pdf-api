@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/subject",
+      "code": "forbidden-sequence",
+      "message": "描画時に解釈される禁止文字列を削除してください。"
+    }
+  ]
+}

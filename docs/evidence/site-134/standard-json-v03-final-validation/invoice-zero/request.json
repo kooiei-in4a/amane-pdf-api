@@ -1,0 +1,92 @@
+{
+  "companyId": "company_demo",
+  "templateId": "invoice-standard-v1",
+  "currency": "JPY",
+  "recipient": {
+    "nameLines": [
+      "架空取引先株式会社 御中"
+    ]
+  },
+  "issueDate": "2026-10-22",
+  "number": "INV-2026-0008",
+  "subject": "帳票サンプル",
+  "paymentDueDate": "2026-11-30",
+  "transaction": {
+    "period": {
+      "start": "2026-10-01",
+      "end": "2026-10-31"
+    }
+  },
+  "items": [
+    {
+      "name": "試験品目1",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目2",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目3",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目4",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目5",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目6",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目7",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    },
+    {
+      "name": "試験品目8",
+      "quantity": "0.001",
+      "unitPrice": 0,
+      "taxRate": 10,
+      "amount": 0
+    }
+  ],
+  "taxSummary": {
+    "10": {
+      "taxableAmount": 0,
+      "taxAmount": 0
+    },
+    "8": {
+      "taxableAmount": 0,
+      "taxAmount": 0
+    }
+  },
+  "totalAmount": 0,
+  "notesLines": [
+    "期間と備考の併記例"
+  ]
+}

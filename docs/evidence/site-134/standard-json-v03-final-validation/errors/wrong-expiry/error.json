@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/validUntil",
+      "code": "not-applicable",
+      "message": "この帳票種別では使用できない項目を削除してください。"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/items/8",
+      "code": "too-many-items",
+      "message": "明細は8件以内にしてください。"
+    }
+  ]
+}

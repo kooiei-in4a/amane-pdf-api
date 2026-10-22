@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/items/0/taxRate",
+      "code": "unsupported-tax-rate",
+      "message": "税率は整数8または10で指定してください。"
+    }
+  ]
+}

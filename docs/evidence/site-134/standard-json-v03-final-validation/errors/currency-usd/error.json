@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/currency",
+      "code": "unsupported-currency",
+      "message": "通貨はJPYを指定してください。"
+    }
+  ]
+}

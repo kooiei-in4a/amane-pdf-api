@@ -1,0 +1,1328 @@
+{
+  "id": "invoice",
+  "name": "請求書",
+  "page": {
+    "width": 595,
+    "height": 842
+  },
+  "detailRows": 8,
+  "fields": [
+    {
+      "key": "title",
+      "label": "表題",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.3,
+        "y": 0.045,
+        "width": 0.6,
+        "height": 0.04
+      },
+      "fontSize": 18,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 15,
+      "text": "請求書"
+    },
+    {
+      "key": "label.recipient",
+      "label": "宛名",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.105,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "宛名"
+    },
+    {
+      "key": "recipient",
+      "label": "宛名",
+      "type": "multiline",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.105,
+        "width": 0.34,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 2,
+      "maxLength": 41
+    },
+    {
+      "key": "label.date",
+      "label": "請求日",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.105,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "請求日"
+    },
+    {
+      "key": "date",
+      "label": "請求日",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.105,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 11
+    },
+    {
+      "key": "label.subject",
+      "label": "件名",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.145,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "件名"
+    },
+    {
+      "key": "subject",
+      "label": "件名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.145,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 16
+    },
+    {
+      "key": "label.number",
+      "label": "請求番号",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.145,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "請求番号"
+    },
+    {
+      "key": "number",
+      "label": "請求番号",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.145,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 16
+    },
+    {
+      "key": "label.issuer",
+      "label": "発行者",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.185,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "発行者"
+    },
+    {
+      "key": "issuer",
+      "label": "発行者",
+      "type": "multiline",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.185,
+        "width": 0.34,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 2,
+      "maxLength": 41
+    },
+    {
+      "key": "label.expiry",
+      "label": "支払期限",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.185,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "支払期限"
+    },
+    {
+      "key": "expiry",
+      "label": "支払期限",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.185,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 11
+    },
+    {
+      "key": "label.address",
+      "label": "住所",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.225,
+        "width": 0.115,
+        "height": 0.045
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "住所"
+    },
+    {
+      "key": "address",
+      "label": "住所",
+      "type": "multiline",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.225,
+        "width": 0.34,
+        "height": 0.045
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 2,
+      "maxLength": 41
+    },
+    {
+      "key": "label.registration",
+      "label": "登録番号",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.225,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "登録番号"
+    },
+    {
+      "key": "registration",
+      "label": "登録番号",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.225,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "label.contact",
+      "label": "連絡先",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.285,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "連絡先"
+    },
+    {
+      "key": "contact",
+      "label": "連絡先",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.285,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 16
+    },
+    {
+      "key": "heading.name",
+      "label": "品名",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.34,
+        "width": 0.32,
+        "height": 0.025
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 5,
+      "text": "品名"
+    },
+    {
+      "key": "heading.quantity",
+      "label": "数量",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.34,
+        "width": 0.095,
+        "height": 0.025
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 5,
+      "text": "数量"
+    },
+    {
+      "key": "heading.price",
+      "label": "単価",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.34,
+        "width": 0.16,
+        "height": 0.025
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 5,
+      "text": "単価"
+    },
+    {
+      "key": "heading.rate",
+      "label": "税率",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.34,
+        "width": 0.06,
+        "height": 0.025
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 5,
+      "text": "税率"
+    },
+    {
+      "key": "heading.amount",
+      "label": "金額",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.34,
+        "width": 0.235,
+        "height": 0.025
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 5,
+      "text": "金額"
+    },
+    {
+      "key": "row0.name",
+      "label": "明細1 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.375,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row0.quantity",
+      "label": "明細1 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.375,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row0.price",
+      "label": "明細1 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.375,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row0.rate",
+      "label": "明細1 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.375,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row0.amount",
+      "label": "明細1 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.375,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row1.name",
+      "label": "明細2 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.406,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row1.quantity",
+      "label": "明細2 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.406,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row1.price",
+      "label": "明細2 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.406,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row1.rate",
+      "label": "明細2 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.406,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row1.amount",
+      "label": "明細2 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.406,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row2.name",
+      "label": "明細3 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.437,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row2.quantity",
+      "label": "明細3 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.437,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row2.price",
+      "label": "明細3 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.437,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row2.rate",
+      "label": "明細3 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.437,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row2.amount",
+      "label": "明細3 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.437,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row3.name",
+      "label": "明細4 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.468,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row3.quantity",
+      "label": "明細4 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.468,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row3.price",
+      "label": "明細4 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.468,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row3.rate",
+      "label": "明細4 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.468,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row3.amount",
+      "label": "明細4 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.468,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row4.name",
+      "label": "明細5 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.499,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row4.quantity",
+      "label": "明細5 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.499,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row4.price",
+      "label": "明細5 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.499,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row4.rate",
+      "label": "明細5 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.499,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row4.amount",
+      "label": "明細5 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.499,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row5.name",
+      "label": "明細6 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.53,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row5.quantity",
+      "label": "明細6 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.53,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row5.price",
+      "label": "明細6 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.53,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row5.rate",
+      "label": "明細6 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.53,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row5.amount",
+      "label": "明細6 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.53,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row6.name",
+      "label": "明細7 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.561,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row6.quantity",
+      "label": "明細7 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.561,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row6.price",
+      "label": "明細7 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.561,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row6.rate",
+      "label": "明細7 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.561,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row6.amount",
+      "label": "明細7 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.561,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "row7.name",
+      "label": "明細8 品名",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.592,
+        "width": 0.32,
+        "height": 0.027
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 18,
+      "inputMaxLength": 17
+    },
+    {
+      "key": "row7.quantity",
+      "label": "明細8 数量",
+      "type": "quantity",
+      "page": 1,
+      "rect": {
+        "x": 0.38,
+        "y": 0.592,
+        "width": 0.095,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 9
+    },
+    {
+      "key": "row7.price",
+      "label": "明細8 単価",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.48,
+        "y": 0.592,
+        "width": 0.16,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 14
+    },
+    {
+      "key": "row7.rate",
+      "label": "明細8 税率",
+      "type": "tax",
+      "page": 1,
+      "rect": {
+        "x": 0.645,
+        "y": 0.592,
+        "width": 0.06,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 3,
+      "default": "10"
+    },
+    {
+      "key": "row7.amount",
+      "label": "明細8 金額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.71,
+        "y": 0.592,
+        "width": 0.235,
+        "height": 0.027
+      },
+      "fontSize": 8,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "reduced-note",
+      "label": "軽減税率の注記",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.055,
+        "y": 0.632,
+        "width": 0.6,
+        "height": 0.025
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 20,
+      "text": "※は軽減税率対象"
+    },
+    {
+      "key": "label.subtotal10",
+      "label": "10%対象額",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.675,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "10%対象額"
+    },
+    {
+      "key": "subtotal10",
+      "label": "10%対象額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.675,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "label.tax10",
+      "label": "10%消費税",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.675,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "10%消費税"
+    },
+    {
+      "key": "tax10",
+      "label": "10%消費税",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.675,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "label.subtotal8",
+      "label": "8%対象額",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.715,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "8%対象額"
+    },
+    {
+      "key": "subtotal8",
+      "label": "8%対象額",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.715,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "label.tax8",
+      "label": "8%消費税",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.715,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "8%消費税"
+    },
+    {
+      "key": "tax8",
+      "label": "8%消費税",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.715,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 9,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "label.total",
+      "label": "合計",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.755,
+        "width": 0.115,
+        "height": 0.026
+      },
+      "fontSize": 10,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "合計"
+    },
+    {
+      "key": "total",
+      "label": "合計",
+      "type": "money",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.755,
+        "width": 0.29,
+        "height": 0.026
+      },
+      "fontSize": 12,
+      "align": "right",
+      "maxLines": 1,
+      "maxLength": 19,
+      "computed": true
+    },
+    {
+      "key": "label.bank",
+      "label": "振込先",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.05,
+        "y": 0.805,
+        "width": 0.115,
+        "height": 0.065
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "振込先"
+    },
+    {
+      "key": "bank",
+      "label": "振込先",
+      "type": "multiline",
+      "page": 1,
+      "rect": {
+        "x": 0.17,
+        "y": 0.805,
+        "width": 0.29,
+        "height": 0.065
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 3,
+      "maxLength": 48
+    },
+    {
+      "key": "label.notes",
+      "label": "備考",
+      "type": "fixed",
+      "page": 1,
+      "rect": {
+        "x": 0.52,
+        "y": 0.805,
+        "width": 0.115,
+        "height": 0.065
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 1,
+      "maxLength": 12,
+      "text": "取引・備考"
+    },
+    {
+      "key": "notes",
+      "label": "備考",
+      "type": "multiline",
+      "page": 1,
+      "rect": {
+        "x": 0.64,
+        "y": 0.805,
+        "width": 0.29,
+        "height": 0.065
+      },
+      "fontSize": 9,
+      "align": "left",
+      "maxLines": 3,
+      "maxLength": 48
+    }
+  ],
+  "sha256": "f3ad7950e5c346c94f13d9d53a37afe9397ca9f14c14b29bb78f703e76ffb09f"
+}

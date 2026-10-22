@@ -1,0 +1,342 @@
+[
+  {
+    "page": 1,
+    "x": 0.3,
+    "y": 0.045,
+    "width": 0.6,
+    "height": 0.04,
+    "fontSize": 18,
+    "align": "left",
+    "text": "請求書"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.105,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "宛名"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.105,
+    "width": 0.34,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "架空取引先株式会社 御中"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.105,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "請求日"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.105,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "2026年10月22日"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.145,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "請求番号"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.145,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "INV-2026-0001"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.185,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "発行者"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.185,
+    "width": 0.34,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "架空帳票研究株式会社"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.225,
+    "width": 0.115,
+    "height": 0.045,
+    "fontSize": 9,
+    "align": "left",
+    "text": "住所"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.225,
+    "width": 0.34,
+    "height": 0.045,
+    "fontSize": 9,
+    "align": "left",
+    "text": "東京都架空区見本一丁目\n試験ビル二階"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.34,
+    "width": 0.32,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "left",
+    "text": "品名"
+  },
+  {
+    "page": 1,
+    "x": 0.38,
+    "y": 0.34,
+    "width": 0.095,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "right",
+    "text": "数量"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.34,
+    "width": 0.16,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "right",
+    "text": "単価"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.34,
+    "width": 0.06,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "left",
+    "text": "税率"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.34,
+    "width": 0.235,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "right",
+    "text": "金額"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.375,
+    "width": 0.32,
+    "height": 0.027,
+    "fontSize": 9,
+    "align": "left",
+    "text": "試験品目1"
+  },
+  {
+    "page": 1,
+    "x": 0.3877,
+    "y": 0.375,
+    "width": 0.0873,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "99999.999"
+  },
+  {
+    "page": 1,
+    "x": 0.48,
+    "y": 0.375,
+    "width": 0.16,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "100円"
+  },
+  {
+    "page": 1,
+    "x": 0.645,
+    "y": 0.375,
+    "width": 0.06,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "left",
+    "text": "10%"
+  },
+  {
+    "page": 1,
+    "x": 0.71,
+    "y": 0.375,
+    "width": 0.235,
+    "height": 0.027,
+    "fontSize": 8,
+    "align": "right",
+    "text": "125円"
+  },
+  {
+    "page": 1,
+    "x": 0.055,
+    "y": 0.632,
+    "width": 0.6,
+    "height": 0.025,
+    "fontSize": 9,
+    "align": "left",
+    "text": "※は軽減税率対象"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.675,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "10%対象額"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.675,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "125円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.675,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "10%消費税"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.675,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "12円"
+  },
+  {
+    "page": 1,
+    "x": 0.05,
+    "y": 0.715,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "8%対象額"
+  },
+  {
+    "page": 1,
+    "x": 0.17,
+    "y": 0.715,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "0円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.715,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "left",
+    "text": "8%消費税"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.715,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 9,
+    "align": "right",
+    "text": "0円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.755,
+    "width": 0.115,
+    "height": 0.026,
+    "fontSize": 10,
+    "align": "left",
+    "text": "合計"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.755,
+    "width": 0.29,
+    "height": 0.026,
+    "fontSize": 12,
+    "align": "right",
+    "text": "137円"
+  },
+  {
+    "page": 1,
+    "x": 0.52,
+    "y": 0.805,
+    "width": 0.115,
+    "height": 0.065,
+    "fontSize": 9,
+    "align": "left",
+    "text": "取引・備考"
+  },
+  {
+    "page": 1,
+    "x": 0.64,
+    "y": 0.805,
+    "width": 0.29,
+    "height": 0.065,
+    "fontSize": 9,
+    "align": "left",
+    "text": "取引日 2026/10/20"
+  }
+]

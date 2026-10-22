@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/transaction/period/end",
+      "code": "required",
+      "message": "必須項目に空でない値を指定してください。"
+    }
+  ]
+}

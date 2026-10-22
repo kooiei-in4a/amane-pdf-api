@@ -1,0 +1,16 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/companyId",
+      "code": "registered-data-invalid",
+      "source": {
+        "kind": "company",
+        "path": "/nameLines",
+        "code": "line-count"
+      },
+      "message": "sourceで示した登録情報を修正してください。"
+    }
+  ]
+}

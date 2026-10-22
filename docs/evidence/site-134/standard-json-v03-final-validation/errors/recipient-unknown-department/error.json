@@ -1,0 +1,11 @@
+{
+  "status": 400,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/department",
+      "code": "unknown-field",
+      "message": "対応していない項目を削除してください。"
+    }
+  ]
+}

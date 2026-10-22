@@ -1,0 +1,183 @@
+{
+  "fill": {
+    "seconds": 0.2029384469788056,
+    "status": 200,
+    "bytes": 206885,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "logo": {
+    "seconds": 0.18128158900071867,
+    "status": 200,
+    "bytes": 210345,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "seal": {
+    "seconds": 0.1825163880130276,
+    "status": 200,
+    "bytes": 213846,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "json_to_pdf_seconds": 0.5680065380001906,
+  "preflight_seconds": 0.0012514099944382906,
+  "total_seconds": 0.5667364239925519,
+  "final_bytes": 213846,
+  "effective": {
+    "quantityAlignment": "right",
+    "source": "request"
+  },
+  "rendered_images": [
+    "logo",
+    "seal"
+  ],
+  "extraction": {
+    "exact_per_rectangle_text": true,
+    "characters": 398,
+    "words": 43,
+    "words_outside_rectangles": [],
+    "pages": 1
+  },
+  "images": [
+    {
+      "image": "logo",
+      "expected_pt": [
+        29.75,
+        33.68,
+        107.1,
+        35.7
+      ],
+      "changed_pixel_bbox": [
+        63,
+        71,
+        270,
+        135
+      ],
+      "samples": [
+        {
+          "alpha": 128,
+          "max_channel_error": 0.3333333333333144
+        },
+        {
+          "alpha": 0,
+          "max_channel_error": 0.0
+        },
+        {
+          "alpha": 255,
+          "max_channel_error": 0.0
+        }
+      ]
+    },
+    {
+      "image": "seal",
+      "expected_pt": [
+        487.9,
+        218.92000000000002,
+        59.5,
+        59.5
+      ],
+      "changed_pixel_bbox": [
+        979,
+        441,
+        1090,
+        552
+      ],
+      "samples": [
+        {
+          "alpha": 128,
+          "max_channel_error": 0.4117647058823479
+        },
+        {
+          "alpha": 128,
+          "max_channel_error": 0.4117647058823479
+        },
+        {
+          "alpha": 0,
+          "max_channel_error": 0.0
+        },
+        {
+          "alpha": 200,
+          "max_channel_error": 0.470588235294116
+        }
+      ]
+    }
+  ],
+  "header_layout": {
+    "issuer": {
+      "lines": 2,
+      "utf16_units": 41,
+      "line_advance_pt": [
+        180.0,
+        180.0
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "recipient": {
+      "lines": 2,
+      "utf16_units": 41,
+      "line_advance_pt": [
+        180.0,
+        180.0
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "address": {
+      "lines": 2,
+      "utf16_units": 41,
+      "line_advance_pt": [
+        180.0,
+        180.0
+      ],
+      "no_intersection_with_other_words": true
+    }
+  },
+  "quantity_positions": {
+    "rows": [
+      {
+        "key": "row0.quantity",
+        "quantity": "99999.999",
+        "word_x_min_pt": 231.169,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 261.529,
+        "dot_ink_center_pt": 262.25,
+        "gap_to_name_pt": 44.994,
+        "gap_to_price_pt": 36.63899999999995
+      }
+    ],
+    "anchor_spread_pt": 0.0,
+    "dot_ink_center_spread_pt": 0.0,
+    "right_edge_spread_pt": 0.0
+  },
+  "fields": 40,
+  "rendered_lines": 43,
+  "notes_lines": 0,
+  "notes_characters": 0,
+  "input_objects_unchanged": true,
+  "input_fields_preserved": true,
+  "optional_labels_and_unused_rows_checked": true,
+  "word_image_intersections": 0,
+  "reserved_image_regions_checked": [
+    "logo",
+    "seal"
+  ],
+  "api_calls": [
+    {
+      "case": "estimate-1-omitted-right",
+      "method": "POST",
+      "path": "/api/pdf/fill-template"
+    },
+    {
+      "case": "estimate-1-omitted-right",
+      "method": "POST",
+      "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+    },
+    {
+      "case": "estimate-1-omitted-right",
+      "method": "POST",
+      "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+    }
+  ],
+  "post_count_delta": 3,
+  "acceptance_passed": true
+}

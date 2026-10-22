@@ -1,0 +1,11 @@
+{
+  "status": 400,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "",
+      "code": "invalid-json",
+      "message": "UTF-8の正しいJSONを指定してください。"
+    }
+  ]
+}

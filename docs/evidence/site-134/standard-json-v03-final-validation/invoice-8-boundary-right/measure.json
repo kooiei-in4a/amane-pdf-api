@@ -1,0 +1,251 @@
+{
+  "fill": {
+    "seconds": 0.21979322700644843,
+    "status": 200,
+    "bytes": 210893,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "logo": {
+    "seconds": 0.18840267101768404,
+    "status": 200,
+    "bytes": 214353,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "seal": {
+    "seconds": 0.18176114599918947,
+    "status": 200,
+    "bytes": 217854,
+    "content_type": "application/pdf",
+    "problem": null
+  },
+  "json_to_pdf_seconds": 0.5917113040050026,
+  "preflight_seconds": 0.0017359360062982887,
+  "total_seconds": 0.5899570440233219,
+  "final_bytes": 217854,
+  "effective": {
+    "quantityAlignment": "right",
+    "source": "templateSettings"
+  },
+  "rendered_images": [
+    "logo",
+    "seal"
+  ],
+  "extraction": {
+    "exact_per_rectangle_text": true,
+    "characters": 829,
+    "words": 87,
+    "words_outside_rectangles": [],
+    "pages": 1
+  },
+  "images": [
+    {
+      "image": "logo",
+      "expected_pt": [
+        29.75,
+        33.68,
+        107.1,
+        35.7
+      ],
+      "changed_pixel_bbox": [
+        63,
+        71,
+        270,
+        135
+      ],
+      "samples": [
+        {
+          "alpha": 128,
+          "max_channel_error": 0.3333333333333144
+        },
+        {
+          "alpha": 0,
+          "max_channel_error": 0.0
+        },
+        {
+          "alpha": 255,
+          "max_channel_error": 0.0
+        }
+      ]
+    },
+    {
+      "image": "seal",
+      "expected_pt": [
+        487.9,
+        218.92000000000002,
+        59.5,
+        59.5
+      ],
+      "changed_pixel_bbox": [
+        979,
+        441,
+        1090,
+        552
+      ],
+      "samples": [
+        {
+          "alpha": 128,
+          "max_channel_error": 0.4117647058823479
+        },
+        {
+          "alpha": 128,
+          "max_channel_error": 0.4117647058823479
+        },
+        {
+          "alpha": 0,
+          "max_channel_error": 0.0
+        },
+        {
+          "alpha": 200,
+          "max_channel_error": 0.470588235294116
+        }
+      ]
+    }
+  ],
+  "header_layout": {
+    "issuer": {
+      "lines": 2,
+      "utf16_units": 41,
+      "line_advance_pt": [
+        180.0,
+        180.0
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "recipient": {
+      "lines": 2,
+      "utf16_units": 41,
+      "line_advance_pt": [
+        180.0,
+        180.0
+      ],
+      "no_intersection_with_other_words": true
+    },
+    "address": {
+      "lines": 2,
+      "utf16_units": 41,
+      "line_advance_pt": [
+        180.0,
+        180.0
+      ],
+      "no_intersection_with_other_words": true
+    }
+  },
+  "quantity_positions": {
+    "rows": [
+      {
+        "key": "row0.quantity",
+        "quantity": "99999.999",
+        "word_x_min_pt": 231.169,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 261.529,
+        "dot_ink_center_pt": 262.25,
+        "gap_to_name_pt": 44.994,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row1.quantity",
+        "quantity": "99999",
+        "word_x_min_pt": 251.865,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 282.225,
+        "gap_to_name_pt": 56.69,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row2.quantity",
+        "quantity": "0.001",
+        "word_x_min_pt": 256.497,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 262.569,
+        "dot_ink_center_pt": 263.25,
+        "gap_to_name_pt": 70.322,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row3.quantity",
+        "quantity": "2.50",
+        "word_x_min_pt": 261.529,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 267.601,
+        "dot_ink_center_pt": 268.25,
+        "gap_to_name_pt": 66.35399999999998,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row4.quantity",
+        "quantity": "1.000",
+        "word_x_min_pt": 256.497,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 261.529,
+        "dot_ink_center_pt": 262.25,
+        "gap_to_name_pt": 70.322,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row5.quantity",
+        "quantity": "3",
+        "word_x_min_pt": 276.153,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 282.225,
+        "gap_to_name_pt": 80.97800000000001,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row6.quantity",
+        "quantity": "123.45",
+        "word_x_min_pt": 250.425,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 267.601,
+        "dot_ink_center_pt": 268.25,
+        "gap_to_name_pt": 64.25,
+        "gap_to_price_pt": 36.63899999999995
+      },
+      {
+        "key": "row7.quantity",
+        "quantity": "0.010",
+        "word_x_min_pt": 256.497,
+        "word_x_max_pt": 282.225,
+        "decimal_or_integer_end_pt": 262.569,
+        "dot_ink_center_pt": 263.25,
+        "gap_to_name_pt": 61.322,
+        "gap_to_price_pt": 36.63899999999995
+      }
+    ],
+    "anchor_spread_pt": 20.696000000000026,
+    "dot_ink_center_spread_pt": 6.0,
+    "right_edge_spread_pt": 0.0
+  },
+  "fields": 79,
+  "rendered_lines": 85,
+  "notes_lines": 3,
+  "notes_characters": 43,
+  "input_objects_unchanged": true,
+  "input_fields_preserved": true,
+  "optional_labels_and_unused_rows_checked": true,
+  "word_image_intersections": 0,
+  "reserved_image_regions_checked": [
+    "logo",
+    "seal"
+  ],
+  "api_calls": [
+    {
+      "case": "invoice-8-boundary-right",
+      "method": "POST",
+      "path": "/api/pdf/fill-template"
+    },
+    {
+      "case": "invoice-8-boundary-right",
+      "method": "POST",
+      "path": "/api/pdf/stamp-image?page=1&x=0.05&y=0.04&width=0.18"
+    },
+    {
+      "case": "invoice-8-boundary-right",
+      "method": "POST",
+      "path": "/api/pdf/stamp-image?page=1&x=0.82&y=0.26&width=0.1"
+    }
+  ],
+  "post_count_delta": 3,
+  "acceptance_passed": true
+}

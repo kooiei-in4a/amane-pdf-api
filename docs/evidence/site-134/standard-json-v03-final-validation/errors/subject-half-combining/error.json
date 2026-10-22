@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/subject",
+      "code": "combining-mark-not-supported",
+      "message": "結合濁点・半濁点を使わず合成済み文字を指定してください。"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/recipient/nameLines",
+      "code": "line-count",
+      "message": "指定した行数の範囲内にしてください。"
+    }
+  ]
+}

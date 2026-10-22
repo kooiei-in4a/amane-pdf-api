@@ -1,6 +1,6 @@
 # #134 初版仕様 R1〜R8：採用記録
 
-**ユーザーがR1〜R8を一括採用。仕様の採否は完了、製品未実装・最終検証未実施。** [採用前の提案](https://github.com/kooiei-in4a/amane-tools-site/issues/134#issuecomment-6352859912)を基に、採用内容をここへ固定する。既存の名称・数量・設定・取引／備考・罫線の採用は変更しない。
+**ユーザーがR1〜R8を一括採用。仕様の採否は完了、製品未実装。採用後の[最終検証](standard-json-v03-final-validation/README.md)は正常24＋同時2／拒否135件で実施済み。** [採用前の提案](https://github.com/kooiei-in4a/amane-tools-site/issues/134#issuecomment-6352859912)を基に、採用内容をここへ固定する。既存の名称・数量・設定・取引／備考・罫線の採用は変更しない。
 
 [標準JSON案v0.3](standard-json-draft-v0.3/README.md)を入力・表示仕様の基準、[最終検証一覧](FINAL-VALIDATION-site-134.md)を残作業の基準とする。過去のPDF・入力・スクリプト・測定は当時の条件の記録であり、採用後の再検証済みには読み替えない。既存PDF API契約の変更ではない。
 

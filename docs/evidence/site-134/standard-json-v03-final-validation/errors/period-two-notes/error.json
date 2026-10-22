@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/notesLines/1",
+      "code": "notes-budget-exceeded",
+      "message": "取引情報と備考を共有3行・48文字の配分内にしてください。"
+    }
+  ]
+}

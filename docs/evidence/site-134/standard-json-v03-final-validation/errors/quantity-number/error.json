@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/items/0/quantity",
+      "code": "invalid-type",
+      "message": "項目の型を確認してください。"
+    }
+  ]
+}

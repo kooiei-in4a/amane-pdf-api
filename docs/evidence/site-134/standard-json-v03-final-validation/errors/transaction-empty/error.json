@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/transaction",
+      "code": "ambiguous-transaction",
+      "message": "dateまたはperiodの片方だけを指定してください。"
+    }
+  ]
+}

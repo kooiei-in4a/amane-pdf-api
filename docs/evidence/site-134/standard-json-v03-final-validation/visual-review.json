@@ -1,0 +1,11 @@
+{
+  "method": "144dpi Poppler PNGを目視",
+  "cases": [
+    "invoice-8-boundary-decimal",
+    "estimate-1-omitted-right",
+    "invoice-zero",
+    "estimate-8-roles",
+    "estimate-minimal-no-images"
+  ],
+  "result": "代表5件で欠け・非意図的な重なりなし。ブラウザ・Acrobat・実印刷は未確認。"
+}

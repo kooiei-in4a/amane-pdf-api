@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/items/0/quantity",
+      "code": "quantity-format",
+      "message": "数量は整数部5桁・小数部3桁以内の正の十進文字列で指定してください。"
+    }
+  ]
+}

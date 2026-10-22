@@ -1,0 +1,11 @@
+{
+  "status": 422,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "/quantityAlignment",
+      "code": "unsupported-quantity-alignment",
+      "message": "decimalまたはrightを指定してください。"
+    }
+  ]
+}

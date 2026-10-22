@@ -1,0 +1,11 @@
+{
+  "status": 400,
+  "code": "validation-failed",
+  "errors": [
+    {
+      "path": "",
+      "code": "duplicate-key",
+      "message": "重複したkeyを削除してください。"
+    }
+  ]
+}
