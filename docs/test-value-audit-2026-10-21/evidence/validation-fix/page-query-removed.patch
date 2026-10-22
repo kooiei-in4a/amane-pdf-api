@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/PdfPageNumbersEndpoint.cs
++++ b/src/Amane.Pdf.Api/PdfPageNumbersEndpoint.cs
+@@ -10,7 +10,7 @@
+     {
+         PageNumberOptions? numbers = null;
+         return PdfEndpointHelpers.ExecuteAsync(context, options.Value, "numbered.pdf",
+-            () => numbers = PageNumberOptions.Parse(context.Request.Query),
++            () => numbers = new PageNumberOptions("bc", 0, 28, "number", 1, 1, 10.5),
+             (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, options.Value, token),
+             (files, token) => overlay.BuildAsync(files, numbers!.ResolveRange,
+                 (canvas, drawToken) => pdfcpu.CreateAsync(files, numbers!.CreateLayer(canvas),

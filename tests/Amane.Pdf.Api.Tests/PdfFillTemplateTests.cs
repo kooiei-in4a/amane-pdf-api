@@ -37,6 +37,8 @@ public sealed class PdfFillTemplateTests
             using var form = Form(fields: bytes); using var response = await test.Client.PostAsync(Endpoint, form);
             await Problem(test, response, 400);
         }
+        // Each multipart case has valid fields; only the selected part contract is invalid.
+        var validFields = "[" + FillTemplateFieldsTests.Field + "]";
         foreach (var kind in new[] { "unknown", "duplicate-file", "duplicate-fields", "missing-file", "missing-fields", "fields-filename", "file-no-filename", "case" })
         {
             using var form = new MultipartFormDataContent();
@@ -44,16 +46,19 @@ public sealed class PdfFillTemplateTests
                 if (kind == "file-no-filename") form.Add(new ByteArrayContent(PdfTestContext.Fixture), "file");
                 else form.Add(new ByteArrayContent(PdfTestContext.Fixture), kind == "case" ? "File" : "file", "private-template.pdf");
             if (kind != "missing-fields")
-                if (kind == "fields-filename") form.Add(new StringContent("[]"), "fields", "data.json");
-                else form.Add(new StringContent("[]"), "fields");
+                if (kind == "fields-filename") form.Add(new StringContent(validFields), "fields", "data.json");
+                else form.Add(new StringContent(validFields), "fields");
             if (kind == "unknown") form.Add(new StringContent("SECRET"), "text");
             if (kind == "duplicate-file") form.Add(new ByteArrayContent(PdfTestContext.Fixture), "file", "duplicate.pdf");
-            if (kind == "duplicate-fields") form.Add(new StringContent("[]"), "fields");
+            if (kind == "duplicate-fields") form.Add(new StringContent(validFields), "fields");
             using var response = await test.Client.PostAsync(Endpoint, form);
+            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode, kind);
             await Problem(test, response, 400);
         }
-        using var query = await test.Client.PostAsync(Endpoint + "?a=1", new StringContent("not multipart"));
+        using var queryBody = Form();
+        using var query = await test.Client.PostAsync(Endpoint + "?a=1", queryBody);
         await Problem(test, query, 400);
+        await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?a=1", queryBody);
     }
 
     [TestMethod]

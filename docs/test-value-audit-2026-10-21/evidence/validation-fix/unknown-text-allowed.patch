@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/MultipartPdfUpload.cs
++++ b/src/Amane.Pdf.Api/MultipartPdfUpload.cs
+@@ -83,7 +83,7 @@
+                 }
+                 text = bytes[..length];
+             }
+-            else throw new BadHttpRequestException("Unexpected or duplicate multipart field.");
++            else if (name != "text") throw new BadHttpRequestException("Unexpected or duplicate multipart field.");
+         }
+         if (!hasFile || text is null) throw new BadHttpRequestException("Missing required field.");
+         while (await ReadBodyAsync(body, buffer, token) != 0) { }

@@ -1,0 +1,632 @@
+{
+  "baseline_commit": "ab0eae6b0d9e2a5e99b5ae3bc66a8f4d0078aaaf",
+  "fixed_test_sha256": {
+    "tests/Amane.Pdf.Api.Tests/BlockingQpdf.cs": "c6b742ef790c39a883c19a0875b67003fb4cac0f111f3bb2fe74a57b5b0116b2",
+    "tests/Amane.Pdf.Api.Tests/CleanCapacityTests.cs": "63c94d6f0aedaeca9cd14d8f98b1c7e9e9cb2418223da4953dbc043885dd4fdb",
+    "tests/Amane.Pdf.Api.Tests/CompressFixtures.cs": "7ea625533541648b2aa8519f5c096d50b3a5fa17b81e79d4cfbf1d6c73c16940",
+    "tests/Amane.Pdf.Api.Tests/CompressMetadataTests.cs": "962bd2d7b01cc8bd6f97c3d057d363d7ac0ce15b100589cfb94087639e019340",
+    "tests/Amane.Pdf.Api.Tests/ExternalProcessRunnerTests.cs": "afffa2e73b1e3f3c2f7b8352dc112aeb016869b1eb6b73a04d10f7ea8bdfdfe8",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs": "542f7dc1ccd546b57a0d99f9cdd88124b76fbfab96311cdf95c038f20b48afb4",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateFieldsTests.cs": "64636d41c1cee48f568cfb43d59c21986c913a660e5e9aaaad4cfcdac359f9f0",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateGlyphsTests.cs": "436dc671f8b6e2d2a64aaac3a33add74d6a18a3728a3993a74db9b1a47194f5f",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateStructureTests.cs": "dc8ea2eba76ce4178998b6957a8ac1f6847ba4c68fd59d02e7af908c5880f6ab",
+    "tests/Amane.Pdf.Api.Tests/FromImagesCapacityMeasurementTests.cs": "5eadf40164f4c85c9de618df59724f55b9b8fbe89e55b105bdf45a9819cc3daa",
+    "tests/Amane.Pdf.Api.Tests/FromImagesDesignTests.cs": "eb88ae925bd5d891bae8bcace260a6cf9a708ba8b034827e63a7f8cd0ddc22bc",
+    "tests/Amane.Pdf.Api.Tests/FromImagesFixtures.cs": "e29286c821ea6fdf38851e780e387db2a2d85b894fbd376f1388976d222cf82e",
+    "tests/Amane.Pdf.Api.Tests/HealthEndpointTests.cs": "9188a61fa3ad6fd383f78b6d784985bdad166c8626200a018257da5a84c4a350",
+    "tests/Amane.Pdf.Api.Tests/JpegHeaderTests.cs": "aee38aa5ae16c21e3284c64d76d2fdad46e513a64e1e191c08d460fc040842da",
+    "tests/Amane.Pdf.Api.Tests/OverlayCapacityTests.cs": "e0da3e4051aa596bdc7102f891a03b94aced5fd0888e9e611908f36fe4fc595a",
+    "tests/Amane.Pdf.Api.Tests/OverlayFixtures.cs": "320363ecbc3fafd0cfd05e2f362c50a79100cce76fecbf9c4c0d0b0e20ad61b2",
+    "tests/Amane.Pdf.Api.Tests/PdfCleanResourceTests.cs": "24e93ce8f6a405ac515214fd4d8eb43143fa22c241dcd68c4e3a76a361c2ae2e",
+    "tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs": "96ffc6a3cb0e1ec3a93eb99ff15536abb85c284c7d65d98e2cd7f1cc92a6c917",
+    "tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs": "c7eaa9d3f499a756e21dfa9ee6388ab0afe2dc5c054a655f7596ce19b9b3143f",
+    "tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs": "abcd16a1f3e6c41ad0b1d52bbc994a11365153791f52d546e15722ac3b7394c3",
+    "tests/Amane.Pdf.Api.Tests/PdfEmbeddedFileStripperTests.cs": "7372f84e45767d62392215e51b0ff8666601ca399fd6472e89f0091f01d1de65",
+    "tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs": "f77b8a80a8dd6fcc2b65d823cff6b1ab5ae2cbeed7b8e2fdc793443e7f1a2bc1",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesPrivacyTests.cs": "cb4dc2d40bb34356cfc31d2d60086077b4ba79d80bd07de568b1205a20a68bb8",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesResourceTests.cs": "2b3fed9ebff22ef8010936244e5cab5560ec72392e2e36705b1fe3c228af7e72",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesTests.cs": "6fc8eb4413373d714807787224266c60374ba0e3e4f8ed11302456ccb63ef868",
+    "tests/Amane.Pdf.Api.Tests/PdfMergeResourceTests.cs": "4ca7aefac03f01f61fe98b7736815de4e99e59714f61fa9eac9b716e0661e4e4",
+    "tests/Amane.Pdf.Api.Tests/PdfMergeTests.cs": "1dfd5a02ced463457b7badb47c84b6659cfc89f4eac14a7a3c37bb1285b4702f",
+    "tests/Amane.Pdf.Api.Tests/PdfOptimizeTests.cs": "7be3763019c58ae70b94fbac2b525326ab7161388cac2b46eedcaeaaa2c43cd0",
+    "tests/Amane.Pdf.Api.Tests/PdfOverlayBuilderTests.cs": "0439709aaccaf338b812ebefb5612ad21f6fd024b89837daca870f4a85ee665d",
+    "tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs": "6df61cf0ff75e92a3f8acb9106fd487e8bc7d42aeb92c50f30a9f7ff4ee14d7b",
+    "tests/Amane.Pdf.Api.Tests/PdfPageBoxesTests.cs": "94273fece51ae6910e89072774eaf1ede4f51813f82e6f335de86dff8e85e2fd",
+    "tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs": "adf5956617c1d686a2577f1c02aa6740d15d09a4c6fc9bdf43df84bfb62df2d0",
+    "tests/Amane.Pdf.Api.Tests/PdfPageSelectionOperationTests.cs": "740414045112ecfa2977eca2717a48231c93e3b213de868ff96d8803e3381cdd",
+    "tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs": "e479192ac5d578de1b79f84c4d7fc409c7d5cb7da2881960dd03ba7dcc1db367",
+    "tests/Amane.Pdf.Api.Tests/PdfRedactTests.cs": "dc011c6e4a5282e04f7d03d903dadfa455b644014690603e82d41b5cb2f8baa1",
+    "tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs": "b81eda65da58517a8fdf76c6e2f82ddb5ce1d31f5230337124a95bbcd7937e45",
+    "tests/Amane.Pdf.Api.Tests/PdfResourceLimitTests.cs": "7b3056844a6b9bd965170b8f4daacdca53e872688af8b9526a364ef00f3baedb",
+    "tests/Amane.Pdf.Api.Tests/PdfRestrictTests.cs": "ba171dede4b87b78569f7e095e2f40c186e82ea05ec4b43f8dd3bd5e1566eb10",
+    "tests/Amane.Pdf.Api.Tests/PdfRotateTests.cs": "531b2c62d876def1c8f58572e018c85da32be29eb92a6062b2a33fc862ff297d",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitCapacityTests.cs": "59f4bfdfecb73bc982780500a56f97098172a699b79a3e06d1630845701daf31",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs": "c27ae1a794c9feb7abc0e7b1c3edd51e7aa15045d8b205943a0d438ffd5c7609",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitPlanTests.cs": "5f44443c791cdd693094206c4dd12ded730a51ca18edf1b0db75367deb65c522",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitResourceTests.cs": "871dff81cff4f8cdc03703630b808ab1feecddca4d0ccd27903837f6f00e28f9",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitTests.cs": "a504bbda473579645c47ed99de92de25ac734f7baf365c22c0cebe4cc004c890",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitZipTests.cs": "3a58784e37423fdd9287337c2047844ac8d902521e906b722195bed0b268c0fd",
+    "tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs": "0691fae593f0409e26ec4809b275455ecc2cb37d13785b364ac57518bb0c425a",
+    "tests/Amane.Pdf.Api.Tests/PdfTestContext.cs": "e417c855bdd2ca8eea043b45595b926b5c2af90f122aa7f848bbdd07351db788",
+    "tests/Amane.Pdf.Api.Tests/PdfUnlockResourceTests.cs": "0d19ebc0841a4eb2be209fd8f9ecc89df6ceb61a1b6efc5d419649e404d1c86a",
+    "tests/Amane.Pdf.Api.Tests/PdfUnlockTests.cs": "95bed23f332ef40c5eab692f3b854d403053c8f9bd1be674a1bf19731c30fb38",
+    "tests/Amane.Pdf.Api.Tests/PdfValidationTests.cs": "586e94b0d812e5a8e612a44c8f9d6bc2128b45a1ccde7699c514c69e3ba5ea96",
+    "tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs": "0e1a5345c586381aa9a503b47880d015ee3d44a6354af976f22cd4191ae8f82c",
+    "tests/Amane.Pdf.Api.Tests/PdfcpuProcessorTests.cs": "aa3d9232342f787392f14a569cd71f5bba8da288bb4284da412cc292123911a3",
+    "tests/Amane.Pdf.Api.Tests/PngSanitizerTests.cs": "41289959292ea444f63549f7a4566454977410d73973ba9646466a0cb6e2da06",
+    "tests/Amane.Pdf.Api.Tests/ProcessFileLimitTests.cs": "ccf9ef008f5e6c49687b1c2dbdb892a6501ef7fc336a06055fd34e66d634829d",
+    "tests/Amane.Pdf.Api.Tests/QpdfMemoryLimitTests.cs": "1461d162b35b7b7b86b756d419fa62212fe92ef5f947923483e29183b00e4510",
+    "tests/Amane.Pdf.Api.Tests/RedactNeutralObjectsTests.cs": "c867a7b7ce388aa74220793eb21cf85c3a7124fb5f35b0685c9e6a001d4d6554",
+    "tests/Amane.Pdf.Api.Tests/RedactSecurityTests.cs": "8b72f8d34a8e98939acf5b3a333bd57ccbd8c887c51e092d9cfef3c086a9915c",
+    "tests/Amane.Pdf.Api.Tests/RedactTests.cs": "aa26adc3f88fdc556c809ec3fe2f513e3f8ca0e542b8e7a3169cb1b617c869a4",
+    "tests/Amane.Pdf.Api.Tests/StampFixtures.cs": "1dce0fe42aa4c1680d0dfc266c5e371ed75622260e30e316587d400b51f472c1",
+    "tests/Amane.Pdf.Api.Tests/StampImageInputTests.cs": "e0c4fc1041b38553027472881dd68c5fb4b11c01495f6c9408ca75f701f7f03c",
+    "tests/Amane.Pdf.Api.Tests/StampPlacementTests.cs": "73402d21e498ab46563ea9421c48c5305ea8ee069c6adce9b7e8a2936396c733",
+    "tests/Amane.Pdf.Api.Tests/WatermarkTextTests.cs": "09b5e1014712bb3316713825abcf705b5b75b712ba5111d142718d9bdfd437ce"
+  },
+  "controls": [
+    {
+      "times": {
+        "creation": "2026-10-21T23:43:13.5394977+00:00",
+        "queuing": "2026-10-21T23:43:13.5394978+00:00",
+        "start": "2026-10-21T23:43:11.7759187+00:00",
+        "finish": "2026-10-21T23:43:14.3779446+00:00"
+      },
+      "counters": {
+        "total": "4",
+        "executed": "4",
+        "passed": "4",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "outcome": "Passed",
+          "duration": "00:00:00.7669160",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
+        },
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Passed",
+          "duration": "00:00:00.4382316",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        },
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "outcome": "Passed",
+          "duration": "00:00:00.4662423",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
+        },
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Passed",
+          "duration": "00:00:00.4266095",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        }
+      ],
+      "trx_sha256": "e81728450db72675fd8f7c733507dba89a1b19d670d9c34a385fe085bc050e3a",
+      "run_errors": [],
+      "name": "control-before",
+      "exit_code": 0,
+      "api_assembly_sha256": "5c4372a56ed0eb13aff215df6f3a9a7374cd6db2321c49d58e206370525dfe8e"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:44:39.0090219+00:00",
+        "queuing": "2026-10-21T23:44:39.0090220+00:00",
+        "start": "2026-10-21T23:44:37.2441702+00:00",
+        "finish": "2026-10-21T23:44:39.8353042+00:00"
+      },
+      "counters": {
+        "total": "4",
+        "executed": "4",
+        "passed": "4",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Passed",
+          "duration": "00:00:00.4378356",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        },
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Passed",
+          "duration": "00:00:00.4402894",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        },
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "outcome": "Passed",
+          "duration": "00:00:00.4519226",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
+        },
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "outcome": "Passed",
+          "duration": "00:00:00.7480634",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
+        }
+      ],
+      "trx_sha256": "d2dd012d8bb8893bfb9b35af366fbf2bfd71c980bd9e6537cc82fec9cc77cf69",
+      "run_errors": [],
+      "name": "control-after",
+      "exit_code": 0,
+      "api_assembly_sha256": "5c4372a56ed0eb13aff215df6f3a9a7374cd6db2321c49d58e206370525dfe8e"
+    }
+  ],
+  "mutations": [
+    {
+      "times": {
+        "creation": "2026-10-21T23:43:24.6390492+00:00",
+        "queuing": "2026-10-21T23:43:24.6390493+00:00",
+        "start": "2026-10-21T23:43:23.4527316+00:00",
+        "finish": "2026-10-21T23:43:24.6442153+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "outcome": "Failed",
+          "duration": "00:00:00.6701977",
+          "message": "Assertion failed. Expected values to be equal.\n{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.6.1\",\"title\":\"PDF処理に失敗しました。\",\"status\":500}\n\nexpected: BadRequest\nactual:   InternalServerError\n\nAssert.AreEqual(status, response.StatusCode)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "BadRequest",
+          "actual": "InternalServerError",
+          "assertion": "Assert.AreEqual(status, response.StatusCode)",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
+        }
+      ],
+      "trx_sha256": "7cb3f6ad857911efcfecd2803722657ad2be5b065c7cae3e8ac5c5f9f24d2c2a",
+      "run_errors": [],
+      "name": "page-query-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "1c2b2622ca19d63e0d3103b64d45a4d4ce2972c4d4b9e002aaed2df6ae565aa7",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "expected": "BadRequest",
+            "actual": "InternalServerError",
+            "assertion": "Assert\\.AreEqual\\(status,\\ response\\.StatusCode\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfPageNumbersEndpoint.cs",
+      "source_sha256": "8cfcb190bb42c16bd9d31a49cbaa96fbf4e87f70a23840322eb466a04d6d2fd2",
+      "patch_sha256": "d33fb432b2d043098893395ec15ad59b6fa2007ca04c0e4220465f98a82d3ea2"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:43:34.9770521+00:00",
+        "queuing": "2026-10-21T23:43:34.9770522+00:00",
+        "start": "2026-10-21T23:43:33.7350001+00:00",
+        "finish": "2026-10-21T23:43:34.9822324+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.6776470",
+          "message": "Assertion failed. Expected values to be equal.\n{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.6.1\",\"title\":\"PDF処理に失敗しました。\",\"status\":500}\n\nexpected: BadRequest\nactual:   InternalServerError\n\nAssert.AreEqual(status, response.StatusCode)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "BadRequest",
+          "actual": "InternalServerError",
+          "assertion": "Assert.AreEqual(status, response.StatusCode)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        }
+      ],
+      "trx_sha256": "04ca1234096bfd1260403691e4f5094cc0f744bd1953ed058ab7d6b1d753c999",
+      "run_errors": [],
+      "name": "watermark-query-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "d1f1f95084a067b9bd70d3c9a1f02012e4d3f3d76d6bfc0f479ab94112286b2f",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "expected": "BadRequest",
+            "actual": "InternalServerError",
+            "assertion": "Assert\\.AreEqual\\(status,\\ response\\.StatusCode\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs",
+      "source_sha256": "0dc4e338803eee3b906f1f8fbb8f79b18d9e8262fe162652c0b8fa54f219cb1c",
+      "patch_sha256": "3f98ad999f3ccfd4c662853356848ad14ba03119e218030498dce346c967cacf"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:43:45.4029500+00:00",
+        "queuing": "2026-10-21T23:43:45.4029500+00:00",
+        "start": "2026-10-21T23:43:44.2018919+00:00",
+        "finish": "2026-10-21T23:43:45.4081269+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.6760909",
+          "message": "Assertion failed. Expected values to be equal.\n{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.6.1\",\"title\":\"PDF処理に失敗しました。\",\"status\":500}\n\nexpected: 400\nactual:   500\n\nAssert.AreEqual(status, (int)response.StatusCode)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "400",
+          "actual": "500",
+          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        }
+      ],
+      "trx_sha256": "e6fd36d2d6b88536a10d884651a3c810b8bab17186b01f0d4c36bc916f28c56f",
+      "run_errors": [],
+      "name": "stamp-query-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "ce0bc2bf3b4679c53b73c7abeffcdb98133035c6799c1cd317d60afdd9dac2bc",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "expected": "400",
+            "actual": "500",
+            "assertion": "Assert\\.AreEqual\\(status,\\ \\(int\\)response\\.StatusCode\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfStampImageEndpoint.cs",
+      "source_sha256": "f75b74c4fb3a1c7327d03cae077abb0ba7e36e62d243187816453fdd0734718b",
+      "patch_sha256": "cb1185aff1417c9c2e04f7344ceceba7bc1f11ba8a7d3dc9efbfa26b5b37d2c4"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:43:55.7918482+00:00",
+        "queuing": "2026-10-21T23:43:55.7918482+00:00",
+        "start": "2026-10-21T23:43:54.4799932+00:00",
+        "finish": "2026-10-21T23:43:55.7987409+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.7819407",
+          "message": "Assertion failed. Expected values to be equal.\nunknown\n\nexpected: BadRequest\nactual:   InternalServerError\n\nAssert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "BadRequest",
+          "actual": "InternalServerError",
+          "assertion": "Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
+        }
+      ],
+      "trx_sha256": "ee8dfef3da299d870f290abc8560a490e83d45ca7f247c976f65ac8bedd4e652",
+      "run_errors": [],
+      "name": "unknown-text-allowed",
+      "exit_code": 1,
+      "api_assembly_sha256": "ed4e8c9e670278d9c9ae97b9b71250463f4be34a6283b9a145659abfabf7cc4e",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "expected": "BadRequest",
+            "actual": "InternalServerError",
+            "assertion": "Assert\\.AreEqual\\(HttpStatusCode\\.BadRequest,\\ response\\.StatusCode\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/MultipartPdfUpload.cs",
+      "source_sha256": "0afd439bd5a2696bfb922d062a2e85318aeef26000510126cb0d3553ec8e8fbe",
+      "patch_sha256": "46c6b6b74e56e56f660d5c5b49538b14568f4ea4d266d4cfe35ed3ef697f5858"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:44:06.1377273+00:00",
+        "queuing": "2026-10-21T23:44:06.1377274+00:00",
+        "start": "2026-10-21T23:44:04.7996993+00:00",
+        "finish": "2026-10-21T23:44:06.1483645+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.8076873",
+          "message": "Assertion failed. Expected values to be equal.\n{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.6.1\",\"title\":\"PDF処理に失敗しました。\",\"status\":500}\n\nexpected: 400\nactual:   500\n\nAssert.AreEqual(status, (int)response.StatusCode)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "400",
+          "actual": "500",
+          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
+        }
+      ],
+      "trx_sha256": "c92383d29f13abd0a6154f3dcb492b46a9e4e047b8d5a0e7be2dc5012bd3faa3",
+      "run_errors": [],
+      "name": "fill-query-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "52a3befe17684d3870c8ba6f556b33d30dfd86d1e7f324812752de4f410d5272",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "expected": "400",
+            "actual": "500",
+            "assertion": "Assert\\.AreEqual\\(status,\\ \\(int\\)response\\.StatusCode\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfFillTemplateEndpoint.cs",
+      "source_sha256": "bbddefbf03b73b591a3a7929f8d7ed222b2229f4791550238e5071676be75c86",
+      "patch_sha256": "1a5c3b71a45a8b6233fc2ed3c5f4827ebe3604b7c985a63a2e14a2cbdd750ca4"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:44:16.4846258+00:00",
+        "queuing": "2026-10-21T23:44:16.4846258+00:00",
+        "start": "2026-10-21T23:44:15.2685904+00:00",
+        "finish": "2026-10-21T23:44:16.4896319+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.6869821",
+          "message": "Assertion failed. Expected values to be equal.\n{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.6.1\",\"title\":\"PDF処理に失敗しました。\",\"status\":500}\n\nexpected: 400\nactual:   500\n\nAssert.AreEqual(status, (int)response.StatusCode)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "400",
+          "actual": "500",
+          "assertion": "Assert.AreEqual(status, (int)response.StatusCode)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
+        }
+      ],
+      "trx_sha256": "7264ea75007447271b18be8c1cb9ffc3c2a613f62a25d79808ea761d3f07187f",
+      "run_errors": [],
+      "name": "fill-fields-validation-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "04bda20df74bee80b1af896cd5c6b0a9cfc6fec74a6f2be0943d2ae45f21a454",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "expected": "400",
+            "actual": "500",
+            "assertion": "Assert\\.AreEqual\\(status,\\ \\(int\\)response\\.StatusCode\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfFillTemplateEndpoint.cs",
+      "source_sha256": "6ef5abc3c19c2bdd9c2b9e82cd500f84d5e3bcb93e497a2aabe8e432cbe37e88",
+      "patch_sha256": "d47732cac862eaba85617d1138c2e29646ae18b2ecedebb463b0ed2a1673e701"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:44:27.2883001+00:00",
+        "queuing": "2026-10-21T23:44:27.2883001+00:00",
+        "start": "2026-10-21T23:44:25.5296455+00:00",
+        "finish": "2026-10-21T23:44:28.0610439+00:00"
+      },
+      "counters": {
+        "total": "4",
+        "executed": "4",
+        "passed": "0",
+        "failed": "4",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfPageNumbersTests.InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf",
+          "outcome": "Failed",
+          "duration": "00:00:00.4193690",
+          "message": "Assertion failed. Expected values to be equal.\n/api/pdf/page-numbers?\n\nexpected: 0\nactual:   1\n\nAssert.AreEqual(0, body.ReadCount)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "0",
+          "actual": "1",
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "InvalidQueries_Return400BeforeReadingUploadOrRunningQpdf"
+        },
+        {
+          "method": "PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.7379623",
+          "message": "Assertion failed. Expected values to be equal.\n/api/pdf/fill-template?a=1\n\nexpected: 0\nactual:   1\n\nAssert.AreEqual(0, body.ReadCount)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "0",
+          "actual": "1",
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools"
+        },
+        {
+          "method": "PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.4302334",
+          "message": "Assertion failed. Expected values to be equal.\n/api/pdf/watermark?\n\nexpected: 0\nactual:   1\n\nAssert.AreEqual(0, body.ReadCount)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "0",
+          "actual": "1",
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        },
+        {
+          "method": "PdfStampImageTests.InvalidQueryPrecedesUploadAndTools",
+          "outcome": "Failed",
+          "duration": "00:00:00.4359691",
+          "message": "Assertion failed. Expected values to be equal.\n/api/pdf/stamp-image?\n\nexpected: 0\nactual:   1\n\nAssert.AreEqual(0, body.ReadCount)",
+          "failure": "Assertion failed. Expected values to be equal.",
+          "expected": "0",
+          "actual": "1",
+          "assertion": "Assert.AreEqual(0, body.ReadCount)",
+          "case_name": "InvalidQueryPrecedesUploadAndTools"
+        }
+      ],
+      "trx_sha256": "8e308f4573d93ebacd628f70ac570f405a23832ad0879141c5436b5b716aadc4",
+      "run_errors": [],
+      "name": "query-validation-after-upload",
+      "exit_code": 1,
+      "api_assembly_sha256": "5db5afa73a5018ccbeb56de8c2986a254a0eebb6d2fd609f074b40298d1189c6",
+      "expected_failure": {
+        "total": 4,
+        "failed": 4,
+        "patterns": [
+          {
+            "expected": "0",
+            "actual": "1",
+            "assertion": "Assert\\.AreEqual\\(0,\\ body\\.ReadCount\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfEndpointHelpers.cs",
+      "source_sha256": "00a2c71c7cd0abd7b0a4c66069fdacdc73847860c0a442f3e0475d8380c5f990",
+      "patch_sha256": "df58636a87e739d83c5a4de804c47f59b6b7c34283eefaf05c6e06563abc9e1a"
+    }
+  ],
+  "case_names_provenance": "7e01862時点に記録したSHA-256と一致する元TRXからcase_nameを追記。既存のoutcome/時刻/失敗内容/assembly hashは不変。14変異を再実行したという意味ではない。"
+}

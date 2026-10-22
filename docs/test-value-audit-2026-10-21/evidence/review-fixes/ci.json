@@ -1,0 +1,61 @@
+{
+  "source_commit": "b195587a1f04a10f77bf76bf4ef45e07564731cb",
+  "run_id": 39865598926,
+  "url": "https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/39865598926",
+  "jobs": [
+    {
+      "id": 120126883678,
+      "name": "docker",
+      "conclusion": "success",
+      "url": "https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/39865598926/job/120126883678"
+    },
+    {
+      "id": 120126884054,
+      "name": "build-test",
+      "conclusion": "success",
+      "url": "https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/39865598926/job/120126884054"
+    }
+  ],
+  "build_test": {
+    "passed": 1338,
+    "skipped": 2,
+    "failed": 0,
+    "total": 1340,
+    "duration": "4m32s"
+  },
+  "docker_builder_capacity": [
+    {
+      "concurrent": 1,
+      "results": [
+        {
+          "seconds": 1.3411424,
+          "reserved": 120582144
+        }
+      ],
+      "container_memory_peak_bytes": 226754560,
+      "oom": 0,
+      "oom_kill": 0,
+      "remaining_jobs": 0,
+      "remaining_processes": 0
+    },
+    {
+      "concurrent": 2,
+      "results": [
+        {
+          "seconds": 2.8414006,
+          "reserved": 120582144
+        },
+        {
+          "seconds": 2.8013321,
+          "reserved": 120582144
+        }
+      ],
+      "container_memory_peak_bytes": 386985984,
+      "oom": 0,
+      "oom_kill": 0,
+      "remaining_jobs": 0,
+      "remaining_processes": 0
+    }
+  ],
+  "note": "コード変更コミットのCI結果。以後の台帳更新ではテスト・本番のsourceを変更しない。"
+}

@@ -1,0 +1,15 @@
+--- a/src/Amane.Pdf.Api/PdfEndpointHelpers.cs
++++ b/src/Amane.Pdf.Api/PdfEndpointHelpers.cs
+@@ -20,11 +20,11 @@
+         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
+         try
+         {
+-            validateRequest?.Invoke();
+             ApplyRequestSizeLimit(context, maxRequestBytes ?? options.MaxRequestBytes);
+             using var operation = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
+             using var files = new TemporaryPdfFiles(options.TempRoot);
+             await readUploadAsync(files, operation.Token);
++            validateRequest?.Invoke();
+             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(operation.Token);
+             timeout.CancelAfter(TimeSpan.FromSeconds(options.QpdfTimeoutSeconds));
+             try

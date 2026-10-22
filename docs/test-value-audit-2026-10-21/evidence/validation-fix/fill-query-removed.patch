@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/PdfFillTemplateEndpoint.cs
++++ b/src/Amane.Pdf.Api/PdfFillTemplateEndpoint.cs
+@@ -10,7 +10,7 @@
+         FillTemplateFields? fields = null;
+         var settings = options.Value;
+         return PdfEndpointHelpers.ExecuteAsync(context, settings, "filled.pdf",
+-            () => { if (context.Request.QueryString.HasValue) throw new BadHttpRequestException("Unexpected query.", 400); },
++            () => { },
+             async (files, token) => fields = FillTemplateFields.Parse(await MultipartPdfUpload.ReadFileAndTextAsync(
+                 context.Request, files, "fields", FillTemplateFields.MaxBytes, settings.MaxFileBytes,
+                 settings.MaxFillTemplateRequestBytes, token, textTooLargeStatus: 413)),

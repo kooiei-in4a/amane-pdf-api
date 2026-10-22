@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/PdfCompressProcessor.cs
++++ b/src/Amane.Pdf.Api/PdfCompressProcessor.cs
+@@ -438,7 +438,7 @@
+         }
+         finally
+         {
+-            Directory.Delete(directory, true);
++            /* raw directory cleanup removed */
+             Capacity.Release(directory);
+         }
+     }

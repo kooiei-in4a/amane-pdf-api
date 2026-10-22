@@ -70,36 +70,6 @@ public sealed class PdfCompressResourceTests
     }
 
     [TestMethod]
-    public async Task PageAliasChains_AreDeletedAndTheirSpoolBudgetCanBeReused()
-    {
-        if (!PdfCompressTests.Linux()) return;
-        await using var test = new PdfTestContext();
-        // The common PDF validator rejects an indirect object whose value is another
-        // reference. Exercise defensive metadata resolution using post-startup injection.
-        var json = "{\"qpdf\":[{\"jsonversion\":2},{\"obj:11 0 R\":{\"value\":\"12 0 R\"},\"obj:12 0 R\":{\"value\":\"13 0 R\"},\"obj:13 0 R\":{\"value\":{\"/XObject\":{\"/Im0\":\"4 0 R\"}}}}]}";
-        var wrapper = await PdfCompressTests.WrapperAsync(test,
-            "for arg do last=$arg; done\nprintf '%s' '" + json + "' > \"$last\"\n");
-        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
-        options.QpdfPath = wrapper;
-        options.CompressSpoolLimitBytes = 3 * 4096;
-        using var files = new TemporaryPdfFiles(test.Root);
-        await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);
-        var owner = new PdfCompressProcessor(options, files);
-        var metadata = new CompressMetadata(owner);
-        for (var batch = 0; batch < 2; batch++)
-        {
-            await metadata.FetchChainsAsync([new(11, 0)], CancellationToken.None);
-            var paths = metadata.Files.ToArray();
-            Assert.AreEqual(3, paths.Length);
-            Assert.AreEqual(3 * 4096L, owner.Capacity.Used);
-            metadata.DeleteExcept(new HashSet<PdfObjectRef>());
-            Assert.IsFalse(paths.Any(File.Exists));
-            Assert.AreEqual(0L, owner.Capacity.Used);
-        }
-        test.AssertClean();
-    }
-
-    [TestMethod]
     [DataRow(10, false, false, false, 3)]
     [DataRow(10, true, false, false, 5)]
     [DataRow(300, true, false, false, 5)]
@@ -255,10 +225,48 @@ public sealed class PdfCompressResourceTests
     {
         if (!PdfCompressTests.Linux()) return;
         await using var test = new PdfTestContext(new() { ["Pdf:CompressStdoutLimitBytes"] = "1500" });
+        var wrapper = await PdfCompressTests.WrapperAsync(test, $$"""
+        prefix=; count=0; targets=
+        for arg do
+          case "$arg" in
+          --json-stream-prefix=*) prefix=${arg#--json-stream-prefix=} ;;
+          --json-object=*) count=$((count+1)); targets="$targets $arg" ;;
+          esac
+        done
+        if [ -n "$prefix" ]; then
+          dir=${prefix%/*}; job=${dir%/*}
+          # Every previous extraction directory must be removed before another attempt.
+          for old in "$job"/raw-*; do
+            if [ "$old" != "$dir" ] && [ -d "$old" ]; then
+              printf 'stale raw directory\n' >> '{{test.Root}}/raw-cleanup-violation'
+            fi
+          done
+          printf '%s\n' "$count$targets" >> '{{test.Root}}/extractions'
+          qpdf "$@"
+          code=$?
+          if [ "$count" -gt 1 ]; then
+            if [ -n "$(find "$dir" -type f -print -quit)" ]; then
+              printf 'observed\n' > '{{test.Root}}/partial-raw'
+            fi
+          fi
+          exit "$code"
+        fi
+        exec qpdf "$@"
+        """ + "\n");
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         var jpeg = await CompressFixtures.JpegAsync(test);
         using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Many(jpeg, 4));
+        Assert.IsFalse(File.Exists(Path.Combine(test.Root, "raw-cleanup-violation")),
+            "Raw extraction directory from a previous attempt still exists.");
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("4", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        var attempts = await File.ReadAllLinesAsync(Path.Combine(test.Root, "extractions"));
+        Assert.AreEqual(5, attempts.Length, "One overflowing batch followed by four individual attempts.");
+        StringAssert.StartsWith(attempts[0], "4 ");
+        Assert.IsTrue(attempts.Skip(1).All(line => line.StartsWith("1 ", StringComparison.Ordinal)));
+        CollectionAssert.AreEquivalent(attempts[0].Split(' ', StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray(),
+            attempts.Skip(1).Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1]).ToArray());
+        Assert.IsTrue(File.Exists(Path.Combine(test.Root, "partial-raw")), "The overflowing batch must actually leave raw files to clean.");
         test.AssertClean();
     }
 

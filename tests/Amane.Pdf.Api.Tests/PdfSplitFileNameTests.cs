@@ -135,25 +135,56 @@ public sealed class PdfSplitFileNameTests
     }
 
     [TestMethod]
-    public async Task MaximumUnicodeNameAnd500Parts_FitExistingZipOverhead()
+    public async Task MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead()
     {
-        // 本番の5倍の分割数で名前とオーバーヘッドを確認し、CPU 1の並行実行では既定30秒を超え得るため、対象外の時間上限は延ばす。
-        await using var test = new PdfTestContext(new()
+        if (!OperatingSystem.IsLinux()) { Assert.Inconclusive("Linux is required."); return; }
+        var options = new PdfOptions { MaxSplitParts = 500 };
+        Assert.IsTrue(PdfSplitCapacity.IsValid(options));
+        var parts = new PdfSplitPlan(1, null, options.MaxSplitParts).CreateParts(500);
+        var baseName = PdfSplitFileName.NormalizeBaseName(new string('あ', 60) + "追加.pdf");
+        Assert.AreEqual(new string('あ', 60), baseName);
+        var payload = PdfTestContext.Fixture;
+        var root = Path.Combine(Path.GetTempPath(), "split-zip-name-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
         {
-            ["Pdf:MaxSplitParts"] = "500",
-            ["Pdf:QpdfTimeoutSeconds"] = "120"
-        });
-        var baseName = new string('あ', 60);
-        using var response = await PdfSplitTests.PostAsync(test, await test.CreatePagedPdfAsync(500),
-            fileName: baseName + "追加.pdf");
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-        var bytes = await response.Content.ReadAsByteArrayAsync();
-        using var zip = new ZipArchive(new MemoryStream(bytes));
-        CollectionAssert.AreEqual(Enumerable.Range(1, 500).Select(i => $"{baseName}_{i}.pdf").ToArray(),
-            zip.Entries.Select(e => e.FullName).ToArray());
-        Assert.IsTrue(bytes.LongLength - zip.Entries.Sum(e => e.Length) <= PdfSplitCapacity.SplitZipOverheadBytes);
-        Assert.AreEqual(0x800, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(6)) & 0x800);
-        test.AssertClean();
+            using var files = new TemporaryPdfFiles(root);
+            await File.WriteAllBytesAsync(files.InputPath, payload);
+            var wrapper = Path.Combine(root, "qpdf");
+            // Only replace PDF extraction/inspection. The ZIP loop, metadata and limits are production code.
+            await File.WriteAllTextAsync(wrapper, "#!/bin/sh\n" +
+                "case \"$1\" in --is-encrypted) exit 2;; --check) exit 0;; esac\n" +
+                "[ \"$#\" -eq 6 ] && [ \"$2\" = --pages ] && [ \"$5\" = -- ] || exit 97\n" +
+                "cp \"$1\" \"$6\"\n");
+            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            options.QpdfPath = wrapper;
+            var processor = new PdfSplitProcessor(new(Options.Create(options)), options, files);
+            long accepted = 0;
+            try
+            {
+                accepted = await processor.WriteZipAsync(TemporaryPdfFiles.CreatePrivateFile(files.OutputPath),
+                    parts, baseName, CancellationToken.None);
+            }
+            catch (PdfSplitOutputTooLargeException)
+            {
+                Assert.Fail("Production ZIP overhead budget must fit 500 maximum Unicode names.");
+            }
+            Assert.AreEqual(500L * payload.Length, accepted);
+            var bytes = await File.ReadAllBytesAsync(files.OutputPath);
+            using var zip = new ZipArchive(new MemoryStream(bytes));
+            CollectionAssert.AreEqual(Enumerable.Range(1, 500).Select(i => $"{baseName}_{i}.pdf").ToArray(),
+                zip.Entries.Select(e => e.FullName).ToArray());
+            foreach (var entry in zip.Entries)
+            {
+                using var content = new MemoryStream();
+                using (var stream = entry.Open()) await stream.CopyToAsync(content);
+                CollectionAssert.AreEqual(payload, content.ToArray());
+            }
+            Assert.IsTrue(bytes.LongLength - zip.Entries.Sum(e => e.Length) <= PdfSplitCapacity.SplitZipOverheadBytes);
+            Assert.AreEqual(0x800, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(6)) & 0x800);
+            CollectionAssert.AreEquivalent(new[] { files.InputPath, files.OutputPath }, Directory.GetFiles(files.DirectoryPath));
+        }
+        finally { Directory.Delete(root, recursive: true); }
     }
 
     [TestMethod]

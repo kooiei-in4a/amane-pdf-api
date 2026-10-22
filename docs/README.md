@@ -18,6 +18,7 @@
 
 | 文書 | 対象 |
 | --- | --- |
+| [test-value-audit-2026-10-21/README.md](test-value-audit-2026-10-21/README.md) | commit 465088e時点の全452テストメソッド・Python検証・補助資材の価値監査。13改善候補、重複と本番経路の照合、限定変異実験の台帳。13項目すべて改善・検証済み。 |
 | [clean-validation.md](clean-validation.md) | PDF情報除去APIの構造・容量検証 |
 | [compress-validation.md](compress-validation.md) | JPEG画像圧縮の画質・構造・容量検証 |
 | [fill-template-validation.md](fill-template-validation.md) | PDFテンプレート差し込みAPIのHTTP・配置・抽出・実署名・容量検証、および固定フォント文字表 |

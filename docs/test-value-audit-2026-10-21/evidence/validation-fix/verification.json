@@ -1,0 +1,207 @@
+{
+  "baseline_commit": "465088ed0b575f055beb6851e98d28ed22fb9928",
+  "test_fix_patch_sha256": "763f8763f97a1418871593c900de97ce1304f04695684c4840acf9f590dc3691",
+  "build": {
+    "result": "Passed",
+    "warnings": [
+      "NU1900（NuGet脆弱性metadata取得不能）×2"
+    ],
+    "errors": 0
+  },
+  "full_suite": {
+    "execution": "全クラスを重複のない3群に分けて順次実行",
+    "passed": 1353,
+    "failed": 0,
+    "runs": [
+      {
+        "file": "fixed-batch-1.trx",
+        "times": {
+          "creation": "2026-10-21T16:15:26.4940410+00:00",
+          "queuing": "2026-10-21T16:15:26.4940410+00:00",
+          "start": "2026-10-21T16:15:25.9411099+00:00",
+          "finish": "2026-10-21T16:17:04.5129145+00:00"
+        },
+        "counters": {
+          "total": "393",
+          "executed": "393",
+          "passed": "393",
+          "failed": "0",
+          "error": "0",
+          "timeout": "0",
+          "aborted": "0",
+          "inconclusive": "0",
+          "passedButRunAborted": "0",
+          "notRunnable": "0",
+          "notExecuted": "0",
+          "disconnected": "0",
+          "warning": "0",
+          "completed": "0",
+          "inProgress": "0",
+          "pending": "0"
+        },
+        "trx_sha256": "52e6ca721feadfe174c8e73225dba87622aec36eb0d4bb0c51469c326aa66004"
+      },
+      {
+        "file": "fixed-batch-2.trx",
+        "times": {
+          "creation": "2026-10-21T16:17:05.9807165+00:00",
+          "queuing": "2026-10-21T16:17:05.9807167+00:00",
+          "start": "2026-10-21T16:17:05.3860934+00:00",
+          "finish": "2026-10-21T16:19:17.6470392+00:00"
+        },
+        "counters": {
+          "total": "586",
+          "executed": "586",
+          "passed": "586",
+          "failed": "0",
+          "error": "0",
+          "timeout": "0",
+          "aborted": "0",
+          "inconclusive": "0",
+          "passedButRunAborted": "0",
+          "notRunnable": "0",
+          "notExecuted": "0",
+          "disconnected": "0",
+          "warning": "0",
+          "completed": "0",
+          "inProgress": "0",
+          "pending": "0"
+        },
+        "trx_sha256": "1477c33a7c83da6fb4af8afbc38d923d2171997974e539b1b18e8090d581374b"
+      },
+      {
+        "file": "fixed-batch-3.trx",
+        "times": {
+          "creation": "2026-10-21T16:19:19.1039721+00:00",
+          "queuing": "2026-10-21T16:19:19.1039722+00:00",
+          "start": "2026-10-21T16:19:18.5531787+00:00",
+          "finish": "2026-10-21T16:21:17.5023160+00:00"
+        },
+        "counters": {
+          "total": "374",
+          "executed": "374",
+          "passed": "374",
+          "failed": "0",
+          "error": "0",
+          "timeout": "0",
+          "aborted": "0",
+          "inconclusive": "0",
+          "passedButRunAborted": "0",
+          "notRunnable": "0",
+          "notExecuted": "0",
+          "disconnected": "0",
+          "warning": "0",
+          "completed": "0",
+          "inProgress": "0",
+          "pending": "0"
+        },
+        "trx_sha256": "4daf9ff08efbf0b28f3587d88db209e465b9f0d22eb413553652e07d4c8037e0"
+      }
+    ]
+  },
+  "fixed_test_sha256": {
+    "tests/Amane.Pdf.Api.Tests/PdfTestContext.cs": "7aaa8aa03869f5483a2a8b4def779c2543de58af1a0cc79cc42636df40ef21db",
+    "tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs": "adf5956617c1d686a2577f1c02aa6740d15d09a4c6fc9bdf43df84bfb62df2d0",
+    "tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs": "d7de6d6327f113d47395a8f45f9c1e043244706b105a0f29437e028345431d2d",
+    "tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs": "0691fae593f0409e26ec4809b275455ecc2cb37d13785b364ac57518bb0c425a",
+    "tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs": "f77b8a80a8dd6fcc2b65d823cff6b1ab5ae2cbeed7b8e2fdc793443e7f1a2bc1"
+  },
+  "mutation_summary": {
+    "mutants": 7,
+    "killed": 7,
+    "survived": 0,
+    "failed_method_executions": 10,
+    "controls_before": 4,
+    "controls_after": 4
+  },
+  "limits": [
+    "全452メソッドのmutation scoreではなく、対象4メソッドへの限定実験",
+    "全てのmultipart kind/個々のquery文法ガードを一つずつ変異評価したわけではない",
+    "容量測定2件は環境変数なしで早期return",
+    "Docker suiteは今回は未実行",
+    "通常の一括実行はhost crashで2回中断。全ケースの成功は3群への分割実行で確認"
+  ],
+  "aborted_single_run_attempts": [
+    {
+      "file": "first-aborted.trx",
+      "counters": {
+        "total": "1236",
+        "executed": "1236",
+        "passed": "1236",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "times": {
+        "creation": "2026-10-21T15:59:08.7209186+00:00",
+        "queuing": "2026-10-21T15:59:08.7209187+00:00",
+        "start": "2026-10-21T15:59:08.1897452+00:00",
+        "finish": "2026-10-21T16:04:01.5475236+00:00"
+      },
+      "trx_sha256": "478d8a3a8b2772d274a87c1fd136d086c68b7e9cfdda9b3fbbfb8455cb7b3002",
+      "reason": "Test host process crashed; cause not established"
+    },
+    {
+      "file": "second-aborted.trx",
+      "counters": {
+        "total": "1306",
+        "executed": "1306",
+        "passed": "1306",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "times": {
+        "creation": "2026-10-21T16:07:20.9174971+00:00",
+        "queuing": "2026-10-21T16:07:20.9174972+00:00",
+        "start": "2026-10-21T16:07:20.1324696+00:00",
+        "finish": "2026-10-21T16:12:26.3670137+00:00"
+      },
+      "trx_sha256": "f0875f8303bcdf5aa1ad8b8a9750831f49bbec8f0451b63d4a66787c183cae70",
+      "reason": "Test host process crashed; cause not established"
+    }
+  ],
+  "isolated_test_after_crash": {
+    "method": "PdfPageNumbersTests.Http_ThousandTargetLimit_CountsOnlyNumberedPages",
+    "counters": {
+      "total": "1",
+      "executed": "1",
+      "passed": "1",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "trx_sha256": "7f523565e7649e744d0925f77997827437d8b519045a054c94518f8cb7b36bf5"
+  },
+  "runner_sha256": "5c97ff72cf871f11950606fca44de196df6b746767fe4e86c96f6449865a2a03"
+}

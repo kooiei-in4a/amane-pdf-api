@@ -138,14 +138,28 @@ public sealed class PdfCompressTests
         await using var test = new PdfTestContext();
         var jpeg = await CompressFixtures.JpegAsync(test, gray: gray);
         // Profile validity is intentionally outside candidate eligibility; qpdf does not decode it.
-        var extras = color.Contains("ICCBased") ? new[] { CompressFixtures.Stream("/N 3 /Alternate /DeviceRGB", new byte[128]) } : null;
+        var profile = Enumerable.Range(0, 128).Select(i => (byte)i).ToArray();
+        var extras = color.Contains("ICCBased") ? new[] { CompressFixtures.Stream("/N 3 /Alternate /DeviceRGB", profile) } : null;
         var input = CompressFixtures.Pdf(jpeg, gray: gray, color: color, extras: extras);
         using var response = await PostAsync(test, input);
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
         var result = await InspectAsync(test, await response.Content.ReadAsByteArrayAsync());
         var image = result.GetProperty("pages")[0].GetProperty("images")[0];
-        Assert.AreEqual(JsonValueKind.Array, image.GetProperty("colorspace").ValueKind);
+        var objects = result.GetProperty("qpdf")[1];
+        var dictionary = objects.GetProperty("obj:" + image.GetProperty("object").GetString()).GetProperty("stream").GetProperty("dict");
+        var actual = dictionary.GetProperty("/ColorSpace");
+        Assert.AreEqual(2, actual.GetArrayLength());
+        Assert.AreEqual(color.Contains("ICCBased") ? "/ICCBased" : gray ? "/CalGray" : "/CalRGB", actual[0].GetString());
+        if (color.Contains("ICCBased"))
+        {
+            var icc = objects.GetProperty("obj:" + actual[1].GetString()).GetProperty("stream");
+            Assert.AreEqual(3, icc.GetProperty("dict").GetProperty("/N").GetInt32());
+            Assert.AreEqual("/DeviceRGB", icc.GetProperty("dict").GetProperty("/Alternate").GetString());
+            CollectionAssert.AreEqual(profile, Convert.FromBase64String(icc.GetProperty("data").GetString()!));
+        }
+        else
+            CollectionAssert.AreEqual(new[] { 0.9505, 1, 1.0890 }, actual[1].GetProperty("/WhitePoint").EnumerateArray().Select(v => v.GetDouble()).ToArray());
         test.AssertClean();
     }
 

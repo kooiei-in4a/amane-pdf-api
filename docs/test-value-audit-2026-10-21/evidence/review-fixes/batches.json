@@ -1,0 +1,75 @@
+[
+  {
+    "classes": [
+      "PdfCompressResourceTests",
+      "PdfRestrictTests",
+      "PdfResourceLimitTests",
+      "PdfMergeResourceTests",
+      "PdfSplitTests",
+      "PdfSplitFileNameTests",
+      "PdfMergeTests",
+      "PdfFromImagesTests",
+      "PdfCleanResourceTests",
+      "PdfFromImagesResourceTests",
+      "PdfProtectTests",
+      "PdfOverlayResourceTests",
+      "OverlayCapacityTests",
+      "StampImageInputTests",
+      "CompressMetadataTests",
+      "PngSanitizerTests",
+      "FromImagesDesignTests",
+      "StampPlacementTests",
+      "RedactRegionsTests"
+    ],
+    "seconds": 185.68253399999998
+  },
+  {
+    "classes": [
+      "PdfUnlockTests",
+      "PdfCompressTests",
+      "PdfRedactTests",
+      "PdfCleanTests",
+      "QpdfMemoryLimitTests",
+      "PdfPageSelectionOperationTests",
+      "PdfValidationTests",
+      "PdfSplitResourceTests",
+      "RedactSecurityTests",
+      "ProcessFileLimitTests",
+      "PdfRendererTests",
+      "PdfFromImagesPrivacyTests",
+      "HealthEndpointTests",
+      "RedactDocumentTests",
+      "FillTemplateGlyphsTests",
+      "FillTemplateFieldsTests",
+      "FillTemplateCapacityTests",
+      "PdfSplitPlanTests",
+      "RedactRasterTests"
+    ],
+    "seconds": 185.68269599999996
+  },
+  {
+    "classes": [
+      "PdfUnlockResourceTests",
+      "PdfcpuProcessorTests",
+      "PdfStampImageTests",
+      "PdfRotateTests",
+      "RedactNeutralObjectsTests",
+      "PdfWatermarkTests",
+      "PdfPageNumbersTests",
+      "PdfFillTemplateTests",
+      "PdfOptimizeTests",
+      "PdfSplitZipTests",
+      "PdfOverlayBuilderTests",
+      "PdfEmbeddedFileStripperTests",
+      "PdfPageBoxesTests",
+      "ExternalProcessRunnerTests",
+      "WatermarkTextTests",
+      "FromImagesCapacityMeasurementTests",
+      "CleanCapacityTests",
+      "FillTemplateStructureTests",
+      "JpegHeaderTests",
+      "PdfSplitCapacityTests"
+    ],
+    "seconds": 185.68285
+  }
+]

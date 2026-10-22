@@ -1,0 +1,10 @@
+--- a/src/Amane.Pdf.Api/PdfCompressProcessor.cs
++++ b/src/Amane.Pdf.Api/PdfCompressProcessor.cs
+@@ -484,6 +484,7 @@
+             var obj = await metadata.GetAsync(image.Reference, token) ?? throw new InvalidOperationException("PDF dictionary is missing.");
+             var dict = JsonNode.Parse(obj.GetProperty("stream").GetProperty("dict").GetRawText(),
+                 documentOptions: new JsonDocumentOptions { MaxDepth = options.CompressJsonDepth })!.AsObject();
++            dict["/ColorSpace"] = JsonNode.Parse("[\"/CalRGB\",{\"/WhitePoint\":[1,1,1]}]");
+             dict["/Width"] = rewritten.Width; dict["/Height"] = rewritten.Height; dict.Remove("/Length");
+             var retained = Path.Combine(files.DirectoryPath, $"adopt-{image.Reference.Number}-{image.Reference.Generation}.jpg");
+             var entry = Path.Combine(files.DirectoryPath, $"update-{image.Reference.Number}-{image.Reference.Generation}.json");

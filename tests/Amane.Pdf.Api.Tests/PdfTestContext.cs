@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -66,6 +68,49 @@ internal sealed class PdfTestContext : IAsyncDisposable
 
     public static MultipartFormDataContent FileForm(byte[]? file = null, string fileName = "sample.pdf")
         => Form(file, password: null, fileName);
+
+    public async Task AssertRejectedBeforeReadingBodyAsync(string pathAndQuery, HttpContent content)
+    {
+        // Observe server reads, rather than client-side multipart serialization.
+        using var body = new UnreadableBody();
+        var uri = new Uri("http://localhost" + pathAndQuery);
+        var response = await Factory.Server.SendAsync(context =>
+        {
+            context.Request.Method = "POST";
+            context.Request.Path = uri.AbsolutePath;
+            context.Request.QueryString = new QueryString(uri.Query);
+            context.Request.ContentType = content.Headers.ContentType!.ToString();
+            context.Request.ContentLength = content.Headers.ContentLength;
+            context.Request.Body = body;
+        });
+        Assert.AreEqual(0, body.ReadCount, pathAndQuery);
+        Assert.AreEqual(400, response.Response.StatusCode, pathAndQuery);
+        AssertClean();
+    }
+
+    private sealed class UnreadableBody : Stream
+    {
+        public int ReadCount { get; private set; }
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            ReadCount++;
+            throw new InvalidOperationException("Request body must not be read.");
+        }
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            ReadCount++;
+            throw new InvalidOperationException("Request body must not be read.");
+        }
+        public override void Flush() => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
 
     public static MultipartFormDataContent MergeForm(params byte[][] inputs)
     {
@@ -183,6 +228,12 @@ internal sealed class PdfTestContext : IAsyncDisposable
 
     public async Task<(int ExitCode, string Output)> QpdfAsync(params string[] arguments)
     {
+        var result = await QpdfBytesAsync(arguments);
+        return (result.ExitCode, Encoding.UTF8.GetString(result.Output));
+    }
+
+    public async Task<(int ExitCode, byte[] Output)> QpdfBytesAsync(params string[] arguments)
+    {
         using var process = new Process
         {
             StartInfo = new ProcessStartInfo("qpdf")
@@ -194,8 +245,9 @@ internal sealed class PdfTestContext : IAsyncDisposable
         };
         foreach (var argument in arguments) process.StartInfo.ArgumentList.Add(argument);
         process.Start();
-        var output = process.StandardOutput.ReadToEndAsync();
-        var error = process.StandardError.ReadToEndAsync();
+        using var output = new MemoryStream();
+        var readOutput = process.StandardOutput.BaseStream.CopyToAsync(output);
+        var error = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try
         {
@@ -207,7 +259,8 @@ internal sealed class PdfTestContext : IAsyncDisposable
             await process.WaitForExitAsync();
         }
         await error;
-        return (process.ExitCode, await output);
+        await readOutput;
+        return (process.ExitCode, output.ToArray());
     }
 
     public async ValueTask DisposeAsync()

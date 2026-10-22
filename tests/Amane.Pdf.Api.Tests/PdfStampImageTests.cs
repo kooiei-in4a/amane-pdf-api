@@ -89,9 +89,10 @@ public sealed class PdfStampImageTests
         foreach (var query in new[] { "", "page=1&x=0&y=0", Query + "&x=0", Query + "&unknown=1",
                      Query.Replace("0.72", "0.١٢"), Query.Replace("0.08", "0.12345"), Query.Replace("page=1", "page=2147483648") })
         {
-            using var badBody = new StringContent("PRIVATE_STAMP_INVALID_UPLOAD");
-            using var response = await test.Client.PostAsync(Endpoint + query, badBody);
+            using var body = Form(PdfTestContext.Fixture, StampFixtures.Png());
+            using var response = await test.Client.PostAsync(Endpoint + query, body);
             await Problem(test, response, 400);
+            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + query, body);
         }
     }
 

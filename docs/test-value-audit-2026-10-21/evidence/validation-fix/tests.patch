@@ -1,0 +1,152 @@
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs b/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs
+index 37f3274..71eafdf 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs
+@@ -37,6 +37,8 @@ public sealed class PdfFillTemplateTests
+             using var form = Form(fields: bytes); using var response = await test.Client.PostAsync(Endpoint, form);
+             await Problem(test, response, 400);
+         }
++        // Each multipart case has valid fields; only the selected part contract is invalid.
++        var validFields = "[" + FillTemplateFieldsTests.Field + "]";
+         foreach (var kind in new[] { "unknown", "duplicate-file", "duplicate-fields", "missing-file", "missing-fields", "fields-filename", "file-no-filename", "case" })
+         {
+             using var form = new MultipartFormDataContent();
+@@ -44,16 +46,19 @@ public sealed class PdfFillTemplateTests
+                 if (kind == "file-no-filename") form.Add(new ByteArrayContent(PdfTestContext.Fixture), "file");
+                 else form.Add(new ByteArrayContent(PdfTestContext.Fixture), kind == "case" ? "File" : "file", "private-template.pdf");
+             if (kind != "missing-fields")
+-                if (kind == "fields-filename") form.Add(new StringContent("[]"), "fields", "data.json");
+-                else form.Add(new StringContent("[]"), "fields");
++                if (kind == "fields-filename") form.Add(new StringContent(validFields), "fields", "data.json");
++                else form.Add(new StringContent(validFields), "fields");
+             if (kind == "unknown") form.Add(new StringContent("SECRET"), "text");
+             if (kind == "duplicate-file") form.Add(new ByteArrayContent(PdfTestContext.Fixture), "file", "duplicate.pdf");
+-            if (kind == "duplicate-fields") form.Add(new StringContent("[]"), "fields");
++            if (kind == "duplicate-fields") form.Add(new StringContent(validFields), "fields");
+             using var response = await test.Client.PostAsync(Endpoint, form);
++            Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode, kind);
+             await Problem(test, response, 400);
+         }
+-        using var query = await test.Client.PostAsync(Endpoint + "?a=1", new StringContent("not multipart"));
++        using var queryBody = Form();
++        using var query = await test.Client.PostAsync(Endpoint + "?a=1", queryBody);
+         await Problem(test, query, 400);
++        await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?a=1", queryBody);
+     }
+ 
+     [TestMethod]
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs b/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs
+index ecf29b3..d9ccca8 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs
+@@ -31,11 +31,12 @@ public sealed class PdfPageNumbersTests
+                 .Select(value => Query + "&" + key + "=" + value))];
+         foreach (var query in queries)
+         {
+-            // Invalid multipart would have a different title if upload parsing ran first.
+-            using var body = new StringContent("not multipart");
++            // Keep the upload valid so another 400 cannot hide a missing query validator.
++            using var body = PdfTestContext.FileForm(PdfTestContext.Fixture);
+             using var response = await test.Client.PostAsync(Endpoint + "?" + query, body);
+             using var problem = await Problem(test, response, HttpStatusCode.BadRequest);
+             Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString(), query);
++            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?" + query, body);
+         }
+     }
+ 
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs b/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs
+index f68afc1..4480210 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs
+@@ -89,9 +89,10 @@ public sealed class PdfStampImageTests
+         foreach (var query in new[] { "", "page=1&x=0&y=0", Query + "&x=0", Query + "&unknown=1",
+                      Query.Replace("0.72", "0.١٢"), Query.Replace("0.08", "0.12345"), Query.Replace("page=1", "page=2147483648") })
+         {
+-            using var badBody = new StringContent("PRIVATE_STAMP_INVALID_UPLOAD");
+-            using var response = await test.Client.PostAsync(Endpoint + query, badBody);
++            using var body = Form(PdfTestContext.Fixture, StampFixtures.Png());
++            using var response = await test.Client.PostAsync(Endpoint + query, body);
+             await Problem(test, response, 400);
++            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + query, body);
+         }
+     }
+ 
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs b/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
+index 8e68009..76753da 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
+@@ -1,6 +1,7 @@
+ using System.Diagnostics;
+ using System.Net.Http.Headers;
+ using System.Text.Json;
++using Microsoft.AspNetCore.Http;
+ using Microsoft.AspNetCore.Hosting;
+ using Microsoft.AspNetCore.Mvc.Testing;
+ using Microsoft.Extensions.Configuration;
+@@ -67,6 +68,49 @@ internal sealed class PdfTestContext : IAsyncDisposable
+     public static MultipartFormDataContent FileForm(byte[]? file = null, string fileName = "sample.pdf")
+         => Form(file, password: null, fileName);
+ 
++    public async Task AssertRejectedBeforeReadingBodyAsync(string pathAndQuery, HttpContent content)
++    {
++        // Observe server reads, rather than client-side multipart serialization.
++        using var body = new UnreadableBody();
++        var uri = new Uri("http://localhost" + pathAndQuery);
++        var response = await Factory.Server.SendAsync(context =>
++        {
++            context.Request.Method = "POST";
++            context.Request.Path = uri.AbsolutePath;
++            context.Request.QueryString = new QueryString(uri.Query);
++            context.Request.ContentType = content.Headers.ContentType!.ToString();
++            context.Request.ContentLength = content.Headers.ContentLength;
++            context.Request.Body = body;
++        });
++        Assert.AreEqual(0, body.ReadCount, pathAndQuery);
++        Assert.AreEqual(400, response.Response.StatusCode, pathAndQuery);
++        AssertClean();
++    }
++
++    private sealed class UnreadableBody : Stream
++    {
++        public int ReadCount { get; private set; }
++        public override bool CanRead => true;
++        public override bool CanSeek => false;
++        public override bool CanWrite => false;
++        public override long Length => throw new NotSupportedException();
++        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
++        public override int Read(byte[] buffer, int offset, int count)
++        {
++            ReadCount++;
++            throw new InvalidOperationException("Request body must not be read.");
++        }
++        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
++        {
++            ReadCount++;
++            throw new InvalidOperationException("Request body must not be read.");
++        }
++        public override void Flush() => throw new NotSupportedException();
++        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
++        public override void SetLength(long value) => throw new NotSupportedException();
++        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
++    }
++
+     public static MultipartFormDataContent MergeForm(params byte[][] inputs)
+     {
+         var form = new MultipartFormDataContent();
+diff --git a/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs b/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs
+index b5c4dfb..246d6d4 100644
+--- a/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs
+@@ -31,10 +31,11 @@ public sealed class PdfWatermarkTests
+                      Query + "&style=corner", Query + "&Style=diagonal", Query + "&color=red", Query + "&text=SECRET",
+                      Query + "&extra=1", "style=corner&color=" })
+         {
+-            using var body = new StringContent("not multipart");
++            using var body = Form(PdfTestContext.Fixture);
+             using var response = await test.Client.PostAsync(Endpoint + "?" + query, body);
+             using var problem = await Problem(test, response, HttpStatusCode.BadRequest);
+             Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString());
++            await test.AssertRejectedBeforeReadingBodyAsync(Endpoint + "?" + query, body);
+         }
+     }
+ 

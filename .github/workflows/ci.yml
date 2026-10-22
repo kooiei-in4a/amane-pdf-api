@@ -76,6 +76,9 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
+      - name: Verify mutation verdict runner
+        run: python3 docs/test-value-audit-2026-10-21/evidence/validation-fix/test_mutation_runner.py
+
       - name: Test
         run: dotnet test --configuration Release --no-build
 

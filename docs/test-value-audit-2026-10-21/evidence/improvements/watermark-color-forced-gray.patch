@@ -1,0 +1,11 @@
+--- a/src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs
++++ b/src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs
+@@ -42,7 +42,7 @@
+             "red" => "#C00000",
+             _ => throw InvalidQuery()
+         };
+-        return new(diagonal, color);
++        return new(diagonal, "#808080");
+     }
+ 
+     internal PdfcpuLayer CreateLayer(OverlayCanvas canvas, string text)

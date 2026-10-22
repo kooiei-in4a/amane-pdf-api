@@ -1,0 +1,11 @@
+--- a/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
++++ b/tests/Amane.Pdf.Api.Tests/PdfTestContext.cs
+@@ -260,7 +260,7 @@
+         }
+         await error;
+         await readOutput;
+-        return (process.ExitCode, output.ToArray());
++        return (process.ExitCode, Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(output.ToArray())));
+     }
+ 
+     public async ValueTask DisposeAsync()
