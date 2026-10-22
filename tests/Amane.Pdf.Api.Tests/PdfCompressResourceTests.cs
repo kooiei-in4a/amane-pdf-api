@@ -237,14 +237,17 @@ public sealed class PdfCompressResourceTests
           dir=${prefix%/*}; job=${dir%/*}
           # Every previous extraction directory must be removed before another attempt.
           for old in "$job"/raw-*; do
-            [ "$old" = "$dir" ] || [ ! -d "$old" ] || exit 97
+            if [ "$old" != "$dir" ] && [ -d "$old" ]; then
+              printf 'stale raw directory\n' >> '{{test.Root}}/raw-cleanup-violation'
+            fi
           done
           printf '%s\n' "$count$targets" >> '{{test.Root}}/extractions'
           qpdf "$@"
           code=$?
           if [ "$count" -gt 1 ]; then
-            test -n "$(find "$dir" -type f -print -quit)" || exit 98
-            printf 'observed\n' > '{{test.Root}}/partial-raw'
+            if [ -n "$(find "$dir" -type f -print -quit)" ]; then
+              printf 'observed\n' > '{{test.Root}}/partial-raw'
+            fi
           fi
           exit "$code"
         fi
@@ -253,6 +256,8 @@ public sealed class PdfCompressResourceTests
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         var jpeg = await CompressFixtures.JpegAsync(test);
         using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Many(jpeg, 4));
+        Assert.IsFalse(File.Exists(Path.Combine(test.Root, "raw-cleanup-violation")),
+            "Raw extraction directory from a previous attempt still exists.");
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("4", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
         var attempts = await File.ReadAllLinesAsync(Path.Combine(test.Root, "extractions"));

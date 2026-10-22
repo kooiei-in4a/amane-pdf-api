@@ -4,6 +4,7 @@ import argparse
 import difflib
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -17,6 +18,7 @@ WATER = 'PdfWatermarkTests.InvalidQueryPrecedesUploadAndTools'
 STAMP = 'PdfStampImageTests.InvalidQueryPrecedesUploadAndTools'
 FILL = 'PdfFillTemplateTests.Http_StrictFieldsAndMultipart_AreCheckedAfterUploadBeforeTools'
 ALL = [PAGE, WATER, STAMP, FILL]
+CONTROL_CASES = 4
 MULTIPART_START = '    internal static async Task<byte[]> ReadFileAndTextAsync('
 MULTIPART_END = '    public static Task<IReadOnlyList<string>> ReadMergeFilesAsync('
 MUTATIONS = [
@@ -52,6 +54,44 @@ MUTATIONS = [
 NS = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
 
 
+def equal_failure(expected, actual, assertion):
+    return {key: re.escape(value) for key, value in
+            dict(expected=expected, actual=actual, assertion=assertion).items()}
+
+
+EXPECTATIONS = {
+    'page-query-removed': (1, 1, [equal_failure('BadRequest', 'InternalServerError',
+                                            'Assert.AreEqual(status, response.StatusCode)')]),
+    'watermark-query-removed': (1, 1, [equal_failure('BadRequest', 'InternalServerError',
+                                                 'Assert.AreEqual(status, response.StatusCode)')]),
+    'stamp-query-removed': (1, 1, [equal_failure('400', '500', 'Assert.AreEqual(status, (int)response.StatusCode)')]),
+    'unknown-text-allowed': (1, 1, [equal_failure('BadRequest', 'InternalServerError',
+                                              'Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode)')]),
+    'fill-query-removed': (1, 1, [equal_failure('400', '500', 'Assert.AreEqual(status, (int)response.StatusCode)')]),
+    'fill-fields-validation-removed': (1, 1, [equal_failure('400', '500',
+                                                        'Assert.AreEqual(status, (int)response.StatusCode)')]),
+    'query-validation-after-upload': (4, 4, [equal_failure('0', '1', 'Assert.AreEqual(0, body.ReadCount)')]),
+}
+
+
+def validate_run(row, methods, expectation=None):
+    """失敗件数とassertを照合し、無関係な失敗・空の発見・中断を拒否する。"""
+    assert not row['run_errors'], row
+    assert row['counters']['aborted'] == row['counters']['error'] == '0', row
+    assert {r['method'] for r in row['results']} == set(methods), row
+    assert row['results'] and all(r['outcome'] in ('Passed', 'Failed') for r in row['results']), row
+    failures = [r for r in row['results'] if r['outcome'] == 'Failed']
+    assert row['exit_code'] == (1 if expectation else 0), row
+    if expectation is None:
+        assert not failures, row
+        return
+    total, failed, patterns = expectation
+    assert len(row['results']) == total and len(failures) == failed and failed > 0, row
+    assert all(any(all(re.fullmatch(pattern, result.get(key, ''), re.DOTALL)
+                       for key, pattern in signature.items())
+                   for signature in patterns) for result in failures), row
+
+
 def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -67,6 +107,7 @@ def summarize(path):
                    outcome=result.attrib['outcome'], duration=result.attrib['duration'])
         error = result.find('t:Output/t:ErrorInfo/t:Message', NS)
         if error is not None:
+            row['message'] = error.text
             row['failure'] = error.text.splitlines()[0]
             for line in error.text.splitlines():
                 if line.startswith('expected:'):
@@ -95,9 +136,8 @@ def main():
         copy = Path(temporary) / 'source'
         shutil.copytree(source, copy, ignore=shutil.ignore_patterns('.git', 'docs'))
         originals = {name: (copy / API / name).read_text() for _, name, *_ in MUTATIONS}
-        input_hashes = {TESTS + name: sha(source / TESTS / name) for name in
-                        ['PdfTestContext.cs', 'PdfPageNumbersTests.cs', 'PdfWatermarkTests.cs',
-                         'PdfStampImageTests.cs', 'PdfFillTemplateTests.cs']}
+        input_hashes = {str(path.relative_to(source)): sha(path)
+                        for path in sorted((source / TESTS).glob('*.cs'))}
         report = dict(baseline_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip(),
                       fixed_test_sha256=input_hashes, controls=[], mutations=[])
 
@@ -115,14 +155,15 @@ def main():
             row = summarize(trx_path)
             row.update(name=name, exit_code=result.returncode,
                        api_assembly_sha256=sha(copy / TESTS / 'bin/Release/net10.0/Amane.Pdf.Api.dll'))
-            assert not row['run_errors'], row
-            assert row['counters']['aborted'] == row['counters']['error'] == '0', row
-            expected = 'Failed' if failed else 'Passed'
-            # A build failure, crash, empty discovery, or unrelated failure is not a killed mutation.
-            assert result.returncode == (1 if failed else 0), row
-            assert {r['method'] for r in row['results']} == set(methods), row
-            assert all(r['outcome'] == expected for r in row['results']), row
-            print(name + ': ' + str(len(row['results'])) + ' ' + expected, flush=True)
+            expectation = EXPECTATIONS[name] if failed else None
+            validate_run(row, methods, expectation)
+            if not failed:
+                assert len(row['results']) == CONTROL_CASES, row
+            if failed:
+                row['expected_failure'] = dict(total=expectation[0], failed=expectation[1], patterns=expectation[2])
+                row['matched_assertions'] = True
+            print(name + ': ' + str(sum(r['outcome'] == 'Failed' for r in row['results'])) + ' failed / ' +
+                  str(sum(r['outcome'] == 'Passed' for r in row['results'])) + ' passed', flush=True)
             return row
 
         report['controls'].append(run('control-before', ALL, False))

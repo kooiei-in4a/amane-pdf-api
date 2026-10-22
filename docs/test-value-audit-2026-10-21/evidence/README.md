@@ -1,6 +1,6 @@
 # 初回監査の実行証拠と限定変異の再現
 
-**最新の改善結果**は[improvements/README.md](improvements/README.md)。
+**最新の改善結果**は[review-fixes/README.md](review-fixes/README.md)。レビュー前の改善段階は[improvements/README.md](improvements/README.md)。
 
 **更新**: 以下は修正前の監査実験の履歴。現在のLV01/LV02修正・7変異・全件確認は[validation-fix/README.md](validation-fix/README.md)を参照。
 

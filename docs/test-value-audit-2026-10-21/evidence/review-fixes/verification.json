@@ -1,0 +1,169 @@
+{
+  "source_base_commit": "ab0eae6b0d9e2a5e99b5ae3bc66a8f4d0078aaaf",
+  "environment": {
+    "os": "Linux",
+    "dotnet_sdk": "10.0.402",
+    "dotnet_runtime": "10.0.13",
+    "qpdf": "12.3.2",
+    "libjpeg_turbo": "2.1.5 (build 20260406)",
+    "pdfcpu": "v0.16.2, commit b41a41d5, go1.27.2",
+    "font_sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673",
+    "dependency_source": "初回監査で抽出済みのpdfcpu/font/PDFiumを再利用。API/renderer/testsはレビュー修正後のsourceからRelease build。",
+    "qpdf_path_note": "Ubuntu AppArmorのpath制約を避けるため同じ/usr/bin/qpdfを一時pathへコピー（CIと同方式）。",
+    "host_limits_note": "host実行はDockerのCPU1/cgroup1.5GiB/tmpfs256MiBを再現していない。"
+  },
+  "build": {
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 1,
+    "warning_codes": [
+      "NU1900"
+    ],
+    "log_sha256": "d2c92571921cf7a294825bc0f4b4ab16939f8c59291abd40ab26be49b1d943f7"
+  },
+  "full_suite": {
+    "times": {
+      "creation": "2026-10-21T23:49:40.6466608+00:00",
+      "queuing": "2026-10-21T23:49:40.6466608+00:00",
+      "start": "2026-10-21T23:49:40.1304301+00:00",
+      "finish": "2026-10-21T23:54:28.5049193+00:00"
+    },
+    "counters": {
+      "total": "1305",
+      "executed": "1303",
+      "passed": "1303",
+      "failed": "0",
+      "error": "0",
+      "timeout": "0",
+      "aborted": "0",
+      "inconclusive": "0",
+      "passedButRunAborted": "0",
+      "notRunnable": "0",
+      "notExecuted": "0",
+      "disconnected": "0",
+      "warning": "0",
+      "completed": "0",
+      "inProgress": "0",
+      "pending": "0"
+    },
+    "trx_sha256": "9354c86bc8b24159990e0bb30dd77cdc3ff7aa70c0d6ee32d71b843f936a269c",
+    "run_errors": [
+      "The active test run was aborted. Reason: Test host process crashed"
+    ],
+    "skipped": 2,
+    "exit_code": 1,
+    "completed": false,
+    "expected_cases": 1340,
+    "missing_cases": 35,
+    "status": "testhost crash。一括完走ではない。"
+  },
+  "runner_unit_tests": {
+    "passed": 7,
+    "failed": 0,
+    "log_sha256": "670a39115e7523a8984e4842e16547cb2094b03fad392b037b4b9dc8b2656e62",
+    "source_sha256": "e3425659faba3147cdf145df5cf0992d55edf1707a0a88c70d48d624e3f295d2"
+  },
+  "tests_patch_sha256": "59b121654e22392e5c6421acf5c66ccef81ca9d52768b9d8cdf970bcd7f6653b",
+  "current_test_source_sha256": {
+    "tests/Amane.Pdf.Api.Tests/BlockingQpdf.cs": "c6b742ef790c39a883c19a0875b67003fb4cac0f111f3bb2fe74a57b5b0116b2",
+    "tests/Amane.Pdf.Api.Tests/CleanCapacityTests.cs": "63c94d6f0aedaeca9cd14d8f98b1c7e9e9cb2418223da4953dbc043885dd4fdb",
+    "tests/Amane.Pdf.Api.Tests/CompressFixtures.cs": "7ea625533541648b2aa8519f5c096d50b3a5fa17b81e79d4cfbf1d6c73c16940",
+    "tests/Amane.Pdf.Api.Tests/CompressMetadataTests.cs": "962bd2d7b01cc8bd6f97c3d057d363d7ac0ce15b100589cfb94087639e019340",
+    "tests/Amane.Pdf.Api.Tests/ExternalProcessRunnerTests.cs": "afffa2e73b1e3f3c2f7b8352dc112aeb016869b1eb6b73a04d10f7ea8bdfdfe8",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs": "542f7dc1ccd546b57a0d99f9cdd88124b76fbfab96311cdf95c038f20b48afb4",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateFieldsTests.cs": "64636d41c1cee48f568cfb43d59c21986c913a660e5e9aaaad4cfcdac359f9f0",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateGlyphsTests.cs": "436dc671f8b6e2d2a64aaac3a33add74d6a18a3728a3993a74db9b1a47194f5f",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateStructureTests.cs": "dc8ea2eba76ce4178998b6957a8ac1f6847ba4c68fd59d02e7af908c5880f6ab",
+    "tests/Amane.Pdf.Api.Tests/FromImagesCapacityMeasurementTests.cs": "5eadf40164f4c85c9de618df59724f55b9b8fbe89e55b105bdf45a9819cc3daa",
+    "tests/Amane.Pdf.Api.Tests/FromImagesDesignTests.cs": "eb88ae925bd5d891bae8bcace260a6cf9a708ba8b034827e63a7f8cd0ddc22bc",
+    "tests/Amane.Pdf.Api.Tests/FromImagesFixtures.cs": "e29286c821ea6fdf38851e780e387db2a2d85b894fbd376f1388976d222cf82e",
+    "tests/Amane.Pdf.Api.Tests/HealthEndpointTests.cs": "9188a61fa3ad6fd383f78b6d784985bdad166c8626200a018257da5a84c4a350",
+    "tests/Amane.Pdf.Api.Tests/JpegHeaderTests.cs": "aee38aa5ae16c21e3284c64d76d2fdad46e513a64e1e191c08d460fc040842da",
+    "tests/Amane.Pdf.Api.Tests/OverlayCapacityTests.cs": "e0da3e4051aa596bdc7102f891a03b94aced5fd0888e9e611908f36fe4fc595a",
+    "tests/Amane.Pdf.Api.Tests/OverlayFixtures.cs": "320363ecbc3fafd0cfd05e2f362c50a79100cce76fecbf9c4c0d0b0e20ad61b2",
+    "tests/Amane.Pdf.Api.Tests/PdfCleanResourceTests.cs": "24e93ce8f6a405ac515214fd4d8eb43143fa22c241dcd68c4e3a76a361c2ae2e",
+    "tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs": "96ffc6a3cb0e1ec3a93eb99ff15536abb85c284c7d65d98e2cd7f1cc92a6c917",
+    "tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs": "c7eaa9d3f499a756e21dfa9ee6388ab0afe2dc5c054a655f7596ce19b9b3143f",
+    "tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs": "abcd16a1f3e6c41ad0b1d52bbc994a11365153791f52d546e15722ac3b7394c3",
+    "tests/Amane.Pdf.Api.Tests/PdfEmbeddedFileStripperTests.cs": "7372f84e45767d62392215e51b0ff8666601ca399fd6472e89f0091f01d1de65",
+    "tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs": "f77b8a80a8dd6fcc2b65d823cff6b1ab5ae2cbeed7b8e2fdc793443e7f1a2bc1",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesPrivacyTests.cs": "cb4dc2d40bb34356cfc31d2d60086077b4ba79d80bd07de568b1205a20a68bb8",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesResourceTests.cs": "2b3fed9ebff22ef8010936244e5cab5560ec72392e2e36705b1fe3c228af7e72",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesTests.cs": "6fc8eb4413373d714807787224266c60374ba0e3e4f8ed11302456ccb63ef868",
+    "tests/Amane.Pdf.Api.Tests/PdfMergeResourceTests.cs": "4ca7aefac03f01f61fe98b7736815de4e99e59714f61fa9eac9b716e0661e4e4",
+    "tests/Amane.Pdf.Api.Tests/PdfMergeTests.cs": "1dfd5a02ced463457b7badb47c84b6659cfc89f4eac14a7a3c37bb1285b4702f",
+    "tests/Amane.Pdf.Api.Tests/PdfOptimizeTests.cs": "7be3763019c58ae70b94fbac2b525326ab7161388cac2b46eedcaeaaa2c43cd0",
+    "tests/Amane.Pdf.Api.Tests/PdfOverlayBuilderTests.cs": "0439709aaccaf338b812ebefb5612ad21f6fd024b89837daca870f4a85ee665d",
+    "tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs": "6df61cf0ff75e92a3f8acb9106fd487e8bc7d42aeb92c50f30a9f7ff4ee14d7b",
+    "tests/Amane.Pdf.Api.Tests/PdfPageBoxesTests.cs": "94273fece51ae6910e89072774eaf1ede4f51813f82e6f335de86dff8e85e2fd",
+    "tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs": "adf5956617c1d686a2577f1c02aa6740d15d09a4c6fc9bdf43df84bfb62df2d0",
+    "tests/Amane.Pdf.Api.Tests/PdfPageSelectionOperationTests.cs": "740414045112ecfa2977eca2717a48231c93e3b213de868ff96d8803e3381cdd",
+    "tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs": "e479192ac5d578de1b79f84c4d7fc409c7d5cb7da2881960dd03ba7dcc1db367",
+    "tests/Amane.Pdf.Api.Tests/PdfRedactTests.cs": "dc011c6e4a5282e04f7d03d903dadfa455b644014690603e82d41b5cb2f8baa1",
+    "tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs": "b81eda65da58517a8fdf76c6e2f82ddb5ce1d31f5230337124a95bbcd7937e45",
+    "tests/Amane.Pdf.Api.Tests/PdfResourceLimitTests.cs": "7b3056844a6b9bd965170b8f4daacdca53e872688af8b9526a364ef00f3baedb",
+    "tests/Amane.Pdf.Api.Tests/PdfRestrictTests.cs": "ba171dede4b87b78569f7e095e2f40c186e82ea05ec4b43f8dd3bd5e1566eb10",
+    "tests/Amane.Pdf.Api.Tests/PdfRotateTests.cs": "531b2c62d876def1c8f58572e018c85da32be29eb92a6062b2a33fc862ff297d",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitCapacityTests.cs": "59f4bfdfecb73bc982780500a56f97098172a699b79a3e06d1630845701daf31",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs": "c27ae1a794c9feb7abc0e7b1c3edd51e7aa15045d8b205943a0d438ffd5c7609",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitPlanTests.cs": "5f44443c791cdd693094206c4dd12ded730a51ca18edf1b0db75367deb65c522",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitResourceTests.cs": "871dff81cff4f8cdc03703630b808ab1feecddca4d0ccd27903837f6f00e28f9",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitTests.cs": "a504bbda473579645c47ed99de92de25ac734f7baf365c22c0cebe4cc004c890",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitZipTests.cs": "3a58784e37423fdd9287337c2047844ac8d902521e906b722195bed0b268c0fd",
+    "tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs": "0691fae593f0409e26ec4809b275455ecc2cb37d13785b364ac57518bb0c425a",
+    "tests/Amane.Pdf.Api.Tests/PdfTestContext.cs": "e417c855bdd2ca8eea043b45595b926b5c2af90f122aa7f848bbdd07351db788",
+    "tests/Amane.Pdf.Api.Tests/PdfUnlockResourceTests.cs": "0d19ebc0841a4eb2be209fd8f9ecc89df6ceb61a1b6efc5d419649e404d1c86a",
+    "tests/Amane.Pdf.Api.Tests/PdfUnlockTests.cs": "95bed23f332ef40c5eab692f3b854d403053c8f9bd1be674a1bf19731c30fb38",
+    "tests/Amane.Pdf.Api.Tests/PdfValidationTests.cs": "586e94b0d812e5a8e612a44c8f9d6bc2128b45a1ccde7699c514c69e3ba5ea96",
+    "tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs": "0e1a5345c586381aa9a503b47880d015ee3d44a6354af976f22cd4191ae8f82c",
+    "tests/Amane.Pdf.Api.Tests/PdfcpuProcessorTests.cs": "aa3d9232342f787392f14a569cd71f5bba8da288bb4284da412cc292123911a3",
+    "tests/Amane.Pdf.Api.Tests/PngSanitizerTests.cs": "41289959292ea444f63549f7a4566454977410d73973ba9646466a0cb6e2da06",
+    "tests/Amane.Pdf.Api.Tests/ProcessFileLimitTests.cs": "ccf9ef008f5e6c49687b1c2dbdb892a6501ef7fc336a06055fd34e66d634829d",
+    "tests/Amane.Pdf.Api.Tests/QpdfMemoryLimitTests.cs": "1461d162b35b7b7b86b756d419fa62212fe92ef5f947923483e29183b00e4510",
+    "tests/Amane.Pdf.Api.Tests/RedactNeutralObjectsTests.cs": "c867a7b7ce388aa74220793eb21cf85c3a7124fb5f35b0685c9e6a001d4d6554",
+    "tests/Amane.Pdf.Api.Tests/RedactSecurityTests.cs": "8b72f8d34a8e98939acf5b3a333bd57ccbd8c887c51e092d9cfef3c086a9915c",
+    "tests/Amane.Pdf.Api.Tests/RedactTests.cs": "aa26adc3f88fdc556c809ec3fe2f513e3f8ca0e542b8e7a3169cb1b617c869a4",
+    "tests/Amane.Pdf.Api.Tests/StampFixtures.cs": "1dce0fe42aa4c1680d0dfc266c5e371ed75622260e30e316587d400b51f472c1",
+    "tests/Amane.Pdf.Api.Tests/StampImageInputTests.cs": "e0c4fc1041b38553027472881dd68c5fb4b11c01495f6c9408ca75f701f7f03c",
+    "tests/Amane.Pdf.Api.Tests/StampPlacementTests.cs": "73402d21e498ab46563ea9421c48c5305ea8ee069c6adce9b7e8a2936396c733",
+    "tests/Amane.Pdf.Api.Tests/WatermarkTextTests.cs": "09b5e1014712bb3316713825abcf705b5b75b712ba5111d142718d9bdfd437ce"
+  },
+  "runner_sha256": "d5a602d4ab3c4e5c21eff35b4e4de138248c41fccc24e131da534fcb0e284d2c",
+  "shared_runner_sha256": "40c89e75ec996c25d0d410847c3dca57c26594774dd6d5f23480623d0eb939de",
+  "test_methods": 452,
+  "test_cases": 1340,
+  "resolved_findings": 13,
+  "mutations": {
+    "total": 14,
+    "matched_assertions": 14,
+    "production_mutant_assemblies_changed": true,
+    "control_assemblies_restored": true,
+    "validation": {
+      "total": 7,
+      "failed_cases": 10,
+      "control_before_passed": 4,
+      "control_after_passed": 4
+    },
+    "improvements": {
+      "total": 7,
+      "failed_cases": 19,
+      "unaffected_passed_cases": 9,
+      "control_before_passed": 20,
+      "control_after_passed": 20
+    }
+  },
+  "not_executed": [
+    "Docker全体",
+    "上限fixtureを有効化した容量2件（前段の記録を保持）"
+  ],
+  "interrupted_run": {
+    "exit_code": 143,
+    "phase": "改善側6変異後、ZIP変異のbuild中に中断",
+    "counted_as_complete": false,
+    "rerun": "results-improvements.json"
+  },
+  "split_retry": {
+    "executed": false,
+    "reason": "自動承認処理がBad Requestで2回失敗。安全性の否認ではなく実行前の承認処理エラー。CIで全件を確認する。"
+  }
+}

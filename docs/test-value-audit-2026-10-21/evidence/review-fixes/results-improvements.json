@@ -1,0 +1,878 @@
+{
+  "baseline_commit": "ab0eae6b0d9e2a5e99b5ae3bc66a8f4d0078aaaf",
+  "fixed_test_sha256": {
+    "tests/Amane.Pdf.Api.Tests/BlockingQpdf.cs": "c6b742ef790c39a883c19a0875b67003fb4cac0f111f3bb2fe74a57b5b0116b2",
+    "tests/Amane.Pdf.Api.Tests/CleanCapacityTests.cs": "63c94d6f0aedaeca9cd14d8f98b1c7e9e9cb2418223da4953dbc043885dd4fdb",
+    "tests/Amane.Pdf.Api.Tests/CompressFixtures.cs": "7ea625533541648b2aa8519f5c096d50b3a5fa17b81e79d4cfbf1d6c73c16940",
+    "tests/Amane.Pdf.Api.Tests/CompressMetadataTests.cs": "962bd2d7b01cc8bd6f97c3d057d363d7ac0ce15b100589cfb94087639e019340",
+    "tests/Amane.Pdf.Api.Tests/ExternalProcessRunnerTests.cs": "afffa2e73b1e3f3c2f7b8352dc112aeb016869b1eb6b73a04d10f7ea8bdfdfe8",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateCapacityTests.cs": "542f7dc1ccd546b57a0d99f9cdd88124b76fbfab96311cdf95c038f20b48afb4",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateFieldsTests.cs": "64636d41c1cee48f568cfb43d59c21986c913a660e5e9aaaad4cfcdac359f9f0",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateGlyphsTests.cs": "436dc671f8b6e2d2a64aaac3a33add74d6a18a3728a3993a74db9b1a47194f5f",
+    "tests/Amane.Pdf.Api.Tests/FillTemplateStructureTests.cs": "dc8ea2eba76ce4178998b6957a8ac1f6847ba4c68fd59d02e7af908c5880f6ab",
+    "tests/Amane.Pdf.Api.Tests/FromImagesCapacityMeasurementTests.cs": "5eadf40164f4c85c9de618df59724f55b9b8fbe89e55b105bdf45a9819cc3daa",
+    "tests/Amane.Pdf.Api.Tests/FromImagesDesignTests.cs": "eb88ae925bd5d891bae8bcace260a6cf9a708ba8b034827e63a7f8cd0ddc22bc",
+    "tests/Amane.Pdf.Api.Tests/FromImagesFixtures.cs": "e29286c821ea6fdf38851e780e387db2a2d85b894fbd376f1388976d222cf82e",
+    "tests/Amane.Pdf.Api.Tests/HealthEndpointTests.cs": "9188a61fa3ad6fd383f78b6d784985bdad166c8626200a018257da5a84c4a350",
+    "tests/Amane.Pdf.Api.Tests/JpegHeaderTests.cs": "aee38aa5ae16c21e3284c64d76d2fdad46e513a64e1e191c08d460fc040842da",
+    "tests/Amane.Pdf.Api.Tests/OverlayCapacityTests.cs": "e0da3e4051aa596bdc7102f891a03b94aced5fd0888e9e611908f36fe4fc595a",
+    "tests/Amane.Pdf.Api.Tests/OverlayFixtures.cs": "320363ecbc3fafd0cfd05e2f362c50a79100cce76fecbf9c4c0d0b0e20ad61b2",
+    "tests/Amane.Pdf.Api.Tests/PdfCleanResourceTests.cs": "24e93ce8f6a405ac515214fd4d8eb43143fa22c241dcd68c4e3a76a361c2ae2e",
+    "tests/Amane.Pdf.Api.Tests/PdfCleanTests.cs": "96ffc6a3cb0e1ec3a93eb99ff15536abb85c284c7d65d98e2cd7f1cc92a6c917",
+    "tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs": "c7eaa9d3f499a756e21dfa9ee6388ab0afe2dc5c054a655f7596ce19b9b3143f",
+    "tests/Amane.Pdf.Api.Tests/PdfCompressTests.cs": "abcd16a1f3e6c41ad0b1d52bbc994a11365153791f52d546e15722ac3b7394c3",
+    "tests/Amane.Pdf.Api.Tests/PdfEmbeddedFileStripperTests.cs": "7372f84e45767d62392215e51b0ff8666601ca399fd6472e89f0091f01d1de65",
+    "tests/Amane.Pdf.Api.Tests/PdfFillTemplateTests.cs": "f77b8a80a8dd6fcc2b65d823cff6b1ab5ae2cbeed7b8e2fdc793443e7f1a2bc1",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesPrivacyTests.cs": "cb4dc2d40bb34356cfc31d2d60086077b4ba79d80bd07de568b1205a20a68bb8",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesResourceTests.cs": "2b3fed9ebff22ef8010936244e5cab5560ec72392e2e36705b1fe3c228af7e72",
+    "tests/Amane.Pdf.Api.Tests/PdfFromImagesTests.cs": "6fc8eb4413373d714807787224266c60374ba0e3e4f8ed11302456ccb63ef868",
+    "tests/Amane.Pdf.Api.Tests/PdfMergeResourceTests.cs": "4ca7aefac03f01f61fe98b7736815de4e99e59714f61fa9eac9b716e0661e4e4",
+    "tests/Amane.Pdf.Api.Tests/PdfMergeTests.cs": "1dfd5a02ced463457b7badb47c84b6659cfc89f4eac14a7a3c37bb1285b4702f",
+    "tests/Amane.Pdf.Api.Tests/PdfOptimizeTests.cs": "7be3763019c58ae70b94fbac2b525326ab7161388cac2b46eedcaeaaa2c43cd0",
+    "tests/Amane.Pdf.Api.Tests/PdfOverlayBuilderTests.cs": "0439709aaccaf338b812ebefb5612ad21f6fd024b89837daca870f4a85ee665d",
+    "tests/Amane.Pdf.Api.Tests/PdfOverlayResourceTests.cs": "6df61cf0ff75e92a3f8acb9106fd487e8bc7d42aeb92c50f30a9f7ff4ee14d7b",
+    "tests/Amane.Pdf.Api.Tests/PdfPageBoxesTests.cs": "94273fece51ae6910e89072774eaf1ede4f51813f82e6f335de86dff8e85e2fd",
+    "tests/Amane.Pdf.Api.Tests/PdfPageNumbersTests.cs": "adf5956617c1d686a2577f1c02aa6740d15d09a4c6fc9bdf43df84bfb62df2d0",
+    "tests/Amane.Pdf.Api.Tests/PdfPageSelectionOperationTests.cs": "740414045112ecfa2977eca2717a48231c93e3b213de868ff96d8803e3381cdd",
+    "tests/Amane.Pdf.Api.Tests/PdfProtectTests.cs": "e479192ac5d578de1b79f84c4d7fc409c7d5cb7da2881960dd03ba7dcc1db367",
+    "tests/Amane.Pdf.Api.Tests/PdfRedactTests.cs": "dc011c6e4a5282e04f7d03d903dadfa455b644014690603e82d41b5cb2f8baa1",
+    "tests/Amane.Pdf.Api.Tests/PdfRendererTests.cs": "b81eda65da58517a8fdf76c6e2f82ddb5ce1d31f5230337124a95bbcd7937e45",
+    "tests/Amane.Pdf.Api.Tests/PdfResourceLimitTests.cs": "7b3056844a6b9bd965170b8f4daacdca53e872688af8b9526a364ef00f3baedb",
+    "tests/Amane.Pdf.Api.Tests/PdfRestrictTests.cs": "ba171dede4b87b78569f7e095e2f40c186e82ea05ec4b43f8dd3bd5e1566eb10",
+    "tests/Amane.Pdf.Api.Tests/PdfRotateTests.cs": "531b2c62d876def1c8f58572e018c85da32be29eb92a6062b2a33fc862ff297d",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitCapacityTests.cs": "59f4bfdfecb73bc982780500a56f97098172a699b79a3e06d1630845701daf31",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs": "c27ae1a794c9feb7abc0e7b1c3edd51e7aa15045d8b205943a0d438ffd5c7609",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitPlanTests.cs": "5f44443c791cdd693094206c4dd12ded730a51ca18edf1b0db75367deb65c522",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitResourceTests.cs": "871dff81cff4f8cdc03703630b808ab1feecddca4d0ccd27903837f6f00e28f9",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitTests.cs": "a504bbda473579645c47ed99de92de25ac734f7baf365c22c0cebe4cc004c890",
+    "tests/Amane.Pdf.Api.Tests/PdfSplitZipTests.cs": "3a58784e37423fdd9287337c2047844ac8d902521e906b722195bed0b268c0fd",
+    "tests/Amane.Pdf.Api.Tests/PdfStampImageTests.cs": "0691fae593f0409e26ec4809b275455ecc2cb37d13785b364ac57518bb0c425a",
+    "tests/Amane.Pdf.Api.Tests/PdfTestContext.cs": "e417c855bdd2ca8eea043b45595b926b5c2af90f122aa7f848bbdd07351db788",
+    "tests/Amane.Pdf.Api.Tests/PdfUnlockResourceTests.cs": "0d19ebc0841a4eb2be209fd8f9ecc89df6ceb61a1b6efc5d419649e404d1c86a",
+    "tests/Amane.Pdf.Api.Tests/PdfUnlockTests.cs": "95bed23f332ef40c5eab692f3b854d403053c8f9bd1be674a1bf19731c30fb38",
+    "tests/Amane.Pdf.Api.Tests/PdfValidationTests.cs": "586e94b0d812e5a8e612a44c8f9d6bc2128b45a1ccde7699c514c69e3ba5ea96",
+    "tests/Amane.Pdf.Api.Tests/PdfWatermarkTests.cs": "0e1a5345c586381aa9a503b47880d015ee3d44a6354af976f22cd4191ae8f82c",
+    "tests/Amane.Pdf.Api.Tests/PdfcpuProcessorTests.cs": "aa3d9232342f787392f14a569cd71f5bba8da288bb4284da412cc292123911a3",
+    "tests/Amane.Pdf.Api.Tests/PngSanitizerTests.cs": "41289959292ea444f63549f7a4566454977410d73973ba9646466a0cb6e2da06",
+    "tests/Amane.Pdf.Api.Tests/ProcessFileLimitTests.cs": "ccf9ef008f5e6c49687b1c2dbdb892a6501ef7fc336a06055fd34e66d634829d",
+    "tests/Amane.Pdf.Api.Tests/QpdfMemoryLimitTests.cs": "1461d162b35b7b7b86b756d419fa62212fe92ef5f947923483e29183b00e4510",
+    "tests/Amane.Pdf.Api.Tests/RedactNeutralObjectsTests.cs": "c867a7b7ce388aa74220793eb21cf85c3a7124fb5f35b0685c9e6a001d4d6554",
+    "tests/Amane.Pdf.Api.Tests/RedactSecurityTests.cs": "8b72f8d34a8e98939acf5b3a333bd57ccbd8c887c51e092d9cfef3c086a9915c",
+    "tests/Amane.Pdf.Api.Tests/RedactTests.cs": "aa26adc3f88fdc556c809ec3fe2f513e3f8ca0e542b8e7a3169cb1b617c869a4",
+    "tests/Amane.Pdf.Api.Tests/StampFixtures.cs": "1dce0fe42aa4c1680d0dfc266c5e371ed75622260e30e316587d400b51f472c1",
+    "tests/Amane.Pdf.Api.Tests/StampImageInputTests.cs": "e0c4fc1041b38553027472881dd68c5fb4b11c01495f6c9408ca75f701f7f03c",
+    "tests/Amane.Pdf.Api.Tests/StampPlacementTests.cs": "73402d21e498ab46563ea9421c48c5305ea8ee069c6adce9b7e8a2936396c733",
+    "tests/Amane.Pdf.Api.Tests/WatermarkTextTests.cs": "09b5e1014712bb3316713825abcf705b5b75b712ba5111d142718d9bdfd437ce"
+  },
+  "controls": [
+    {
+      "times": {
+        "creation": "2026-10-21T23:47:03.5529373+00:00",
+        "queuing": "2026-10-21T23:47:03.5529373+00:00",
+        "start": "2026-10-21T23:47:01.7977559+00:00",
+        "finish": "2026-10-21T23:47:16.6770058+00:00"
+      },
+      "counters": {
+        "total": "20",
+        "executed": "20",
+        "passed": "20",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead",
+          "outcome": "Passed",
+          "duration": "00:00:06.8117328"
+        },
+        {
+          "method": "PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw",
+          "outcome": "Passed",
+          "duration": "00:00:01.5738391"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.1324232"
+        },
+        {
+          "method": "PdfCleanTests.BinaryStreamCapture_PreservesInvalidUtf8Bytes",
+          "outcome": "Passed",
+          "duration": "00:00:00.5606717"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6240807"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6322320"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6110796"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6011009"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.1230293"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6137095"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6250168"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6238447"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Passed",
+          "duration": "00:00:00.6929989"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Passed",
+          "duration": "00:00:00.8163203"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.1226543"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6033734"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2209668"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2419677"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Passed",
+          "duration": "00:00:00.7824518"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2004584"
+        }
+      ],
+      "trx_sha256": "a4c58ada154da5479fd7e037c6b7adf63734cdc0768b829856b872d3f1b9eeb8",
+      "run_errors": [],
+      "name": "control-before",
+      "exit_code": 0,
+      "api_assembly_sha256": "59c39f325cabe01820962c3fc6fb7c96c6eab641935e91c1cf7a1a887a8b64f8"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:48:59.0645090+00:00",
+        "queuing": "2026-10-21T23:48:59.0645090+00:00",
+        "start": "2026-10-21T23:48:57.3076757+00:00",
+        "finish": "2026-10-21T23:49:12.1832710+00:00"
+      },
+      "counters": {
+        "total": "20",
+        "executed": "20",
+        "passed": "20",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6073828"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6019920"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6017699"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6312440"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6061211"
+        },
+        {
+          "method": "PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw",
+          "outcome": "Passed",
+          "duration": "00:00:01.5894358"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Passed",
+          "duration": "00:00:00.8143967"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.1317001"
+        },
+        {
+          "method": "PdfCleanTests.BinaryStreamCapture_PreservesInvalidUtf8Bytes",
+          "outcome": "Passed",
+          "duration": "00:00:00.5628959"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.1195972"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2140518"
+        },
+        {
+          "method": "PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead",
+          "outcome": "Passed",
+          "duration": "00:00:06.8069071"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6289439"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2405359"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Passed",
+          "duration": "00:00:00.7864210"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6151152"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Passed",
+          "duration": "00:00:00.7087138"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2174549"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6116924"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.1262710"
+        }
+      ],
+      "trx_sha256": "e99e7f9f33feab70037baa616a5785520ab709c0e134cf08a8bf7d2593499595",
+      "run_errors": [],
+      "name": "control-after",
+      "exit_code": 0,
+      "api_assembly_sha256": "59c39f325cabe01820962c3fc6fb7c96c6eab641935e91c1cf7a1a887a8b64f8"
+    }
+  ],
+  "mutations": [
+    {
+      "times": {
+        "creation": "2026-10-21T23:47:27.5917441+00:00",
+        "queuing": "2026-10-21T23:47:27.5917442+00:00",
+        "start": "2026-10-21T23:47:25.8403680+00:00",
+        "finish": "2026-10-21T23:47:28.8988222+00:00"
+      },
+      "counters": {
+        "total": "3",
+        "executed": "3",
+        "passed": "0",
+        "failed": "3",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Failed",
+          "duration": "00:00:00.7728216",
+          "message": "Assertion failed. Expected strings to be equal.\nStrings have different lengths (expected: 9, actual: 7) and differ at 1 location(s). First difference at index 1.\n\nexpected:   \"/ICCBased\"\nactual:     \"/CalRGB\"\ndifference: --^\n\nAssert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())",
+          "failure": "Assertion failed. Expected strings to be equal.",
+          "expected": "\"/ICCBased\"",
+          "actual": "\"/CalRGB\"",
+          "assertion": "Assert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())"
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Failed",
+          "duration": "00:00:01.0880682",
+          "message": "CollectionAssert.AreEqual failed. Element at index 0 do not match.\r\nExpected: 0.9505\r\nActual: 1",
+          "failure": "CollectionAssert.AreEqual failed. Element at index 0 do not match."
+        },
+        {
+          "method": "PdfCompressTests.SupportedColorSpaces_ArePreserved",
+          "outcome": "Failed",
+          "duration": "00:00:00.6947739",
+          "message": "Assertion failed. Expected strings to be equal.\nStrings have different lengths (expected: 8, actual: 7) and differ at 1 location(s). First difference at index 4.\n\nexpected:   \"/CalGray\"\nactual:     \"/CalRGB\"\ndifference: -----^\n\nAssert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())",
+          "failure": "Assertion failed. Expected strings to be equal.",
+          "expected": "\"/CalGray\"",
+          "actual": "\"/CalRGB\"",
+          "assertion": "Assert.AreEqual(color.Contains(\"ICCBased\") ? \"/ICCBased\" : gray ? \"/CalGray\" : \"/CalRGB\", actual[0].GetString())"
+        }
+      ],
+      "trx_sha256": "5fdaf9bde6009a26e55487f0065699201833d0a8b2b64d1253e37d20cda41308",
+      "run_errors": [],
+      "name": "colorspace-whitepoint-replaced",
+      "exit_code": 1,
+      "api_assembly_sha256": "4705a126998dcd19de377ba8aba4b4f01606d79cbafd847af61999fb913f2d37",
+      "expected_failure": {
+        "total": 3,
+        "failed": 3,
+        "patterns": [
+          {
+            "assertion": "Assert\\.AreEqual\\(color\\.Contains\\(\"ICCBased\"\\)\\ \\?\\ \"/ICCBased\"\\ :\\ gray\\ \\?\\ \"/CalGray\"\\ :\\ \"/CalRGB\",\\ actual\\[0\\]\\.GetString\\(\\)\\)",
+            "expected": "\"/(ICCBased|CalGray)\"",
+            "actual": "\"/CalRGB\""
+          },
+          {
+            "failure": "CollectionAssert\\.AreEqual\\ failed\\.\\ Element\\ at\\ index\\ 0\\ do\\ not\\ match\\."
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfCompressProcessor.cs",
+      "source_sha256": "44f33bfdeb210d46f7e12ab76b7226235d6a37dd27a39e7d1715ab6eead0b971",
+      "patch_sha256": "41d58fb9b14960f4169ecc5ed25213fc1ed34d9d7d0ae617194f0280cceb8334"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:47:39.9300192+00:00",
+        "queuing": "2026-10-21T23:47:39.9300193+00:00",
+        "start": "2026-10-21T23:47:38.1781554+00:00",
+        "finish": "2026-10-21T23:47:43.9861684+00:00"
+      },
+      "counters": {
+        "total": "8",
+        "executed": "8",
+        "passed": "4",
+        "failed": "4",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6406259"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6414917",
+          "message": "Assertion failed. Expected values to be equal within tolerance.\n\nexpected: 0.7529411764705882\nactual:   0.5\ndelta:    0.005\n\nAssert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "failure": "Assertion failed. Expected values to be equal within tolerance.",
+          "expected": "0.7529411764705882",
+          "actual": "0.5",
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6378419",
+          "message": "Assertion failed. Expected values to be equal within tolerance.\n\nexpected: 0.7529411764705882\nactual:   0.5\ndelta:    0.005\n\nAssert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "failure": "Assertion failed. Expected values to be equal within tolerance.",
+          "expected": "0.7529411764705882",
+          "actual": "0.5",
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6227001"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.9202584"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6151440",
+          "message": "Assertion failed. Expected values to be equal within tolerance.\n\nexpected: 0.7529411764705882\nactual:   0.5\ndelta:    0.005\n\nAssert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "failure": "Assertion failed. Expected values to be equal within tolerance.",
+          "expected": "0.7529411764705882",
+          "actual": "0.5",
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6298826"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6005745",
+          "message": "Assertion failed. Expected values to be equal within tolerance.\n\nexpected: 0.7529411764705882\nactual:   0.5\ndelta:    0.005\n\nAssert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)",
+          "failure": "Assertion failed. Expected values to be equal within tolerance.",
+          "expected": "0.7529411764705882",
+          "actual": "0.5",
+          "assertion": "Assert.AreEqual(expectedColor[channel], double.Parse(actualColor.Groups[channel + 1].Value, CultureInfo.InvariantCulture), <delta>)"
+        }
+      ],
+      "trx_sha256": "fce594fbfe370006e4981645b9ab1ee75d55250fd5517d5b988ab5eadccc61e3",
+      "run_errors": [],
+      "name": "watermark-color-forced-gray",
+      "exit_code": 1,
+      "api_assembly_sha256": "eea68b649130ab7b8542189e991e5a82bdfd50b994ce7815ee8b8d781ad7c50f",
+      "expected_failure": {
+        "total": 8,
+        "failed": 4,
+        "patterns": [
+          {
+            "expected": "0\\.7529411764705882",
+            "actual": "0\\.5",
+            "assertion": "Assert\\.AreEqual\\(expectedColor\\[channel\\],\\ double\\.Parse\\(actualColor\\.Groups\\[channel\\ \\+\\ 1\\]\\.Value,\\ CultureInfo\\.InvariantCulture\\),\\ <delta>\\)"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs",
+      "source_sha256": "b35cf0a28d44044de4303194a33a7785c94cdecfada12cc5f42a61a3be5f22bc",
+      "patch_sha256": "1ee7ced2fd5fc7df3ced9dc60bea4622333dab7333442cd56cec77a9aeabce3b"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:47:55.2352210+00:00",
+        "queuing": "2026-10-21T23:47:55.2352210+00:00",
+        "start": "2026-10-21T23:47:53.4798052+00:00",
+        "finish": "2026-10-21T23:47:59.2411655+00:00"
+      },
+      "counters": {
+        "total": "8",
+        "executed": "8",
+        "passed": "4",
+        "failed": "4",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.9199018",
+          "message": "Assertion failed. Expected strings to be equal.\nStrings have different lengths (expected: 3, actual: 5) and differ at 1 location(s). First difference at index 0.\n\nexpected:    \"社外秘\"\nactual:      \"DRAFT\"\ndifference:  -^\ncode points: expected U+793E; actual U+0044\n\nAssert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "failure": "Assertion failed. Expected strings to be equal.",
+          "expected": "\"社外秘\"",
+          "actual": "\"DRAFT\"",
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6143982"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6004013"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6054880"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6157206",
+          "message": "Assertion failed. Expected strings to be equal.\nStrings have different lengths (expected: 3, actual: 5) and differ at 1 location(s). First difference at index 0.\n\nexpected:    \"社外秘\"\nactual:      \"DRAFT\"\ndifference:  -^\ncode points: expected U+793E; actual U+0044\n\nAssert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "failure": "Assertion failed. Expected strings to be equal.",
+          "expected": "\"社外秘\"",
+          "actual": "\"DRAFT\"",
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6559321",
+          "message": "Assertion failed. Expected strings to be equal.\nStrings have different lengths (expected: 2, actual: 5) and differ at 1 location(s). First difference at index 0.\n\nexpected:    \"見本\"\nactual:      \"DRAFT\"\ndifference:  -^\ncode points: expected U+898B; actual U+0044\n\nAssert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "failure": "Assertion failed. Expected strings to be equal.",
+          "expected": "\"見本\"",
+          "actual": "\"DRAFT\"",
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Passed",
+          "duration": "00:00:00.6205859"
+        },
+        {
+          "method": "PdfWatermarkTests.AllStylesAndColorsPreserveGeometryAndDrawOnceOnEveryPage",
+          "outcome": "Failed",
+          "duration": "00:00:00.6292142",
+          "message": "Assertion failed. Expected strings to be equal.\nStrings have different lengths (expected: 4, actual: 5) and differ at 1 location(s). First difference at index 0.\n\nexpected:    \"取扱注意\"\nactual:      \"DRAFT\"\ndifference:  -^\ncode points: expected U+53D6; actual U+0044\n\nAssert.AreEqual(text, DrawnText(after, dictionary, content))",
+          "failure": "Assertion failed. Expected strings to be equal.",
+          "expected": "\"取扱注意\"",
+          "actual": "\"DRAFT\"",
+          "assertion": "Assert.AreEqual(text, DrawnText(after, dictionary, content))"
+        }
+      ],
+      "trx_sha256": "75e1157c0a31cbc57455db54133daf4331f101bc89b79f951bb7ac2492775f21",
+      "run_errors": [],
+      "name": "watermark-text-forced-draft",
+      "exit_code": 1,
+      "api_assembly_sha256": "3177ee3fd57b35f187838ff70b4f7d82ca53f2b76cba6bc38b619f7896d72c45",
+      "expected_failure": {
+        "total": 8,
+        "failed": 4,
+        "patterns": [
+          {
+            "assertion": "Assert\\.AreEqual\\(text,\\ DrawnText\\(after,\\ dictionary,\\ content\\)\\)",
+            "expected": "\"(社外秘|見本|取扱注意)\"",
+            "actual": "\"DRAFT\""
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfWatermarkEndpoint.cs",
+      "source_sha256": "c5a7bff33130f8854ccdf6d4eaed691b8b2396c9c8fb5b50d13be7dfcdfbc88f",
+      "patch_sha256": "1b078974a8945b15626223402ca903015577ee33d4e19947de3f60d70d77b9b0"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:48:09.8863643+00:00",
+        "queuing": "2026-10-21T23:48:09.8863643+00:00",
+        "start": "2026-10-21T23:48:08.2427612+00:00",
+        "finish": "2026-10-21T23:48:09.8918356+00:00"
+      },
+      "counters": {
+        "total": "6",
+        "executed": "6",
+        "passed": "1",
+        "failed": "5",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Failed",
+          "duration": "00:00:00.2029323",
+          "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>."
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Failed",
+          "duration": "00:00:00.1265771",
+          "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>."
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Failed",
+          "duration": "00:00:00.1685159",
+          "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<2>.",
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<2>."
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Failed",
+          "duration": "00:00:00.1396391",
+          "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>.",
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<4>."
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Passed",
+          "duration": "00:00:00.2505250"
+        },
+        {
+          "method": "PdfOverlayResourceTests.EveryStage_CancellationStopsProcessTree_AndBuilderRemovesIntermediates",
+          "outcome": "Failed",
+          "duration": "00:00:00.2301629",
+          "message": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<3>.",
+          "failure": "CollectionAssert.AreEquivalent failed. The number of elements in the collections do not match. Expected:<1>. Actual:<3>."
+        }
+      ],
+      "trx_sha256": "68ee31e663a694fd09a8068ea854a491f4348b96a7902c8f2aba3b8a7dc203bf",
+      "run_errors": [],
+      "name": "overlay-intermediate-cleanup-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "95863a78223a81ee4e7a146c6a6c7b651cae024780f351011ce0c0595b6a65f7",
+      "expected_failure": {
+        "total": 6,
+        "failed": 5,
+        "patterns": [
+          {
+            "failure": "CollectionAssert\\.AreEquivalent failed\\. The number of elements in the collections do not match\\. Expected:<1>\\. Actual:<[234]>\\."
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfOverlayBuilder.cs",
+      "source_sha256": "421796bd266d990d811f2e58318eda7fc295a885fc598d8ca39e94d27a60c753",
+      "patch_sha256": "023e09b2ca4db3715d823a625ad32ccb3fb807e843ca6adaf08792e5b82734fa"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:48:20.9227883+00:00",
+        "queuing": "2026-10-21T23:48:20.9227884+00:00",
+        "start": "2026-10-21T23:48:18.8715894+00:00",
+        "finish": "2026-10-21T23:48:20.9278535+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw",
+          "outcome": "Failed",
+          "duration": "00:00:01.5533198",
+          "message": "Assertion failed. Expected condition to be false.\nRaw extraction directory from a previous attempt still exists.\n\nactual: true\n\nAssert.IsFalse(File.Exists(Path.Combine(test.Root, \"raw-cleanup-violation\")))",
+          "failure": "Assertion failed. Expected condition to be false.",
+          "actual": "true",
+          "assertion": "Assert.IsFalse(File.Exists(Path.Combine(test.Root, \"raw-cleanup-violation\")))"
+        }
+      ],
+      "trx_sha256": "817b11aa6ffafe2ddc79857c712f9079df2589cce9caa91bd698b303a2c3a03d",
+      "run_errors": [],
+      "name": "compress-raw-cleanup-removed",
+      "exit_code": 1,
+      "api_assembly_sha256": "54d71aa081f73e138428449ae8b2da038b83f6301c349a6ae62656cde34cc5f0",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "message": ".*Raw\\ extraction\\ directory\\ from\\ a\\ previous\\ attempt\\ still\\ exists\\..*"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfCompressProcessor.cs",
+      "source_sha256": "12ff2f9e2b1e246203995c39c3db6576217fcef1e42fc2b6d2c217f3279c883d",
+      "patch_sha256": "8a244a53feccbffad28ae0e5923b3a42c56a8cc66b0066a8d257d8cc05c73749"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:48:31.4446553+00:00",
+        "queuing": "2026-10-21T23:48:31.4446554+00:00",
+        "start": "2026-10-21T23:48:30.3433494+00:00",
+        "finish": "2026-10-21T23:48:31.4500404+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfCleanTests.BinaryStreamCapture_PreservesInvalidUtf8Bytes",
+          "outcome": "Failed",
+          "duration": "00:00:00.5683230",
+          "message": "CollectionAssert.AreEqual failed. Element at index 0 do not match.\r\nExpected: 255\r\nActual: 239",
+          "failure": "CollectionAssert.AreEqual failed. Element at index 0 do not match."
+        }
+      ],
+      "trx_sha256": "23374e4890d3530b57148762d6c2368582d34a99eea69584b493f69508216e47",
+      "run_errors": [],
+      "name": "binary-capture-lossy-utf8",
+      "exit_code": 1,
+      "api_assembly_sha256": "59c39f325cabe01820962c3fc6fb7c96c6eab641935e91c1cf7a1a887a8b64f8",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "failure": "CollectionAssert\\.AreEqual\\ failed\\.\\ Element\\ at\\ index\\ 0\\ do\\ not\\ match\\."
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "tests/Amane.Pdf.Api.Tests/PdfTestContext.cs",
+      "source_sha256": "f5e2183944460e39da97d6794913ddc328bf8bada7745b337444bf8c41fed64d",
+      "patch_sha256": "e58b709fad09f66a171a8294b18d6d1699939904e50e9cf3ac53f3dce909b89b"
+    },
+    {
+      "times": {
+        "creation": "2026-10-21T23:48:47.9714196+00:00",
+        "queuing": "2026-10-21T23:48:47.9714197+00:00",
+        "start": "2026-10-21T23:48:40.7928455+00:00",
+        "finish": "2026-10-21T23:48:47.9761761+00:00"
+      },
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "results": [
+        {
+          "method": "PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead",
+          "outcome": "Failed",
+          "duration": "00:00:06.6819150",
+          "message": "Assertion failed.\nProduction ZIP overhead budget must fit 500 maximum Unicode names.",
+          "failure": "Assertion failed."
+        }
+      ],
+      "trx_sha256": "265b4d6a0a62c29a8888ce6fab1da9320a0cdac0881cf0b85d5212c34c326c0f",
+      "run_errors": [],
+      "name": "split-entry-comment-inflated",
+      "exit_code": 1,
+      "api_assembly_sha256": "efbca712b31ca4b32e65dd01a493d956885085d6a7d6b21e3d0ee8a8fa42505d",
+      "expected_failure": {
+        "total": 1,
+        "failed": 1,
+        "patterns": [
+          {
+            "message": ".*Production\\ ZIP\\ overhead\\ budget\\ must\\ fit\\ 500\\ maximum\\ Unicode\\ names\\..*"
+          }
+        ]
+      },
+      "matched_assertions": true,
+      "source": "src/Amane.Pdf.Api/PdfSplitProcessor.cs",
+      "source_sha256": "8f5bacd0b0c3c2541d054c3600114fff8057a794dd928a980809e22142c7edf8",
+      "patch_sha256": "0f90cb910c24b423e59851f50cee000f94c7a3f4b6d6fb1d10d31822a3da8521"
+    }
+  ]
+}

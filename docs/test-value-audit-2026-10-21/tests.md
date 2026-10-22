@@ -1,8 +1,8 @@
 # 全MSTestメソッド台帳
 
-初回commit `465088ed0b575f055beb6851e98d28ed22fb9928`からの改善後の現在値。56ファイル・58クラス・452メソッド、展開1340ケース。通常実行は1338成功・容量2件skip、容量2件は別途上限fixture付きで成功。
+初回commit `465088ed0b575f055beb6851e98d28ed22fb9928`からの改善後の現在値。56ファイル・58クラス・452メソッド、展開1340ケース。レビュー前の完走は1338成功・容量2件skip、容量2件は別途上限fixture付きで成功。レビュー修正後の一括は1303成功・2skipでtesthost crash（35ケース未完了）。今回メソッドの全ケースが完了した行だけ結果を更新し、他は以前の成功結果と証拠参照を保持する。
 
-[CSV](tests.csv)に現在の判定根拠/経路/件数/時間とbaseline_*の初回値を併記。source行番号は現在。[統合履歴](retired-tests.csv)に削除した1メソッドの統合先を記録。[改善台帳](low-value.md)13項目は対応済み。
+[最新の再検証](evidence/review-fixes/README.md)。[CSV](tests.csv)に現在の判定根拠/経路/件数/時間とbaseline_*の初回値を併記。source行番号は現在。[統合履歴](retired-tests.csv)に削除した1メソッドの統合先を記録。[改善台帳](low-value.md)13項目は対応済み。
 
 ## CleanCapacityTests
 
@@ -269,14 +269,14 @@
 | T069 | [PdfCompressResourceTests.ColorSpaceReferences_ResolveSafely_AndRequireMatchingIntegerN](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L164) | 5 | colorspace間接参照・循環・Nの整数/成分整合 | 維持 |
 | T070 | [PdfCompressResourceTests.PdfAndJpegDimensionOrComponentMismatch_IsExcluded](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L190) | 2 | PDF宣言とJPEG寸法/成分の不一致を除外 | 維持 |
 | T071 | [PdfCompressResourceTests.JobCapacityLimit_SkipsImages_AndIncreasingItProcessesTheSamePdf](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L203) | 1 | job容量不足で画像skipし増枠で同PDFを再圧縮 | 維持 |
-| T072 | [PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L224) | 1 | batch stdout超過から1回/画像で回復、実partial rawの次試行前削除、最終後始末 | LV10：対応済み・維持（改善検証済み） |
-| T073 | [PdfCompressResourceTests.MaxImagesAndJpegAddressSpace_AreAppliedToRealProcessing](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L269) | 1 | 最大画像数と実JPEG AS制限・増枠による回復 | 維持 |
-| T074 | [PdfCompressResourceTests.ImageExitCodes_AreDistinctFromFinalFailures](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L297) | 4 | 画像tool終了codeと最終失敗の区別・秘密非露出 | 維持 |
-| T075 | [PdfCompressResourceTests.RealAsFsizeAndPrivatePermissions_AreAppliedToJpegCommands](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L313) | 1 | JPEG toolへ実AS/FSIZEとprivate権限を適用 | 維持 |
-| T076 | [PdfCompressResourceTests.InputMemoryLimit_KeepsCommon422_AndOutputCheckFailureIs500](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L333) | 1 | 入力memory失敗422と出力check失敗500を区別 | 維持 |
-| T077 | [PdfCompressResourceTests.UnexpectedMetadata_Is500](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L353) | 1 | 予期しないmetadata JSONは500 | 維持 |
-| T078 | [PdfCompressResourceTests.ExtractedPathMustMatchObjectAndStayInsidePrivateJob](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L368) | 1 | 抽出datafileは対象objectのprivate pathのみ・外部fileを保持 | 維持 |
-| T079 | [PdfCompressResourceTests.ApplicationStopping_TerminatesImageTreeAndCleansJob](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L388) | 1 | app停止で画像process treeを停止してjob削除 | 維持 |
+| T072 | [PdfCompressResourceTests.BatchStdoutOverflow_FallsBackOncePerImage_AndCleansPartialRaw](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L224) | 1 | batch overflow後の1回/画像fallback・partial raw削除を専用assertで直接検証・最終後始末 | LV10：対応済み・維持（改善検証済み） |
+| T073 | [PdfCompressResourceTests.MaxImagesAndJpegAddressSpace_AreAppliedToRealProcessing](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L274) | 1 | 最大画像数と実JPEG AS制限・増枠による回復 | 維持 |
+| T074 | [PdfCompressResourceTests.ImageExitCodes_AreDistinctFromFinalFailures](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L302) | 4 | 画像tool終了codeと最終失敗の区別・秘密非露出 | 維持 |
+| T075 | [PdfCompressResourceTests.RealAsFsizeAndPrivatePermissions_AreAppliedToJpegCommands](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L318) | 1 | JPEG toolへ実AS/FSIZEとprivate権限を適用 | 維持 |
+| T076 | [PdfCompressResourceTests.InputMemoryLimit_KeepsCommon422_AndOutputCheckFailureIs500](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L338) | 1 | 入力memory失敗422と出力check失敗500を区別 | 維持 |
+| T077 | [PdfCompressResourceTests.UnexpectedMetadata_Is500](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L358) | 1 | 予期しないmetadata JSONは500 | 維持 |
+| T078 | [PdfCompressResourceTests.ExtractedPathMustMatchObjectAndStayInsidePrivateJob](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L373) | 1 | 抽出datafileは対象objectのprivate pathのみ・外部fileを保持 | 維持 |
+| T079 | [PdfCompressResourceTests.ApplicationStopping_TerminatesImageTreeAndCleansJob](../../tests/Amane.Pdf.Api.Tests/PdfCompressResourceTests.cs#L393) | 1 | app停止で画像process treeを停止してjob削除 | 維持 |
 
 ## PdfCompressTests
 
@@ -768,7 +768,7 @@
 
 重複・補完: SplitTestsのページ内容とZipTestsのwrite障害を補完。500分割のみコスト見直し候補LV13。
 
-適用範囲: 最大500entryは実bounded ZIPの単体。HTTP header→ZIPの20行列は維持。
+適用範囲: 最大500entryは本番WriteZipAsyncの直接検証（qpdf抽出/検査のみ固定fixture）。HTTP header→ZIPの20行列は維持。
 
 | ID | テスト（定義位置） | 現在ケース数 | 守ること | 判断 |
 | --- | --- | ---: | --- | --- |
@@ -777,8 +777,8 @@
 | T291 | [PdfSplitFileNameTests.MultipartNames_AppearSafelyInActualZip](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L89) | 20 | multipart filenameの各encoding/escapeを実ZIP名へ安全反映 | 維持 |
 | T292 | [PdfSplitFileNameTests.BrowserRawUtf8Filename_UsesJapaneseNamesAndUtf8ZipFlag](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L106) | 1 | browserのraw UTF-8 filenameとZIP UTF-8 flag・ログ非露出 | 維持 |
 | T293 | [PdfSplitFileNameTests.MissingUsableFilename_KeepsExisting400](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L130) | 2 | 利用可能なfilenameのないpartは既存400 | 維持 |
-| T294 | [PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L138) | 1 | 最大Unicode名×500entryの実bounded ZIP生成、UTF8 flagとoverheadの上限 | LV13：対応済み・維持（改善検証済み） |
-| T295 | [PdfSplitFileNameTests.OriginalName_StaysOutOfPathsCommandsLogsAndFailures](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L168) | 1 | 元filenameを内部path/argv/log/失敗応答に出さない | 維持 |
+| T294 | [PdfSplitFileNameTests.MaximumUnicodeNameAnd500Entries_FitExistingZipOverhead](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L138) | 1 | 本番WriteZipAsyncで最大Unicode名×500entryを生成し、内容・UTF8 flag・overhead・part削除を確認 | LV13：対応済み・維持（改善検証済み） |
+| T295 | [PdfSplitFileNameTests.OriginalName_StaysOutOfPathsCommandsLogsAndFailures](../../tests/Amane.Pdf.Api.Tests/PdfSplitFileNameTests.cs#L191) | 1 | 元filenameを内部path/argv/log/失敗応答に出さない | 維持 |
 
 ## PdfSplitPlanTests
 

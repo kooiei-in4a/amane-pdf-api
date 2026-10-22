@@ -1,6 +1,6 @@
 # 低価値候補の改善台帳
 
-初回監査の13項目はすべて対応済み。LV01/LV02の4メソッドに続き、残り11項目も改善・検証した。[実行証拠](evidence/improvements/README.md)／[CSV](low-value.csv)。初回の事実は履歴として保持する。
+初回監査の13項目はすべて対応済み。LV01/LV02の4メソッドに続き、残り11項目も改善・検証した。[最新の実行証拠](evidence/review-fixes/README.md)／[CSV](low-value.csv)。初回の事実は履歴として保持する。
 
 | ID | 優先度 | 初回の論点 | 状態 |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@
 | [LV12](#lv12) | 低 | 共通PDF検証で拒否するaliasをAPI contextで注入する | 対応済み |
 | [LV13](#lv13) | 低 | ZIP名前の上限確認に実qpdfで500分割する | 対応済み |
 
-比較対象は初回1353→現在1340ケース（共通取消の重複13行を削減）。テストメソッドは1件を統合し、binary helper回帰を1件追加して452件を維持。通常実行は1338成功・容量2件skip。容量2件も上限fixtureで別途有効化して成功した。
+比較対象は初回1353→現在1340ケース（共通取消の重複13行を削減）。テストメソッドは1件を統合し、binary helper回帰を1件追加して452件を維持。レビュー前の完走は1338成功・容量2件skip、容量2件も上限fixtureで別途有効化して成功した。レビュー修正後の一括は1303成功・2skipでtesthost crashとなったため、全件成功には数えない。今回の14変異と正常対照は完了した。
 
 [全件台帳](tests.md)のsource位置と件数は現在。baseline_*列と[統合履歴](retired-tests.csv)で変更前を参照できる。
 
@@ -160,7 +160,7 @@
 
 **元の改善条件**: 実qpdfをexecするwrapperでbatch抽出と単画像fallbackの対象/回数を数え、次の抽出時点で前回rawが消えていることを観測する。実回復成功のassertは残す。
 
-**実装と検証**: 実qpdfを包む観測wrapperで1 batch+画像ごと1回の計5回と対象の一意な対応を確認。overflow時にrawが実在したこと、次の抽出前に旧raw directoryが無いことを確認。途中cleanup削除変異を検出。
+**実装と検証**: 実qpdf wrapperで1batch+4個別と対象を確認。実partial rawの存在を確認し、旧raw残留はmarkerへ記録、header比較前の専用assertで失敗理由を示す。cleanup削除変異をそのassertで検出。
 
 <a id="lv11"></a>
 
@@ -202,4 +202,4 @@
 
 **元の改善条件**: 最大Unicode名×500entryの実ZIP生成/overheadを低層で検証し、代表HTTPケースは維持する。500partsの設定対応を保証したい場合は明示カテゴリの結合測定として残す。削減時間は変更後に実測し、19秒がそのままwall短縮とは見積もらない。
 
-**実装と検証**: 500回の実qpdf分割を除去。最大Unicode名・500part plan・本番のbounded ZIP stream/capacityで実ZIPを生成し、名前/UTF8 flag/overheadを確認。20 headerケースのHTTP結合検証は維持。
+**実装と検証**: 本番WriteZipAsyncを直接呼び、qpdf抽出/検査だけ固定PDFへ置換。最大Unicode名・500entryの内容/UTF8 flag/overhead/part削除を検証。entryコメント2200byte追加変異を専用budget assertで検出。20 headerのHTTP検証は維持。

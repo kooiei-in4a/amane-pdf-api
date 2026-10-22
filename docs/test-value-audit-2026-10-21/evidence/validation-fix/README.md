@@ -4,6 +4,8 @@
 
 初回監査は[元の記録](../README.md)に保ち、ここに修正後の結果を記録する。本番のsrcは変更していない。
 
+**runnerの更新**: 記録当時は終了コードとoutcomeの確認までだった。現在の[run-mutations.py](run-mutations.py)は変異ごとのassert/expected/actualも照合し、元の全テストC#ファイルのhashを確認する。[判定テスト](test_mutation_runner.py)と[最新の14変異の再検証](../review-fixes/README.md)を追加した。ここのresults/verification.jsonは当時の実行記録のまま保持する。
+
 ## 修正内容
 
 | メソッド | 実装した保証 |

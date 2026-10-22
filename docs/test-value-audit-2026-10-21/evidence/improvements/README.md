@@ -2,6 +2,8 @@
 
 LV01/LV02に続き、LV03〜LV13をすべて改善した。[改善台帳](../../low-value.md)の13項目は全て対応済み。初回の問題、実装、現在の検証先は台帳へ残している。
 
+**このdirectoryの結果・source hash・tests.patchはcommit `ab0eae6`時点の履歴**。レビューで本番ZIP書込の保証の欠落と、失敗原因・runner判定の弱点が見つかった。[修正後の最新結果](../review-fixes/README.md)を参照。以下のLV13は当時のテスト内ZIPループで、本番WriteZipAsyncを通していなかった。現在は直接呼出へ修正済み。
+
 ## 変更と検証
 
 | 対象 | 実施した改善 | 保持した保証・確認 |
@@ -36,7 +38,7 @@ Docker suiteは今回再実行していない。本番srcは変更せず、テ�
 
 ## 比較・cleanupの変異
 
-6変異を一つずつ隔離コピーへ適用し、Rebuild後に対象メソッドを実行した。全変異で狙ったassertの失敗を検出し、build失敗・crash・空のdiscoveryを検出成功に数えていない。
+6変異を一つずつ隔離コピーへ適用し、Rebuild後に対象メソッドを実行した。保存した失敗messageを確認した範囲では対象の退行に起因している。ただし当時のrunnerはFailedの有無を判定するだけで、狙ったassertかどうかは自動照合していなかった。現在のrunnerはこの点を修正済み。
 
 | 変異 | Failed | Passed | 検出内容 |
 | --- | ---: | ---: | --- |
@@ -44,14 +46,16 @@ Docker suiteは今回再実行していない。本番srcは変更せず、テ�
 | watermark-color-forced-gray | 4 | 4 | red指定の4行が失敗。元からgrayの4行は正常。 |
 | watermark-text-forced-draft | 4 | 4 | 日本語の4行が失敗。元からDRAFTの4行は正常。 |
 | overlay-intermediate-cleanup-removed | 5 | 1 | 中間物がある5stageで失敗。final到達前には中間物除去が済んでいるため、その1行は変異の影響がない。 |
-| compress-raw-cleanup-removed | 1 | 0 | 次の抽出前に古いraw directoryが残ることを検出。 |
+| compress-raw-cleanup-removed | 1 | 0 | raw残留をwrapperのexit 97で知らせた結果、再圧縮数の期待4/実際0で失敗。cleanup専用assertによる失敗ではない。 |
 | binary-capture-lossy-utf8 | 1 | 0 | helperのUTF8文字列往復で固定byte列が壊れることを検出。これは本番でなく比較oracleの変異。 |
 
 **6/6変異を検出**。対象27 parameter caseのうち18件が意図した失敗、9件が変異に影響されず成功。正常対照は実験前後とも19/19成功。全suiteのmutation scoreではない。LV01/LV02の入力検証7変異は[前段の証拠](../validation-fix/README.md)を参照する。
 
-[results.json](results.json)に結果・expected/actual・TRX/assembly/source/patch hashを保存。[verification.json](verification.json)にRelease全件・容量・現在のtest source hashを保存した。生のPDF本文や全TRXを転載していない。
+[results.json](results.json)に結果・expected/actual・TRX/assembly/source/patch hashを保存。[verification.json](verification.json)にRelease全件・容量・当時のtest source hashを保存した。生のPDF本文や全TRXを転載していない。
 
 ## 再現
+
+この段階を再現する場合、runnerとpatchは**両方ともcommit `ab0eae6`から取得する**。現在のrunnerは修正後のテストと7変異を対象にするため、旧patchと組み合わせない。最新版の再現手順は[レビュー修正後](../review-fixes/README.md#再現)を参照。
 
 必要な依存とPdf__*設定は[初回の環境説明](../README.md)を参照。基準commit `465088ed0b575f055beb6851e98d28ed22fb9928`の使い捨てcheckoutへ[tests.patch](tests.patch)を適用し、Release buildする。patchは前段の入力検証修正も含む。移管先の新規CompressMetadataTests.csも含めている。
 
