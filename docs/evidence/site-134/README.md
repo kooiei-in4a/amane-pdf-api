@@ -4,6 +4,8 @@
 
 **追補：残るR1〜R8をユーザーが一括採用。** 必須・税区分・金額上限・数量0／負数・ゼロ表示・文字・入力エラー形式・品質基準の採否も完了。[採用記録](INITIAL-SPEC-ADOPTED.md)／[標準JSONv0.3](standard-json-draft-v0.3/README.md)／[最終検証F1〜F6の範囲・状況](FINAL-VALIDATION-site-134.md)。R1〜R8の採用更新時は資料のみ。その後[採用後の最終検証](standard-json-v03-final-validation/README.md)を正常24＋同時2／拒否135件で実施。製品実装はなし。過去の測定や「未確定」は各検証時点の記録。
 
+**次の担当向け：[site実装準備・順序・作業分割・完成条件](IMPLEMENTATION-PREP-site-134.md)。** テンプレート→事前検証／設定解決→表示変換／描画前検査の3PRを目安に整理。認証・登録・公開接続は後続依存。#133への最終要約は反映済みで、製品実装は未着手。
+
 - [site担当向け引き継ぎ文](HANDOFF-site-134.md)：変更対象、#134の残作業、テンプレート調整部分／Issue全体の完成条件。
 - [採用した取引情報・備考の仕様](TRANSACTION-NOTES-SPEC-PROPOSAL.md)：共有3行／48文字と配分、専用欄の初版対象外、請求書必須／見積書任意と残る確認。**採用済み・製品未実装。**
 - [v0.3 nameLinesからの通し検証](standard-json-v03-validation/README.md)：20×2・部署／担当者／敬称、数量両モード／設定、正常18件・拒否66件。比較PDF・再現スクリプトあり。製品未実装。

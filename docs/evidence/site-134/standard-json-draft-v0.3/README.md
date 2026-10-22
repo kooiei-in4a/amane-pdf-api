@@ -274,7 +274,7 @@ invoice／estimateともquantity／heading.quantityの論理セルをx=.3800・�
 
 ## 12. 採用後の残作業と、後続設計
 
-R1〜R8と既存の名称／数量／設定／取引／備考は採用済み。[最終検証F1〜F6](../FINAL-VALIDATION-site-134.md)のうちF1〜F5は[今回結果](../standard-json-v03-final-validation/README.md)で確認済み。親への要約等を残し、仕様採否を未確定へ戻さない。取引と備考の境界／省略＋nameLines／数量設定の組合せ、0金額・両税率・任意ラベル／画像省略、数値上限、事前拒否の正式形式とAPI0、採用基準に対する単独／共有枠内同時測定を、小さな追加検証でそろえる。
+R1〜R8と既存の名称／数量／設定／取引／備考は採用済み。[最終検証F1〜F6](../FINAL-VALIDATION-site-134.md)のうちF1〜F5は[今回結果](../standard-json-v03-final-validation/README.md)で確認済み。親への要約は[反映済み](https://github.com/kooiei-in4a/amane-tools-site/issues/133#issuecomment-6353182632)。次は[site実装準備](../IMPLEMENTATION-PREP-site-134.md)へ引き継ぎ、仕様採否を未確定へ戻さない。取引と備考の境界／省略＋nameLines／数量設定の組合せ、0金額・両税率・任意ラベル／画像省略、数値上限、事前拒否の正式形式とAPI0、採用基準に対する単独／共有枠内同時測定を、小さな追加検証でそろえる。
 
 後続に残す設計はcompanyId／templateId／asset IDの正式値、版識別・参照／権限・生成時スナップショットの製品設計、公開API経路、保存／更新／認証・混雑／timeout等のHTTP契約。これらはR1〜R8で公開APIとして確定したものではない。例のIDは架空・仮置きのまま。登録／発行本文64KiBと保存／HTTP入口の整合、実HTTP応答、製品テンプレート・ブラウザの確認は後続実装で行う。
 

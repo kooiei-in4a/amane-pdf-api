@@ -1,6 +1,6 @@
 # #134 採用後の最終検証と完了判断
 
-**F1〜F5は[最終検証](standard-json-v03-final-validation/README.md)で正常24＋同時2・拒否135件として実施済み。** F6の#134報告を今回行い、親#133への要約反映を残す。以下は採用時に定めた確認対象・受入基準で、旧結果と今回結果を区別する。 [R1〜R8](INITIAL-SPEC-ADOPTED.md)・[標準JSONv0.3](standard-json-draft-v0.3/README.md)の採否は完了。製品未実装、#133／#134はopen。仕様採用と検証完了を分ける。
+**F1〜F5は[最終検証](standard-json-v03-final-validation/README.md)で正常24＋同時2・拒否135件として実施済み。** F6の[#134報告](https://github.com/kooiei-in4a/amane-tools-site/issues/134#issuecomment-6353165370)と[親#133の要約](https://github.com/kooiei-in4a/amane-tools-site/issues/133#issuecomment-6353182632)は実施済み。次は[site実装準備](IMPLEMENTATION-PREP-site-134.md)を参照。以下は採用時に定めた確認対象・受入基準で、旧結果と今回結果を区別する。 [R1〜R8](INITIAL-SPEC-ADOPTED.md)・[標準JSONv0.3](standard-json-draft-v0.3/README.md)の採否は完了。製品未実装、#133／#134はopen。仕様採用と検証完了を分ける。
 
 ## 既存の根拠
 
@@ -35,4 +35,4 @@ F4は入力全パターンの網羅基盤を新設せず、既存の66拒否例�
 - Acrobat／実印刷は未確認として引き継ぐ。実印刷を#134の必須条件へ追加しない。最大画像・本番SLAを今回の代表測定から保証しない。
 - 品名・ロゴ／印影の予約領域の検査とテンプレート整合はsite側で行い、描画領域の不足が出たら具体例で判断する。可変明細・自動改ページ・一括合成・対応文字拡張は先行実装しない。
 
-最終fixture検証を実行したが、製品コード・既存PDF API契約・CI・共有mainは未変更。親への要約・後続引き継ぎを残し、両Issueの自動完了は行わない。
+最終fixture検証を実行したが、製品コード・既存PDF API契約・CI・共有mainは未変更。親への要約は実施済み、実装準備の引き継ぎを更新。両Issueの自動完了は行わない。

@@ -1,4 +1,7 @@
-# site実装担当への引き継ぎ：帳票テンプレートと #134 の残作業
+# site実装担当への引き継ぎ：実装順序・帳票テンプレート・完成条件
+
+**実装準備を更新。製品実装は未着手。** まず[実装順序・作業分割・PR別完成条件](IMPLEMENTATION-PREP-site-134.md)を読む。目安はPR-A：テンプレート、PR-B：事前検証＋設定解決、PR-C：表示変換＋描画前検査／内部接続。公開接続は親#133の認証・会社登録等に依存する。採用仕様・比較PDF・既存の具体的変更対象は以下を維持する。
+
 
 ## 決定・現在の状態
 
@@ -56,16 +59,16 @@
 
 背景の線の座標・濃さ・太さは [compare-lines.py](compare-lines.py) の `sample_template()`、fontSizeは比較用 `invoice.definition.json` / `estimate.definition.json` を参照する。文字位置定義と背景罫線は別の役割であり、文字矩形まで囲み枠として出力する必要はない。
 
-## #134 に残っている作業
+## #134の検証到達点とsite側の後続
 
-**仕様の採否はR1〜R8まで完了。下記F1〜F5は[最終結果](standard-json-v03-final-validation/README.md)で確認済み。F6の親要約反映と後続引き継ぎを残す。** 以下は確認対象・完成条件の一覧。 詳細・入力・証拠・後続との境界は[最終検証F1〜F6](FINAL-VALIDATION-site-134.md)を参照する。
+**仕様の採否はR1〜R8まで完了。下記F1〜F5は[最終結果](standard-json-v03-final-validation/README.md)で確認済み。F6の親要約は[#133](https://github.com/kooiei-in4a/amane-tools-site/issues/133#issuecomment-6353182632)へ反映済み。次は[site実装準備](IMPLEMENTATION-PREP-site-134.md)の作業分割に従って引き継ぐ。** 以下は確認対象・完成条件の一覧。 詳細・入力・証拠・後続との境界は[最終検証F1〜F6](FINAL-VALIDATION-site-134.md)を参照する。
 
 1. **F1 最終組合せ描画**：両帳票1／8明細×数量両モードを基本に、nameLines20×2、備考48文字／期間43文字、取引／備考省略、年越し／同日periodを少数ケースで網羅し、設定解決・確定金額・画像と同じ経路で確認する。
 2. **F2 ゼロ・任意・画像**：正数量のまま金額0と両税率の0円／ラベルを表示。任意項目の値／ラベル省略、画像なし／片方のみを確認する。
 3. **F3 数値境界**：単価8桁／他金額12桁の上限と実幅、0.001〜99999.999・末尾0・両配置を確認する。相互計算はしない。
 4. **F4 事前拒否**：新しい採用条件と既存66拒否例等を差分補完し、元path／登録source・first-error形式・事前拒否時実API0を示す。実HTTPと区別する。
 5. **F5 受入基準**：最終入力で単独と既存共有2枠内の同時2チェーンを少数測定し、10秒／各20秒／2MiBと品質・後始末を確認する。長時間負荷試験は追加しない。
-6. **F6 統合報告**：固定SHA・入力・PDF・再現手順・検査／測定結果・制限を#134にまとめ、親#133へ判断と後続を反映する。
+6. **F6 統合報告（実施済み）**：[#134最終報告](https://github.com/kooiei-in4a/amane-tools-site/issues/134#issuecomment-6353165370)と[#133要約](https://github.com/kooiei-in4a/amane-tools-site/issues/133#issuecomment-6353182632)に反映済み。両Issueの完了操作は行わない。
 
 [v0.3正常18／拒否66](standard-json-v03-validation/README.md)、[数量解決正常9／拒否40](quantity-resolution-validation/README.md)、[旧v0.2正常14／拒否65](standard-json-v02-validation/README.md)は既存の根拠。入力・PDF・スクリプト・実測は過去の条件のまま残し、一括採用時の履歴と、その後の[最終検証24＋2／135件](standard-json-v03-final-validation/README.md)を区別する。
 
@@ -101,6 +104,9 @@
 #134は入力契約・描画方針を決めるための小さな検証Issue。認証、DB、会社登録、画像保存、新公開API、独自スキーマ変換、可変明細・自動改ページ・一括合成の製品実装を完了条件へ追加しない。今回必須のAPI変更は確認されておらず、API新規Issueは未起票。ID／版・保存・認証・参照権限・運用HTTP契約、実HTTP／site経由測定は後続範囲。詳細は[最終検証と後続の境界](FINAL-VALIDATION-site-134.md)に記す。
 
 ## 確認済みの根拠と成果物
+
+- [site実装準備：順序・作業分割・依存・PR別完成条件](IMPLEMENTATION-PREP-site-134.md)
+- [最終検証：正常24＋同時2／拒否135件・比較PDF・再現手順](standard-json-v03-final-validation/README.md)
 
 - [初版R1〜R8の採用記録](INITIAL-SPEC-ADOPTED.md)
 - [採用後の最終検証F1〜F6・後続作業・完了条件](FINAL-VALIDATION-site-134.md)
