@@ -821,6 +821,9 @@ python3 scripts/redact-validation.py amane-pdf-api:ci
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。
 
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
+
+PR・mainへのpushのCIでは、build-testのrestoreでNuGetの推移的依存まで監査し、High/Critical（NU1903/NU1904）と監査データの取得失敗（NU1900/NU1905）をエラーにします（Low/Moderateは警告、Docker・ローカルのbuildにはこのエラー化を適用しません）。監査データの取得失敗が一時障害ならCIを再実行し、脆弱性で失敗した場合は修正版へ更新する別PRを作成してください（推移的依存を直接参照で固定する場合はcsprojに理由を記載します）。
+
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
 smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実FSIZE超過時のdjpeg／cjpeg／ddの通常エラー終了、3つのJPEG copyrightファイルとhealthを検証します。共通起動経路のCORE／AS／FSIZEとSIGXFSZ無視の継承も確認します。正常暗号化、権限制限成功と全許可400、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。

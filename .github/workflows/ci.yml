@@ -27,8 +27,35 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore
-        run: dotnet restore
+      - name: Restore dependencies and audit NuGet vulnerabilities
+        run: |
+          mkdir -p TestResults/evidence
+          set +e
+          dotnet restore -p:NuGetAudit=true -p:NuGetAuditMode=all '-p:WarningsAsErrors=NU1900%3BNU1903%3BNU1904%3BNU1905' 2>&1 | tee TestResults/evidence/nuget-restore.log
+          restore_status=("${PIPESTATUS[@]}")
+          set -e
+          while IFS= read -r line; do
+            if [[ "$line" =~ NU19[0-9]{2} ]]; then
+              printf '%s\n' "${line//"$GITHUB_WORKSPACE/"/}"
+            fi
+          done < TestResults/evidence/nuget-restore.log > TestResults/evidence/nuget-audit.txt
+          {
+            echo '### NuGet dependency audit'
+            echo 'PR・mainへのpush: High/Critical（NU1903/NU1904）と監査データ取得失敗（NU1900/NU1905）で失敗します。'
+            echo
+            echo '```text'
+            if [ -s TestResults/evidence/nuget-audit.txt ]; then
+              cat TestResults/evidence/nuget-audit.txt
+            elif [ "${restore_status[0]}" -eq 0 ]; then
+              echo '該当なし'
+            fi
+            if [ "${restore_status[0]}" -ne 0 ]; then
+              printf 'restore 失敗（exit %s）。詳細はこのステップのログを参照してください。\n' "${restore_status[0]}"
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${restore_status[1]}" -ne 0 ]; then exit "${restore_status[1]}"; fi
+          exit "${restore_status[0]}"
 
       - name: Install PDF tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs
