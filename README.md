@@ -824,6 +824,8 @@ CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker
 
 PR・mainへのpushのCIでは、build-testのrestoreでNuGetの推移的依存まで監査し、High/Critical（NU1903/NU1904）と監査データの取得失敗（NU1900/NU1905）をエラーにします（Low/Moderateは警告、Docker・ローカルのbuildにはこのエラー化を適用しません）。監査データの取得失敗が一時障害ならCIを再実行し、脆弱性で失敗した場合は修正版へ更新する別PRを作成してください（推移的依存を直接参照で固定する場合はcsprojに理由を記載します）。
 
+NuGetは毎日、OS・Go binaryなどの外部依存は週1回にも監査します。判定・保存する証跡・PDFiumの未検査範囲・失敗時の対応は[依存監査](docs/dependency-audit.md)を参照してください。
+
 host/containerのqpdfが12系以降であること、コンテナの `--remove-info` / `--remove-metadata` の存在を確認します。QPDFJob JSON、Unicode password、AES-256、入力検査に必要な機能は実処理で確認します。必要機能が欠けるimageではCIが失敗します。
 
 smoke testは既存APIに加え、compressの両level・カラー／グレーの実圧縮、必要オプション、権限、起動失敗、実FSIZE超過時のdjpeg／cjpeg／ddの通常エラー終了、3つのJPEG copyrightファイルとhealthを検証します。共通起動経路のCORE／AS／FSIZEとSIGXFSZ無視の継承も確認します。正常暗号化、権限制限成功と全許可400、解除成功とwrong-password、lossless最適化、入力順を確認する代表的なPDF結合、相対回転とページ指定、代表的なページ抽出、正password/誤password、必須項目不足、空/非PDF/破損/warning/既暗号化、サイズ境界とContent-Lengthなしの413、内部障害の500、ログ非露出、一時ファイル削除が対象です。
