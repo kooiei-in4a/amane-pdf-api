@@ -1,13 +1,12 @@
 {
-  "version": "0.16.2",
+  "version": "0.16.3",
   "platform": "linux-amd64",
-  "go_version": "go1.27.2",
+  "go_version": "go1.27.3",
   "artifacts": [
     {
-      "name": "pdfcpu_0.16.2_Linux_x86_64.tar.xz",
-      "url": "https://github.com/pdfcpu/pdfcpu/releases/download/v0.16.2/pdfcpu_0.16.2_Linux_x86_64.tar.xz",
-      "sha256": "d86bfdbbb4ed1d50ba5bafc923b42813154a64dada33595f9c136261cd108632",
-      "member": "pdfcpu_0.16.2_Linux_x86_64/pdfcpu"
+      "name": "go1.27.3.linux-amd64.tar.gz",
+      "url": "https://go.dev/dl/go1.27.3.linux-amd64.tar.gz",
+      "sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40"
     },
     {
       "name": "BIZUDGothic.zip",
@@ -21,5 +20,13 @@
       "sha256": "e753d7155d53c747d037a445e584c8ecfca6dd79846db610417e282a736b28bc"
     }
   ],
-  "font_sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673"
+  "font_sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673",
+  "source": {
+    "module": "github.com/pdfcpu/pdfcpu",
+    "version": "v0.16.3",
+    "sum": "h1:hOY/BelGn+/VnZtlLXOx7XeTqsF8atbaxzVkZsKBR1s=",
+    "go_mod_sum": "h1:zMjQF5nYZ6A0yaG2d4GAj1QrzM5U8BZYDFHpuRwPuxQ=",
+    "commit": "35ea259eb27d5a607f797edd41fd8a9e50a1f818",
+    "date": "2026-10-19T19:08:55Z"
+  }
 }

@@ -1,6 +1,6 @@
 {
-  "go_version": "go1.27.2",
-  "pdfcpu_version": "v0.16.2",
+  "go_version": "go1.27.3",
+  "pdfcpu_version": "v0.16.3",
   "modules": [
     {
       "path": "github.com/clipperhouse/uax29/v2",
@@ -41,8 +41,8 @@
     },
     {
       "path": "github.com/mattn/go-runewidth",
-      "version": "v0.0.30",
-      "sum": "h1:+KUuiDA4fF0R1p5FeueHefjDm+GIM+kWfFnDjybOPgk=",
+      "version": "v0.0.31",
+      "sum": "h1:1oCV4ReTlosDBc6rYRw5cL8S/4y8iv5oRl4SJ5IBgwo=",
       "in_linux_binary": true,
       "license_files": [
         "modules/github.com_mattn_go-runewidth/LICENSE"
@@ -88,8 +88,8 @@
     },
     {
       "path": "golang.org/x/crypto",
-      "version": "v0.57.0",
-      "sum": "h1:3ZVCjf8Ggz7zneR/EHRVx68Ctf+2pmIMP2UFhh9cC6M=",
+      "version": "v0.58.0",
+      "sum": "h1:COkYLr4k7nDI4r6QtMML2AfzeIswWHAJthLS6K/M/54=",
       "in_linux_binary": true,
       "license_files": [
         "modules/golang.org_x_crypto/LICENSE",
@@ -98,8 +98,8 @@
     },
     {
       "path": "golang.org/x/image",
-      "version": "v0.46.0",
-      "sum": "h1:b1+oYj0Jbp6K5MDT4i4/eZpYlk3V8SJhhDKh6LBHAyQ=",
+      "version": "v0.47.0",
+      "sum": "h1:za/8gVz++PPZqmZJBNSISICN5Rrj5zixP/8K++fgmqo=",
       "in_linux_binary": true,
       "license_files": [
         "modules/golang.org_x_image/LICENSE",
@@ -108,8 +108,8 @@
     },
     {
       "path": "golang.org/x/text",
-      "version": "v0.42.0",
-      "sum": "h1:JbOZXgfeCPU9gacVtYliJqOhD+zhrEqK4LfdpmlUZqI=",
+      "version": "v0.43.0",
+      "sum": "h1:1QivrlhwAsnMOcqgOdl9my7s9OyZl8O5/UGUTJVXoWc=",
       "in_linux_binary": true,
       "license_files": [
         "modules/golang.org_x_text/LICENSE",

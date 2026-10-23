@@ -22,6 +22,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 COPY scripts/install-pdfcpu.sh /tools/scripts/install-pdfcpu.sh
+COPY scripts/verify-pdfcpu-modules.py /tools/scripts/verify-pdfcpu-modules.py
 COPY third_party/ /tools/third_party/
 COPY THIRD_PARTY_NOTICES.md /tools/THIRD_PARTY_NOTICES.md
 RUN /tools/scripts/install-pdfcpu.sh /opt/amane-pdf
@@ -42,6 +43,8 @@ ENV Pdf__PdfcpuPath=/opt/amane-pdf/bin/pdfcpu \
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs \
+    && rm -f /usr/bin/pebble \
+    && test ! -e /usr/bin/pebble && test ! -L /usr/bin/pebble \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=app:app /app/publish ./

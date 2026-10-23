@@ -319,8 +319,8 @@ public sealed class PdfcpuProcessorTests
         if (kind == "as") { job.Options.PdfcpuAddressSpaceLimitBytes = 256 * 1024 * 1024; job.Options.PdfcpuMemoryLimit = "200MiB"; }
         if (kind == "version") job.Options.PdfcpuPath = job.Script("echo 'version: 0.0.0'\necho 'STDERR-SECRET' >&2");
         if (kind == "version-overflow") job.Options.PdfcpuPath = job.Script("head -c 4097 /dev/zero");
-        if (kind == "font-overflow") job.Options.PdfcpuPath = job.Script("case \"$4\" in version) echo 'version: 0.16.2';; *) head -c 65537 /dev/zero;; esac");
-        if (kind == "draw") job.Options.PdfcpuPath = job.Script("case \"$4\" in version) echo 'version: 0.16.2';; fonts) echo 'BIZUDPGothic-Regular (13932 glyphs)';; *) echo 'STDERR-SECRET' >&2; exit 1;; esac");
+        if (kind == "font-overflow") job.Options.PdfcpuPath = job.Script("case \"$4\" in version) echo 'version: 0.16.3';; *) head -c 65537 /dev/zero;; esac");
+        if (kind == "draw") job.Options.PdfcpuPath = job.Script("case \"$4\" in version) echo 'version: 0.16.3';; fonts) echo 'BIZUDPGothic-Regular (13932 glyphs)';; *) echo 'STDERR-SECRET' >&2; exit 1;; esac");
         var error = await Assert.ThrowsExactlyAsync<PdfcpuStartupException>(() => PdfcpuProcessor.ValidateStartupAsync(job.Options, CancellationToken.None));
         Assert.AreEqual("pdfcpu・日本語フォントの自己テストに失敗しました。", error.Message);
         Assert.IsNull(error.InnerException);
