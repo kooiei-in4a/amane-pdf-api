@@ -103,7 +103,7 @@ internal sealed class PdfRedactProcessor(QpdfProcessor qpdf, PdfRenderer rendere
         // failures. No success headers or output are sent until every check passes.
         try
         {
-            await qpdf.ValidateAsync(files.OutputPath, token);
+            await qpdf.ValidateOutputAsync(files.OutputPath, token);
             await Inspect(files.OutputPath, true);
             Dictionary<PdfObjectRef, byte[]> contents;
             using (var result = Metadata())

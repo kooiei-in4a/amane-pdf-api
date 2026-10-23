@@ -18,7 +18,7 @@ import zipfile
 
 repo = Path(sys.argv[1]).resolve()
 parser = argparse.ArgumentParser(description="Install locked pdfcpu and Japanese font without runtime downloads.")
-parser.add_argument("--download-cache", type=Path, help="Read the three locked assets from this directory; still verify all hashes.")
+parser.add_argument("--download-cache", type=Path, help="Read the locked Go SDK/font assets here; module downloads still use the Go proxy and checksum database.")
 parser.add_argument("prefix", type=Path)
 args = parser.parse_args(sys.argv[2:])
 lock = json.loads((repo / "third_party/pdfcpu.lock").read_text())
@@ -56,14 +56,36 @@ with tempfile.TemporaryDirectory(prefix=".pdfcpu-install-", dir=prefix.parent) a
         if sha(target) != artifact["sha256"]:
             raise SystemExit("Downloaded artifact checksum mismatch.")
         downloads.append(target)
-    binary = stage / "bin/pdfcpu"
+    # Build the official module with a patched, checksum-pinned Go toolchain.
+    # Upstream v0.16.3 binaries still embed Go 1.27.2 (CVE-2026-111943).
+    toolchain = work / "toolchain"
     with tarfile.open(downloads[0]) as archive:
-        member = archive.getmember(lock["artifacts"][0]["member"])
-        if not member.isfile():
-            raise SystemExit("Invalid pdfcpu archive member.")
-        with archive.extractfile(member) as source, binary.open("wb") as target:
-            shutil.copyfileobj(source, target)
-    binary.chmod(0o555)
+        archive.extractall(toolchain, filter="data")
+    go = toolchain / "go/bin/go"
+    build_env = dict(os.environ, GOROOT=str(toolchain / "go"), GOPATH=str(work / "gopath"),
+        GOMODCACHE=str(work / "modules"), GOCACHE=str(work / "build-cache"), GOBIN=str(stage / "bin"),
+        GO111MODULE="on", GOENV="off", GOTOOLCHAIN="local", GOWORK="off", GOFLAGS="", GOEXPERIMENT="",
+        GOPROXY="https://proxy.golang.org", GOSUMDB="sum.golang.org", GOPRIVATE="", GONOPROXY="", GONOSUMDB="",
+        CGO_ENABLED="0", GOOS="linux", GOARCH="amd64", GOAMD64="v1")
+    def go_run(arguments, capture=False):
+        return subprocess.run([str(go), *arguments], env=build_env, cwd=work, check=True,
+            stdout=subprocess.PIPE if capture else None, timeout=600)
+    if go_run(["env", "GOVERSION"], True).stdout.decode().strip() != lock["go_version"]:
+        raise SystemExit("Go toolchain version mismatch.")
+    source = lock["source"]
+    module = source["module"] + "@" + source["version"]
+    downloaded = json.loads(go_run(["mod", "download", "-json", module], True).stdout)
+    if downloaded["Sum"] != source["sum"] or downloaded["GoModSum"] != source["go_mod_sum"]:
+        raise SystemExit("pdfcpu source checksum mismatch.")
+    if Path(downloaded["GoMod"]).read_bytes() != (repo / "third_party/pdfcpu/go.mod").read_bytes():
+        raise SystemExit("pdfcpu go.mod mismatch.")
+    flags = "-s -w -X main.version=" + lock["version"] + " -X github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model.VersionStr=" + lock["version"]
+    flags += " -X main.commit=" + source["commit"] + " -X main.date=" + source["date"]
+    go_run(["install", "-trimpath", "-ldflags=" + flags, source["module"] + "/cmd/pdfcpu@" + source["version"]])
+    binary = stage / "bin/pdfcpu"
+    # Verify the resulting binary's runtime/module inventory and bundled licenses before execution.
+    subprocess.run([sys.executable, str(repo / "scripts/verify-pdfcpu-modules.py"), str(binary)],
+        env=build_env | {"PATH": str(go.parent) + os.pathsep + os.environ.get("PATH", "")}, check=True, timeout=60)
     font = work / "BIZUDPGothic-Regular.ttf"
     with zipfile.ZipFile(downloads[1]) as archive:
         with archive.open(lock["artifacts"][1]["member"]) as source, font.open("wb") as target:

@@ -184,7 +184,7 @@ qpdfのファイル書込みは共通のSIGXFSZ無視・CORE=0・AS・JPEGMEMに
 
 ## pdfcpuとoverlay描画基盤（Linux、#25）
 
-pdfcpu 0.16.2とBIZ UDPゴシックv1.051を公式Releaseから取得し、repositoryのlockにあるURL・SHA-256へ固定します。archiveから固定したmemberだけを取り出し、TTFとOFL、収録licenseもchecksumで検査します。取得・font installはbuild時に限定します。binaryは0555、設定とfont cacheは0444、dirは0555とし、final imageではrootが所有します。RobotoとGo依存物・runtimeのlicenseもimageへ残します。
+pdfcpu 0.16.3は公式moduleソースを、SHA-256固定のGo 1.27.3 SDKでbuildします。ソースのmodule checksum・go.mod・Go版・依存inventoryを照合し、Go proxyとchecksum databaseを明示してtoolchainの自動切替を禁止します。BIZ UDPゴシックv1.051は公式ReleaseのURL・SHA-256へ固定し、TTFとOFL、収録licenseもchecksumで検査します。取得・font installはbuild時に限定します。binaryは0555、設定とfont cacheは0444、dirは0555とし、final imageではrootが所有します。RobotoとGo依存物・runtimeのlicenseもimageへ残します。
 
 Linuxではpdfcpuの起動検証を必須にします。qpdf/JPEGと同じ起動tokenで、固定30秒以内にversion・日本語font・固定白紙への日本語描画・未暗号化・qpdf check・ページ数を確認します。不具合時はhealthを含む全APIの待受前に終了し、pdfcpu専用の固定メッセージだけで原因を通知します。tool出力・内部path・inner exceptionはログへ出しません。自己テストのjobも成功・失敗とも削除します。非Linuxではこの追加検証を行いません。
 
@@ -216,7 +216,7 @@ uploadとepilogueの完了後、外部toolの前にstrict UTF-8/BOM拒否・深�
 
 入力metadataの既存DOM内でtrailerのRootからCatalogを解決し、AcroForm（空を含む）/Permsと、全オブジェクトの直接辞書・配列・stream辞書内のWidget/Sig/DocTimeStampを再帰走査します。PDF名の#xxを解釈し、object streamの展開は既存qpdf JSON取得に任せます。追加の入力qpdf起動はなく、32 MiB・50,000 object・深さ64内に制限します。フォーム検出（422 form-fields）がページ番号超過（400）に先行します。既存overlay APIにはこの検出を適用しません。全署名構造の網羅的検出は保証しません。
 
-配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。文字抽出にはpdfcpu 0.16.2のToUnicodeを使います。APIによる文字対応表の作り直しと専用の更新JSON・修正PDFは生成しません。CIでは100種を超える字形を含む実API出力をMuPDF・Popplerで抽出し、Type0・bfcharの件数と全描画GID→元文字の対応を検査します。全11,425字についてもpdfcpuの対応を照合します。描画・生成物検査の失敗は500、容量超過は共通overlayの422 too-complex、キャンセルは共通方式です。
+配置と収まりは表示上のptへ変換してdecimalで計算し、はみ出しは固定422 field-overflowとします。負のpdfcpu座標はpos.y=0と負のdyに分け、ページ中央指定への解釈を避けて実baselineを維持します。項目番号・text・ファイル名は返しません。文字抽出にはpdfcpu 0.16.3のToUnicodeを使います。APIによる文字対応表の作り直しと専用の更新JSON・修正PDFは生成しません。CIでは100種を超える字形を含む実API出力をMuPDF・Popplerで抽出し、Type0・bfcharの件数と全描画GID→元文字の対応を検査します。全11,425字についてもpdfcpuの対応を照合します。描画・生成物検査の失敗は500、容量超過は共通overlayの422 too-complex、キャンセルは共通方式です。
 
 フォーム・署名と暗号化PDFは非対応、注釈は前面に残ります。メタデータ・添付・JavaScript等を無害化せず、PDF/A適合性・真正性も保証しません。共有30秒・同時2件、job 124 MiB、子processのAS/FSIZE制限と終了待ちを維持します。[検証記録](fill-template-validation.md)では実署名・ローカルTSAの鍵を一時生成し、終了時に削除します。pyHankoとMuPDFは固定versionのCI専用依存で、本番imageへ追加しません。
 

@@ -137,12 +137,12 @@ def main():
         directory = Path(temporary)
         with fill.smoke.running_container(args.image) as api:
             version = api.exec("/opt/amane-pdf/bin/pdfcpu", "-c", "/opt/amane-pdf/config", "--offline", "version").stdout.decode()
-            assert "version: 0.16.2" in version.splitlines()
+            assert "version: 0.16.3" in version.splitlines()
             root = api.exec("mktemp", "-d", "/tmp/pdfcpu-update-XXXXXXXX").stdout.decode().strip()
             assert re.fullmatch(r"/tmp/pdfcpu-update-[A-Za-z0-9]+", root)
             assert api.exec("stat", "-c", "%a", root).stdout.strip() == b"700"
             try:
-                result = dict(version="0.16.2", text_behavior=text_behavior(api, root, directory, "0.16.2"),
+                result = dict(version="0.16.3", text_behavior=text_behavior(api, root, directory, "0.16.3"),
                     coordinates=coordinates(api, root, directory), unicode=unicode(api, directory))
             finally:
                 api.exec("rm", "-rf", root)

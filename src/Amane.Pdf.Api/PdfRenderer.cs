@@ -35,6 +35,7 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
 
     internal async Task RenderJpegAsync(TemporaryPdfFiles files, RenderPage page, CancellationToken token)
     {
+        using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Render);
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         var directory = Path.GetFullPath(files.DirectoryPath);
         foreach (var path in new[] { page.InputPath, page.OutputPath })
@@ -70,6 +71,7 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
             File.Delete(page.OutputPath);
             throw;
         }
+        stage.Complete();
     }
 
     internal static void CheckExitCode(int code)

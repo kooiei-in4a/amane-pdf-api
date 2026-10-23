@@ -10,8 +10,15 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         => ValidateAsync(files.InputPath, cancellationToken);
 
     // Only API-generated paths inside a private job directory are supplied by endpoints.
-    public async Task ValidateAsync(string path, CancellationToken cancellationToken)
+    public Task ValidateAsync(string path, CancellationToken cancellationToken)
+        => ValidateCoreAsync(path, cancellationToken, PdfStage.InputValidation);
+
+    internal Task ValidateOutputAsync(string path, CancellationToken cancellationToken)
+        => ValidateCoreAsync(path, cancellationToken, PdfStage.OutputValidation);
+
+    private async Task ValidateCoreAsync(string path, CancellationToken cancellationToken, PdfStage kind)
     {
+        using var stage = PdfProcessingDiagnostics.Measure(kind);
         if (new FileInfo(path).Length == 0) throw new PdfInputException();
 
         // This inspection also detects encryption when the input password is unknown or empty.
@@ -22,6 +29,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         var check = await RunAsync(["--check", path], cancellationToken);
         if (check is 2 or 3) throw new PdfInputException();
         if (check != 0) throw new InvalidOperationException("PDF inspection failed.");
+        stage.Complete();
     }
 
     public async Task ProtectAsync(TemporaryPdfFiles files, string password, CancellationToken cancellationToken)
@@ -116,7 +124,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 
         try
         {
-            await ValidateAsync(files.OutputPath, cancellationToken);
+            await ValidateOutputAsync(files.OutputPath, cancellationToken);
         }
         catch (PdfInputException)
         {
@@ -218,7 +226,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         if (result.ExitCode == 3) throw new PdfInputException();
         if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
             throw new InvalidOperationException("PDF processing failed.");
-        try { await ValidateAsync(outputPath, cancellationToken); }
+        try { await ValidateOutputAsync(outputPath, cancellationToken); }
         catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
     }
 
@@ -250,6 +258,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
     internal async Task CheckImagePdfAsync(TemporaryPdfFiles files, string path, int pages, long budget,
         CancellationToken token)
     {
+        using var stage = PdfProcessingDiagnostics.Measure(PdfStage.OutputValidation);
         async Task<ExternalProcessResult> Check(string[] args, int? stdout = null) =>
             await ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath,
                 options.Value.QpdfPath, args, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
@@ -263,6 +272,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
             !int.TryParse(System.Text.Encoding.ASCII.GetString(count.Stdout).Trim(),
                 System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var actual) ||
             actual != pages) throw new InvalidOperationException("Generated image page count is invalid.");
+        stage.Complete();
     }
 
     internal async Task MergeImagePagesAsync(TemporaryPdfFiles files, IReadOnlyList<string> pages, long budget,
