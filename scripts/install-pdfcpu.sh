@@ -84,7 +84,7 @@ with tempfile.TemporaryDirectory(prefix=".pdfcpu-install-", dir=prefix.parent) a
     go_run(["install", "-trimpath", "-ldflags=" + flags, source["module"] + "/cmd/pdfcpu@" + source["version"]])
     binary = stage / "bin/pdfcpu"
     # Verify the resulting binary's runtime/module inventory and bundled licenses before execution.
-    subprocess.run([sys.executable, str(repo / "scripts/verify-pdfcpu-modules.py"), str(binary)],
+    subprocess.run([sys.executable, "-E", str(repo / "scripts/verify-pdfcpu-modules.py"), str(binary)],
         env=build_env | {"PATH": str(go.parent) + os.pathsep + os.environ.get("PATH", "")}, check=True, timeout=60)
     font = work / "BIZUDPGothic-Regular.ttf"
     with zipfile.ZipFile(downloads[1]) as archive:
