@@ -19,6 +19,7 @@ internal static class PdfEndpointHelpers
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         using var diagnostics = new PdfProcessingDiagnostics(context);
+        var sendCompleted = false;
         try
         {
             using (var stage = PdfProcessingDiagnostics.Measure(PdfStage.RequestValidation))
@@ -54,6 +55,7 @@ internal static class PdfEndpointHelpers
                 await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
                 stage.Complete();
             }
+            sendCompleted = true;
             diagnostics.Outcome = PdfOutcome.Success;
         }
         catch (PdfFillTemplateException exception)
@@ -161,7 +163,8 @@ internal static class PdfEndpointHelpers
             diagnostics.Outcome = PdfOutcome.InternalError;
             if (context.Response.HasStarted)
             {
-                diagnostics.Outcome = PdfOutcome.SendAborted;
+                // A subsequent directory deletion failure is an internal error, not a failed send.
+                if (!sendCompleted) diagnostics.Outcome = PdfOutcome.SendAborted;
                 context.Abort();
                 return;
             }

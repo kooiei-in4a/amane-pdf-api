@@ -12,6 +12,8 @@ internal sealed class PdfProcessingDiagnostics : IDisposable
     private readonly PdfProcessingDiagnostics? previous = Current.Value;
     private readonly ILogger? logger;
     private readonly string operation;
+    // Generated here; never reuse a client header, Activity ID or HttpContext.TraceIdentifier.
+    private readonly string requestId = Guid.NewGuid().ToString("N");
     private readonly long started = Stopwatch.GetTimestamp();
     private readonly (double Milliseconds, int Count, int Incomplete)[] stages = new (double, int, int)[8];
     private bool disposed;
@@ -73,13 +75,13 @@ internal sealed class PdfProcessingDiagnostics : IDisposable
                 var value = stages[i];
                 if (value.Count == 0) continue;
                 logger.LogInformation(new EventId(8101, "PdfStage"),
-                    "PDF stage Operation={Operation} Stage={Stage} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds} Count={Count} IncompleteCount={IncompleteCount}",
-                    operation, ((PdfStage)i).ToString(), value.Incomplete == 0 ? "Completed" : "Incomplete",
+                    "PDF stage RequestId={RequestId} Operation={Operation} Stage={Stage} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds} Count={Count} IncompleteCount={IncompleteCount}",
+                    requestId, operation, ((PdfStage)i).ToString(), value.Incomplete == 0 ? "Completed" : "Incomplete",
                     value.Milliseconds, value.Count, value.Incomplete);
             }
             logger.LogInformation(new EventId(8102, "PdfRequest"),
-                "PDF request Operation={Operation} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds}",
-                operation, Outcome.ToString(), Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+                "PDF request RequestId={RequestId} Operation={Operation} Outcome={Outcome} ElapsedMilliseconds={ElapsedMilliseconds}",
+                requestId, operation, Outcome.ToString(), Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         }
         catch (Exception) { /* Diagnostics are best effort; do not expose the provider exception. */ }
     }

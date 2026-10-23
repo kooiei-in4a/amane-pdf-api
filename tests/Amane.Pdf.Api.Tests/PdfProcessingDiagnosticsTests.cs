@@ -122,6 +122,85 @@ public sealed class PdfProcessingDiagnosticsTests
     }
 
     [TestMethod]
+    public async Task SameOperationConcurrentRequests_CanBeGroupedByInternalId_InSharedLogs()
+    {
+        var shared = new ConcurrentQueue<LogRecord>();
+        using var first = new Harness("/api/pdf/redact", records: shared);
+        using var second = new Harness("/api/pdf/redact", records: shared);
+        second.Options.QpdfTimeoutSeconds = 1;
+        var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = 0;
+        async Task Work(TemporaryPdfFiles files, CancellationToken token, bool timeout)
+        {
+            if (Interlocked.Increment(ref entered) == 2) ready.SetResult();
+            await ready.Task.WaitAsync(TimeSpan.FromSeconds(5), token);
+            for (var i = 0; i < (timeout ? 1 : 500); i++)
+            {
+                using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Render);
+                if (timeout) await Task.Delay(Timeout.Infinite, token);
+                await Task.Yield();
+                stage.Complete();
+            }
+            await File.WriteAllBytesAsync(files.OutputPath, [1], token);
+        }
+        await Task.WhenAll(first.Run((f, t) => Work(f, t, false)), second.Run((f, t) => Work(f, t, true)));
+        Assert.AreEqual(200, first.Context.Response.StatusCode);
+        Assert.AreEqual(504, second.Context.Response.StatusCode);
+        var requests = shared.Where(r => r.Id == 8102).ToArray();
+        Assert.AreEqual(2, requests.Length);
+        var successId = requests.Single(r => Equals(r.Fields["Outcome"], "Success")).Fields["RequestId"];
+        var timeoutId = requests.Single(r => Equals(r.Fields["Outcome"], "Timeout")).Fields["RequestId"];
+        Assert.AreNotEqual(successId, timeoutId);
+        var success = shared.Where(r => Equals(r.Fields["RequestId"], successId)).ToArray();
+        var timedOut = shared.Where(r => Equals(r.Fields["RequestId"], timeoutId)).ToArray();
+        Assert.AreEqual(shared.Count, success.Length + timedOut.Length);
+        Assert.IsTrue(success.Length <= 9 && timedOut.Length <= 9);
+        var successfulRender = success.Single(r => Equals(r.Fields.GetValueOrDefault("Stage"), "Render"));
+        Assert.AreEqual(500, successfulRender.Fields["Count"]);
+        Assert.AreEqual("Completed", successfulRender.Fields["Outcome"]);
+        var timedOutRender = timedOut.Single(r => Equals(r.Fields.GetValueOrDefault("Stage"), "Render"));
+        Assert.AreEqual(1, timedOutRender.Fields["Count"]);
+        Assert.AreEqual("Incomplete", timedOutRender.Fields["Outcome"]);
+        Assert.IsTrue(shared.All(r => Equals(r.Fields["Operation"], "redact")));
+        first.AssertPrivateAndClean(); second.AssertPrivateAndClean();
+    }
+
+    [TestMethod]
+    public async Task CleanupFailureAfterCompletedSend_IsInternalError_WithIncompleteCleanup()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var test = new Harness("/api/pdf/optimize");
+        var feature = new StartedResponseFeature();
+        test.Context.Features.Set<IHttpResponseFeature>(feature);
+        test.Context.Response.Body = new MemoryStream();
+        string? job = null;
+        try
+        {
+            await PdfEndpointHelpers.ExecuteAsync(test.Context, test.Options, "output.pdf", null,
+                (_, _) => Task.CompletedTask, async (files, token) =>
+                {
+                    job = files.DirectoryPath;
+                    await File.WriteAllBytesAsync(files.OutputPath, [1, 2, 3], token);
+                    // Prevent removing the job directory from its parent, while allowing the send.
+                    if (OperatingSystem.IsLinux())
+                        File.SetUnixFileMode(test.Options.TempRoot, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+                }, onSend: _ => feature.Started = true);
+            Assert.AreEqual(200, test.Context.Response.StatusCode);
+            CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, ((MemoryStream)test.Context.Response.Body).ToArray());
+            Assert.IsTrue(Directory.Exists(job), "The real directory removal must fail.");
+            test.AssertStage("Send", "Completed", 1);
+            test.AssertStage("Cleanup", "Incomplete", 1);
+            test.AssertRequest("InternalError");
+        }
+        finally
+        {
+            File.SetUnixFileMode(test.Options.TempRoot, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            if (Directory.Exists(job)) Directory.Delete(job, true);
+        }
+        test.AssertPrivateAndClean();
+    }
+
+    [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
     public async Task LogProviderFailure_DoesNotChangeSuccessfulResponseOrCleanup(bool creation)
@@ -145,13 +224,15 @@ public sealed class PdfProcessingDiagnosticsTests
 
     private sealed class Harness : IDisposable
     {
-        internal readonly ConcurrentQueue<LogRecord> Records = new();
+        internal readonly ConcurrentQueue<LogRecord> Records;
         internal readonly Lifetime Lifetime = new();
         internal readonly PdfOptions Options = new() { TempRoot = Path.Combine(Path.GetTempPath(), "diagnostics-" + Guid.NewGuid().ToString("N")) };
         private readonly ServiceProvider services;
         internal readonly DefaultHttpContext Context;
-        internal Harness(string path, bool throwLogs = false, bool throwCreate = false)
+        internal Harness(string path, bool throwLogs = false, bool throwCreate = false,
+            ConcurrentQueue<LogRecord>? records = null)
         {
+            Records = records ?? new();
             Directory.CreateDirectory(Options.TempRoot);
             services = new ServiceCollection().AddLogging(b => b.AddProvider(new Capture(Records, throwLogs, throwCreate)))
                 .AddSingleton<IHostApplicationLifetime>(Lifetime).AddProblemDetails().BuildServiceProvider();
@@ -159,6 +240,7 @@ public sealed class PdfProcessingDiagnosticsTests
             Context.Request.Path = path;
             Context.Request.QueryString = new QueryString("?password=" + Secret);
             Context.Request.Headers["X-Request-ID"] = Secret;
+            Context.TraceIdentifier = Secret;
             Context.Response.Body = new MemoryStream();
         }
         internal Task Run(Func<TemporaryPdfFiles, CancellationToken, Task> process, Action? validate = null, bool uploadError = false)
@@ -188,8 +270,9 @@ public sealed class PdfProcessingDiagnosticsTests
                 Assert.IsFalse(record.Text.Contains(Secret));
                 Assert.IsFalse(record.Text.Contains(Options.TempRoot));
                 Assert.IsNull(record.Exception);
+                Assert.IsTrue(record.Fields["RequestId"] is string id && Guid.TryParseExact(id, "N", out _));
                 foreach (var key in record.Fields.Keys)
-                    CollectionAssert.Contains(new[] { "Operation", "Stage", "Outcome", "ElapsedMilliseconds", "Count", "IncompleteCount", "{OriginalFormat}" }, key);
+                    CollectionAssert.Contains(new[] { "RequestId", "Operation", "Stage", "Outcome", "ElapsedMilliseconds", "Count", "IncompleteCount", "{OriginalFormat}" }, key);
             }
         }
         public void Dispose() { services.Dispose(); Lifetime.Dispose(); Context.Response.Body.Dispose(); Directory.Delete(Options.TempRoot, true); }
