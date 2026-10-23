@@ -14,7 +14,11 @@
 
 pdfcpu 0.16.3はdecoded-byte上限とcreate/formのローカル画像参照制限を含む。APIのcreate JSONは文字だけを生成し、画像のCLI import/stampは従来のjob内固定pathを使う。画像・文字の既存E2Eで互換性を検証する。過去の版の測定値は書き換えない。
 
-ローカルでは公式配布物・Go SDK・font・moduleの固定情報とライセンスを照合し、installer/validatorの構文を確認した。SDK展開は一時領域quotaで失敗したため、実build・全テスト・Docker E2E・監査の結果はGitHub Actionsで確認する。結果と実行URLは確認後に追記する。
+ローカルでは公式配布物・Go SDK・font・moduleの固定情報とライセンス、installer/validatorの構文を確認した。改変したGo SDKは展開前にchecksum不一致で拒否され、インストール先も作られなかった。SDK展開は一時領域quotaで失敗したため、実build・全テスト・Docker E2EはGitHub Actionsで検証する。
+
+[修正後の初回実監査](https://github.com/kooiei-in4a/amane-pdf-api/actions/runs/40167510100)では、固定Goでの実buildと12 module/10 Linux module/ライセンス照合が成功。検査対象の欠落なし、High/Criticalは5→0件、全重大度は67→51件だった。これは検査対象の既知の脆弱性結果であり、安全性の証明ではない。PDFiumは今回更新せず、引き続きCVE自動照合の対象外。
+
+依存変更のレビューはPR #93、監査との組合せはPR #90で確認する。#90には同じ依存commitを取り込み、#93を先にマージする想定。最新の全テスト・Docker E2E・監査結果は各PRのChecksと説明に記載する。mainへのマージ・本番反映は別途承認後。
 
 ## 参照
 
