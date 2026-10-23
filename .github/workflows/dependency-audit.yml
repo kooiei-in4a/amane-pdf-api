@@ -65,6 +65,15 @@ jobs:
         run: |
           docker build --pull -t amane-pdf-api:audit .
           docker image inspect amane-pdf-api:audit > TestResults/evidence/image.json
+      - name: Inventory optional Go binary independently of the scanner
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint /bin/sh amane-pdf-api:audit -c '
+            if [ -e /usr/bin/pebble ] || [ -L /usr/bin/pebble ]; then
+              printf "{\"usr/bin/pebble\":true}\n"
+            else
+              printf "{\"usr/bin/pebble\":false}\n"
+            fi
+          ' > TestResults/evidence/native-presence.json
       - name: Scan OS and Go binary dependencies
         run: |
           "$RUNNER_TEMP/trivy/trivy" image --image-src docker --scanners vuln --list-all-pkgs --format json --output TestResults/evidence/native.json --timeout 10m amane-pdf-api:audit
@@ -76,7 +85,7 @@ jobs:
         run: python3 scripts/pdfium-release-audit.py TestResults/evidence/pdfium-release.json
       - name: Verify coverage and verdict
         if: '!cancelled()'
-        run: python3 scripts/native-audit.py TestResults/evidence/native.json TestResults/evidence/native-summary.md
+        run: python3 scripts/native-audit.py TestResults/evidence/native.json TestResults/evidence/native-summary.md TestResults/evidence/native-presence.json
       - name: Publish summary
         if: always()
         env:
