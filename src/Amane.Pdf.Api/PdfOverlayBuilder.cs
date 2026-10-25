@@ -107,7 +107,11 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             var pdfBudget = capacity.ReserveWrite(layer, settings.OverlayGeneratedLimitBytes, true);
             var canvas = new OverlayCanvas(blank, layer,
                 originals.Select(page => new PdfcpuPageSize(page.DisplayWidth, page.DisplayHeight)).ToArray(), jsonBudget, pdfBudget);
-            await draw(canvas, token);
+            using (var renderStage = PdfProcessingDiagnostics.Measure(PdfStage.Render))
+            {
+                await draw(canvas, token);
+                renderStage.Complete();
+            }
             if (layerJson) capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
             capacity.Commit(layer, pdfBudget);
             // Treat the delegate's output as generated data: it must pass the same checks.
@@ -129,6 +133,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             await WritePdf(files.OutputPath, [overlaid, "--update-from-json=" + update, files.OutputPath]);
             capacity.Delete(overlaid); capacity.Delete(update);
             Mark("restore", new FileInfo(files.OutputPath).Length);
+            using var outputStage = PdfProcessingDiagnostics.Measure(PdfStage.OutputValidation);
             // --check remains a strict independent structural check. Metadata
             // verifies encryption, page count and attributes in one bounded read.
             if (await qpdf.RunAsync(["--check", files.OutputPath], token) != 0) throw new InvalidOperationException(Failure);
@@ -139,6 +144,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
                 for (var i = 0; i < originals.Length; i++)
                     if (!originals[i].SameEffective(final.Read(from - 1 + i, token))) throw new InvalidOperationException(Failure);
             }
+            outputStage.Complete();
             Mark("validate-output");
             observe?.Invoke(new("job-reserved-peak", 0, capacity.Peak));
             completed = true;
@@ -167,7 +173,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
     {
         try
         {
-            await qpdf.ValidateAsync(path, token);
+            await qpdf.ValidateOutputAsync(path, token);
             if (await qpdf.GetPageCountAsync(path, token) != count) throw new InvalidOperationException(Failure);
         }
         catch (PdfInputException) { throw new InvalidOperationException(Failure); }

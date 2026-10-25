@@ -552,7 +552,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         // A truncated EOF can pass qpdf --check. Reject a saturated output budget
         // even on exit 0, including an otherwise valid PDF exactly at the limit.
         if (result.ExitCode != 0 || new FileInfo(files.OutputPath).Length >= fsize) throw new InvalidOperationException("PDF output failed.");
-        try { await new QpdfProcessor(Microsoft.Extensions.Options.Options.Create(options)).ValidateAsync(files.OutputPath, token); }
+        try { await new QpdfProcessor(Microsoft.Extensions.Options.Options.Create(options)).ValidateOutputAsync(files.OutputPath, token); }
         catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
         token.ThrowIfCancellationRequested();
     }

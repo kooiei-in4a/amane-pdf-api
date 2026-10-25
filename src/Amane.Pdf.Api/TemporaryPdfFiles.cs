@@ -75,5 +75,10 @@ public sealed class TemporaryPdfFiles : IDisposable
         return new FileStream(path, options);
     }
 
-    public void Dispose() => Directory.Delete(DirectoryPath, recursive: true);
+    public void Dispose()
+    {
+        using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Cleanup);
+        Directory.Delete(DirectoryPath, recursive: true);
+        stage.Complete();
+    }
 }

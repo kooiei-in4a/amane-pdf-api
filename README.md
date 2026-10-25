@@ -553,6 +553,14 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
 
+## 内部の処理時間ログ
+
+`PdfProcessing` categoryのInformationログに、リクエスト終了時の結果・時間（EventId 8102）と、段階別の時間・回数（8101）を記録します。全イベントにサーバーで新規生成する `RequestId`（UUID）を付け、同一操作の並行リクエストも突合できます。利用者のheader・query・TraceIdentifier・Activity IDは識別子に使いません。処理名は固定allowlist、段階はRequestValidation／Upload／Process／InputValidation／Render／OutputValidation／Send／Cleanupです。実際に通った段階だけを出力し、繰り返すページ処理も集計するため、1リクエスト最大9件です。PDF本文、ファイル名、パスワード、query、request header、一時path、外部ツールの出力、例外本文は渡しません。
+
+request結果はSuccess／Rejected／Timeout／ClientCancelled／Stopping／InternalError／SendAbortedを区別します。送信完了後に一時ディレクトリの削除が失敗した場合はInternalErrorとCleanupのIncompleteで記録し、送信中の障害はSendAbortedで記録します。段階のIncompleteは例外・中断などで完了しなかったことを示し、詳細な結果はrequestログで確認します。Processは入力検証・描画・出力検証を含むため、各段階の時間を単純合計しないでください。出力検証のない処理には検証を追加せず、既存の検証箇所だけを計測します。解除専用の入力確認や画像正規化など個別処理の時間はProcessに含みます。
+
+既存のHTTP応答・timeout・同時実行制限・ファイル削除は維持します。logging providerの例外が応答やcleanupを妨げないよう、ログ出力はbest effortです。共通処理に入る前のrouting・rate limitの拒否、起動時自己テストはこのログの対象外です。必要に応じて既存の.NET設定 `Logging__LogLevel__PdfProcessing=Warning` でこのInformationログを止められます。新しい画面・API・外部監視サービス・ログ保存先は追加しません。
+
 ## 描画プログラム（PDFium、Linux x86_64）
 
 `Amane.Pdf.Renderer` は別プロセスでPDFの1ページを描き、指定の画素矩形を黒で塗ってからJPEG（baseline、4:2:0、品質85）にします。画像化方式の黒塗り（`POST /api/pdf/redact`）と、将来のPDF→画像・OCRの基盤です。PDFiumをAPIプロセス内で読み込まず、PDFtoImage・SkiaSharp・NuGetの画像ライブラリは使いません。

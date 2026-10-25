@@ -62,7 +62,7 @@ public static class PdfCleanEndpoint
         capacity.Delete(files.JobPath);
         try
         {
-            await processor.ValidateAsync(files.OutputPath, token);
+            await processor.ValidateOutputAsync(files.OutputPath, token);
             if (await processor.GetPageCountAsync(files.OutputPath, token) != pages)
                 throw new InvalidOperationException("PDF output validation failed.");
         }
