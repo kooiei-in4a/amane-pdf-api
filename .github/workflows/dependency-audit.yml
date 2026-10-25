@@ -1,0 +1,107 @@
+name: Dependency audit
+
+on:
+  schedule:
+    - cron: '17 19 * * *' # 毎日04:17 JST（GitHub側で遅延する場合あり）
+    - cron: '43 19 * * 0' # 月曜04:43 JST
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/dependency-audit.yml'
+      - '.github/workflows/ci.yml'
+      - 'Dockerfile'
+      - 'third_party/**'
+      - 'scripts/*audit*'
+      - 'scripts/install-*.sh'
+      - '**/*.csproj'
+      - '**/NuGet.Config'
+      - 'global.json'
+
+permissions:
+  contents: read
+
+jobs:
+  nuget:
+    if: github.event_name != 'schedule' || github.event.schedule == '17 19 * * *'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+      - name: Test NuGet audit wrapper
+        run: python3 scripts/test-nuget-audit.py
+      - name: Audit transitive NuGet dependencies
+        run: bash scripts/nuget-audit.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: nuget-audit
+          path: TestResults/evidence/nuget-*
+          retention-days: 14
+          if-no-files-found: error
+
+  native:
+    if: github.event_name != 'schedule' || github.event.schedule == '43 19 * * 0'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test audit verdicts
+        run: python3 scripts/test-native-audit.py
+      - name: Install pinned Trivy
+        run: |
+          mkdir -p "$RUNNER_TEMP/trivy" TestResults/evidence
+          curl --fail --location --retry 3 --max-time 180 https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz -o "$RUNNER_TEMP/trivy.tar.gz"
+          echo "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy" trivy
+      - name: Build audit image (no publish)
+        run: |
+          docker build --pull -t amane-pdf-api:audit .
+          docker image inspect amane-pdf-api:audit > TestResults/evidence/image.json
+      - name: Inventory optional Go binary independently of the scanner
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint /bin/sh amane-pdf-api:audit -c '
+            if [ -e /usr/bin/pebble ] || [ -L /usr/bin/pebble ]; then
+              printf "{\"usr/bin/pebble\":true}\n"
+            else
+              printf "{\"usr/bin/pebble\":false}\n"
+            fi
+          ' > TestResults/evidence/native-presence.json
+      - name: Scan OS and Go binary dependencies
+        run: |
+          "$RUNNER_TEMP/trivy/trivy" image --image-src docker --scanners vuln --list-all-pkgs --format json --output TestResults/evidence/native.json --timeout 10m amane-pdf-api:audit
+          "$RUNNER_TEMP/trivy/trivy" version --format json > TestResults/evidence/trivy-version.json
+      - name: Check PDFium release information (not a CVE scan)
+        if: '!cancelled()'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/pdfium-release-audit.py TestResults/evidence/pdfium-release.json
+      - name: Verify coverage and verdict
+        if: '!cancelled()'
+        run: python3 scripts/native-audit.py TestResults/evidence/native.json TestResults/evidence/native-summary.md TestResults/evidence/native-presence.json
+      - name: Publish summary
+        if: always()
+        env:
+          AUDIT_STATUS: ${{ job.status }}
+        run: |
+          echo "外部依存監査 job: $AUDIT_STATUS（取得・検査失敗を成功扱いしません）" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f TestResults/evidence/native-summary.md ]; then cat TestResults/evidence/native-summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f TestResults/evidence/pdfium-release.json ]; then
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat TestResults/evidence/pdfium-release.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: native-audit
+          path: TestResults/evidence/
+          retention-days: 14
+          if-no-files-found: error
