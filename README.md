@@ -441,7 +441,7 @@ curl --fail-with-body http://localhost:8080/api/pdf/fill-template \
 
 フォントは1種、黒、横書き、回転なしです。明細行の追加・自動改ページ、画像・印影の差し込み、AcroForm/XFAへの入力、PDF内の文字置換、テンプレートの保存は扱いません。処理全体30秒・共有同時2件の枠を使います。対応外のページ属性は422 `unsupported-pdf`、描画・生成物検査の失敗は500、503・504は共通契約です。
 
-文字抽出用ToUnicodeはpdfcpu 0.16.2の出力を使います。100種を超える字形のMuPDF・Poppler抽出と、全11,425字のGID→元文字の対応をCIで検証します。pdfcpu・フォントを更新するときは字幅・ベースライン・文字抽出を再検証してください。[設計書](docs/fill-template-design.md)と[検証記録](docs/fill-template-validation.md)に詳細を記載しています。
+文字抽出用ToUnicodeはpdfcpu 0.16.3の出力を使います。100種を超える字形のMuPDF・Poppler抽出と、全11,425字のGID→元文字の対応をCIで検証します。pdfcpu・フォントを更新するときは字幅・ベースライン・文字抽出を再検証してください。[設計書](docs/fill-template-design.md)と[検証記録](docs/fill-template-validation.md)に詳細を記載しています。
 
 ### PDF電子印鑑（Linux）
 
@@ -608,7 +608,7 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__OverlayOutputLimitBytes` | `65011712`（62 MiB） | overlaid/最終PDFの各上限。job残容量による実効予算も適用 |
 | `Pdf__OverlayJobLimitBytes` | `130023424`（124 MiB） | 入力、全中間物、出力、FSIZE sentinelを4 KiB単位で予約 |
 | `Pdf__OverlayMaxPages` | `1000` | 連続した対象ページの上限 |
-| `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.2の描画tool |
+| `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.3の描画tool |
 | `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
 | `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
 | `Pdf__PdfcpuAddressSpaceLimitBytes` | `1073741824`（1 GiB） | pdfcpu専用RLIMIT_AS。qpdfと別の値 |
@@ -744,7 +744,7 @@ Dockerfile
 - Linuxではprlimit（util-linux）と、`--ignore-signal=XFSZ`に対応する`/usr/bin/env`（通常はOSに同梱）
 - qpdf（QPDFJob JSON / AES-256対応。CIでは実qpdfをインストールして検証）
 - Linuxではlibjpeg-turbo-progs（djpeg／cjpegと必要なオプション）
-- Linux x86_64ではpdfcpu 0.16.2とBIZ UDPゴシック（共有installerで取得。curl・Python 3が必要）
+- Linux x86_64ではpdfcpu 0.16.3とBIZ UDPゴシック（共有installerが固定Go 1.27.3 SDK・公式ソースからビルド。curl・Python 3とbuild時のネットワークが必要）
 - Linux x86_64では固定版PDFium（`scripts/install-pdfium.sh` で取得）
 - Docker（コンテナ確認を行う場合）
 - Python 3（Docker smoke test。追加package不要）
@@ -826,7 +826,7 @@ python3 -m venv /tmp/amane-fill-template-validation
 python3 scripts/redact-validation.py amane-pdf-api:ci
 ```
 
-CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名の3取得物をローカルから読む検証用optionで、checksumの検査は省略しません。
+CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名のGo SDK・font archive・OFLをローカルから読む検証用optionで、checksumの検査は省略しません。pdfcpu moduleと依存はbuild時にGo proxyとchecksum databaseから取得します。ソースのmodule checksum・go.mod・binary metadata・licenseを照合し、SDKとビルドcacheはruntimeへ含めません。
 
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 

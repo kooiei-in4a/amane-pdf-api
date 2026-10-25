@@ -20,7 +20,7 @@
 
 ## 2. 前提（確認済みの現行構成）
 
-- API：.NET 10。描画は pdfcpu 0.16.2 + BIZ UDPゴシック v1.051、合成・検証は qpdf 12.3.2。DB・認証・永続保存なし。
+- API：.NET 10。描画は pdfcpu 0.16.3 + BIZ UDPゴシック v1.051、合成・検証は qpdf 12.3.2。DB・認証・永続保存なし。
 - 共通描画基盤 `PdfOverlayBuilder` が、入力検査、表示上のページ寸法の算出（CropBox・Rotate・UserUnitを反映）、白紙レイヤーの作成、qpdfでの重ね合わせ、属性の復元、出力検査を行う。透かし・ページ番号・押印で検証済み。
 - サイト：.NET 10 / Blazor / PostgreSQL。PDF中継（`PdfRelay`）はブラウザから届いたmultipartをそのまま転送する。pdf.js 6.3.289 によるプレビューと、黒塗りの矩形指定UI（`pdf-redact-regions.js`）がある。
 - 座標は黒塗りと同じく「表示上のページ左上を原点とする0〜1の値」で扱う。

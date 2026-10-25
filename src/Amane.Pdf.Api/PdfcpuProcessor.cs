@@ -9,7 +9,7 @@ namespace Amane.Pdf.Api;
 internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
 {
     internal const string JapaneseFont = "BIZUDPGothic-Regular";
-    internal const string Version = "0.16.2";
+    internal const string Version = "0.16.3";
     internal const long LayerFileLimitBytes = 8 * 1024 * 1024;
     internal const int MaxTextLength = 128; // UTF-16 code units per element
     internal const int MaxTextsPerPage = 4;

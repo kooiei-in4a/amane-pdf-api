@@ -209,7 +209,7 @@ def main():
     started = time.monotonic()
     with smoke.running_container(args.image) as api:
         version = api.exec("/opt/amane-pdf/bin/pdfcpu", "-c", "/opt/amane-pdf/config", "--offline", "version").stdout.decode()
-        assert "version: 0.16.2" in version.splitlines()
+        assert "version: 0.16.3" in version.splitlines()
         root = api.exec("mktemp", "-d", "/tmp/fill-template-glyphs-XXXXXXXX").stdout.decode().strip()
         try:
             assert re.fullmatch(r"/tmp/fill-template-glyphs-[A-Za-z0-9]+", root)
@@ -221,7 +221,7 @@ def main():
         api.assert_clean()
     if args.results:
         args.results.write_text(json.dumps(result, indent=2) + "\n")
-    print(f"pdfcpu 0.16.2 / total {time.monotonic()-started:.2f}s", flush=True)
+    print(f"pdfcpu 0.16.3 / total {time.monotonic()-started:.2f}s", flush=True)
 
 
 if __name__ == "__main__":
