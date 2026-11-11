@@ -100,21 +100,23 @@ internal static class ExternalProcessRunner
 
     private static async Task<byte[]?> ReadBoundedAsync(Stream stream, int limit)
     {
-        var output = new byte[limit];
-        var stored = 0;
+        using var output = new MemoryStream();
+        var buffer = new byte[16 * 1024];
         var exceeded = false;
-        var buffer = new byte[64];
         int read;
         while ((read = await stream.ReadAsync(buffer)) != 0)
         {
-            var copied = Math.Min(read, output.Length - stored);
-            if (copied > 0)
+            if (exceeded) continue;
+            var length = output.Length + read;
+            if (length > limit)
             {
-                buffer.AsSpan(0, copied).CopyTo(output.AsSpan(stored));
-                stored += copied;
+                exceeded = true;
+                continue;
             }
-            if (copied < read) exceeded = true;
+            if (length > output.Capacity)
+                output.Capacity = (int)Math.Min(limit, Math.Max(length, 2L * output.Capacity));
+            output.Write(buffer, 0, read);
         }
-        return exceeded ? null : output[..stored];
+        return exceeded ? null : output.ToArray();
     }
 }

@@ -116,6 +116,43 @@ public sealed class ExternalProcessRunnerTests
     }
 
     [TestMethod]
+    [DataRow(128 * 1024)]
+    [DataRow(128 * 1024 - 1)]
+    public async Task StdoutLimit_DrainsMultipleBuffersAndPreservesBinaryOutputWithinLimit(int limit)
+    {
+        if (!RequireLinux()) return;
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var script = CreateScript(files, "printf a && head -c 131070 /dev/zero && printf z && exit 17");
+
+        var result = await RunAsync(new(script, [], StdoutLimit: limit));
+
+        Assert.AreEqual(17, result.ExitCode);
+        if (limit < 128 * 1024) Assert.IsNull(result.Stdout);
+        else
+        {
+            var expected = new byte[128 * 1024];
+            expected[0] = (byte)'a';
+            expected[^1] = (byte)'z';
+            Assert.IsNotNull(result.Stdout);
+            CollectionAssert.AreEqual(expected, result.Stdout);
+        }
+    }
+
+    [TestMethod]
+    public async Task StdoutLimit_SmallOutputWithLargeLimitDoesNotReserveTheLimit()
+    {
+        if (!RequireLinux()) return;
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var script = CreateScript(files, "printf small");
+
+        var result = await RunAsync(new(script, [], StdoutLimit: int.MaxValue));
+
+        Assert.AreEqual(0, result.ExitCode);
+        Assert.IsNotNull(result.Stdout);
+        CollectionAssert.AreEqual("small"u8.ToArray(), result.Stdout);
+    }
+
+    [TestMethod]
     [DataRow(8)]
     [DataRow(9)]
     public async Task StdoutLimit_IsMeasuredInBytes(int limit)

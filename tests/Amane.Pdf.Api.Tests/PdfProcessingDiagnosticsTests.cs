@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ namespace Amane.Pdf.Api.Tests;
 [TestClass]
 public sealed class PdfProcessingDiagnosticsTests
 {
+    private const string CleanupFailure = "PDF処理の一時ディレクトリの削除に失敗しました。";
     private const string Secret = "PRIVATE_SENTINEL_password_filename_pdf_exception";
 
     [TestMethod]
@@ -80,11 +82,14 @@ public sealed class PdfProcessingDiagnosticsTests
     {
         using var test = new Harness("/api/pdf/split");
         var feature = new StartedResponseFeature();
+        var lifetime = new RequestLifetime();
         test.Context.Features.Set<IHttpResponseFeature>(feature);
+        test.Context.Features.Set<IHttpRequestLifetimeFeature>(lifetime);
         test.Context.Response.Body = new ThrowingStream();
         await PdfEndpointHelpers.ExecuteAsync(test.Context, test.Options, "output.pdf", null,
             (_, _) => Task.CompletedTask, (files, token) => File.WriteAllBytesAsync(files.OutputPath, [1, 2], token),
             onSend: _ => feature.Started = true);
+        Assert.AreEqual(1, lifetime.AbortCalls);
         test.AssertStage("Send", "Incomplete", 1);
         test.AssertRequest("SendAborted");
         test.AssertPrivateAndClean();
@@ -166,31 +171,59 @@ public sealed class PdfProcessingDiagnosticsTests
     }
 
     [TestMethod]
-    public async Task CleanupFailureAfterCompletedSend_IsInternalError_WithIncompleteCleanup()
+    [DataRow(200, "Success")]
+    [DataRow(422, "Rejected")]
+    [DataRow(504, "Timeout")]
+    public async Task CleanupFailure_PreservesResponseAndLogsOnlyFixedMessage(int status, string outcome)
     {
         if (!OperatingSystem.IsLinux()) return;
-        using var test = new Harness("/api/pdf/optimize");
+        using var test = new Harness("/api/pdf/unlock");
         var feature = new StartedResponseFeature();
+        var lifetime = new RequestLifetime();
         test.Context.Features.Set<IHttpResponseFeature>(feature);
-        test.Context.Response.Body = new MemoryStream();
+        test.Context.Features.Set<IHttpRequestLifetimeFeature>(lifetime);
+        test.Options.QpdfTimeoutSeconds = 1;
         string? job = null;
+        byte[] pdf = PdfTestContext.Fixture;
         try
         {
             await PdfEndpointHelpers.ExecuteAsync(test.Context, test.Options, "output.pdf", null,
                 (_, _) => Task.CompletedTask, async (files, token) =>
                 {
                     job = files.DirectoryPath;
-                    await File.WriteAllBytesAsync(files.OutputPath, [1, 2, 3], token);
-                    // Prevent removing the job directory from its parent, while allowing the send.
+                    // Prevent removing the job directory from its parent, while allowing file I/O.
                     if (OperatingSystem.IsLinux())
                         File.SetUnixFileMode(test.Options.TempRoot, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+                    if (status == 422) throw new PdfUnlockException(PdfUnlockReason.WrongPassword);
+                    if (status == 504) await Task.Delay(Timeout.Infinite, token);
+                    await File.WriteAllBytesAsync(files.OutputPath, pdf, token);
                 }, onSend: _ => feature.Started = true);
-            Assert.AreEqual(200, test.Context.Response.StatusCode);
-            CollectionAssert.AreEqual(new byte[] { 1, 2, 3 }, ((MemoryStream)test.Context.Response.Body).ToArray());
+
+            Assert.AreEqual(status, test.Context.Response.StatusCode);
+            Assert.AreEqual(0, lifetime.AbortCalls);
             Assert.IsTrue(Directory.Exists(job), "The real directory removal must fail.");
-            test.AssertStage("Send", "Completed", 1);
+            if (status == 200)
+            {
+                Assert.IsTrue(feature.HasStarted);
+                CollectionAssert.AreEqual(pdf, ((MemoryStream)test.Context.Response.Body).ToArray());
+                test.AssertStage("Send", "Completed", 1);
+            }
+            else
+            {
+                test.Context.Response.Body.Position = 0;
+                using var body = await JsonDocument.ParseAsync(test.Context.Response.Body);
+                Assert.AreEqual(status, body.RootElement.GetProperty("status").GetInt32());
+                Assert.AreEqual(status == 422 ? "パスワードが正しくありません。" : "PDF処理が制限時間を超過しました。",
+                    body.RootElement.GetProperty("title").GetString());
+                if (status == 422) Assert.AreEqual("wrong-password", body.RootElement.GetProperty("reason").GetString());
+                else Assert.IsFalse(body.RootElement.TryGetProperty("reason", out _));
+            }
+            var error = test.Records.Single(r => r.Level == LogLevel.Error);
+            Assert.AreEqual(CleanupFailure, error.Text);
+            Assert.AreEqual(1, error.Fields.Count);
+            Assert.AreEqual(CleanupFailure, error.Fields["{OriginalFormat}"]);
             test.AssertStage("Cleanup", "Incomplete", 1);
-            test.AssertRequest("InternalError");
+            test.AssertRequest(outcome);
         }
         finally
         {
@@ -270,7 +303,8 @@ public sealed class PdfProcessingDiagnosticsTests
                 Assert.IsFalse(record.Text.Contains(Secret));
                 Assert.IsFalse(record.Text.Contains(Options.TempRoot));
                 Assert.IsNull(record.Exception);
-                Assert.IsTrue(record.Fields["RequestId"] is string id && Guid.TryParseExact(id, "N", out _));
+                if (record.Id is 8101 or 8102)
+                    Assert.IsTrue(record.Fields["RequestId"] is string id && Guid.TryParseExact(id, "N", out _));
                 foreach (var key in record.Fields.Keys)
                     CollectionAssert.Contains(new[] { "RequestId", "Operation", "Stage", "Outcome", "ElapsedMilliseconds", "Count", "IncompleteCount", "{OriginalFormat}" }, key);
             }
@@ -278,7 +312,7 @@ public sealed class PdfProcessingDiagnosticsTests
         public void Dispose() { services.Dispose(); Lifetime.Dispose(); Context.Response.Body.Dispose(); Directory.Delete(Options.TempRoot, true); }
     }
 
-    private sealed record LogRecord(int Id, Dictionary<string, object?> Fields, string Text, Exception? Exception);
+    private sealed record LogRecord(int Id, LogLevel Level, Dictionary<string, object?> Fields, string Text, Exception? Exception);
     private sealed class Capture(ConcurrentQueue<LogRecord> records, bool throwLogs, bool throwCreate) : ILoggerProvider
     {
         public ILogger CreateLogger(string categoryName)
@@ -295,7 +329,7 @@ public sealed class PdfProcessingDiagnosticsTests
             {
                 if (category != "PdfProcessing") return;
                 if (throwLogs) throw new InvalidOperationException(Secret);
-                records.Enqueue(new(id.Id, ((IEnumerable<KeyValuePair<string, object?>>)state!).ToDictionary(), formatter(state, exception), exception));
+                records.Enqueue(new(id.Id, level, ((IEnumerable<KeyValuePair<string, object?>>)state!).ToDictionary(), formatter(state, exception), exception));
             }
         }
     }
@@ -307,6 +341,12 @@ public sealed class PdfProcessingDiagnosticsTests
         public CancellationToken ApplicationStopped => default;
         public void StopApplication() => source.Cancel();
         public void Dispose() => source.Dispose();
+    }
+    private sealed class RequestLifetime : IHttpRequestLifetimeFeature
+    {
+        public CancellationToken RequestAborted { get; set; }
+        internal int AbortCalls { get; private set; }
+        public void Abort() => AbortCalls++;
     }
     private sealed class StartedResponseFeature : HttpResponseFeature
     {

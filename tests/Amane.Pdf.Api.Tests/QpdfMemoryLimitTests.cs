@@ -63,10 +63,23 @@ public sealed class QpdfMemoryLimitTests
         if (key == "Pdf:PrlimitPath") options.PrlimitPath = value;
         if (key == "Pdf:QpdfPath") options.QpdfPath = value;
         if (key == "Pdf:QpdfAddressSpaceLimitBytes") options.QpdfAddressSpaceLimitBytes = long.Parse(value);
-        var exception = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsExactlyAsync<ProcessMemoryLimitsStartupException>(() =>
             ProcessMemoryLimits.ValidateStartupAsync(options, CancellationToken.None));
         Assert.AreEqual("PDF処理のメモリ制限の自己テストに失敗しました。", exception.Message);
         Assert.IsNull(exception.InnerException);
+    }
+
+    [TestMethod]
+    public void UnrelatedInvalidOperationException_DuringOptionsResolution_IsNotTreatedAsSelfTestFailure()
+    {
+        var expected = new InvalidOperationException("Test options resolution failure.");
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+                services.AddSingleton<IOptions<PdfOptions>>(_ => throw expected)));
+
+        var exception = Assert.ThrowsExactly<InvalidOperationException>(() => factory.CreateClient());
+
+        Assert.AreSame(expected, exception);
     }
 
     [TestMethod]
@@ -158,13 +171,13 @@ public sealed class QpdfMemoryLimitTests
         var trueRequest = ProcessMemoryLimits.CreateRequest(options.PrlimitPath, "/bin/true", [],
             options.QpdfAddressSpaceLimitBytes, options.QpdfJpegMemory);
         Assert.AreEqual(0, (await ExternalProcessRunner.RunAsync(trueRequest, CancellationToken.None)).ExitCode);
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsExactlyAsync<ProcessMemoryLimitsStartupException>(() =>
             ProcessMemoryLimits.ValidateStartupAsync(options, CancellationToken.None));
         using var blocker = new BlockingQpdf("--version");
         options.QpdfPath = blocker.Executable;
         options.QpdfAddressSpaceLimitBytes = new PdfOptions().QpdfAddressSpaceLimitBytes;
         options.QpdfTimeoutSeconds = 1;
-        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsExactlyAsync<ProcessMemoryLimitsStartupException>(() =>
             ProcessMemoryLimits.ValidateStartupAsync(options, CancellationToken.None));
         await blocker.AssertStoppedAsync();
     }

@@ -19,7 +19,6 @@ internal static class PdfEndpointHelpers
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         using var diagnostics = new PdfProcessingDiagnostics(context);
-        var sendCompleted = false;
         try
         {
             using (var stage = PdfProcessingDiagnostics.Measure(PdfStage.RequestValidation))
@@ -29,34 +28,41 @@ internal static class PdfEndpointHelpers
                 stage.Complete();
             }
             using var operation = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, stopping);
-            using var files = new TemporaryPdfFiles(options.TempRoot);
-            using (var stage = PdfProcessingDiagnostics.Measure(PdfStage.Upload))
-            {
-                await readUploadAsync(files, operation.Token);
-                stage.Complete();
-            }
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(operation.Token);
-            timeout.CancelAfter(TimeSpan.FromSeconds(options.QpdfTimeoutSeconds));
+            var files = new TemporaryPdfFiles(options.TempRoot);
             try
             {
-                using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Process);
-                await processAsync(files, timeout.Token);
-                stage.Complete();
+                using (var stage = PdfProcessingDiagnostics.Measure(PdfStage.Upload))
+                {
+                    await readUploadAsync(files, operation.Token);
+                    stage.Complete();
+                }
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(operation.Token);
+                timeout.CancelAfter(TimeSpan.FromSeconds(options.QpdfTimeoutSeconds));
+                try
+                {
+                    using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Process);
+                    await processAsync(files, timeout.Token);
+                    stage.Complete();
+                }
+                catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested && !stopping.IsCancellationRequested)
+                {
+                    diagnostics.Outcome = PdfOutcome.Timeout;
+                    await Results.Problem(statusCode: 504, title: images
+                        ? "画像からPDFへの変換が制限時間を超過しました。" : "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
+                    return;
+                }
+                using (var stage = PdfProcessingDiagnostics.Measure(PdfStage.Send))
+                {
+                    await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
+                    stage.Complete();
+                }
+                diagnostics.Outcome = PdfOutcome.Success;
             }
-            catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested && !stopping.IsCancellationRequested)
+            finally
             {
-                diagnostics.Outcome = PdfOutcome.Timeout;
-                await Results.Problem(statusCode: 504, title: images
-                    ? "画像からPDFへの変換が制限時間を超過しました。" : "PDF処理が制限時間を超過しました。").ExecuteAsync(context);
-                return;
+                try { files.Dispose(); }
+                catch (Exception) { diagnostics.LogCleanupFailure(); }
             }
-            using (var stage = PdfProcessingDiagnostics.Measure(PdfStage.Send))
-            {
-                await SendFileAsync(context, files.OutputPath, downloadFileName, operation.Token, onSend, contentType);
-                stage.Complete();
-            }
-            sendCompleted = true;
-            diagnostics.Outcome = PdfOutcome.Success;
         }
         catch (PdfFillTemplateException exception)
         {
@@ -150,12 +156,12 @@ internal static class PdfEndpointHelpers
         catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
             diagnostics.Outcome = PdfOutcome.ClientCancelled;
-            // The process has exited and temporary files have been removed before returning.
+            // The process has exited and temporary file cleanup was attempted before returning.
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested)
         {
             diagnostics.Outcome = PdfOutcome.Stopping;
-            // The process has exited and temporary files have been removed before aborting.
+            // The process has exited and temporary file cleanup was attempted before aborting.
             context.Abort();
         }
         catch (Exception)
@@ -163,8 +169,7 @@ internal static class PdfEndpointHelpers
             diagnostics.Outcome = PdfOutcome.InternalError;
             if (context.Response.HasStarted)
             {
-                // A subsequent directory deletion failure is an internal error, not a failed send.
-                if (!sendCompleted) diagnostics.Outcome = PdfOutcome.SendAborted;
+                diagnostics.Outcome = PdfOutcome.SendAborted;
                 context.Abort();
                 return;
             }

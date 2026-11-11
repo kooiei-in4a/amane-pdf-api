@@ -61,6 +61,12 @@ internal sealed class PdfProcessingDiagnostics : IDisposable
         }
     }
 
+    internal void LogCleanupFailure()
+    {
+        try { logger?.LogError("PDF処理の一時ディレクトリの削除に失敗しました。"); }
+        catch (Exception) { /* Keep the request outcome even if the log provider fails. */ }
+    }
+
     public void Dispose()
     {
         if (disposed) return;
