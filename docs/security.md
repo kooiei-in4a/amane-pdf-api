@@ -190,7 +190,7 @@ Linuxではpdfcpuの起動検証を必須にします。qpdf/JPEGと同じ起動
 
 Linuxのページ番号APIは、数値と固定の列挙値だけを受け付け、任意の文字列・書式・font名を受け付けません。queryの未知key・重複・形式不正はアップロード前に400にし、入力検査とmetadata取得後にfromと最終表示番号（99999以下）を検証します。Builderが既に取得したページ数から対象範囲を決め、入力検査やページ数probeを追加しません。APIがInvariantCultureで組み立てた数字・区切りだけを各対象ページへ1要素ずつ描きます。描画対象1000ページ、各容量予算、共有30秒・同時2枠・待ち0、終了待ちとjob削除は既存overlay処理を使います。単一fileのstreaming multipartと既暗号化PDFの拒否も既存処理を使います。
 
-共通処理はAPIが生成したjob内の白紙だけをpdfcpuへ渡します。利用者PDFの検証・属性解析・overlayはqpdfだけで行います。描画modelは文字だけに限定し、任意JSON・font名・URL・画像・外部ファイル参照を受け付けません。fontはBIZUDPGothic-Regularに固定し、`%`、不正なUnicode、非有限数、不正な配置や色を生成前に拒否します。文字は0600のJSONだけに保存し、argvへ渡しません。jobは0700、pdfcpuの成功出力は検査前に0600へ揃えます。
+共通処理はAPIが生成したjob内の白紙だけをpdfcpuへ渡します。利用者PDFの検証・属性解析・overlayはqpdfだけで行います。描画modelは文字だけに限定し、任意JSON・font名・URL・画像・外部ファイル参照を受け付けません。fontはBIZUDPGothic-Regularに固定し、不正なUnicode、非有限数、不正な配置や色を生成前に拒否します。文字列中の連続するn個の`%`は、描画用JSONに書き込む際にn+1個へ書き換えます。文字は0600のJSONだけに保存し、argvへ渡しません。jobは0700、pdfcpuの成功出力は検査前に0600へ揃えます。
 
 pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無視、prlimitのCORE=0・AS 1 GiB・FSIZE（PDF予算+1）で起動します。ASは仮想アドレス空間の上限で、コンテナの物理メモリ上限とは別です。GOMEMLIMIT=200MiBはsoft limitで、超過しても強制停止する上限ではなく、RSSの上限保証でもありません。取込・overlayとも共通AS 1 GiBを維持します。固定Go runtimeではASと成功率が単調でないため（[AS別の反復検証](from-images-as-validation.md)）、pdfcpu更新時はAS 1 GiBで境界入力を再検証します。HOME/XDG_CONFIG_HOMEはjob内、GOGC=100・GODEBUG空・GOMAXPROCS=1・GOTRACEBACK=noneへ上書きします。`-c` とofflineを常に指定し、親の設定dir指定に依存しません。version/font stdoutの保持は4 KiB/64 KiBまで、通常stdout/stderrは破棄します。
 
