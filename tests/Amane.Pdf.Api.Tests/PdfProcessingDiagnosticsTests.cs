@@ -174,7 +174,7 @@ public sealed class PdfProcessingDiagnosticsTests
     [DataRow(200, "Success")]
     [DataRow(422, "Rejected")]
     [DataRow(504, "Timeout")]
-    public async Task CleanupFailure_PreservesResponseAndLogsOnlyFixedMessage(int status, string outcome)
+    public async Task CleanupFailure_PreservesResponseAndCorrelatesErrorWithRequest(int status, string outcome)
     {
         if (!OperatingSystem.IsLinux()) return;
         using var test = new Harness("/api/pdf/unlock");
@@ -219,9 +219,15 @@ public sealed class PdfProcessingDiagnosticsTests
                 else Assert.IsFalse(body.RootElement.TryGetProperty("reason", out _));
             }
             var error = test.Records.Single(r => r.Level == LogLevel.Error);
-            Assert.AreEqual(CleanupFailure, error.Text);
-            Assert.AreEqual(1, error.Fields.Count);
-            Assert.AreEqual(CleanupFailure, error.Fields["{OriginalFormat}"]);
+            Assert.AreEqual(8103, error.Id);
+            CollectionAssert.AreEquivalent(new[] { "RequestId", "Operation", "{OriginalFormat}" }, error.Fields.Keys.ToArray());
+            var request = test.Records.Single(r => r.Id == 8102);
+            Assert.AreEqual(request.Fields["RequestId"], error.Fields["RequestId"]);
+            Assert.AreEqual("unlock", error.Fields["Operation"]);
+            Assert.AreEqual(request.Fields["Operation"], error.Fields["Operation"]);
+            Assert.AreEqual($"{CleanupFailure} RequestId={{RequestId}} Operation={{Operation}}", error.Fields["{OriginalFormat}"]);
+            Assert.AreEqual($"{CleanupFailure} RequestId={request.Fields["RequestId"]} Operation=unlock", error.Text);
+            Assert.IsTrue(test.Records.Count <= 10);
             test.AssertStage("Cleanup", "Incomplete", 1);
             test.AssertRequest(outcome);
         }
@@ -303,8 +309,7 @@ public sealed class PdfProcessingDiagnosticsTests
                 Assert.IsFalse(record.Text.Contains(Secret));
                 Assert.IsFalse(record.Text.Contains(Options.TempRoot));
                 Assert.IsNull(record.Exception);
-                if (record.Id is 8101 or 8102)
-                    Assert.IsTrue(record.Fields["RequestId"] is string id && Guid.TryParseExact(id, "N", out _));
+                Assert.IsTrue(record.Fields["RequestId"] is string id && Guid.TryParseExact(id, "N", out _));
                 foreach (var key in record.Fields.Keys)
                     CollectionAssert.Contains(new[] { "RequestId", "Operation", "Stage", "Outcome", "ElapsedMilliseconds", "Count", "IncompleteCount", "{OriginalFormat}" }, key);
             }
