@@ -653,7 +653,9 @@ PNG見積りは`64 MiB + 2×正規化PNG bytes + 画素数×係数`が基本で�
 
 Issue #25の共通描画基盤は、qpdf metadataからページ属性を解決し、APIが生成した白紙にだけpdfcpuで描画して合成します。ページ番号APIもこの基盤を使います。MediaBox・CropBox・Rotateの継承と、UserUnit・TrimBoxの非継承を扱い、対象Boxの一時調整とoverlayを1回のqpdfで実行します。合成後の新しい辞書とParentからBox・元の整数Rotateを復元します。CropBox外の元本文はFormのBBoxで表示されなくなりますが、streamや文字抽出には残り得るため、情報除去には使えません。
 
-文字系modelは1要素128 UTF-16単位、1ページ4要素、合計4,000要素、最大1,000対象ページです。各要素の改行LF・tabはそれぞれ3個までで、他の制御文字、不正なUTF-16、pdfcpuの置換文字`%`は拒否します。font sizeは1〜14,400 pt、座標・offsetは±14,400 pt、文字回転は±360度、fontは固定です。JSONの描画範囲へcanvasの物理寸法を渡してください。後続APIでこの範囲を広げる場合は最大入力の再検証が必要です。画像→PDFは文字系の8 MiB予算と分離し、[画像用の検証記録](docs/from-images-validation.md)にbytes・画素数・生成物の測定を記載します。画像stampは#29で別途検証します。[設計書](docs/pdfcpu-design.md)、[PR A](docs/pdfcpu-validation.md)、[PR Bの検証記録](docs/overlay-validation.md)を参照してください。
+文字描画モデルの既定の上限は1要素128 UTF-16単位、1ページ4要素です。fill-templateでは1要素200 UTF-16単位、1ページ100要素に上書きします。モデル全体の上限は4,000要素、対象範囲は最大1,000ページです。各要素の改行LF・タブはそれぞれ3個までで、他の制御文字と不正なUTF-16は拒否します。文字列中の `%` はそのまま描画できるよう、描画用JSONに書き込む際にエスケープします。文字数はエスケープ前の値で検査します。fill-templateが受け付ける文字は[PDFテンプレート差し込み](#pdfテンプレート差し込みlinux)を参照してください。
+
+フォントサイズは1〜14,400 pt、座標・オフセットは±14,400 pt、文字回転は±360度で、フォントは固定です。描画用JSONには描画対象ページの物理寸法を渡します。後続APIでこの範囲を広げる場合は最大入力の再検証が必要です。画像からPDFへの変換には文字系の8 MiBとは別の予算を適用します。測定結果は[画像からPDFへの変換の検証記録](docs/from-images-validation.md)と[電子印鑑APIの検証記録](docs/stamp-image-validation.md)に記載しています。文字描画については[設計書](docs/pdfcpu-design.md)、[pdfcpuの検証記録](docs/pdfcpu-validation.md)、[合成処理の検証記録](docs/overlay-validation.md)を参照してください。
 
 単一PDF APIのリクエスト総量上限はPDF上限 + 64 KiB、mergeとfrom-imagesではそれぞれ入力合計上限 + 64 KiBです。multipartのヘッダー/境界/password用の余裕であり、PDF自体の上限は緩めません。
 Content-Lengthの早期チェック、Kestrelのbody上限、実読込bytesのカウントを併用します。
