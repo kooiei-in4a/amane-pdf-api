@@ -1,6 +1,6 @@
 namespace Amane.Pdf.Api;
 
-internal enum PdfOverlayReason { TooComplex, UnsupportedPdf }
+internal enum PdfOverlayReason { TooComplex, UnsupportedPdf, SignatureStructure }
 internal sealed class PdfOverlayInputException(PdfOverlayReason reason) : Exception
 {
     internal PdfOverlayReason Reason { get; } = reason;

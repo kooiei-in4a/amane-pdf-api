@@ -8,35 +8,52 @@ internal static class PdfFormDetector
 {
     internal static void RejectForms(PdfPageBoxes metadata, CancellationToken token)
     {
+        if (ContainsRestrictedStructure(metadata, includeForms: true, token))
+            throw new PdfFillTemplateException(PdfFillTemplateReason.FormFields);
+    }
+
+    internal static bool ContainsSignatureStructure(PdfPageBoxes metadata, CancellationToken token)
+        => ContainsRestrictedStructure(metadata, includeForms: false, token);
+
+    private static bool ContainsRestrictedStructure(PdfPageBoxes metadata, bool includeForms, CancellationToken token)
+    {
         // Follow the trailer's Root rather than treating every Catalog-like dictionary as the root.
         var trailer = metadata.Document.RootElement.GetProperty("qpdf")[1].GetProperty("trailer").GetProperty("value");
         var root = metadata.Resolve(trailer.GetProperty("/Root"), token);
         foreach (var property in root.EnumerateObject())
-            if (Name(property.Name) is "/AcroForm" or "/Perms") Reject();
+        {
+            var key = Name(property.Name);
+            if (key == "/Perms" || (includeForms && key == "/AcroForm")) return true;
+        }
         // References need not be followed: each indirect object is visited exactly once.
         // The bounded DOM also contains object stream members and stream dictionaries.
-        foreach (var obj in metadata.Objects.Values) Scan(obj, token);
+        return metadata.Objects.Values.Any(obj => Scan(obj, includeForms, token));
     }
 
-    private static void Scan(JsonElement value, CancellationToken token)
+    private static bool Scan(JsonElement value, bool includeForms, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         if (value.ValueKind == JsonValueKind.Object)
         {
             foreach (var property in value.EnumerateObject())
             {
-                var key = Name(property.Name);
                 if (property.Value.ValueKind == JsonValueKind.String)
                 {
+                    var key = Name(property.Name);
                     var name = Name(property.Value.GetString()!);
-                    if ((key == "/Subtype" && name == "/Widget") || (key == "/FT" && name == "/Sig") ||
-                        (key == "/Type" && name is "/Sig" or "/DocTimeStamp")) Reject();
+                    if ((includeForms && key == "/Subtype" && name == "/Widget") ||
+                        (key == "/FT" && name == "/Sig") ||
+                        (key == "/Type" && name is "/Sig" or "/DocTimeStamp")) return true;
                 }
-                Scan(property.Value, token);
+                if (Scan(property.Value, includeForms, token)) return true;
             }
         }
         else if (value.ValueKind == JsonValueKind.Array)
-            foreach (var item in value.EnumerateArray()) Scan(item, token);
+        {
+            foreach (var item in value.EnumerateArray())
+                if (Scan(item, includeForms, token)) return true;
+        }
+        return false;
     }
 
     private static string Name(string name)
@@ -52,6 +69,4 @@ internal static class PdfFormDetector
         }
         return decoded.ToString();
     }
-
-    private static void Reject() => throw new PdfFillTemplateException(PdfFillTemplateReason.FormFields);
 }

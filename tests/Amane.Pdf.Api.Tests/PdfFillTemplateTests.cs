@@ -146,29 +146,58 @@ public sealed class PdfFillTemplateTests
     [DataRow("watermark")]
     [DataRow("page-numbers")]
     [DataRow("stamp-image")]
-    public async Task Http_ExistingOverlayEndpointsKeepFormDetectionDisabled(string operation)
+    public async Task Http_OverlayEndpointsRejectEmptySignatureFieldsAndPreserveTextFields(string operation)
     {
         using var source = new OverlayJob();
         var root = JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject();
-        OverlayFixtures.Objects(root)["obj:1 0 R"]!["value"]!["/AcroForm"] = new JsonObject();
-        await source.CreateInput(root.ToJsonString());
-        var input = await File.ReadAllBytesAsync(source.Files.InputPath);
+        var objects = OverlayFixtures.Objects(root);
+        var catalog = objects["obj:1 0 R"]!["value"]!;
+        catalog["/AcroForm"] = JsonNode.Parse("""{"/Fields":["5 0 R"]}""");
+        OverlayFixtures.Page(root)["/Annots"] = JsonNode.Parse("""["5 0 R"]""");
+        objects["trailer"]!["value"]!["/Size"] = 6;
+        var widget = JsonNode.Parse("""
+            {"/Type":"/Annot","/Subtype":"/Widget","/FT":"/Sig","/T":"u:Fixture","/Rect":[0,0,100,20],"/P":"3 0 R"}
+            """)!;
+        objects["obj:5 0 R"] = new JsonObject { ["value"] = widget };
         await using var test = new PdfTestContext();
-        using (var fill = Form(input))
-        using (var rejected = await test.Client.PostAsync(Endpoint, fill))
-            await Problem(test, rejected, 422, "form-fields");
-        using var form = PdfTestContext.FileForm(input);
         var query = operation switch
         {
             "watermark" => "style=corner&color=gray",
             "page-numbers" => "position=bottom-center&format=number",
             _ => "page=1&x=0.1&y=0.1&width=0.2"
         };
-        if (operation == "watermark") form.Add(new StringContent("DRAFT"), "text");
-        if (operation == "stamp-image") form.Add(new ByteArrayContent(StampFixtures.Png()), "image", "stamp.png");
-        using var response = await test.Client.PostAsync("/api/pdf/" + operation + "?" + query, form);
+
+        async Task<HttpResponseMessage> SendOverlay(byte[] pdf)
+        {
+            using var form = PdfTestContext.FileForm(pdf);
+            if (operation == "watermark") form.Add(new StringContent("DRAFT"), "text");
+            if (operation == "stamp-image") form.Add(new ByteArrayContent(StampFixtures.Png()), "image", "stamp.png");
+            return await test.Client.PostAsync("/api/pdf/" + operation + "?" + query, form);
+        }
+
+        await source.CreateInput(root.ToJsonString());
+        using (var rejected = await SendOverlay(await File.ReadAllBytesAsync(source.Files.InputPath)))
+            await Problem(test, rejected, 422, "signature-structure");
+
+        widget["/FT"] = "/Tx";
+        widget["/V"] = "u:Existing value";
+        File.Delete(source.Files.InputPath);
+        await source.CreateInput(root.ToJsonString());
+        var input = await File.ReadAllBytesAsync(source.Files.InputPath);
+        using (var fill = Form(input))
+        using (var rejected = await test.Client.PostAsync(Endpoint, fill))
+            await Problem(test, rejected, 422, "form-fields");
+
+        using var response = await SendOverlay(input);
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
-        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        await File.WriteAllBytesAsync(source.Files.OutputPath, await response.Content.ReadAsByteArrayAsync());
+        using var output = await source.Metadata(source.Files.OutputPath);
+        var trailer = output.Document.RootElement.GetProperty("qpdf")[1].GetProperty("trailer").GetProperty("value");
+        var outputCatalog = output.Resolve(trailer.GetProperty("/Root"), default);
+        var fields = output.Resolve(outputCatalog.GetProperty("/AcroForm"), default).GetProperty("/Fields");
+        var field = output.Resolve(fields[0], default);
+        Assert.AreEqual("/Tx", field.GetProperty("/FT").GetString());
+        Assert.AreEqual("u:Existing value", field.GetProperty("/V").GetString());
         test.AssertClean();
     }
 

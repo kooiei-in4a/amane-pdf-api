@@ -91,6 +91,8 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
                 count = input.Pages.Count;
                 if (input.Encrypted != false) throw new InvalidOperationException(Failure);
                 if (rejectForms) PdfFormDetector.RejectForms(input, token);
+                else if (PdfFormDetector.ContainsSignatureStructure(input, token))
+                    throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
                 (from, to) = resolveRange(count);
                 if (from < 1 || to < from || to > count) throw new ArgumentException("描画ページ範囲が不正です。");
                 if (to - from + 1 > settings.OverlayMaxPages) throw PdfOverlayInputException.TooComplex();

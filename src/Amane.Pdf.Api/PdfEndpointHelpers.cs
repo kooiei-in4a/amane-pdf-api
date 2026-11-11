@@ -130,10 +130,14 @@ internal static class PdfEndpointHelpers
         catch (PdfOverlayInputException exception)
         {
             diagnostics.Outcome = PdfOutcome.Rejected;
-            var complex = exception.Reason == PdfOverlayReason.TooComplex;
-            await Results.Problem(statusCode: 422,
-                title: complex ? "このPDFは描画の処理上限を超えています。" : "このPDFのページ属性は描画に対応していません。",
-                extensions: new Dictionary<string, object?> { ["reason"] = complex ? "too-complex" : "unsupported-pdf" }).ExecuteAsync(context);
+            var (reason, title) = exception.Reason switch
+            {
+                PdfOverlayReason.TooComplex => ("too-complex", "このPDFは描画の処理上限を超えています。"),
+                PdfOverlayReason.SignatureStructure => ("signature-structure", "このPDFには電子署名や署名関連の設定があるため加工できません。"),
+                _ => ("unsupported-pdf", "このPDFのページ属性は描画に対応していません。")
+            };
+            await Results.Problem(statusCode: 422, title: title,
+                extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
         }
         catch (PdfInputException)
         {
