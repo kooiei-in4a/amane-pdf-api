@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -44,9 +43,7 @@ internal sealed class RedactRegions
                 {
                     var value = item.GetProperty(key);
                     if (value.ValueKind != JsonValueKind.Number ||
-                        !Regex.IsMatch(value.GetRawText(), @"\A[01](\.[0-9]{1,4})?\z", RegexOptions.CultureInvariant) ||
-                        !decimal.TryParse(value.GetRawText(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var coordinate) ||
-                        coordinate > 1) throw Invalid();
+                        !PdfCoordinate.TryParse(value.GetRawText(), out var coordinate)) throw Invalid();
                     return coordinate;
                 }
                 var x = Coordinate("x"); var y = Coordinate("y");

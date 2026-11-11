@@ -17,7 +17,7 @@ internal static class PdfRedactEndpoint
         RedactResult? result = null;
         var settings = options.Value;
         await PdfEndpointHelpers.ExecuteAsync(context, settings, "redacted.pdf",
-            () => { if (context.Request.QueryString.HasValue) throw new BadHttpRequestException("Unexpected query.", 400); },
+            () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             async (files, token) => regions = RedactRegions.Parse(await MultipartPdfUpload.ReadFileAndTextAsync(
                 context.Request, files, "regions", RedactRegions.MaxBytes, settings.MaxRedactInputBytes, settings.MaxRedactRequestBytes, token)),
             async (files, token) => result = await processor.RedactAsync(files, regions!, token),

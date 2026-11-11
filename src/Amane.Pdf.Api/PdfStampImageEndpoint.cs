@@ -30,19 +30,14 @@ internal sealed record StampImageQuery(int Page, decimal X, decimal Y, decimal W
     internal static StampImageQuery Parse(IQueryCollection query)
     {
         string[] keys = ["page", "x", "y", "width"];
-        if (query.Count != keys.Length || query.Any(pair => pair.Value.Count != 1 ||
-            !keys.Contains(pair.Key, StringComparer.OrdinalIgnoreCase))) throw Invalid();
+        PdfEndpointHelpers.ValidateQueryKeys(query, keys);
+        if (query.Count != keys.Length) throw Invalid();
         var digits = query["page"].ToString();
         if (digits.Length is < 1 or > 10 || digits[0] == '0' || digits.Any(c => c is < '0' or > '9') ||
             !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var page)) throw Invalid();
         decimal Number(string key)
         {
-            var value = query[key].ToString();
-            if (value.Length is < 1 or > 6 || value[0] is < '0' or > '9' ||
-                (value.Length > 1 && (value.Length < 3 || value[1] != '.' ||
-                    value.AsSpan(2).ContainsAnyExceptInRange('0', '9'))) ||
-                !decimal.TryParse(value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number) ||
-                number is < 0 or > 1) throw Invalid();
+            if (!PdfCoordinate.TryParse(query[key].ToString(), out var number)) throw Invalid();
             return number;
         }
         var width = Number("width");

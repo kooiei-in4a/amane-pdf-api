@@ -13,14 +13,15 @@ internal sealed class PdfSplitPlan(int? every, PdfPageSelection? ranges, int max
 {
     internal static PdfSplitPlan Parse(IQueryCollection query, int maxParts)
     {
+        PdfEndpointHelpers.ValidateQueryKeys(query, "every", "ranges");
         if (query.Count != 1) throw InvalidSplit();
-        if (query.TryGetValue("every", out var values) && values.Count == 1 && values[0] is { } value)
+        if (query.TryGetValue("every", out var values) && values[0] is { } value)
         {
             if (value.Length is < 1 or > 5 || value[0] == '0' || value.Any(c => c is < '0' or > '9'))
                 throw InvalidSplit();
             return new(int.Parse(value, CultureInfo.InvariantCulture), null, maxParts);
         }
-        if (query.TryGetValue("ranges", out values) && values.Count == 1 && values[0] is { } selection)
+        if (query.TryGetValue("ranges", out values) && values[0] is { } selection)
         {
             var parsed = PdfPageSelection.Parse(selection);
             if (parsed.RangeCount < 2 || parsed.RangeCount > maxParts) throw InvalidSplit();

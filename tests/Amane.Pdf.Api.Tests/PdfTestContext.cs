@@ -71,21 +71,36 @@ internal sealed class PdfTestContext : IAsyncDisposable
 
     public async Task AssertRejectedBeforeReadingBodyAsync(string pathAndQuery, HttpContent content)
     {
+        var (reads, status) = await SendWithUnreadableBodyAsync(pathAndQuery, content);
+        Assert.AreEqual(0, reads, pathAndQuery);
+        Assert.AreEqual(400, status, pathAndQuery);
+        AssertClean();
+    }
+
+    // The query passed validation when the server went on to read the upload.
+    public async Task AssertQueryAcceptedAsync(string pathAndQuery, HttpContent content)
+    {
+        var (reads, _) = await SendWithUnreadableBodyAsync(pathAndQuery, content);
+        Assert.IsTrue(reads > 0, pathAndQuery);
+        AssertClean();
+    }
+
+    private async Task<(int Reads, int Status)> SendWithUnreadableBodyAsync(string pathAndQuery, HttpContent content)
+    {
         // Observe server reads, rather than client-side multipart serialization.
         using var body = new UnreadableBody();
-        var uri = new Uri("http://localhost" + pathAndQuery);
+        // Split by hand so a bare trailing "?" reaches the server as QueryString "?".
+        var separator = pathAndQuery.IndexOf('?');
         var response = await Factory.Server.SendAsync(context =>
         {
             context.Request.Method = "POST";
-            context.Request.Path = uri.AbsolutePath;
-            context.Request.QueryString = new QueryString(uri.Query);
+            context.Request.Path = separator < 0 ? pathAndQuery : pathAndQuery[..separator];
+            context.Request.QueryString = separator < 0 ? QueryString.Empty : new QueryString(pathAndQuery[separator..]);
             context.Request.ContentType = content.Headers.ContentType!.ToString();
             context.Request.ContentLength = content.Headers.ContentLength;
             context.Request.Body = body;
         });
-        Assert.AreEqual(0, body.ReadCount, pathAndQuery);
-        Assert.AreEqual(400, response.Response.StatusCode, pathAndQuery);
-        AssertClean();
+        return (body.ReadCount, response.Response.StatusCode);
     }
 
     private sealed class UnreadableBody : Stream

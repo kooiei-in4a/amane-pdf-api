@@ -44,20 +44,21 @@ internal sealed class FillTemplateFields
                 if (page.ValueKind != JsonValueKind.Number ||
                     !Regex.IsMatch(page.GetRawText(), @"\A[1-9][0-9]{0,9}\z", RegexOptions.CultureInvariant) ||
                     !page.TryGetInt32(out var number)) throw Invalid();
-                decimal Number(string key, string pattern, decimal min, decimal max)
+                decimal Coordinate(string key)
                 {
                     var value = item.GetProperty(key);
                     if (value.ValueKind != JsonValueKind.Number ||
-                        !Regex.IsMatch(value.GetRawText(), pattern, RegexOptions.CultureInvariant) ||
-                        !decimal.TryParse(value.GetRawText(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var n) ||
-                        n < min || n > max) throw Invalid();
-                    return n;
+                        !PdfCoordinate.TryParse(value.GetRawText(), out var coordinate)) throw Invalid();
+                    return coordinate;
                 }
-                decimal Coordinate(string key) => Number(key, @"\A[01](\.[0-9]{1,4})?\z", 0, 1);
                 var x = Coordinate("x"); var y = Coordinate("y");
                 var width = Coordinate("width"); var height = Coordinate("height");
                 if (width <= 0 || height <= 0 || x + width > 1 || y + height > 1) throw Invalid();
-                var size = Number("fontSize", @"\A[0-9]{1,2}(\.[0-9])?\z", 6, 72);
+                var fontSize = item.GetProperty("fontSize");
+                if (fontSize.ValueKind != JsonValueKind.Number ||
+                    !Regex.IsMatch(fontSize.GetRawText(), @"\A[0-9]{1,2}(\.[0-9])?\z", RegexOptions.CultureInvariant) ||
+                    !decimal.TryParse(fontSize.GetRawText(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var size) ||
+                    size is < 6 or > 72) throw Invalid();
                 // JSON syntax already rejects leading zeroes; the lexical checks reject signs and exponents.
                 var align = item.GetProperty("align");
                 if (align.ValueKind != JsonValueKind.String || align.GetString() is not ("left" or "center" or "right")) throw Invalid();

@@ -11,7 +11,7 @@ public static class PdfMergeEndpoint
             context,
             options.Value,
             "merged.pdf",
-            validateRequest: null,
+            validateRequest: () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             async (files, cancellationToken) =>
                 inputPaths = await MultipartPdfUpload.ReadMergeFilesAsync(context.Request, files, options.Value, cancellationToken),
             async (files, cancellationToken) =>
