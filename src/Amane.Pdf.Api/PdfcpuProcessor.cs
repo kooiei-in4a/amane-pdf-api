@@ -48,12 +48,11 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
         if (new FileInfo(blankPath).Length is <= 0 or > LayerFileLimitBytes)
             throw new InvalidOperationException(Failure);
         await WriteLayerAsync(files.PdfcpuLayerJsonPath, layer, jsonBudget, token, maxTextsPerPage, maxTextLength);
-        var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
-            ["create", files.PdfcpuLayerJsonPath, blankPath, outputPath], pdfBudget + 1), token);
-        if (result.ExitCode is 126 or 127) throw new InvalidOperationException(Failure);
-        if (File.Exists(outputPath) && new FileInfo(outputPath).Length > pdfBudget)
-            throw new PdfcpuCapacityException();
-        if (result.ExitCode != 0 || !File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
+        var result = await BoundedOutput.RunAsync(fsize => CreateRequest(files,
+            ["create", files.PdfcpuLayerJsonPath, blankPath, outputPath], fsize), outputPath, pdfBudget, token);
+        if (result.StartFailed) throw new InvalidOperationException(Failure);
+        if (result.ExceedsBudget) throw new PdfcpuCapacityException();
+        if (!result.Succeeded)
             throw new InvalidOperationException(Failure);
         File.SetUnixFileMode(outputPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         await CheckOutputAsync(files, outputPath, layer.Pages.Count, token);
@@ -88,9 +87,9 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             new FileInfo(imagePath).Length <= 0 || image.Width <= 0 || image.Height <= 0)
             throw new ArgumentException("Image import arguments are invalid.");
         // import appends to existing PDFs: its output must not be pre-created.
-        var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
-            ["import", "--", ImagePageLayout.For(image).Description, outputPath, imagePath], budget + 1), token);
-        JpegNormalizer.CheckResult(result, outputPath, budget, token);
+        var result = await BoundedOutput.RunAsync(fsize => CreateRequest(files,
+            ["import", "--", ImagePageLayout.For(image).Description, outputPath, imagePath], fsize), outputPath, budget, token);
+        JpegNormalizer.CheckResult(result);
         File.SetUnixFileMode(outputPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
 
@@ -106,8 +105,8 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             Path.GetFullPath(blankPath) == Path.GetFullPath(files.InputPath) ||
             Path.GetFullPath(blankPath) == Path.GetFullPath(outputPath) || File.Exists(outputPath))
             throw new ArgumentException("Image stamp arguments are invalid.");
-        // FSIZE cannot identify overflow: pdfcpu deletes partial files on exit 1.
-        // Capture its PDF on stdout instead; the runner drains excess without retaining it.
+        // pdfcpu deletes partial files on exit 1, so the file-size sentinel would be lost.
+        // Capture the PDF on bounded stdout with FSIZE=1 to block file output.
         var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
             ["stamp", "add", "-m", "image", "--", image.Path, placement.Description, blankPath, "-"],
             fileBudget: 1, stdoutLimit: (int)pdfBudget), token);
@@ -123,7 +122,7 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
     private Task<ExternalProcessResult> QpdfAsync(TemporaryPdfFiles files, string[] arguments,
         CancellationToken token, int? stdoutLimit = null)
         => ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(settings.PrlimitPath,
-            settings.QpdfPath, arguments, settings.QpdfAddressSpaceLimitBytes, LayerFileLimitBytes + 1,
+            settings.QpdfPath, arguments, settings.QpdfAddressSpaceLimitBytes, BoundedOutput.FileSizeLimit(LayerFileLimitBytes),
             new Dictionary<string, string> { ["JPEGMEM"] = settings.QpdfJpegMemory }, stdoutLimit)
             with { WorkingDirectory = files.DirectoryPath }, token);
 

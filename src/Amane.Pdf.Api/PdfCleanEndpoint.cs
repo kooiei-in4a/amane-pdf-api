@@ -53,7 +53,7 @@ public static class PdfCleanEndpoint
             await System.Text.Json.JsonSerializer.SerializeAsync(bounded, job, cancellationToken: token);
             capacity.Reserve(files.JobPath, bounded.Length);
         }
-        var outputLimit = capacity.ReserveWrite(files.OutputPath, options.CleanOutputLimitBytes);
+        var outputLimit = capacity.ReserveWrite(files.OutputPath, options.CleanOutputLimitBytes, sentinel: true);
         using (TemporaryPdfFiles.CreatePrivateFile(files.OutputPath)) { }
         await processor.RunCleanWriteAsync(["--job-json-file=" + files.JobPath], files.OutputPath, outputLimit, token);
         capacity.Reserve(files.OutputPath, new FileInfo(files.OutputPath).Length);
@@ -75,7 +75,7 @@ public static class PdfCleanEndpoint
 
         async Task InspectAsync(string pdf, string json, bool attachments)
         {
-            var limit = capacity.ReserveWrite(json, options.CleanJsonLimitBytes);
+            var limit = capacity.ReserveWrite(json, options.CleanJsonLimitBytes, sentinel: true);
             using (TemporaryPdfFiles.CreatePrivateFile(json)) { }
             string[] keys = attachments ? ["--json-key=qpdf", "--json-key=attachments"] : ["--json-key=qpdf"];
             await processor.RunCleanWriteAsync(["--json=2", .. keys, "--json-stream-data=none", "--decode-level=none", pdf, json],

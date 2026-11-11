@@ -72,14 +72,26 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             throw new InvalidOperationException();
     }
 
-    internal Task<ExternalProcessResult> RunQpdfAsync(string[] arguments, long fsize, int? stdout, CancellationToken token)
-        => ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.PrlimitPath, options.QpdfPath,
-            arguments, options.QpdfAddressSpaceLimitBytes, fsize,
-            new Dictionary<string, string> { ["JPEGMEM"] = options.QpdfJpegMemory }, stdout), token);
+    private ExternalProcessRequest CreateQpdfRequest(string[] arguments, long fsize, int? stdout = null)
+        => ProcessMemoryLimits.CreateRequest(options.PrlimitPath, options.QpdfPath, arguments,
+            options.QpdfAddressSpaceLimitBytes, fsize, new Dictionary<string, string> { ["JPEGMEM"] = options.QpdfJpegMemory }, stdout);
 
-    internal static void RequireStarted(ExternalProcessResult result)
+    private static void RequireStarted(bool failed)
     {
-        if (result.ExitCode is 126 or 127) throw new InvalidOperationException("PDF command could not start.");
+        if (failed) throw new InvalidOperationException("PDF command could not start.");
+    }
+
+    internal async Task<long> WriteMetadataAsync(string[] arguments, string output, CancellationToken token)
+    {
+        if (options.CompressJsonLimitBytes < 4096 || Capacity.Remaining < 4096) throw new CompressLimitException();
+        var budget = Capacity.ReserveWrite(output, options.CompressJsonLimitBytes);
+        using (TemporaryPdfFiles.CreatePrivateFile(output)) { }
+        var result = await BoundedOutput.RunAsync(fsize => CreateQpdfRequest(arguments, fsize), output, budget, token);
+        RequireStarted(result.StartFailed);
+        // Preserve the image-stage fallback for a reported SIGXFSZ exit.
+        if (result.ExceedsBudget || result.ExitCode == 153) throw new CompressLimitException();
+        if (!result.Succeeded) throw new InvalidOperationException("PDF metadata failed.");
+        return result.Length;
     }
 
     internal async Task<int> CompressAsync(string level, long start, CancellationToken hardToken)
@@ -110,7 +122,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                         break;
                     }
                     var nextSlot = Math.Max(slot, CompressCapacity.Allocated(checked(image.Length + 4096)));
-                    var nextPnm = Math.Max(pnm, CompressCapacity.Allocated(imagePnm));
+                    var nextPnm = Math.Max(pnm, CompressCapacity.Allocated(BoundedOutput.FileSizeLimit(imagePnm)));
                     var available = Capacity.Remaining - nextPnm - 4096;
                     if (checked(sum + image.Length) > available || checked((batch.Count + 1L) * nextSlot) > available) break;
                     slot = nextSlot; pnm = nextPnm; sum += image.Length; batch.Add(image);
@@ -145,19 +157,10 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
     private async Task<List<CompressImage>> SelectImagesAsync(CompressMetadata metadata, CancellationToken token)
     {
         var pagesPath = Path.Combine(files.DirectoryPath, "pages.json");
-        var size = Math.Min(options.CompressJsonLimitBytes, Capacity.Remaining / 4096 * 4096);
-        if (size < 4096) throw new CompressLimitException();
-        Capacity.Reserve(pagesPath, size);
         PdfObjectRef[] pages;
         try
         {
-            using (TemporaryPdfFiles.CreatePrivateFile(pagesPath)) { }
-            var result = await RunQpdfAsync(["--json=2", "--json-key=pages", files.InputPath, pagesPath], size, null, token);
-            RequireStarted(result);
-            // qpdf may return 0 when a write hits FSIZE with SIGXFSZ ignored.
-            // Retain 153 defensively; normal ignored-SIGXFSZ writes use the size check.
-            if (result.ExitCode == 153 || new FileInfo(pagesPath).Length >= size) throw new CompressLimitException();
-            if (result.ExitCode != 0) throw new InvalidOperationException("PDF pages metadata failed.");
+            await WriteMetadataAsync(["--json=2", "--json-key=pages", files.InputPath, pagesPath], pagesPath, token);
             using var document = CompressJson.Parse(await File.ReadAllBytesAsync(pagesPath, token), options.CompressJsonDepth);
             if (!document.RootElement.TryGetProperty("pages", out var array) || array.ValueKind != JsonValueKind.Array)
                 throw new InvalidOperationException("PDF pages metadata is invalid.");
@@ -403,12 +406,15 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             ExternalProcessResult result;
             try
             {
-                result = await RunQpdfAsync(["--json=2", "--json-key=qpdf", "--json-stream-data=file", "--decode-level=none",
+                // qpdf creates multiple files and reports their paths on stdout. Each
+                // file is checked against its exact stream length below.
+                var request = CreateQpdfRequest(["--json=2", "--json-key=qpdf", "--json-stream-data=file", "--decode-level=none",
                     "--json-stream-prefix=" + prefix, .. batch.Select(image => image.Reference.Argument), files.InputPath],
-                    slot, options.CompressStdoutLimitBytes, extraction.Token);
+                    slot, options.CompressStdoutLimitBytes);
+                result = await ExternalProcessRunner.RunAsync(request, extraction.Token);
             }
             catch (OperationCanceledException) when (!softToken.IsCancellationRequested && !hardToken.IsCancellationRequested) { return false; }
-            RequireStarted(result);
+            RequireStarted(result.ExitCode is 126 or 127);
             if (result.ExitCode != 0 || result.Stdout is null) return false;
             using var document = CompressJson.Parse(result.Stdout, options.CompressJsonDepth);
             var objects = CompressJson.Objects(document);
@@ -460,25 +466,25 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             var scale = Scale(Math.Max(image.Width, image.Height), target);
             var pnmLimit = checked(PnmSize(image.Width, image.Height, image.Components, scale) + 512);
             if (pnmLimit > options.CompressPnmLimitBytes) return;
-            Capacity.Reserve(pnm, pnmLimit);
-            var jpegLimit = Math.Min(checked(image.Length * 9 / 10), Capacity.Remaining / 4096 * 4096);
-            if (jpegLimit < 4096) return;
-            Capacity.Reserve(jpeg, jpegLimit);
+            Capacity.Reserve(pnm, BoundedOutput.FileSizeLimit(pnmLimit));
+            var jpegLimit = checked(image.Length * 9 / 10);
+            if (jpegLimit < 4096 || Capacity.Remaining < 4096) return;
+            var jpegBudget = Capacity.ReserveWrite(jpeg, jpegLimit);
             foreach (var path in new[] { pnm, jpeg }) using (TemporaryPdfFiles.CreatePrivateFile(path)) { }
-            foreach (var (executable, arguments, fsize) in new (string, string[], long)[]
+            foreach (var (executable, arguments, output, budget) in new (string, string[], string, long)[]
             {
-                (options.DjpegPath, ["-scale", $"{scale}/8", "-maxmemory", "64M", "-maxscans", "100", "-strict", "-outfile", pnm, raw], pnmLimit),
-                (options.CjpegPath, ["-quality", level == "standard" ? "75" : "60", "-optimize", "-maxmemory", "64M", "-strict", "-outfile", jpeg, pnm], jpegLimit)
+                (options.DjpegPath, ["-scale", $"{scale}/8", "-maxmemory", "64M", "-maxscans", "100", "-strict", "-outfile", pnm, raw], pnm, pnmLimit),
+                (options.CjpegPath, ["-quality", level == "standard" ? "75" : "60", "-optimize", "-maxmemory", "64M", "-strict", "-outfile", jpeg, pnm], jpeg, jpegBudget)
             })
             {
-                var result = await ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.PrlimitPath, executable,
-                    arguments, options.JpegAddressSpaceLimitBytes, fsize, null), token);
-                RequireStarted(result);
-                if (result.ExitCode != 0) return;
+                var result = await BoundedOutput.RunAsync(fsize => ProcessMemoryLimits.CreateRequest(options.PrlimitPath,
+                    executable, arguments, options.JpegAddressSpaceLimitBytes, fsize, null), output, budget, token);
+                RequireStarted(result.StartFailed);
+                // Preserve the image-stage fallback for any other nonzero exit.
+                if (!result.Succeeded) return;
             }
             var bytes = new FileInfo(jpeg).Length;
-            if (bytes > jpegLimit || checked(10 * bytes) > checked(9 * image.Length)) return;
-            var rewritten = JpegHeader.Read(jpeg, jpegLimit, options.CompressMaxPixels, token);
+            var rewritten = JpegHeader.Read(jpeg, jpegBudget, options.CompressMaxPixels, token);
             if (rewritten is null || rewritten.Components != image.Components ||
                 rewritten.Width != ((long)image.Width * scale + 7) / 8 || rewritten.Height != ((long)image.Height * scale + 7) / 8) return;
             var obj = await metadata.GetAsync(image.Reference, token) ?? throw new InvalidOperationException("PDF dictionary is missing.");
@@ -540,18 +546,17 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             }
             if (new FileInfo(update).Length != updateBytes) throw new InvalidOperationException("PDF update size is invalid.");
         }
-        var fsize = checked(inputBytes - originalBytes + adoptedBytes + OutputHeadroom);
-        try { Capacity.Reserve(files.OutputPath, fsize); }
-        catch (CompressLimitException) { throw new InvalidOperationException("PDF output capacity is insufficient."); }
+        var estimate = checked(inputBytes - originalBytes + adoptedBytes + OutputHeadroom);
+        if (CompressCapacity.Allocated(estimate) > Capacity.Remaining)
+            throw new InvalidOperationException("PDF output capacity is insufficient.");
+        var budget = Capacity.ReserveWrite(files.OutputPath, estimate);
         using (TemporaryPdfFiles.CreatePrivateFile(files.OutputPath)) { }
         var arguments = new List<string> { files.InputPath };
         if (adopted.Count > 0) arguments.Add("--update-from-json=" + update);
         arguments.AddRange(["--object-streams=generate", "--compression-level=9", files.OutputPath]);
-        var result = await RunQpdfAsync([.. arguments], fsize, null, token);
-        RequireStarted(result);
-        // A truncated EOF can pass qpdf --check. Reject a saturated output budget
-        // even on exit 0, including an otherwise valid PDF exactly at the limit.
-        if (result.ExitCode != 0 || new FileInfo(files.OutputPath).Length >= fsize) throw new InvalidOperationException("PDF output failed.");
+        var result = await BoundedOutput.RunAsync(fsize => CreateQpdfRequest([.. arguments], fsize),
+            files.OutputPath, budget, token);
+        if (!result.Succeeded) throw new InvalidOperationException("PDF output failed.");
         try { await new QpdfProcessor(Microsoft.Extensions.Options.Options.Create(options)).ValidateOutputAsync(files.OutputPath, token); }
         catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
         token.ThrowIfCancellationRequested();

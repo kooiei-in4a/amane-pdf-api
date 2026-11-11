@@ -95,21 +95,18 @@ internal sealed class JpegNormalizer(PdfOptions options, TemporaryPdfFiles files
     {
         var budget = capacity.ReserveWrite(output, fileLimit, external: true);
         using (TemporaryPdfFiles.CreatePrivateFile(output)) { }
-        var request = ProcessMemoryLimits.CreateRequest(options.PrlimitPath, tool, arguments, address,
-            budget + 1, null) with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) };
-        var result = await ExternalProcessRunner.RunAsync(request, token);
-        CheckResult(result, output, budget, token);
+        var result = await BoundedOutput.RunAsync(fsize =>
+            ProcessMemoryLimits.CreateRequest(options.PrlimitPath, tool, arguments, address, fsize, null)
+                with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, output, budget, token);
+        CheckResult(result);
         capacity.Commit(output, budget);
     }
-    internal static void CheckResult(ExternalProcessResult result, string path, long budget, CancellationToken token)
+    internal static void CheckResult(BoundedOutputResult result)
     {
-        token.ThrowIfCancellationRequested();
-        if (result.ExitCode is 126 or 127 or < 0 or >= 128)
-            throw new InvalidOperationException("Image tool failed.");
-        var output = new FileInfo(path);
-        if (output.Exists && output.Length > budget) throw PdfImageInputException.Capacity();
+        if (result.InternalFailure) throw new InvalidOperationException("Image tool failed.");
+        if (result.ExceedsBudget) throw PdfImageInputException.Capacity();
         if (result.ExitCode != 0) throw PdfImageInputException.Unsupported();
-        if (!output.Exists || output.Length == 0) throw new InvalidOperationException("Image output is invalid.");
+        if (!result.Succeeded) throw new InvalidOperationException("Image output is invalid.");
     }
 
     internal static void NormalizeMarkers(string path, CancellationToken token)

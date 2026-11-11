@@ -50,6 +50,20 @@ public sealed class JpegHeaderTests
     }
 
     [TestMethod]
+    [DataRow(4096, 4095, 4096)]
+    [DataRow(8192, 4096, 8192)]
+    public void ExternalWriteReservation_IncludesSentinelWithinRoundedJobCapacity(int limit, int budget, int allocated)
+    {
+        var capacity = new CompressCapacity(limit + 8191);
+        capacity.Reserve("input", 1);
+        Assert.AreEqual((long)budget, capacity.ReserveWrite("output", 4096));
+        Assert.AreEqual(4096L + allocated, capacity.Used);
+        Assert.ThrowsExactly<CompressLimitException>(() => capacity.ReserveWrite("extra", 1));
+        capacity.Reserve("output", budget);
+        Assert.AreEqual(8192L, capacity.Used);
+    }
+
+    [TestMethod]
     public void CeilScaleAndPnmWorstCase_UseCheckedIntegerBounds()
     {
         Assert.AreEqual(3, PdfCompressProcessor.Scale(7014, 1754));

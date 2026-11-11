@@ -13,9 +13,19 @@ internal sealed class CompressCapacity(long limit)
     internal bool CanFinalize(long inputBytes, long jpegAllocation, long entriesAllocation, long jsonBytes, long outputBytes)
     {
         var retained = checked(Allocated(inputBytes) + jpegAllocation + Allocated(jsonBytes));
-        // Joining entries and writing the PDF are distinct peaks; account for both.
+        // Joining entries and writing the PDF are distinct peaks. When only the
+        // rounded estimate fits, the external writer uses its last byte as the sentinel.
         return checked(retained + entriesAllocation) <= limit && checked(retained + Allocated(outputBytes)) <= limit;
     }
+
+    internal long ReserveWrite(string key, long perFileLimit)
+    {
+        var budget = Math.Min(perFileLimit, Remaining / 4096 * 4096 - 1);
+        if (budget <= 0) throw new CompressLimitException();
+        Reserve(key, BoundedOutput.FileSizeLimit(budget));
+        return budget;
+    }
+
     internal void Reserve(string key, long bytes)
     {
         var value = Allocated(bytes);

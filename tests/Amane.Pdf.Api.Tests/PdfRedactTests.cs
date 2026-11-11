@@ -124,7 +124,7 @@ public sealed class PdfRedactTests
     }
 
     [TestMethod]
-    [DataRow(2)] [DataRow(3)]
+    [DataRow(2)] [DataRow(3)] [DataRow(126)] [DataRow(127)] [DataRow(153)]
     public async Task PruningNonzeroExit_IsUnsupported_EvenWhenPartialOutputReachesFileLimit(int exit)
     {
         if (!PdfCompressTests.Linux()) return;
