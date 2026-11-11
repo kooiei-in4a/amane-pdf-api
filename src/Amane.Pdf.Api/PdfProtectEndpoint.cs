@@ -11,7 +11,7 @@ public static class PdfProtectEndpoint
             context,
             options.Value,
             "protected.pdf",
-            validateRequest: () => PdfEndpointHelpers.RejectUnknownQueryKeys(context.Request.Query),
+            validateRequest: () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             async (files, cancellationToken) =>
             {
                 password = await MultipartPdfUpload.ReadAsync(context.Request, files, options.Value, cancellationToken);

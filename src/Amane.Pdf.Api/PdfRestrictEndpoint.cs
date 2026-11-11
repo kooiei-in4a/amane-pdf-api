@@ -11,10 +11,7 @@ public static class PdfRestrictEndpoint
             context,
             options.Value,
             "restricted.pdf",
-            validateRequest: () =>
-            {
-                if (context.Request.QueryString.HasValue) throw new BadHttpRequestException("Unexpected query.");
-            },
+            validateRequest: () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             async (files, token) =>
             {
                 restriction = await MultipartPdfUpload.ReadRestrictAsync(context.Request, files, options.Value, token);

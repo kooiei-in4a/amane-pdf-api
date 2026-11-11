@@ -28,7 +28,7 @@ public static class PdfPageSelectionEndpoints
             validateRequest: () =>
             {
                 var query = context.Request.Query;
-                PdfEndpointHelpers.RejectUnknownQueryKeys(query, "pages");
+                PdfEndpointHelpers.ValidateQueryKeys(query, "pages");
                 var pageValues = query["pages"];
                 if (pageValues.Count != 1) throw new BadHttpRequestException("Invalid pages query.");
                 selection = PdfPageSelection.Parse(pageValues[0] ?? string.Empty);

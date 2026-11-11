@@ -10,7 +10,7 @@ public static class PdfOptimizeEndpoint
             context,
             options.Value,
             "optimized.pdf",
-            validateRequest: () => PdfEndpointHelpers.RejectUnknownQueryKeys(context.Request.Query),
+            validateRequest: () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             (files, cancellationToken) =>
                 MultipartPdfUpload.ReadFileAsync(context.Request, files, options.Value, cancellationToken),
             async (files, cancellationToken) =>

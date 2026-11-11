@@ -6,7 +6,7 @@ public static class PdfCleanEndpoint
 {
     public static Task HandleAsync(HttpContext context, QpdfProcessor processor, IOptions<PdfOptions> options)
         => PdfEndpointHelpers.ExecuteAsync(context, options.Value, "cleaned.pdf",
-            () => PdfEndpointHelpers.RejectUnknownQueryKeys(context.Request.Query),
+            () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, options.Value, token),
             (files, token) => CleanAsync(files, processor, options.Value, token));
 

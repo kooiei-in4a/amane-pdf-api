@@ -15,7 +15,7 @@ public static class PdfRotateEndpoint
             validateRequest: () =>
             {
                 var query = context.Request.Query;
-                PdfEndpointHelpers.RejectUnknownQueryKeys(query, "angle", "pages");
+                PdfEndpointHelpers.ValidateQueryKeys(query, "angle", "pages");
                 var angleValues = query["angle"];
                 if (angleValues.Count != 1) throw new BadHttpRequestException("Invalid angle query.");
                 angle = angleValues[0] switch
@@ -28,7 +28,6 @@ public static class PdfRotateEndpoint
 
                 if (query.TryGetValue("pages", out var pageValues))
                 {
-                    if (pageValues.Count != 1) throw new BadHttpRequestException("Invalid pages query.");
                     selection = PdfPageSelection.Parse(pageValues[0] ?? string.Empty);
                 }
             },

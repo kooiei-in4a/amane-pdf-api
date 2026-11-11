@@ -13,8 +13,8 @@ public static class PdfCompressEndpoint
         await PdfEndpointHelpers.ExecuteAsync(context, options.Value, "compressed.pdf", () =>
         {
             var query = context.Request.Query;
-            PdfEndpointHelpers.RejectUnknownQueryKeys(query, "level");
-            if (!query.TryGetValue("level", out var values) || values.Count != 1 ||
+            PdfEndpointHelpers.ValidateQueryKeys(query, "level");
+            if (!query.TryGetValue("level", out var values) ||
                 values[0] is not ("standard" or "strong"))
                 throw new BadHttpRequestException("Invalid compression level query.");
             level = values[0]!;

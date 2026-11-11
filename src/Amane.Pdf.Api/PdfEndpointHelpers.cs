@@ -180,11 +180,14 @@ internal static class PdfEndpointHelpers
         }
     }
 
-    internal static void RejectUnknownQueryKeys(IQueryCollection query, params string[] allowedKeys)
+    // Shared query contract for every PDF endpoint (#99): keys are case-insensitive, each allowed
+    // key appears at most once, and anything else is 400 before the upload is read. Endpoints
+    // still check which allowed keys are required and the value format.
+    internal static void ValidateQueryKeys(IQueryCollection query, params string[] allowedKeys)
     {
-        foreach (var key in query.Keys)
-            if (!allowedKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
-                throw new BadHttpRequestException("Unexpected query key.");
+        foreach (var (key, values) in query)
+            if (values.Count != 1 || !allowedKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+                throw new BadHttpRequestException("Unexpected or repeated query key.");
     }
 
     private static void ApplyRequestSizeLimit(HttpContext context, long maxRequestBytes)

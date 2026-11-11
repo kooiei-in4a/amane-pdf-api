@@ -27,8 +27,7 @@ internal sealed record WatermarkOptions(bool Diagonal, string Color)
 
     internal static WatermarkOptions Parse(IQueryCollection query)
     {
-        PdfEndpointHelpers.RejectUnknownQueryKeys(query, "style", "color");
-        if (query.Any(pair => pair.Value.Count != 1)) throw InvalidQuery();
+        PdfEndpointHelpers.ValidateQueryKeys(query, "style", "color");
         var diagonal = query["style"].ToString() switch
         {
             "diagonal" => true,

@@ -11,8 +11,8 @@ internal static class PdfFromImagesEndpoint
         await PdfEndpointHelpers.ExecuteAsync(context, options.Value, "images.pdf", () =>
         {
             var query = context.Request.Query;
-            PdfEndpointHelpers.RejectUnknownQueryKeys(query, "quality");
-            if (!query.TryGetValue("quality", out var values) || values.Count != 1 ||
+            PdfEndpointHelpers.ValidateQueryKeys(query, "quality");
+            if (!query.TryGetValue("quality", out var values) ||
                 values[0] is not ("standard" or "original"))
                 throw new BadHttpRequestException("Invalid image quality.");
             standard = values[0] == "standard";

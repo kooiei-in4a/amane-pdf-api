@@ -30,8 +30,8 @@ internal sealed record StampImageQuery(int Page, decimal X, decimal Y, decimal W
     internal static StampImageQuery Parse(IQueryCollection query)
     {
         string[] keys = ["page", "x", "y", "width"];
-        PdfEndpointHelpers.RejectUnknownQueryKeys(query, keys);
-        if (query.Count != keys.Length || query.Any(pair => pair.Value.Count != 1)) throw Invalid();
+        PdfEndpointHelpers.ValidateQueryKeys(query, keys);
+        if (query.Count != keys.Length) throw Invalid();
         var digits = query["page"].ToString();
         if (digits.Length is < 1 or > 10 || digits[0] == '0' || digits.Any(c => c is < '0' or > '9') ||
             !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var page)) throw Invalid();
