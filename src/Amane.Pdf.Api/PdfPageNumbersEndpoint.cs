@@ -23,9 +23,8 @@ internal sealed record PageNumberOptions(string Anchor, double Dx, double Dy, st
 {
     internal static PageNumberOptions Parse(IQueryCollection query)
     {
-        string[] keys = ["position", "format", "from", "start", "size"];
-        if (query.Any(pair => pair.Value.Count != 1 || !keys.Contains(pair.Key, StringComparer.OrdinalIgnoreCase)))
-            throw InvalidQuery();
+        PdfEndpointHelpers.RejectUnknownQueryKeys(query, "position", "format", "from", "start", "size");
+        if (query.Any(pair => pair.Value.Count != 1)) throw InvalidQuery();
         var (anchor, dx, dy) = query["position"].ToString() switch
         {
             "bottom-center" => ("bc", 0, 28),

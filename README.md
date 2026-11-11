@@ -529,6 +529,8 @@ curl --fail-with-body -F file=@input.pdf \
 
 ### 入力とエラー
 
+全PDF処理APIで、各機能の許可一覧にないクエリキーは、アップロード本文を読む前に400で拒否します。クエリの指定がない機能では、キーを1つでも指定すると400になります。
+
 権限制限APIは上記の専用フィールドを受け付け、閲覧用userPasswordは省略可能、管理用ownerPasswordは必須です。全許可や同一パスワードは400です。
 
 暗号化・解除APIでは、`file` は1ファイル、`password` は1項目で必須です。空のpassword、制御文字、UTF-8で127 bytesを超えるpasswordは拒否します。空白はtrimしません。最適化、圧縮、分割、回転、ページ番号、抽出、削除、並べ替えAPIでは`file`だけを受け付け、`password`を含む予期しないfieldは400で拒否します。
@@ -542,7 +544,7 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | HTTP status | 条件 |
 | --- | --- |
 | 200 | 処理済みPDF、splitは完成ZIPを返却 |
-| 400 | multipart/query形式不正、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはページ指定等の仕様違反、splitの分割数不足/超過 |
+| 400 | multipart/query形式不正、未知のクエリキー、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはページ指定等の仕様違反、splitの分割数不足/超過 |
 | 413 | 単一PDF、merge入力合計、またはmultipartリクエスト総量のサイズ超過 |
 | 422 | 空ファイル、非PDF、破損/警告のあるPDF、処理上限超過、unlock以外の既暗号化PDF。unlockは上記reason表を参照 |
 | 500 | qpdf実行環境や処理中の想定外の内部障害 |

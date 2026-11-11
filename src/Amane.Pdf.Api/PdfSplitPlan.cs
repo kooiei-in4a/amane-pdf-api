@@ -13,6 +13,7 @@ internal sealed class PdfSplitPlan(int? every, PdfPageSelection? ranges, int max
 {
     internal static PdfSplitPlan Parse(IQueryCollection query, int maxParts)
     {
+        PdfEndpointHelpers.RejectUnknownQueryKeys(query, "every", "ranges");
         if (query.Count != 1) throw InvalidSplit();
         if (query.TryGetValue("every", out var values) && values.Count == 1 && values[0] is { } value)
         {

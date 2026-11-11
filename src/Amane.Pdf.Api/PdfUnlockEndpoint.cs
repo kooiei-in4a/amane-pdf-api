@@ -11,7 +11,7 @@ public static class PdfUnlockEndpoint
             context,
             options.Value,
             "unlocked.pdf",
-            validateRequest: null,
+            validateRequest: () => PdfEndpointHelpers.RejectUnknownQueryKeys(context.Request.Query),
             async (files, cancellationToken) =>
             {
                 password = await MultipartPdfUpload.ReadAsync(context.Request, files, options.Value, cancellationToken);

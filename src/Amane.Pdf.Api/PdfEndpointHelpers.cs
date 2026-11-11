@@ -180,6 +180,13 @@ internal static class PdfEndpointHelpers
         }
     }
 
+    internal static void RejectUnknownQueryKeys(IQueryCollection query, params string[] allowedKeys)
+    {
+        foreach (var key in query.Keys)
+            if (!allowedKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
+                throw new BadHttpRequestException("Unexpected query key.");
+    }
+
     private static void ApplyRequestSizeLimit(HttpContext context, long maxRequestBytes)
     {
         if (context.Request.ContentLength > maxRequestBytes)
