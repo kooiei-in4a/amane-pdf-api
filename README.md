@@ -120,7 +120,7 @@ curl --fail-with-body -F file=@input.pdf http://127.0.0.1:8080/api/pdf/clean -o 
 
 埋め込み動画・RichMedia・GoToEリンクなどは動かなくなる場合があります。XMP宣言や添付XMLの除去により、PDF/Aの適合性とZUGFeRD / Factur-X等の電子インボイスの要件を維持しません。電子署名も無効になります。trailer IDによる追跡の可能性があり、匿名化やPDF全体の無害化を保証しません。
 
-共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは50,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdf出力がFSIZEと同じ長さでも安全側に拒否します。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
+共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは50,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdfの書込みには出力予算＋1バイトのFSIZEを設定し、番兵の1バイトも台帳に計上します。実サイズが予算を超えた場合は、終了コードが0でも拒否します。予算ちょうどの出力は通常の検査に進みます。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
 
 入力DOMを破棄してからPDFを生成し、入力・更新JSON・job JSONを削除してから出力を検査します。2 jobで248 MiB以内の一時ファイル予算を確保し、tmpfs 256 MiBとmemory 1.5 GiB・swapなしを実行環境で維持してください。[検証記録](docs/clean-validation.md)は合成fixtureでの実測です。設定を増やす場合は容量・メモリ・時間を再計測してください。#46の公開条件の確認は別途必要です。
 
@@ -683,7 +683,7 @@ qpdfの観測VmSizeは対象写真で最大457.3 MiB、追加で確認した100 
 
 128 MiB（.NET API）と64 MiB（余裕）は容量計画用の見積りで、.NETへのhard limitではありません。tmpfs圧力下の各形式60要求ではAPI RSS最大109.2 MiB、全標準負荷のcgroup peak最大982.7 MiB、OOMイベント0でした。managed heapとGC committedも測定しました。詳しい数値は [docs/qpdf-memory-validation.md](docs/qpdf-memory-validation.md) に記載しています。式は仮想メモリ上限を使った目安で、任意のPDFや将来のruntimeでの成功・OOM回避を数学的に保証しません。標準値の変更やruntime更新時には実HTTP負荷と`memory.peak` / `memory.events`を再測定してください。
 
-compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。ページ、Parent、Resources、XObjectは最大500ページの単位内で階層ごとに一括取得し、画像参照を集めたらページ側辞書と別名の連鎖を削除してspool・容量台帳から外します。低いspool設定では単位を小さくします。画像辞書とSMask／Mask／ICCは、その後に判定へ必要な間だけ保持します。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMは`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`の実サイズに512 bytesを加えて予約・fsizeを設定します。新JPEGは元の90%と残り容量でfsizeを決めます。
+compressのファイル台帳は4 KiB単位で計上します。pages／metadata JSONはファイル出力時のfsizeで制限し、候補辞書を最大500参照ずつspoolします。ページ、Parent、Resources、XObjectは最大500ページの単位内で階層ごとに一括取得し、画像参照を集めたらページ側辞書と別名の連鎖を削除してspool・容量台帳から外します。低いspool設定では単位を小さくします。画像辞書とSMask／Mask／ICCは、その後に判定へ必要な間だけ保持します。raw抽出は最大50画像、`S = round4KiB(最大Length＋4KiB)`とし、Length合計と`n×S`の両方がPNM・新JPEGを残した領域へ収まるバッチを選びます。rawのfsizeはS、抽出JSONは上限付きstdoutです。PNMの予算は`ceil(幅×M/8)×ceil(高さ×M/8)×成分数＋header`に512 bytesを加えた値です。新JPEGの予算は元の90%と、番兵の1バイトを含めて残容量に収まる値の小さい方です。pages／metadata JSON・PNM・新JPEG・最終PDFのFSIZEは実効予算＋1バイトとし、番兵込みで4 KiB単位に切り上げて予約します。
 
 ```text
 I = 入力実サイズ、R = 採用した元JPEGの実サイズ合計、A = 採用JPEGの実サイズ合計
@@ -693,7 +693,7 @@ E = I − R + A、F = E + H
 標準tmpfs: 256 MiB ≥ 2 × 124 MiB + 8 MiB
 ```
 
-入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。出力見積りは数学的上界ではなく、最終出力の実サイズがfsize上限以上なら、exit 0でも部分出力を削除して500です。同値も安全側に拒否します。画像段階の書込みエラーは不採用、126／127は500です。SIGXFSZ無視時のqpdfはJSONが途中で切れてもexit 0となり得るため、pages／metadata JSONの実サイズがfsize上限以上なら既知のmetadata上限として画像処理を終了します。同値でも安全側に判定し、既に採用した画像があれば保持して最終処理へ進みます。想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
+入力・metadata・raw・PNM・新JPEG・採用JPEG・JSONの同時存在も台帳で制限します。update.jsonの結合時はentry断片群と完成JSONが同時に存在するため、その合計割当量（各ファイルを4 KiBに切り上げ）も採用前に確認します。不採用の中間物を削除し、最終処理前には不要なraw／PNM／metadataを削除します。最終出力の見積りは数学的上界ではありません。4 KiB単位で使える残容量が見積りと同じ場合は最後の1バイトを番兵に使います。最終PDFの実サイズが実効予算を超えれば、終了コードが0でも削除して500を返します。画像段階の書込みエラーは不採用、126／127は500です。pages／metadata JSONの実サイズが実効予算を超えた場合は、終了コードが0でも画像処理を打ち切り、採用済みの画像で最終処理へ進みます。予算ちょうどの出力は各形式の通常の検査に進みます。想定外のmetadata異常や最終処理の2／3を含む失敗は500です。
 
 APIの制限は設定で調整できる安全境界です。job上限・PNM・画素数・画像数・AS・同時処理数を増やすときは、tmpfsとコンテナmemoryも上の式と合わせて見直してください。qpdfとJPEGツールは各job内で逐次起動するため、メモリ計画には両者のASの大きい方を使います。実HTTPの圧縮率・画質、段階別時間、memory.peak／memory.events、tmpfsは[圧縮の実測記録](docs/compress-validation.md)に記載します。数値は対象fixtureでの事実であり、他のPDFの保証ではありません。
 

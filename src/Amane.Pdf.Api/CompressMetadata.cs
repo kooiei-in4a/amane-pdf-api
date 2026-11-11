@@ -59,24 +59,13 @@ internal sealed class CompressMetadata(PdfCompressProcessor owner)
         {
             token.ThrowIfCancellationRequested();
             var output = Path.Combine(owner.Files.DirectoryPath, "metadata.json");
-            var size = Math.Min(owner.Options.CompressJsonLimitBytes, owner.Capacity.Remaining / 4096 * 4096);
-            if (size < 4096) throw new CompressLimitException();
-            owner.Capacity.Reserve(output, size);
             try
             {
-                using (TemporaryPdfFiles.CreatePrivateFile(output)) { }
-                var result = await owner.RunQpdfAsync([
+                var length = await owner.WriteMetadataAsync([
                     "--json=2", "--json-key=qpdf", "--json-stream-data=none", "--decode-level=none",
                     .. batch.Select(reference => reference.Argument), owner.Files.InputPath, output
-                ], size, null, token);
-                PdfCompressProcessor.RequireStarted(result);
-                // With SIGXFSZ ignored, qpdf can return 0 after a truncated write.
-                // Treat a saturated metadata budget conservatively, before parsing.
-                // Retain 153 defensively; normal ignored-SIGXFSZ writes use the size check.
-                if (result.ExitCode == 153 || new FileInfo(output).Length >= size)
-                    throw new CompressLimitException();
-                if (result.ExitCode != 0) throw new InvalidOperationException("PDF metadata failed.");
-                owner.Capacity.Reserve(output, new FileInfo(output).Length);
+                ], output, token);
+                owner.Capacity.Reserve(output, length);
                 using var document = CompressJson.Parse(await File.ReadAllBytesAsync(output, token), owner.Options.CompressJsonDepth);
                 var objects = CompressJson.Objects(document);
                 foreach (var reference in batch)

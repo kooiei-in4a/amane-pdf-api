@@ -105,25 +105,14 @@ public sealed class FromImagesDesignTests
     [TestMethod]
     public void ToolResult_ClassifiesObservableSentinelBeforeExitButNeverInfersDeletedOutput()
     {
-        var path = Path.GetTempFileName();
-        try
-        {
-            foreach (var length in new[] { 9, 10 })
-            {
-                File.WriteAllBytes(path, new byte[length]);
-                JpegNormalizer.CheckResult(new(0, null), path, 10, CancellationToken.None);
-            }
-            File.WriteAllBytes(path, new byte[11]);
-            foreach (var exit in new[] { 0, 1 })
-                Assert.AreEqual(PdfImageReason.Capacity, Assert.Throws<PdfImageInputException>(() =>
-                    JpegNormalizer.CheckResult(new(exit, null), path, 10, CancellationToken.None)).Reason);
-            Assert.Throws<InvalidOperationException>(() => JpegNormalizer.CheckResult(new(139, null), path, 10, CancellationToken.None));
-            File.Delete(path);
-            Assert.AreEqual(PdfImageReason.Unsupported, Assert.Throws<PdfImageInputException>(() =>
-                JpegNormalizer.CheckResult(new(1, null), path, 10, CancellationToken.None)).Reason);
-            Assert.Throws<InvalidOperationException>(() => JpegNormalizer.CheckResult(new(0, null), path, 10, CancellationToken.None));
-        }
-        finally { File.Delete(path); }
+        foreach (var length in new[] { 9, 10 }) JpegNormalizer.CheckResult(new(0, length, false));
+        foreach (var exit in new[] { 0, 1 })
+            Assert.AreEqual(PdfImageReason.Capacity, Assert.Throws<PdfImageInputException>(() =>
+                JpegNormalizer.CheckResult(new(exit, 11, true))).Reason);
+        Assert.Throws<InvalidOperationException>(() => JpegNormalizer.CheckResult(new(139, 11, true)));
+        Assert.AreEqual(PdfImageReason.Unsupported, Assert.Throws<PdfImageInputException>(() =>
+            JpegNormalizer.CheckResult(new(1, 0, false))).Reason);
+        Assert.Throws<InvalidOperationException>(() => JpegNormalizer.CheckResult(new(0, 0, false)));
     }
 
     [TestMethod]

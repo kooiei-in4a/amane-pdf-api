@@ -301,14 +301,14 @@ public sealed class PdfCleanTests
         CollectionAssert.AreEqual(new[] { "700", "600", "600", "600", "600" }, await File.ReadAllLinesAsync(Path.Combine(test.Root, "permissions")));
         var limits = await File.ReadAllTextAsync(Path.Combine(test.Root, "limits"));
         Assert.IsTrue(limits.Contains("570425344", StringComparison.Ordinal));
-        Assert.IsTrue(limits.Contains("56623104", StringComparison.Ordinal));
+        Assert.IsTrue(limits.Contains("56623105", StringComparison.Ordinal));
         test.AssertClean();
     }
 
     [TestMethod]
     [DataRow("pdf")]
     [DataRow("json")]
-    public async Task FsizeBoundary_RejectsEqualityAndOneBelow_AcceptsOneAbove(string kind)
+    public async Task FsizeBoundary_AcceptsExactBudget_RejectsOneByteOver(string kind)
     {
         if (!Linux()) return;
         long size;
@@ -331,7 +331,7 @@ public sealed class PdfCleanTests
         {
             await using var test = new PdfTestContext(new() { [kind == "pdf" ? "Pdf:CleanOutputLimitBytes" : "Pdf:CleanJsonLimitBytes"] = (size + delta).ToString(System.Globalization.CultureInfo.InvariantCulture) });
             using var response = await PostAsync(test, PdfTestContext.Fixture);
-            if (delta <= 0) await ProblemAsync(test, response, 422, "too-complex");
+            if (delta < 0) await ProblemAsync(test, response, 422, "too-complex");
             else { Assert.AreEqual(HttpStatusCode.OK, response.StatusCode); test.AssertClean(); }
         }
     }

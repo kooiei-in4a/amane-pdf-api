@@ -215,16 +215,12 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
     internal async Task SplitPartAsync(string inputPath, string pageRange, string outputPath,
         long partBudget, CancellationToken cancellationToken)
     {
-        var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,
-            [inputPath, "--pages", ".", pageRange, "--", outputPath], options.Value.QpdfAddressSpaceLimitBytes,
-            checked(partBudget + 1), new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory });
-        var result = await ExternalProcessRunner.RunAsync(request, cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
-        if (result.ExitCode is 126 or 127) throw new InvalidOperationException("PDF processing failed.");
-        var output = new FileInfo(outputPath);
-        if (output.Exists && output.Length > partBudget) throw new PdfSplitOutputTooLargeException();
+        var result = await RunBoundedWriteAsync([inputPath, "--pages", ".", pageRange, "--", outputPath],
+            outputPath, partBudget, cancellationToken);
+        if (result.StartFailed) throw new InvalidOperationException("PDF processing failed.");
+        if (result.ExceedsBudget) throw new PdfSplitOutputTooLargeException();
         if (result.ExitCode == 3) throw new PdfInputException();
-        if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
+        if (!result.Succeeded)
             throw new InvalidOperationException("PDF processing failed.");
         try { await ValidateOutputAsync(outputPath, cancellationToken); }
         catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
@@ -259,11 +255,9 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         CancellationToken token)
     {
         using var stage = PdfProcessingDiagnostics.Measure(PdfStage.OutputValidation);
-        async Task<ExternalProcessResult> Check(string[] args, int? stdout = null) =>
-            await ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath,
-                options.Value.QpdfPath, args, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
-                new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory }, stdout)
-                with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, token);
+        Task<ExternalProcessResult> Check(string[] args, int? stdout = null) =>
+            ExternalProcessRunner.RunAsync(CreateFileRequest(args, BoundedOutput.FileSizeLimit(budget),
+                Path.GetFullPath(files.DirectoryPath), stdout), token);
         if ((await Check(["--is-encrypted", path])).ExitCode != 2 ||
             (await Check(["--check", path])).ExitCode != 0)
             throw new InvalidOperationException("Generated image PDF is invalid.");
@@ -283,30 +277,20 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         var output = Path.GetFullPath(files.OutputPath);
         arguments.AddRange(["--", output]);
         using (TemporaryPdfFiles.CreatePrivateFile(output)) { }
-        var result = await ExternalProcessRunner.RunAsync(ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath,
-            options.Value.QpdfPath, arguments, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
-            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory })
-            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, token);
-        token.ThrowIfCancellationRequested();
-        if (result.ExitCode is 126 or 127 or < 0 or >= 128) throw new InvalidOperationException("Image PDF merge failed.");
-        if (new FileInfo(output).Length > budget) throw PdfImageInputException.Capacity();
-        if (result.ExitCode != 0 || new FileInfo(output).Length == 0)
+        var result = await RunBoundedWriteAsync(arguments, output, budget, token, Path.GetFullPath(files.DirectoryPath));
+        if (result.InternalFailure) throw new InvalidOperationException("Image PDF merge failed.");
+        if (result.ExceedsBudget) throw PdfImageInputException.Capacity();
+        if (!result.Succeeded)
             throw new InvalidOperationException("Image PDF merge failed.");
         await CheckImagePdfAsync(files, output, pages.Count, budget, token);
     }
 
     internal async Task RunCleanWriteAsync(string[] arguments, string outputPath, long sizeLimit, CancellationToken token)
     {
-        var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,
-            arguments, options.Value.QpdfAddressSpaceLimitBytes, sizeLimit,
-            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory });
-        var result = await ExternalProcessRunner.RunAsync(request, token);
-        token.ThrowIfCancellationRequested();
-        if (result.ExitCode is 126 or 127) throw new InvalidOperationException("PDF processing failed.");
-        var output = new FileInfo(outputPath);
-        // Ignored SIGXFSZ can leave a truncated file even with exit 0.
-        if (output.Exists && output.Length >= sizeLimit) throw new PdfCleanTooComplexException();
-        if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
+        var result = await RunBoundedWriteAsync(arguments, outputPath, sizeLimit, token);
+        if (result.StartFailed) throw new InvalidOperationException("PDF processing failed.");
+        if (result.ExceedsBudget) throw new PdfCleanTooComplexException();
+        if (!result.Succeeded)
             throw new InvalidOperationException("PDF processing failed.");
     }
 
@@ -314,20 +298,25 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         long budget, CancellationToken token)
     {
         using (TemporaryPdfFiles.CreatePrivateFile(outputPath)) { }
-        var request = ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath,
-            arguments, options.Value.QpdfAddressSpaceLimitBytes, budget + 1,
-            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory })
-            with { WorkingDirectory = files.DirectoryPath };
-        var result = await ExternalProcessRunner.RunAsync(request, token);
-        token.ThrowIfCancellationRequested();
-        if (result.ExitCode is 126 or 127) throw new InvalidOperationException(PdfOverlayBuilder.Failure);
-        var output = new FileInfo(outputPath);
-        if (output.Exists && output.Length > budget) throw PdfOverlayInputException.TooComplex();
-        if (result.ExitCode != 0 || !output.Exists || output.Length == 0)
+        var result = await RunBoundedWriteAsync(arguments, outputPath, budget, token, files.DirectoryPath);
+        if (result.StartFailed) throw new InvalidOperationException(PdfOverlayBuilder.Failure);
+        if (result.ExceedsBudget) throw PdfOverlayInputException.TooComplex();
+        if (!result.Succeeded)
             throw new InvalidOperationException(PdfOverlayBuilder.Failure);
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(outputPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
+
+    private Task<BoundedOutputResult> RunBoundedWriteAsync(IReadOnlyList<string> arguments, string outputPath,
+        long budget, CancellationToken token, string? workingDirectory = null)
+        => BoundedOutput.RunAsync(fsize => CreateFileRequest(arguments, fsize, workingDirectory), outputPath, budget, token);
+
+    private ExternalProcessRequest CreateFileRequest(IReadOnlyList<string> arguments, long fsize,
+        string? workingDirectory, int? stdoutLimit = null)
+        => ProcessMemoryLimits.CreateRequest(options.Value.PrlimitPath, options.Value.QpdfPath, arguments,
+            options.Value.QpdfAddressSpaceLimitBytes, fsize,
+            new Dictionary<string, string> { ["JPEGMEM"] = options.Value.QpdfJpegMemory }, stdoutLimit)
+            with { WorkingDirectory = workingDirectory };
 
     private async Task<(int ExitCode, byte[]? Output)> RunWithBoundedStdoutAsync(string[] arguments, int outputLimit,
         CancellationToken cancellationToken)

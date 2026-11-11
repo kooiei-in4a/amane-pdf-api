@@ -146,18 +146,17 @@ internal sealed class PdfRedactProcessor(QpdfProcessor qpdf, PdfRenderer rendere
         async Task WriteQpdf(string[] arguments, string path, long limit, bool allowWarning = false, bool prune = false, bool output = false)
         {
             Func<Exception> failure = output ? PdfRedactException.Output : PdfRedactException.Complex;
-            var budget = capacity.ReserveWrite(path, limit, failure);
+            var budget = capacity.ReserveWrite(path, limit, failure, sentinel: true);
             using (TemporaryPdfFiles.CreatePrivateFile(path)) { }
-            var request = ProcessMemoryLimits.CreateRequest(settings.PrlimitPath, settings.QpdfPath, arguments,
-                settings.QpdfAddressSpaceLimitBytes, budget, new Dictionary<string, string> { ["JPEGMEM"] = settings.QpdfJpegMemory })
-                with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) };
-            var result = await ExternalProcessRunner.RunAsync(request, token);
-            token.ThrowIfCancellationRequested();
-            var file = new FileInfo(path);
+            var result = await BoundedOutput.RunAsync(fsize =>
+                ProcessMemoryLimits.CreateRequest(settings.PrlimitPath, settings.QpdfPath, arguments,
+                    settings.QpdfAddressSpaceLimitBytes, fsize, new Dictionary<string, string> { ["JPEGMEM"] = settings.QpdfJpegMemory })
+                    with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, path, budget, token);
+            // Pruning keeps its existing unsupported-pdf mapping for every nonzero exit.
             if (prune && result.ExitCode != 0) throw PdfRedactException.Unsupported();
-            if (file.Exists && file.Length >= budget) throw failure();
-            if (result.ExitCode != 0 && !(allowWarning && result.ExitCode == 3) || !file.Exists || file.Length == 0) throw Invalid();
-            capacity.Reserve(path, file.Length);
+            if (result.ExceedsBudget) throw failure();
+            if (!result.Succeeded && !(allowWarning && result.ExitCode == 3 && result.Length > 0)) throw Invalid();
+            capacity.Reserve(path, result.Length);
         }
     }
 

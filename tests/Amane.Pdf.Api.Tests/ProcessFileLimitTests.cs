@@ -9,6 +9,44 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class ProcessFileLimitTests
 {
     [TestMethod]
+    [DataRow(4096, 4096, true)]
+    [DataRow(4097, 4097, false)]
+    [DataRow(8192, 4097, false)]
+    public async Task BoundedOutput_ChecksActualLengthEvenWhenTheToolExitsZero(int requested, int length, bool succeeded)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var result = await BoundedOutput.RunAsync(fsize => ProcessMemoryLimits.CreateRequest(
+            "/usr/bin/prlimit", "/bin/sh",
+            ["-c", $"head -c {requested} /dev/zero > \"$1\" || :; exit 0", "writer", files.OutputPath],
+            64 * 1024 * 1024, fsize, null), files.OutputPath, 4096, CancellationToken.None);
+        Assert.AreEqual(0, result.ExitCode);
+        Assert.AreEqual((long)length, result.Length);
+        Assert.AreEqual(length > 4096, result.ExceedsBudget);
+        Assert.AreEqual(succeeded, result.Succeeded);
+        Assert.IsFalse(result.InternalFailure);
+    }
+
+    [TestMethod]
+    [DataRow("exit 126", true, true)]
+    [DataRow("exit 127", true, true)]
+    [DataRow("kill -TERM $$", false, true)]
+    [DataRow("exit 2", false, false)]
+    public async Task BoundedOutput_ClassifiesProcessExits(string command, bool startFailed, bool internalFailure)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var result = await BoundedOutput.RunAsync(fsize => ProcessMemoryLimits.CreateRequest(
+            "/usr/bin/prlimit", "/bin/sh", ["-c", command], 64 * 1024 * 1024, fsize, null),
+            files.OutputPath, 4096, CancellationToken.None);
+        Assert.AreNotEqual(0, result.ExitCode);
+        Assert.AreEqual(startFailed, result.StartFailed);
+        Assert.AreEqual(internalFailure, result.InternalFailure);
+        Assert.IsFalse(result.Succeeded);
+        Assert.IsFalse(result.ExceedsBudget);
+    }
+
+    [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
     public async Task SignalAndLimits_SurviveExec_WithAndWithoutFileLimit(bool fileLimit)
@@ -122,7 +160,127 @@ public sealed class ProcessFileLimitTests
     }
 
     [TestMethod]
-    public async Task FinalOutputAtFileLimit_Is500_EvenWhenRealQpdfAndCheckReturnZero()
+    [DataRow("pages.json", 0, "1")]
+    [DataRow("pages.json", 1, "0")]
+    [DataRow("metadata.json", 0, "1")]
+    [DataRow("metadata.json", 1, "0")]
+    public async Task CompressMetadata_AcceptsExactBudget_AndStopsAtOneByteOver(string outputName, int extra, string adopted)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        const int budget = 4096;
+        await using var test = new PdfTestContext(new() { ["Pdf:CompressJsonLimitBytes"] = budget.ToString() });
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        options.QpdfPath = await PadMetadataAsync(test, outputName, budget + extra);
+        var jpeg = await CompressFixtures.JpegAsync(test, width: 640, height: 480);
+        using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Pdf(jpeg, width: 640, height: 480));
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual(adopted, response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    public async Task RedactMetadata_AcceptsExactBudget_AndRejectsOneByteOver(int extra)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        const int budget = 65536;
+        await using var test = new PdfTestContext(new() { ["Pdf:RedactJsonLimitBytes"] = budget.ToString() });
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        options.QpdfPath = await PadMetadataAsync(test, "redact-inspect.json", budget + extra);
+        using var response = await PdfRedactTests.Post(test, PdfTestContext.Fixture);
+        if (extra == 0)
+        {
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        }
+        else await PdfRedactTests.Problem(test, response, 422, "too-complex");
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(0, "1")]
+    [DataRow(1, "0")]
+    public async Task CompressCjpeg_UsesSentinel_AndAdoptsOnlyWithinBudget(int extra, string adopted)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        const int width = 640, height = 480;
+        var jpeg = await CompressFixtures.JpegAsync(test, width: width, height: height);
+        var budget = jpeg.Length * 9 / 10;
+        var encoded = Path.Combine(test.Root, "encoded.jpg");
+        var result = await ExternalProcessRunner.RunAsync(new("cjpeg",
+            ["-quality", "75", "-optimize", "-outfile", encoded, Path.Combine(test.Root, "source.pnm")]),
+            CancellationToken.None);
+        Assert.AreEqual(0, result.ExitCode);
+        var candidate = await File.ReadAllBytesAsync(encoded);
+        var padding = budget + extra - candidate.Length;
+        Assert.IsTrue(padding is >= 4 and <= 65537);
+        var comment = new byte[padding];
+        comment[0] = 0xff;
+        comment[1] = 0xfe;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(comment.AsSpan(2), (ushort)(padding - 2));
+        await File.WriteAllBytesAsync(encoded, [.. candidate[..2], .. comment, .. candidate[2..]]);
+        var wrapper = await PdfCompressTests.WrapperAsync(test, $$"""
+            grep -Eq '^Max file size +{{budget + 1}} +{{budget + 1}} +bytes' /proc/$$/limits || exit 127
+            while [ "$1" != -outfile ]; do [ "$#" -gt 0 ] || exit 127; shift; done
+            exec cat '{{encoded}}' > "$2"
+            """ + "\n");
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.CjpegPath = wrapper;
+        using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.Pdf(jpeg, width: width, height: height));
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual(adopted, response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        test.AssertClean();
+    }
+
+    private static Task<string> PadMetadataAsync(PdfTestContext test, string outputName, int length)
+        => PdfCompressTests.WrapperAsync(test, $$"""
+            for output do :; done
+            case "$1:$output" in --json=2:*/{{outputName}})
+                qpdf "$@" || exit $?
+                size=$(stat -c %s "$output") || exit 127
+                padding=$(({{length}} - size))
+                [ "$padding" -ge 0 ] || exit 127
+                printf '%*s' "$padding" '' >> "$output"
+                exit $?
+            ;; esac
+            exec qpdf "$@"
+            """ + "\n");
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    public async Task RedactOutput_AcceptsExactBudget_AndRejectsOneByteOver(int extra)
+    {
+        if (!PdfCompressTests.Linux()) return;
+        await using var test = new PdfTestContext();
+        var input = PdfTestContext.Fixture;
+        long length;
+        using (var calibration = await PdfRedactTests.Post(test, input))
+        {
+            Assert.AreEqual(HttpStatusCode.OK, calibration.StatusCode);
+            length = (await calibration.Content.ReadAsByteArrayAsync()).LongLength;
+        }
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.RedactOutputLimitBytes = length - extra;
+        using var response = await PdfRedactTests.Post(test, input);
+        if (extra == 0)
+        {
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            var output = await response.Content.ReadAsByteArrayAsync();
+            Assert.AreEqual(length, output.LongLength);
+            await test.AssertValidPdfAsync(output, 1);
+        }
+        else await PdfRedactTests.Problem(test, response, 422, "output-too-large");
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    [DataRow(6)]
+    public async Task CompressOutput_AcceptsExactBudget_AndRejectsOverflowEvenWhenQpdfCheckReturnsZero(int extra)
     {
         if (!PdfCompressTests.Linux()) return;
         await using var test = new PdfTestContext();
@@ -131,10 +289,8 @@ public sealed class ProcessFileLimitTests
         var source = Path.Combine(test.Root, "expanded.pdf");
         var calibration = Path.Combine(test.Root, "calibration.pdf");
         var observation = Path.Combine(test.Root, "final-state.txt");
-        // Make real qpdf's output five bytes larger than the API's FSIZE,
-        // so the limit cuts into the final %%EOF marker.
-        // An uncompressed catalog string keeps the size controllable without
-        // changing production options or exposing a test-only output limit.
+        // An uncompressed catalog string controls the real output length. The
+        // largest case loses five bytes from the EOF marker at budget + 1.
         var padding = 0;
         for (var attempt = 0; attempt < 3; attempt++)
         {
@@ -145,10 +301,10 @@ public sealed class ProcessFileLimitTests
             ]));
             Assert.AreEqual(0, (await test.QpdfAsync(source, "--object-streams=disable", "--compression-level=9", calibration)).ExitCode);
             var length = new FileInfo(calibration).Length;
-            if (length == limit + 5L) break;
-            padding = checked(padding + (int)(limit + 5L - length));
+            if (length == limit + extra) break;
+            padding = checked(padding + (int)(limit + extra - length));
         }
-        Assert.AreEqual(limit + 5L, new FileInfo(calibration).Length);
+        Assert.AreEqual((long)limit + extra, new FileInfo(calibration).Length);
         Assert.AreEqual(0, (await test.QpdfAsync("--check", calibration)).ExitCode);
         var wrapper = await PdfCompressTests.WrapperAsync(test,
             "case \"$1\" in */input.pdf)\n" +
@@ -160,11 +316,20 @@ public sealed class ProcessFileLimitTests
             "exit \"$code\";; esac\nexec qpdf \"$@\"\n");
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var response = await PdfCompressTests.PostAsync(test, input);
-        Assert.AreEqual($"0 {limit} 0", (await File.ReadAllTextAsync(observation)).Trim());
-        Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-        Assert.IsFalse(response.Headers.Contains("X-Pdf-Images-Recompressed"));
-        Assert.IsFalse(response.Content.Headers.Contains("Content-Disposition"));
-        Assert.IsFalse((await response.Content.ReadAsStringAsync()).Contains(test.Root));
+        Assert.AreEqual($"0 {limit + Math.Min(extra, 1)} 0", (await File.ReadAllTextAsync(observation)).Trim());
+        if (extra == 0)
+        {
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            Assert.AreEqual("0", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+            await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        }
+        else
+        {
+            Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+            Assert.IsFalse(response.Headers.Contains("X-Pdf-Images-Recompressed"));
+            Assert.IsFalse(response.Content.Headers.Contains("Content-Disposition"));
+            Assert.IsFalse((await response.Content.ReadAsStringAsync()).Contains(test.Root));
+        }
         test.AssertClean();
     }
 }

@@ -76,3 +76,5 @@ amane-infraでは本番に近い専用の使い捨てVMで、報告書の隔離�
 4. API限定のCompose `ulimits.core.soft/hard: 0`を補助対策として用意する。本番の旧条件（memory 512 MiB、MemorySwap合計1 GiB）は新版の検証条件と異なるため、1.5 GiB・swapなし・tmpfs 256 MiB・同時2へ合わせるか、本番条件で容量を再検証する。
 
 #46はopenのままとし、API splitとサイトsplitのdeployは確認完了まで保留します。実装PRは#46を参照し、自動closeしません。mergeとdeployはそれぞれHuman承認後に行います。
+
+#98 以降、共通の出力サイズ判定では、実効予算ちょうどの出力を通常の検査に進めます。
