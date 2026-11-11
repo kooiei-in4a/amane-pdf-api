@@ -134,7 +134,10 @@ internal static class PdfEndpointHelpers
             {
                 PdfOverlayReason.TooComplex => ("too-complex", "このPDFは描画の処理上限を超えています。"),
                 PdfOverlayReason.SignatureStructure => ("signature-structure", "このPDFには電子署名や署名関連の設定があるため加工できません。"),
-                _ => ("unsupported-pdf", "このPDFのページ属性は描画に対応していません。")
+                PdfOverlayReason.UnsupportedPdf => ("unsupported-pdf", "このPDFのページ属性は描画に対応していません。"),
+                // No request data is converted to this enum. This unreachable guard bypasses the sibling
+                // catch (Exception); update the switch when adding a reason.
+                _ => throw new InvalidOperationException("Unknown PDF overlay reason.")
             };
             await Results.Problem(statusCode: 422, title: title,
                 extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);

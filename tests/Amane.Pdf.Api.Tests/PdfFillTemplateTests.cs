@@ -160,20 +160,7 @@ public sealed class PdfFillTemplateTests
             """)!;
         objects["obj:5 0 R"] = new JsonObject { ["value"] = widget };
         await using var test = new PdfTestContext();
-        var query = operation switch
-        {
-            "watermark" => "style=corner&color=gray",
-            "page-numbers" => "position=bottom-center&format=number",
-            _ => "page=1&x=0.1&y=0.1&width=0.2"
-        };
-
-        async Task<HttpResponseMessage> SendOverlay(byte[] pdf)
-        {
-            using var form = PdfTestContext.FileForm(pdf);
-            if (operation == "watermark") form.Add(new StringContent("DRAFT"), "text");
-            if (operation == "stamp-image") form.Add(new ByteArrayContent(StampFixtures.Png()), "image", "stamp.png");
-            return await test.Client.PostAsync("/api/pdf/" + operation + "?" + query, form);
-        }
+        Task<HttpResponseMessage> SendOverlay(byte[] pdf) => SendOverlayAsync(test, operation, pdf);
 
         await source.CreateInput(root.ToJsonString());
         using (var rejected = await SendOverlay(await File.ReadAllBytesAsync(source.Files.InputPath)))
@@ -199,6 +186,56 @@ public sealed class PdfFillTemplateTests
         Assert.AreEqual("/Tx", field.GetProperty("/FT").GetString());
         Assert.AreEqual("u:Existing value", field.GetProperty("/V").GetString());
         test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("watermark")]
+    [DataRow("page-numbers")]
+    [DataRow("stamp-image")]
+    public async Task Http_OverlayEndpointsRejectEachSignatureMarkerWithoutFormFields(string operation)
+    {
+        // No /AcroForm or widget: each marker alone must trigger signature-structure.
+        await using var test = new PdfTestContext(); using var source = new OverlayJob();
+        foreach (var structure in new[] { "perms", "sig-ft", "sig-type", "timestamp", "escaped-sig", "stream-dict", "array" })
+        {
+            var root = JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject();
+            var objects = OverlayFixtures.Objects(root);
+            if (structure == "perms") objects["obj:1 0 R"]!["value"]!["/Perms"] = new JsonObject();
+            else if (structure == "stream-dict") objects["obj:4 0 R"]!["stream"]!["dict"]!["/FT"] = "/Sig";
+            else
+            {
+                var marker = structure switch
+                {
+                    "sig-ft" => "{\"/FT\":\"/Sig\"}", "sig-type" => "{\"/Type\":\"/Sig\"}",
+                    "timestamp" => "{\"/Type\":\"/DocTimeStamp\"}", "escaped-sig" => "{\"/F#54\":\"/S#69g\"}",
+                    _ => "{\"/Type\":\"/Sig\"}"
+                };
+                OverlayFixtures.Page(root)[structure == "array" ? "/Nested" : "/Annots"] = JsonNode.Parse("[" + marker + "]");
+            }
+            File.Delete(source.Files.InputPath); await source.CreateInput(root.ToJsonString());
+            var packed = Path.Combine(source.Root, "packed.pdf"); File.Delete(packed);
+            Assert.AreEqual(0, await source.Qpdf.RunAsync(["--object-streams=generate", source.Files.InputPath, packed], default));
+            foreach (var pdf in new[] { await File.ReadAllBytesAsync(source.Files.InputPath), await File.ReadAllBytesAsync(packed) })
+            {
+                using var response = await SendOverlayAsync(test, operation, pdf);
+                Assert.AreEqual(422, (int)response.StatusCode, structure);
+                await Problem(test, response, 422, "signature-structure");
+            }
+        }
+    }
+
+    private static async Task<HttpResponseMessage> SendOverlayAsync(PdfTestContext test, string operation, byte[] pdf)
+    {
+        var query = operation switch
+        {
+            "watermark" => "style=corner&color=gray",
+            "page-numbers" => "position=bottom-center&format=number",
+            _ => "page=1&x=0.1&y=0.1&width=0.2"
+        };
+        using var form = PdfTestContext.FileForm(pdf);
+        if (operation == "watermark") form.Add(new StringContent("DRAFT"), "text");
+        if (operation == "stamp-image") form.Add(new ByteArrayContent(StampFixtures.Png()), "image", "stamp.png");
+        return await test.Client.PostAsync("/api/pdf/" + operation + "?" + query, form);
     }
 
     [TestMethod]

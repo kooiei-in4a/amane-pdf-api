@@ -40,4 +40,33 @@ public sealed class FillTemplateStructureTests
         Assert.ThrowsExactly<OperationCanceledException>(() => PdfFormDetector.RejectForms(clean, cancel.Token));
     }
 
+    [TestMethod]
+    public void Signatures_FullScanAtInputObjectAndByteLimitsStaysFast()
+    {
+        // Overlay endpoints now scan every input object. Worst case: 50,000 objects filling
+        // the 32 MiB metadata budget with name-valued keys, each of which Scan has to decode.
+        var json = OverlayFixtures.Metadata().ToJsonString();
+        var existing = JsonNode.Parse(json)!["qpdf"]![1]!.AsObject().Count(pair => pair.Key.StartsWith("obj:", StringComparison.Ordinal));
+        var added = PdfPageBoxes.InputObjectLimit - existing;
+        const int limit = 32 * 1048576;
+        var keys = ((limit - json.Length - 65536) / added - 32) / 12;
+        var body = new System.Text.StringBuilder(limit);
+        for (var i = 0; i < added; i++)
+        {
+            body.Append("\"obj:").Append(1000 + i).Append(" 0 R\":{\"value\":{");
+            for (var k = 0; k < keys; k++) body.Append(k == 0 ? "" : ",").Append("\"/K").Append(k).Append("\":\"/V\"");
+            body.Append("}},");
+        }
+        var at = json.IndexOf("\"obj:1 0 R\":", StringComparison.Ordinal);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(json.Insert(at, body.ToString()));
+        Assert.IsTrue(bytes.Length is > limit * 9 / 10 and <= limit, bytes.Length.ToString());
+        using var metadata = new PdfPageBoxes(bytes, limit, PdfPageBoxes.InputObjectLimit, default);
+        Assert.AreEqual(PdfPageBoxes.InputObjectLimit, metadata.ObjectCount);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        Assert.IsFalse(PdfFormDetector.ContainsSignatureStructure(metadata, default));
+        var elapsed = watch.Elapsed;
+        Console.WriteLine($"signature scan: {bytes.Length} bytes, {metadata.ObjectCount} objects, {elapsed.TotalMilliseconds:F0} ms");
+        Assert.IsTrue(elapsed < TimeSpan.FromSeconds(2), elapsed.ToString());
+    }
+
 }
