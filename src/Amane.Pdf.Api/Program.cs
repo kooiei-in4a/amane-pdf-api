@@ -94,7 +94,7 @@ catch (OptionsValidationException)
     await app.DisposeAsync();
     return 1;
 }
-catch (InvalidOperationException)
+catch (ProcessMemoryLimitsStartupException)
 {
     app.Logger.LogCritical("PDF処理のメモリ制限の自己テストに失敗しました。");
     await app.DisposeAsync();

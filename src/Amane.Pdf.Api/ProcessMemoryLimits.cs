@@ -4,6 +4,9 @@ namespace Amane.Pdf.Api;
 
 internal enum ProcessMemoryLimit { AddressSpace, Data }
 
+internal sealed class ProcessMemoryLimitsStartupException()
+    : Exception("PDF処理のメモリ制限の自己テストに失敗しました。");
+
 // The same argument/environment construction can be used for djpeg/cjpeg.
 internal static class ProcessMemoryLimits
 {
@@ -70,14 +73,14 @@ internal static class ProcessMemoryLimits
                 var request = CreateRequest(options.PrlimitPath, executable, arguments,
                     options.QpdfAddressSpaceLimitBytes, options.QpdfJpegMemory);
                 if ((await ExternalProcessRunner.RunAsync(request, timeout.Token)).ExitCode != 0)
-                    throw new InvalidOperationException();
+                    throw new ProcessMemoryLimitsStartupException();
             }
             await PdfCompressProcessor.ValidateStartupAsync(options, timeout.Token);
         }
-        catch (Exception)
+        catch (Exception exception) when (exception is not ProcessMemoryLimitsStartupException)
         {
             // Do not retain process output, paths, or an inner exception in startup logs.
-            throw new InvalidOperationException("PDF処理のメモリ制限の自己テストに失敗しました。");
+            throw new ProcessMemoryLimitsStartupException();
         }
     }
 }
