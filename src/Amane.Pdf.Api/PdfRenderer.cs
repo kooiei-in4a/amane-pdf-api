@@ -8,7 +8,8 @@ internal sealed record RenderPage(string InputPath, string OutputPath, int Page,
     double ExpectedWidth, double ExpectedHeight, int Width, int Height, long MaxBytes,
     IReadOnlyList<RenderFill> Fills);
 
-// PR B maps these failures to the corresponding redact 422 reason.
+// PdfRedactProcessor maps PdfRenderException to PdfRedactException.
+// PdfEndpointHelpers returns HTTP 422 with the corresponding redact reason.
 internal enum PdfRenderReason { TooComplex, UnsupportedPdf, OutputTooLarge }
 internal sealed class PdfRenderException(PdfRenderReason reason) : Exception("PDFの描画に失敗しました。")
 {

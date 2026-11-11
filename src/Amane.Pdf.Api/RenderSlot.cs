@@ -1,6 +1,7 @@
 namespace Amane.Pdf.Api;
 
-// Held for the whole request by future redact / PDF-to-image / OCR callers.
+// PdfRedactEndpoint holds the single render slot from before upload through response and cleanup.
+// If the slot is occupied, the endpoint returns 503 before reading the upload.
 internal sealed class RenderSlot : IDisposable
 {
     private readonly SemaphoreSlim semaphore = new(1, 1);
