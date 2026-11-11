@@ -91,6 +91,7 @@ OCGを除去する追加処理（qpdf JSONでレイヤーの `/OC` と `/OCPrope
                 drawInputs: [stamp.png], layerJson: false)
                 qpdf --check（1回）                                → 422（reasonなし）
                 metadata・ページ属性                                → 422 too-complex / unsupported-pdf
+                署名関連の構造（#96）                               → 422 signature-structure
                 ResolveRange(count)：page > count                  → 400
                 白紙PDF（対象1ページ、回転なし・表示寸法）
                 draw:
@@ -429,6 +430,7 @@ stamp処理独自のログにPDF本文、PNG bytes、利用者のfilename、quer
 | PDF の破損・警告・暗号化・空 | 422 | なし | このPDFは処理できません。PDFの破損・パスワード設定や、画像が大きすぎないか確認してください。 |
 | PDF の処理上限（metadata・object数・50 MiB・job・出力62 MiB） | 422 | `too-complex` | このPDFは描画の処理上限を超えています。（既存） |
 | 対応外のページ属性（Rotate・Box・UserUnit・寸法） | 422 | `unsupported-pdf` | このPDFのページ属性は描画に対応していません。 |
+| 署名関連の構造（`/FT /Sig`・`/Type /Sig`・`/Type /DocTimeStamp`・カタログの `/Perms`。#96） | 422 | `signature-structure` | このPDFには電子署名や署名関連の設定があるため加工できません。 |
 | 同時実行の上限 | 503 | なし | PDF処理の同時実行上限に達しました。 |
 | 共有30秒の超過 | 504 | なし | PDF処理が制限時間を超過しました。（既存。`images: false`） |
 | pdfcpu の起動失敗（126/127）・signal・exit 2以上・空出力、生成PDFの検査失敗、managed I/O 障害、cleanup 失敗 | 500 | なし | PDF処理に失敗しました。（既存） |
@@ -586,7 +588,7 @@ Dockerfile と THIRD_PARTY_NOTICES は変更しない（新しい依存はない
 | 書式 | ASCII の数字と `.` だけ。`page` は先頭0なし。key は小文字 |
 | multipart | `file`（filename 付き）と `image`（filename 付き、例：`stamp.png`）。filename のない part は400 |
 | request 上限 | site の中継は 53,542,912 bytes（50 MiB + 1 MiB + 64 KiB）を、Content-Length の早期判定・Kestrel の body 上限・転送 bytes の3か所で使う（site#44 の設計どおり） |
-| 許可する reason | `unsupported-image` に加えて、採用する場合は `image-too-complex`。`too-complex`・`unsupported-pdf` の扱いは site の既存方針に従う |
+| 許可する reason | `unsupported-image` に加えて、採用する場合は `image-too-complex`。`too-complex`・`unsupported-pdf` の扱いは site の既存方針に従う。`signature-structure`（#96）の中継・画面案内は amane-tools-site#423 で扱う |
 | 400 の返金 | page 超過・はみ出しはアップロード後に判定されるため、`RefundBadRequest: true`（site#44 の設計どおり） |
 | ブラウザ側の画像検査 | 1 MiB・各辺2000 px。canvas で作る印影（512×512、8 bit RGBA、非 interlace）は API の対応範囲内 |
 | 表示確認 | 出力（`/SMask`、16 bit、OCG 付きの Form）の pdf.js での表示は【未検証】。site#44 のブラウザテストで確認する |

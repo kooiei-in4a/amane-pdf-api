@@ -262,9 +262,26 @@ def signed_fixtures(directory, source):
     return fixtures
 
 
+def check_signed_overlays(api, source):
+    stamp = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAABAAAAAYCAYAAADzoH0MAAAAIUlEQVR4nGO8IyLSwEABYKJE86gBowaMGjBqwKgBg80AANH/AbRalHV6AAAAAElFTkSuQmCC")
+    checks = (
+        ("page-numbers?position=bottom-center&format=number", {}),
+        ("watermark?style=corner&color=gray", {"text": "DRAFT"}),
+        ("stamp-image?page=1&x=0.2&y=0.2&width=0.3", {"image": stamp}),
+    )
+    for path, parts in checks:
+        body, content_type = smoke.multipart(source, password=None, **parts)
+        status, _, problem = api.request("POST", "/api/pdf/" + path, body, content_type)
+        assert status == 422 and json.loads(problem).get("reason") == "signature-structure", (path, status, problem[:300])
+        api.assert_clean()
+    return len(checks)
+
+
 def forms(api, directory):
     source = blank(directory, "forms-source", width=595, height=842)
     fixtures = signed_fixtures(directory, source)
+    passed = sum(check_signed_overlays(api, signed) for signed in fixtures.values())
+    print(f"Signed overlays: real {'/'.join(fixtures)} fixtures across overlay endpoints: {passed}/{passed} PASS", flush=True)
     base = json.loads(command("qpdf", "--json=2", "--json-key=qpdf", "--json-stream-data=none", "--decode-level=none",
                               str(directory / "forms-source.pdf")).stdout)["qpdf"][1]
     for kind in ("ur3", "fields-only", "xfa", "empty-acroform", "direct-widget"):

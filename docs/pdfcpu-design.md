@@ -231,13 +231,14 @@ tokenは呼び出し元から1つ受け取り、qpdf・pdfcpu・JSON生成・参
 
 ## エラーの扱い
 
-`PdfOverlayInputException` に `TooComplex` / `UnsupportedPdf` のenumを持たせる。Problem Detailsへの変換は `PdfEndpointHelpers` の専用catchで固定titleとreasonを出す。後続endpointで同じ形式を使えるよう#25で用意し、既存の `PdfInputException` とcleanのcatchは変更しない。
+`PdfOverlayInputException` に `TooComplex` / `UnsupportedPdf` のenumを持たせる。#96で `SignatureStructure` を追加した。Problem Detailsへの変換は `PdfEndpointHelpers` の専用catchで固定titleとreasonを出す。後続endpointで同じ形式を使えるよう#25で用意し、既存の `PdfInputException` とcleanのcatchは変更しない。
 
 | 原因 | 扱い |
 | --- | --- |
 | 既存のPDF入力検証失敗 | 従来の422 |
 | JSON/object/深さ/参照循環/対象ページ/jobの予算超過、検出した生成物の容量超過 | 422 `too-complex` |
 | 対応範囲外のBox・Rotate・UserUnit・物理寸法 | 422 `unsupported-pdf` |
+| 署名関連の構造（`rejectForms` なしの呼び出し。#96） | 422 `signature-structure` |
 | 不正な対象範囲、文字列・配置の入力規則違反 | 後続endpointの400。共通処理の契約違反を利用者へ公開しない |
 | qpdf JSON破損、生成済み白紙に対するpdfcpu失敗、無効な生成PDF、ページ数不一致 | 固定メッセージの500 |
 | 共有deadline | 将来のHTTPでは既存の504 |

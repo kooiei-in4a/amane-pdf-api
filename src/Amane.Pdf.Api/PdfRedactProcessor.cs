@@ -94,8 +94,13 @@ internal sealed class PdfRedactProcessor(QpdfProcessor qpdf, PdfRenderer rendere
         }
         catch (PdfOverlayInputException exception)
         {
-            throw new PdfRedactException(exception.Reason == PdfOverlayReason.TooComplex
-                ? PdfRedactReason.TooComplex : PdfRedactReason.UnsupportedPdf);
+            throw new PdfRedactException(exception.Reason switch
+            {
+                PdfOverlayReason.TooComplex => PdfRedactReason.TooComplex,
+                PdfOverlayReason.UnsupportedPdf => PdfRedactReason.UnsupportedPdf,
+                // Redact never runs the signature check; fail closed instead of mislabeling a new reason.
+                _ => throw Invalid()
+            });
         }
         catch (PdfCleanTooComplexException) { throw PdfRedactException.Complex(); }
 
