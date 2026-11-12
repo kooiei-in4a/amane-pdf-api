@@ -6,7 +6,8 @@ internal sealed record PdfcpuLayer(IReadOnlyDictionary<int, IReadOnlyList<Pdfcpu
     IReadOnlyList<PdfcpuPageSize>? PageSizes = null);
 
 internal sealed record PdfcpuText(string Value, string? Anchor = "bc", double X = 0, double Y = 0,
-    double Dx = 0, double Dy = 0, double FontSize = 12, string Color = "#000000", double Rotation = 0);
+    double Dx = 0, double Dy = 0, double FontSize = 12, string Color = "#000000", double Rotation = 0,
+    string Font = PdfcpuProcessor.JapaneseFont);
 
 // PdfOverlayBuilder maps a confirmed pdfcpu budget overflow to PdfOverlayInputException.TooComplex().
 // PdfEndpointHelpers returns HTTP 422 with reason "too-complex".

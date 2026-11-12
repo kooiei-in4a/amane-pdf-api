@@ -9,6 +9,7 @@ namespace Amane.Pdf.Api;
 internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
 {
     internal const string JapaneseFont = "BIZUDPGothic-Regular";
+    internal const string MinchoFont = "BIZUDPMincho-Regular";
     internal const string Version = "0.16.3";
     internal const long LayerFileLimitBytes = 8 * 1024 * 1024;
     internal const int MaxTextLength = 128; // UTF-16 code units per element
@@ -105,6 +106,26 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
             Path.GetFullPath(blankPath) == Path.GetFullPath(files.InputPath) ||
             Path.GetFullPath(blankPath) == Path.GetFullPath(outputPath) || File.Exists(outputPath))
             throw new ArgumentException("Image stamp arguments are invalid.");
+        await StampCoreAsync(files, image, placement, blankPath, outputPath, pdfBudget, token);
+    }
+
+    internal async Task StampComposeImageAsync(TemporaryPdfFiles files, StampImage image, StampPlacement placement,
+        string inputPath, string outputPath, long budget, CancellationToken token)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        RequireJobPath(files, image.Path); RequireJobPath(files, inputPath); RequireJobPath(files, outputPath);
+        if (!placement.IsValid || File.Exists(outputPath) || inputPath == outputPath ||
+            Path.GetExtension(image.Path) is not (".jpg" or ".png") ||
+            new FileInfo(image.Path).Length is <= 0 or > ComposeLayout.ImageBytes ||
+            new FileInfo(inputPath).Length is <= 0 || budget is <= 0 or > 62 * 1048576)
+            throw new ArgumentException("Image stamp arguments are invalid.");
+        await StampCoreAsync(files, image, placement, inputPath, outputPath, budget, token);
+    }
+
+    private async Task StampCoreAsync(TemporaryPdfFiles files, StampImage image, StampPlacement placement,
+        string blankPath, string outputPath, long pdfBudget, CancellationToken token)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         // pdfcpu deletes partial files on exit 1, so the file-size sentinel would be lost.
         // Capture the PDF on bounded stdout with FSIZE=1 to block file output.
         var result = await ExternalProcessRunner.RunAsync(CreateRequest(files,
@@ -206,7 +227,7 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
                     writer.WriteNumber("dx", text.Dx); writer.WriteNumber("dy", text.Dy);
                     writer.WriteNumber("rot", text.Rotation);
                     writer.WriteStartObject("font");
-                    writer.WriteString("name", JapaneseFont); writer.WriteNumber("size", text.FontSize);
+                    writer.WriteString("name", text.Font); writer.WriteNumber("size", text.FontSize);
                     writer.WriteString("col", text.Color); writer.WriteEndObject();
                     writer.WriteEndObject();
                     Flush();
@@ -224,7 +245,7 @@ internal sealed class PdfcpuProcessor(IOptions<PdfOptions> options)
 
     private static void ValidateText(PdfcpuText text, long budget, int maxTextLength)
     {
-        if (string.IsNullOrEmpty(text.Value) || text.Value.Length > maxTextLength ||
+        if (text.Font is not (JapaneseFont or MinchoFont) || string.IsNullOrEmpty(text.Value) || text.Value.Length > maxTextLength ||
             text.Value.Count(c => c == '\n') > MaxLineBreaks || text.Value.Count(c => c == '\t') > MaxTabs ||
             text.Value.Any(c => char.IsControl(c) && c is not ('\n' or '\t')) ||
             text.Anchor is not (null or "tl" or "tc" or "tr" or "l" or "c" or "r" or "bl" or "bc" or "br") ||

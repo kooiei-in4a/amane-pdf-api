@@ -51,6 +51,8 @@ if (OperatingSystem.IsLinux())
     app.MapPost("/api/pdf/page-numbers", PdfPageNumbersEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/fill-template", PdfFillTemplateEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/watermark", PdfWatermarkEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapGet("/api/pdf/compose/capabilities", PdfComposeEndpoint.Capabilities);
+    app.MapPost("/api/pdf/compose", PdfComposeEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/stamp-image", PdfStampImageEndpoint.HandleAsync).RequireRateLimiting("pdf");
 }
 app.MapPost("/api/pdf/merge", PdfMergeEndpoint.HandleAsync).RequireRateLimiting("pdf");

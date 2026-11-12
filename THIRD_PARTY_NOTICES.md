@@ -10,6 +10,8 @@ pdfcpu [v0.16.3](https://github.com/pdfcpu/pdfcpu/tree/v0.16.3) は別プロセ�
 
 差し込みの生成表 `FillTemplateGlyphs.g.cs`（文字・字形番号・送り幅）も、この固定BIZ UDPゴシック由来です。OFL-1.1の表示と原文を同じ場所に保持します。
 
+書類合成の `MinchoGlyphs.g.cs` と描画には [BIZ UDP明朝 v1.06](https://github.com/googlefonts/morisawa-biz-ud-mincho/tree/v1.06)（BIZ UDMincho Project Authors、OFL-1.1）を使います。原文は `BIZ-UDMincho-OFL.txt` に保持します。
+
 `third_party/pdfcpu-modules.json` は固定go.modのindirectを含む12 module、version、Go module checksum、licenseファイル、Linux binaryへの組込みの有無を記録します。Linux x86_64ビルドbinaryの `go version -m` は10 moduleを示し、jsonschema-goとWindows用mousetrapは組み込まれていません。12件ともlicense原文・付属NOTICE/PATENTSを `third_party/pdfcpu/modules/` に保持します。
 
 | Module | Version | License |
