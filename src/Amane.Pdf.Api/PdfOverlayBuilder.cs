@@ -6,6 +6,9 @@ namespace Amane.Pdf.Api;
 
 internal sealed record OverlayCanvas(string BlankPath, string LayerPath, IReadOnlyList<PdfcpuPageSize> Pages,
     long JsonBudget, long PdfBudget);
+// D1 compose probe: each run draws a checked, single-page layer.
+internal sealed record OverlayRun(int Page, bool HasText,
+    Func<OverlayCanvas, OverlayCapacity, CancellationToken, Task> Draw);
 internal sealed record OverlayStage(string Name, double Milliseconds, long Bytes = 0, int Objects = 0);
 
 internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions> options)
@@ -19,10 +22,21 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         Action<OverlayStage>? observe = null)
         => BuildAsync(files, _ => (from, to), draw, token, observe);
 
-    internal async Task BuildAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
+    internal Task BuildAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
         Func<OverlayCanvas, CancellationToken, Task> draw, CancellationToken token,
         Action<OverlayStage>? observe = null, double? fillOpacity = null,
         IReadOnlyList<string>? drawInputs = null, bool layerJson = true, bool rejectForms = false)
+        => BuildCoreAsync(files, resolveRange, draw, token, observe, fillOpacity, drawInputs, layerJson, rejectForms);
+
+    internal Task BuildRunsAsync(TemporaryPdfFiles files, IReadOnlyList<OverlayRun> runs,
+        IReadOnlyList<string> inputs, CancellationToken token, Action<OverlayStage> observe)
+        => BuildCoreAsync(files, count => (1, count), null, token, observe, null, inputs,
+            layerJson: false, rejectForms: true, runs: runs);
+
+    private async Task BuildCoreAsync(TemporaryPdfFiles files, Func<int, (int From, int To)> resolveRange,
+        Func<OverlayCanvas, CancellationToken, Task>? draw, CancellationToken token,
+        Action<OverlayStage>? observe, double? fillOpacity, IReadOnlyList<string>? drawInputs,
+        bool layerJson, bool rejectForms, IReadOnlyList<OverlayRun>? runs = null)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         if (fillOpacity is { } opacity && (!double.IsFinite(opacity) || opacity <= 0 || opacity >= 1))
@@ -36,6 +50,8 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         var overlaid = Path.Combine(files.DirectoryPath, "overlaid.pdf");
         var intermediates = new[] { metadata, update, blankJson, blank, layer, overlaid,
             files.PdfcpuLayerJsonPath };
+        var runLayers = runs?.Select((_, i) => Path.Combine(files.DirectoryPath, $"run-{i:D3}.pdf")).ToArray() ?? [];
+        intermediates = [.. intermediates, .. runLayers];
         var inputs = drawInputs?.Select(Path.GetFullPath).ToArray() ?? [];
         if (inputs.Distinct(StringComparer.Ordinal).Count() != inputs.Length || inputs.Any(path =>
             Path.GetDirectoryName(path) != Path.GetFullPath(files.DirectoryPath) ||
@@ -60,8 +76,17 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         {
             var budget = capacity.ReserveWrite(path,
                 path == blank ? settings.OverlayGeneratedLimitBytes : settings.OverlayOutputLimitBytes, true);
-            await qpdf.RunOverlayWriteAsync(files, arguments, path, budget, token);
-            capacity.Commit(path, budget);
+            try
+            {
+                await qpdf.RunOverlayWriteAsync(files, arguments, path, budget, token);
+                capacity.Commit(path, budget);
+            }
+            catch (PdfOverlayInputException) when (runs is not null && (path == overlaid || path == files.OutputPath))
+            {
+                observe?.Invoke(new(path == overlaid ? "overlay-write-budget" : "restore-write-budget", 0, budget));
+                if (File.Exists(path)) observe?.Invoke(new("incomplete-pdf-bytes", 0, new FileInfo(path).Length));
+                throw;
+            }
         }
         async Task<PdfPageBoxes> ReadMetadata(string path, long fileLimit, int objectLimit)
         {
@@ -101,31 +126,73 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             }
             Mark("input-attributes");
             inputValidated = true;
-            await WriteJson(blankJson, writer => WriteBlank(writer, originals, token, fillOpacity));
-            await WritePdf(blank, ["--json-input", blankJson, blank]);
-            capacity.Delete(blankJson);
-            Mark("blank", new FileInfo(blank).Length);
-            var jsonBudget = layerJson ? capacity.ReserveWrite(files.PdfcpuLayerJsonPath, settings.OverlayGeneratedLimitBytes) : 0;
-            var pdfBudget = capacity.ReserveWrite(layer, settings.OverlayGeneratedLimitBytes, true);
-            var canvas = new OverlayCanvas(blank, layer,
-                originals.Select(page => new PdfcpuPageSize(page.DisplayWidth, page.DisplayHeight)).ToArray(), jsonBudget, pdfBudget);
-            using (var renderStage = PdfProcessingDiagnostics.Measure(PdfStage.Render))
+            var overlayArgs = new List<string> { files.InputPath, "--update-from-json=" + update, overlaid };
+            if (runs is null)
             {
-                await draw(canvas, token);
-                renderStage.Complete();
+                await WriteJson(blankJson, writer => WriteBlank(writer, originals, token, fillOpacity));
+                await WritePdf(blank, ["--json-input", blankJson, blank]);
+                capacity.Delete(blankJson);
+                Mark("blank", new FileInfo(blank).Length);
+                var jsonBudget = layerJson ? capacity.ReserveWrite(files.PdfcpuLayerJsonPath, settings.OverlayGeneratedLimitBytes) : 0;
+                var pdfBudget = capacity.ReserveWrite(layer, settings.OverlayGeneratedLimitBytes, true);
+                var canvas = new OverlayCanvas(blank, layer,
+                    originals.Select(page => new PdfcpuPageSize(page.DisplayWidth, page.DisplayHeight)).ToArray(), jsonBudget, pdfBudget);
+                using (var renderStage = PdfProcessingDiagnostics.Measure(PdfStage.Render))
+                {
+                    await draw!(canvas, token);
+                    renderStage.Complete();
+                }
+                if (layerJson) capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
+                capacity.Commit(layer, pdfBudget);
+                // Treat the delegate's output as generated data: it must pass the same checks.
+                await ValidateGenerated(layer, originals.Length, token);
+                Mark("draw", new FileInfo(layer).Length);
+                observe?.Invoke(new("layer-budget", 0, pdfBudget));
+                capacity.Delete(blank); capacity.Delete(files.PdfcpuLayerJsonPath);
+                overlayArgs.AddRange(["--overlay", layer, "--to=" + from + "-" + to, "--from=1-z", "--"]);
             }
-            if (layerJson) capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
-            capacity.Commit(layer, pdfBudget);
-            // Treat the delegate's output as generated data: it must pass the same checks.
-            await ValidateGenerated(layer, originals.Length, token);
-            Mark("draw", new FileInfo(layer).Length);
-            observe?.Invoke(new("layer-budget", 0, pdfBudget));
-            capacity.Delete(blank); capacity.Delete(files.PdfcpuLayerJsonPath);
+            else
+            {
+                // Reuse the blank for consecutive runs with the same displayed dimensions.
+                // Only selected pages enter the layer PDFs and each is mapped once in z order.
+                PdfPageAttributes? previous = null;
+                for (var i = 0; i < runs.Count; i++)
+                {
+                    var run = runs[i];
+                    var page = originals[run.Page - 1];
+                    if (previous is null || previous.DisplayWidth != page.DisplayWidth ||
+                        previous.DisplayHeight != page.DisplayHeight)
+                    {
+                        capacity.Delete(blank);
+                        await WriteJson(blankJson, writer => WriteBlank(writer, [page], token, null));
+                        await WritePdf(blank, ["--json-input", blankJson, blank]);
+                        capacity.Delete(blankJson);
+                        previous = page;
+                    }
+
+                    var path = runLayers[i];
+                    var pdfBudget = capacity.ReserveWrite(path, settings.OverlayGeneratedLimitBytes, true);
+                    var jsonBudget = run.HasText
+                        ? capacity.ReserveWrite(files.PdfcpuLayerJsonPath, settings.OverlayGeneratedLimitBytes) : 0;
+                    var canvas = new OverlayCanvas(blank, path, [new(page.DisplayWidth, page.DisplayHeight)],
+                        jsonBudget, pdfBudget);
+                    await run.Draw(canvas, capacity, token);
+                    if (run.HasText)
+                    {
+                        capacity.Commit(files.PdfcpuLayerJsonPath, jsonBudget);
+                        capacity.Delete(files.PdfcpuLayerJsonPath);
+                    }
+                    capacity.Commit(path, pdfBudget);
+                    overlayArgs.AddRange(["--overlay", path, "--to=" + run.Page, "--from=1", "--"]);
+                }
+                capacity.Delete(blank);
+                Mark("draw", runLayers.Sum(path => new FileInfo(path).Length));
+            }
             foreach (var path in inputs) capacity.Delete(path);
-            await WritePdf(overlaid, [files.InputPath, "--update-from-json=" + update, overlaid,
-                "--overlay", layer, "--to=" + from + "-" + to, "--from=1-z", "--"]);
+            await WritePdf(overlaid, [.. overlayArgs]);
             Mark("overlay", new FileInfo(overlaid).Length);
             capacity.Delete(files.InputPath); capacity.Delete(update); capacity.Delete(layer);
+            foreach (var path in runLayers) capacity.Delete(path);
             using (var combined = await ReadMetadata(overlaid, settings.OverlayGeneratedJsonLimitBytes, PdfPageBoxes.GeneratedObjectLimit))
             {
                 if (combined.Pages.Count != count) throw new InvalidOperationException(Failure);
@@ -148,7 +215,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
             }
             outputStage.Complete();
             Mark("validate-output");
-            observe?.Invoke(new("job-reserved-peak", 0, capacity.Peak));
+            if (runs is null) observe?.Invoke(new("job-reserved-peak", 0, capacity.Peak));
             completed = true;
         }
         catch (PdfOverlayInputException exception) when (inputValidated && exception.Reason == PdfOverlayReason.UnsupportedPdf)
@@ -158,6 +225,7 @@ internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions>
         {
             // Runner waits for termination before control reaches this cleanup. Do not use
             // the cancelled token here: partial files still have to be removed.
+            if (runs is not null) observe?.Invoke(new("job-reserved-peak", 0, capacity.Peak));
             var cleanupFailed = false;
             foreach (var path in intermediates)
             {
