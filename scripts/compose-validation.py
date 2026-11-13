@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""実 compose の回転・配置・抽出と D1-r3 境界を検証する。"""
+"""実 compose の回転・配置・抽出と D1-r5 の境界を検証する。"""
 import argparse
 import hashlib
 import importlib.util
@@ -87,6 +87,23 @@ def png(path, width, height, color, size=0, seed=0):
         image.save(path)
 
 
+def photo_jpeg(path, seed):
+    side = 2000
+    rows = 1100
+    rng = random.Random(seed)
+    # 滑らかな領域と細かな領域を持つ合成写真。JPEG のコメントで 2 MiB に揃える。
+    photo = Image.frombytes("RGB", (125, 125), rng.randbytes(125 * 125 * 3))
+    photo = photo.resize((side, side), Image.Resampling.BICUBIC)
+    detail = Image.frombytes("RGB", (side, rows), rng.randbytes(side * rows * 3))
+    photo.paste(Image.blend(photo.crop((0, 0, side, rows)), detail, 0.55), (0, 0))
+    encoded = io.BytesIO()
+    photo.save(encoded, format="JPEG", quality=92, optimize=True)
+    padding = 2 * MIB - encoded.tell() - 4
+    assert 1 <= padding <= 65533, padding
+    photo.save(path, format="JPEG", quality=92, optimize=True, comment=b"x" * padding)
+    assert path.stat().st_size == 2 * MIB
+
+
 def layout(pages, blank=False, images=None, elements=None):
     return dict(layout="ds-layout/1", fonts=FONTS, blank=blank,
                 pages=[dict(index=i, width=w, height=h) for i, (w, h) in enumerate(pages, 1)],
@@ -142,7 +159,7 @@ class Api:
         if expected is not None:
             assert status == expected, (status, result[:400])
         logs = subprocess.run(["docker", "logs", self.name], capture_output=True, check=True)
-        peaks = re.findall(rb"PDF.+?([0-9]+) bytes", logs.stdout + logs.stderr)
+        peaks = re.findall(r"PDF合成の台帳ピーク ([0-9]+) bytes", (logs.stdout + logs.stderr).decode())
         assert run("docker", "exec", self.name, "find", "/tmp/amane-pdf-api", "-mindepth", "1").strip() == b""
         return result, dict(status=status, seconds=round(seconds, 3), peak_bytes=int(peaks[-1]) if peaks else None,
                             output_bytes=len(result) if status == 200 else 0,
@@ -242,21 +259,25 @@ def checks(api, folder):
             "orientation_cases": 7, "original_pages": 5}
 
 
-def boundary(api, folder, megabytes, image_count, image_bytes):
+def boundary(api, folder, megabytes, image_count, image_bytes, *, page_count=30, jpeg=False):
     source = folder / "background.pdf"
-    pages = [(59528, 84189)] * 30
+    pages = [(59528, 84189)] * page_count
     dimension = ([0, 0, 595.28, 841.89], [0, 0, 595.28, 841.89], 0, 1)
     pdf_source(source, [dimension] * len(pages), megabytes)
     assets = {}
     for i in range(image_count):
         id = f"as_{i:08}"
-        assets[id] = folder / (id + ".png")
-        png(assets[id], 2000, 2000, (30 + i * 5, 110, 170, 255), image_bytes, i)
+        assets[id] = folder / (id + (".jpg" if jpeg else ".png"))
+        if jpeg:
+            photo_jpeg(assets[id], i)
+        else:
+            png(assets[id], 2000, 2000, (30 + i * 5, 110, 170, 255), image_bytes, i)
     elements = []
     front = 60 - image_count
     remaining = 200 - image_count - front
-    for page in range(1, 31):
-        count = front if page == 1 else remaining // 29 + (page - 2 < remaining % 29)
+    per_page, extra_pages = divmod(remaining, page_count - 1)
+    for page in range(1, page_count + 1):
+        count = front if page == 1 else per_page + (page - 2 < extra_pages)
         for i in range(count):
             elements.append(text(len(elements), page, "架空 太郎\n書類の検証",
                                  [2000+(i%3)*17000, 2000+(i//3)*2500, 12000, 2400],
@@ -268,9 +289,15 @@ def boundary(api, folder, megabytes, image_count, image_bytes):
     data, result = api.compose(folder, layout(pages, images=assets, elements=elements), source, assets, expected=None)
     if result["status"] == 200:
         with fitz.open(stream=data) as doc:
-            assert len(doc) == 30 and all(f"SOURCE {i+1:02}" in page.get_text() for i, page in enumerate(doc))
-    return dict(**result, background_bytes=source.stat().st_size, image_bytes=sum(p.stat().st_size for p in assets.values()),
-                image_count=image_count, elements=len(elements))
+            assert len(doc) == page_count and all(f"SOURCE {i+1:02}" in page.get_text() for i, page in enumerate(doc))
+    background_bytes = source.stat().st_size
+    actual_image_bytes = sum(p.stat().st_size for p in assets.values())
+    assert actual_image_bytes == image_count * image_bytes
+    assert result["peak_bytes"] is not None
+    return dict(**result, background_bytes=background_bytes, image_bytes=actual_image_bytes,
+                combined_bytes=background_bytes + actual_image_bytes, image_count=image_count,
+                image_format=("jpeg" if jpeg else "png") if image_count else None,
+                pages=page_count, elements=len(elements))
 
 
 def draw_lines(api, folder):
@@ -301,26 +328,38 @@ def main():
     parser.add_argument("--combined-proposal", action="store_true")
     parser.add_argument("--results", type=Path)
     args = parser.parse_args()
-    cases = [] if args.only_boundaries else [("geometry_and_extraction", checks)]
+    success = (200, None)
+    too_complex = (422, "image-too-complex")
+    cases = [] if args.only_boundaries else [("geometry_and_extraction", checks, success)]
     if args.boundaries or args.only_boundaries:
-        cases += [("44_plus_10", lambda api, folder: boundary(api, folder, 44, 20, MIB // 2)),
-                  ("50_plus_4", lambda api, folder: boundary(api, folder, 50, 2, 2*MIB)),
-                  ("4000_lines", draw_lines)]
+        cases += [
+            ("34_plus_10", lambda api, folder: boundary(api, folder, 34, 20, MIB // 2), success),
+            ("40_plus_4", lambda api, folder: boundary(api, folder, 40, 2, 2 * MIB), success),
+            ("44_plus_10", lambda api, folder: boundary(api, folder, 44, 20, MIB // 2), too_complex),
+            ("50_plus_4", lambda api, folder: boundary(api, folder, 50, 2, 2 * MIB), too_complex),
+            ("trial_background", lambda api, folder: boundary(api, folder, 20, 0, 0, page_count=10), success),
+            ("trial_jpegs", lambda api, folder: boundary(api, folder, 10, 5, 2 * MIB, page_count=10, jpeg=True), success),
+            ("4000_lines", draw_lines, success),
+        ]
     if args.combined_proposal:
-        cases.append(("40_plus_10", lambda api, folder: boundary(api, folder, 40, 20, MIB // 2)))
+        cases.append(("40_plus_10", lambda api, folder: boundary(api, folder, 40, 20, MIB // 2), success))
     results = {}
-    for name, case in cases:
+    unexpected = []
+    for name, case, expected in cases:
         api = Api(args.image)
         try:
             with tempfile.TemporaryDirectory(prefix="compose-verification-") as temp:
                 results[name] = case(api, Path(temp))
                 print(name, json.dumps(results[name]), flush=True)
+                actual = (results[name]["status"], results[name]["reason"])
+                if actual != expected:
+                    unexpected.append(f"{name}: expected {expected}, got {actual}")
         finally:
             api.close()
     if args.results:
         args.results.write_text(json.dumps(results, indent=2) + "\n")
-    if any(case["status"] != 200 for case in results.values()):
-        raise SystemExit(1)
+    if unexpected:
+        raise SystemExit("\n".join(unexpected))
 
 
 if __name__ == "__main__":
