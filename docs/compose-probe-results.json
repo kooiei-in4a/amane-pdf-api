@@ -1,0 +1,1108 @@
+{
+  "base_sha": "df3f8a8ff78770004e06d40aad0b1f662af6655c",
+  "probe_sha": "37509152f827dafb5e380a2e5c437c51d0af3567",
+  "design_sha": "38b1d07ed15588eaf72af5295d92beab39a23f61",
+  "vectors_sha256": "1053588d5c3ab01181e641cca443548f0898ed5613a1f4cc589059719854ad33",
+  "image": "amane-pdf-api-candidate:df3f8a8-v0818",
+  "image_id": "sha256:046cf847228375bc588899ea271b2f24a429940439ad184618dcefc7e78109c9",
+  "architecture": "amd64",
+  "dotnet_sdk": "10.0.403",
+  "ledger_limit_bytes": 130023424,
+  "existing_overlay_pdf_limit_bytes": 65011712,
+  "existing_generated_layer_limit_bytes": 8388608,
+  "deadline_seconds": 30,
+  "cpu": 1,
+  "memory_mib": 1536,
+  "memory_swap_bytes": 0,
+  "tmpfs_mib": 256,
+  "mupdf": "1.26.3",
+  "pymupdf": "1.26.3",
+  "poppler_image_id": "sha256:fecac17e9d2e442c4721dff3a895a7dc1b7c1f69911197e96dce4f08b9a6ff62",
+  "mincho_release": "v1.06",
+  "mincho_release_sha": "c30a6221b1f3d09afae9137ffe73c7cbec649947",
+  "mincho_license": "OFL-1.1",
+  "repetitions": 3,
+  "supplemental_repetitions": 1,
+  "V-S1": [
+    {
+      "seconds": 9.0275325,
+      "inputBytes": 9494,
+      "imageBytes": 10485760,
+      "layoutBytes": 46539,
+      "sanitizedBytes": 10433965,
+      "outputBytes": 19192591,
+      "pages": 30,
+      "texts": 180,
+      "images": 20,
+      "maxElementsOnPage": 60,
+      "runCount": 70,
+      "completedRuns": 70,
+      "pdfcpuCalls": 70,
+      "qpdfCalls": 219,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 84369408,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 20.7623,
+          "bytes": 9494,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 18.2833,
+          "bytes": 21687,
+          "objects": 63
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 7.1561,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 7634.3603,
+          "bytes": 19179210,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 36.3957,
+          "bytes": 19194751,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 28.8893,
+          "bytes": 254509,
+          "objects": 633
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 0.7106,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 29.8714,
+          "bytes": 19192591,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 448.8433,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 21.3253,
+          "bytes": 247429,
+          "objects": 633
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 0.9539,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 84369408,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 165433344,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 360,
+        "image_placements": 20
+      },
+      "pass": true
+    },
+    {
+      "seconds": 8.9825438,
+      "inputBytes": 9494,
+      "imageBytes": 10485760,
+      "layoutBytes": 46539,
+      "sanitizedBytes": 10433965,
+      "outputBytes": 19192591,
+      "pages": 30,
+      "texts": 180,
+      "images": 20,
+      "maxElementsOnPage": 60,
+      "runCount": 70,
+      "completedRuns": 70,
+      "pdfcpuCalls": 70,
+      "qpdfCalls": 219,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 84369408,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 22.0762,
+          "bytes": 9494,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 16.8959,
+          "bytes": 21687,
+          "objects": 63
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 5.5494,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 7595.4993,
+          "bytes": 19179194,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 37.7517,
+          "bytes": 19194751,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 25.3806,
+          "bytes": 254509,
+          "objects": 633
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 0.8426,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 25.9212,
+          "bytes": 19192591,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 448.0851,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 20.714,
+          "bytes": 247429,
+          "objects": 633
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 1.0174,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 84369408,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 168009728,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 360,
+        "image_placements": 20
+      },
+      "pass": true
+    },
+    {
+      "seconds": 12.4607262,
+      "inputBytes": 9494,
+      "imageBytes": 10485760,
+      "layoutBytes": 46539,
+      "sanitizedBytes": 10433965,
+      "outputBytes": 19192591,
+      "pages": 30,
+      "texts": 180,
+      "images": 20,
+      "maxElementsOnPage": 60,
+      "runCount": 70,
+      "completedRuns": 70,
+      "pdfcpuCalls": 70,
+      "qpdfCalls": 219,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 84369408,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 25.3806,
+          "bytes": 9494,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 25.9959,
+          "bytes": 21687,
+          "objects": 63
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 11.7705,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 11212.8729,
+          "bytes": 19179211,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 35.671,
+          "bytes": 19194751,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 23.0669,
+          "bytes": 254509,
+          "objects": 633
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 1.672,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 48.1225,
+          "bytes": 19192591,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 575.7506,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 20.2995,
+          "bytes": 247429,
+          "objects": 633
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 0.9984,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 84369408,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 168706048,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 360,
+        "image_placements": 20
+      },
+      "pass": true
+    }
+  ],
+  "V-S2": [
+    {
+      "seconds": 6.5286058,
+      "inputBytes": 52428800,
+      "imageBytes": 10485760,
+      "layoutBytes": 3815,
+      "sanitizedBytes": 10433965,
+      "outputBytes": 61927330,
+      "pages": 30,
+      "texts": 0,
+      "images": 20,
+      "maxElementsOnPage": 1,
+      "runCount": 20,
+      "completedRuns": 20,
+      "pdfcpuCalls": 20,
+      "qpdfCalls": 69,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 126955520,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 54.2985,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 22.4086,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 7.2547,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 4375.7232,
+          "bytes": 9486005,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 918.3961,
+          "bytes": 61929490,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 18.0211,
+          "bytes": 120445,
+          "objects": 273
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 0.7449,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 51.2787,
+          "bytes": 61927330,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 432.5339,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 13.745,
+          "bytes": 113365,
+          "objects": 273
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 0.8316,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 126955520,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 215564288,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 0,
+        "image_placements": 20
+      },
+      "pass": true
+    },
+    {
+      "seconds": 7.5523453,
+      "inputBytes": 52428800,
+      "imageBytes": 10485760,
+      "layoutBytes": 3815,
+      "sanitizedBytes": 10433965,
+      "outputBytes": 61927330,
+      "pages": 30,
+      "texts": 0,
+      "images": 20,
+      "maxElementsOnPage": 1,
+      "runCount": 20,
+      "completedRuns": 20,
+      "pdfcpuCalls": 20,
+      "qpdfCalls": 69,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 126955520,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 50.8344,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 16.2768,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 16.4255,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 5107.3477,
+          "bytes": 9486017,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 994.5739,
+          "bytes": 61929490,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 18.8725,
+          "bytes": 120445,
+          "objects": 273
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 1.9711,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 64.5437,
+          "bytes": 61927330,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 480.178,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 14.1644,
+          "bytes": 113365,
+          "objects": 273
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 1.0544,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 126955520,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 214962176,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 0,
+        "image_placements": 20
+      },
+      "pass": true
+    },
+    {
+      "seconds": 6.5890173,
+      "inputBytes": 52428800,
+      "imageBytes": 10485760,
+      "layoutBytes": 3815,
+      "sanitizedBytes": 10433965,
+      "outputBytes": 61927330,
+      "pages": 30,
+      "texts": 0,
+      "images": 20,
+      "maxElementsOnPage": 1,
+      "runCount": 20,
+      "completedRuns": 20,
+      "pdfcpuCalls": 20,
+      "qpdfCalls": 69,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 126955520,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 53.3964,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 24.6518,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 5.9702,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 4278.9327,
+          "bytes": 9486013,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 919.7333,
+          "bytes": 61929490,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 19.4573,
+          "bytes": 120445,
+          "objects": 273
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 0.9191,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 51.9902,
+          "bytes": 61927330,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 437.5773,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 14.521,
+          "bytes": 113365,
+          "objects": 273
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 0.5067,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 126955520,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 213528576,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 0,
+        "image_placements": 20
+      },
+      "pass": true
+    }
+  ],
+  "V-S2-combined": [
+    {
+      "seconds": 8.7587285,
+      "inputBytes": 52428800,
+      "imageBytes": 10485760,
+      "layoutBytes": 46539,
+      "sanitizedBytes": 10433965,
+      "outputBytes": null,
+      "pages": 30,
+      "texts": 180,
+      "images": 20,
+      "maxElementsOnPage": 60,
+      "runCount": 70,
+      "completedRuns": 70,
+      "pdfcpuCalls": 70,
+      "qpdfCalls": 215,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 130023424,
+      "failure": "TooComplex",
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 53.2153,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 19.7501,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 5.6994,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 6965.3129,
+          "bytes": 19179189,
+          "objects": 0
+        },
+        {
+          "name": "overlay-write-budget",
+          "milliseconds": 0,
+          "bytes": 58253311,
+          "objects": 0
+        },
+        {
+          "name": "incomplete-pdf-bytes",
+          "milliseconds": 0,
+          "bytes": 58253312,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 130023424,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 221421568,
+      "output_checks": null,
+      "pass": false
+    }
+  ],
+  "V-S2-combined-12-images": [
+    {
+      "seconds": 7.3344958,
+      "inputBytes": 52428800,
+      "imageBytes": 6291456,
+      "layoutBytes": 47554,
+      "sanitizedBytes": 6260329,
+      "outputBytes": null,
+      "pages": 30,
+      "texts": 188,
+      "images": 12,
+      "maxElementsOnPage": 60,
+      "runCount": 54,
+      "completedRuns": 54,
+      "pdfcpuCalls": 54,
+      "qpdfCalls": 167,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 130023424,
+      "failure": "TooComplex",
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 54.352,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 17.4193,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 5.5942,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 5577.1343,
+          "bytes": 13834116,
+          "objects": 0
+        },
+        {
+          "name": "overlay-write-budget",
+          "milliseconds": 0,
+          "bytes": 63627263,
+          "objects": 0
+        },
+        {
+          "name": "incomplete-pdf-bytes",
+          "milliseconds": 0,
+          "bytes": 63627264,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 130023424,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 210071552,
+      "output_checks": null,
+      "pass": false
+    }
+  ],
+  "V-S2-combined-10-images": [
+    {
+      "seconds": 7.0594328,
+      "inputBytes": 52428800,
+      "imageBytes": 5242880,
+      "layoutBytes": 47808,
+      "sanitizedBytes": 5216982,
+      "outputBytes": 64947789,
+      "pages": 30,
+      "texts": 190,
+      "images": 10,
+      "maxElementsOnPage": 60,
+      "runCount": 50,
+      "completedRuns": 50,
+      "pdfcpuCalls": 50,
+      "qpdfCalls": 159,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 130023424,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 50.6525,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 22.3853,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 6.5777,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 4910.4791,
+          "bytes": 12497915,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 894.6188,
+          "bytes": 64949949,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 24.851,
+          "bytes": 215876,
+          "objects": 533
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 0.9607,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 55.0138,
+          "bytes": 64947789,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 307.1644,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 21.5244,
+          "bytes": 208796,
+          "objects": 533
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 0.5511,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 130023424,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 209874944,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 380,
+        "image_placements": 10
+      },
+      "pass": true
+    }
+  ],
+  "V-S2-combined-8-images": [
+    {
+      "seconds": 6.4784247,
+      "inputBytes": 52428800,
+      "imageBytes": 4194304,
+      "layoutBytes": 48061,
+      "sanitizedBytes": 4173583,
+      "outputBytes": 63612092,
+      "pages": 30,
+      "texts": 192,
+      "images": 8,
+      "maxElementsOnPage": 60,
+      "runCount": 46,
+      "completedRuns": 46,
+      "pdfcpuCalls": 46,
+      "qpdfCalls": 147,
+      "qpdfOverlayCalls": 1,
+      "peakLedgerBytes": 128724992,
+      "failure": null,
+      "stages": [
+        {
+          "name": "validate-input",
+          "milliseconds": 59.8125,
+          "bytes": 52428800,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 23.6941,
+          "bytes": 56709,
+          "objects": 113
+        },
+        {
+          "name": "input-attributes",
+          "milliseconds": 5.6997,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "draw",
+          "milliseconds": 4350.0079,
+          "bytes": 11161577,
+          "objects": 0
+        },
+        {
+          "name": "overlay",
+          "milliseconds": 890.6461,
+          "bytes": 63614252,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 21.9659,
+          "bytes": 204123,
+          "objects": 503
+        },
+        {
+          "name": "restore-attributes",
+          "milliseconds": 2.0001,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "restore",
+          "milliseconds": 59.9466,
+          "bytes": 63612092,
+          "objects": 0
+        },
+        {
+          "name": "validate-pdf",
+          "milliseconds": 263.2323,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "metadata",
+          "milliseconds": 17.6763,
+          "bytes": 197043,
+          "objects": 503
+        },
+        {
+          "name": "validate-output",
+          "milliseconds": 1.0772,
+          "bytes": 0,
+          "objects": 0
+        },
+        {
+          "name": "job-reserved-peak",
+          "milliseconds": 0,
+          "bytes": 128724992,
+          "objects": 0
+        }
+      ],
+      "cgroup_memory_peak_bytes": 206045184,
+      "output_checks": {
+        "structure": true,
+        "page_attributes": true,
+        "source_markers": 30,
+        "text_lines": 384,
+        "image_placements": 8
+      },
+      "pass": true
+    }
+  ],
+  "V-S3": {
+    "entries": 11425,
+    "gothic_entries": 11425,
+    "common_entries": 11425,
+    "tool_versions": {
+      "pdfcpu": [
+        "version: 0.16.3",
+        "commit: 35ea259eb27d5a607f797edd41fd8a9e50a1f818",
+        "date: 2026-10-19 19:08:55 UTC",
+        "go: go1.27.3"
+      ],
+      "qpdf": "qpdf version 12.3.2",
+      "poppler": "pdftotext version 25.12.0"
+    },
+    "font_sha256": "dbcea04578ac1e9d3484525e870ce491bd04361768f4d2ba4b827d96e20f891d",
+    "widths_sha256": "ef285953c5be4369ae8789d803d4c07c8bdfb325d166cf258992972d8299f003",
+    "metrics": {
+      "units_per_em": 2048,
+      "layout_upper_units": 1802,
+      "layout_lower_units": 246,
+      "layout_upper_em": 0.8798828125,
+      "layout_lower_em": 0.1201171875,
+      "ink_bbox_y_units": [
+        -262,
+        1802
+      ],
+      "pdfcpu_bbox_milli_em": [
+        879,
+        127
+      ],
+      "pdfcpu_edge_measurements": [
+        {
+          "size_pt": 1000,
+          "upper_pt": 879.0,
+          "lower_pt": 127.0,
+          "upper_em": 0.879,
+          "lower_em": 0.127
+        },
+        {
+          "size_pt": 2048,
+          "upper_pt": 1800.0,
+          "lower_pt": 261.0,
+          "upper_em": 0.87890625,
+          "lower_em": 0.12744140625
+        }
+      ],
+      "page_bottom_checks": [
+        {
+          "size_pt": 6,
+          "compensation_pt": 1,
+          "target_pt": 0.720703125,
+          "actual_pt": 0.7207,
+          "absolute_error_pt": 3.124999999992717e-06
+        },
+        {
+          "size_pt": 6.1,
+          "compensation_pt": 1,
+          "target_pt": 0.73271484375,
+          "actual_pt": 0.73271,
+          "absolute_error_pt": 4.84374999998316e-06
+        },
+        {
+          "size_pt": 12,
+          "compensation_pt": 2,
+          "target_pt": 1.44140625,
+          "actual_pt": 1.4414099999999999,
+          "absolute_error_pt": 3.7499999998580336e-06
+        },
+        {
+          "size_pt": 55,
+          "compensation_pt": 7,
+          "target_pt": 6.6064453125,
+          "actual_pt": 6.60645,
+          "absolute_error_pt": 4.68749999971152e-06
+        },
+        {
+          "size_pt": 72,
+          "compensation_pt": 10,
+          "target_pt": 8.6484375,
+          "actual_pt": 8.64844,
+          "absolute_error_pt": 2.500000000793534e-06
+        },
+        {
+          "size_pt": 144,
+          "compensation_pt": 19,
+          "target_pt": 17.296875,
+          "actual_pt": 17.29688,
+          "absolute_error_pt": 5.000000001587068e-06
+        }
+      ]
+    },
+    "extraction": {
+      "pages": 2,
+      "distinct_glyphs": 320,
+      "page_lengths": [
+        160,
+        160
+      ],
+      "mupdf_exact": true,
+      "poppler_exact": true,
+      "mupdf_page_sha256": [
+        "30b9ca2c7735186b73f44a62d9cf2688fca8cdd3b9695afbf2c6a94d4ca2765c",
+        "1de69127727f9f9c0dcb90ace9513fd81e167e44f4fe4d6a4ceabc2d46adab09"
+      ],
+      "poppler_page_sha256": [
+        "30b9ca2c7735186b73f44a62d9cf2688fca8cdd3b9695afbf2c6a94d4ca2765c",
+        "1de69127727f9f9c0dcb90ace9513fd81e167e44f4fe4d6a4ceabc2d46adab09"
+      ]
+    },
+    "cmap": {
+      "type0_fonts": 1,
+      "blocks": [
+        100,
+        100,
+        100,
+        20
+      ],
+      "mappings": 320,
+      "mismatches": 0
+    },
+    "pass": true
+  }
+}
