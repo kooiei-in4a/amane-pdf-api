@@ -3,21 +3,21 @@ using System.IO.Compression;
 
 namespace Amane.Pdf.Api;
 
-// Only sanitized PNGs with stamp's byte and side limits enter this validator.
+// Only sanitized PNGs with the calling endpoint's byte and side limits enter this validator.
 // Decompressed pixels are never retained: one scanline suffices for every Adam7 pass.
 internal static class PngDataValidator
 {
-    internal static async Task ValidateAsync(string path, CancellationToken token)
+    internal static async Task ValidateAsync(string path, CancellationToken token, long maxBytes = StampImageInput.MaxBytes)
     {
-        try { await ValidateCoreAsync(path, token); }
+        try { await ValidateCoreAsync(path, token, maxBytes); }
         catch (InvalidDataException) { throw PdfStampImageException.Unsupported(); }
         catch (EndOfStreamException) { throw PdfStampImageException.Unsupported(); }
     }
 
-    private static async Task ValidateCoreAsync(string path, CancellationToken token)
+    private static async Task ValidateCoreAsync(string path, CancellationToken token, long maxBytes)
     {
         await using var file = File.OpenRead(path);
-        if (file.Length > StampImageInput.MaxBytes) throw new InvalidDataException();
+        if (file.Length > maxBytes) throw new InvalidDataException();
         var ihdr = new byte[33];
         await file.ReadExactlyAsync(ihdr, token);
         var width = (int)BinaryPrimitives.ReadUInt32BigEndian(ihdr.AsSpan(16));
@@ -37,7 +37,7 @@ internal static class PngDataValidator
             if (header.AsSpan(4).SequenceEqual("IEND"u8)) break;
             if (header.AsSpan(4).SequenceEqual("IDAT"u8))
             {
-                // Bounded by the already verified <=1 MiB encoded file, not image dimensions.
+                // Bounded by the already verified encoded file, not image dimensions.
                 for (long remaining = length; remaining > 0;)
                 {
                     var count = (int)Math.Min(buffer.Length, remaining);

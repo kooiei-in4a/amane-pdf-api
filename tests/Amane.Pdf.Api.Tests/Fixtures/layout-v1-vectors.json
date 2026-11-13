@@ -1,0 +1,259 @@
+{
+ "layout": "ds-layout/1",
+ "font": {
+  "id": "gothic",
+  "sha256": "595dfefa96dcb281c40f5d560841f3fc623b0d9d12064481a7daf78044462673"
+ },
+ "note": "Python試作（docs/document-studio/verification/layout_vectors.py）で生成。I1のJSとI2のC#は全ベクタ一致を必須とする。単位: size/box=cpt(1/100pt)、lineHeight=%",
+ "vectors": [
+  {
+   "name": "short-name",
+   "text": "架空 太郎",
+   "size": 2400,
+   "boxWidth": 30000,
+   "boxHeight": 3000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "架空 太郎"
+    ],
+    "lineWidths_milliEm": [
+     4333
+    ]
+   }
+  },
+  {
+   "name": "exact-fit",
+   "text": "あいうえおかきくけこ",
+   "size": 1000,
+   "boxWidth": 9566,
+   "boxHeight": 1000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "あいうえおかきくけこ"
+    ],
+    "lineWidths_milliEm": [
+     9466
+    ]
+   }
+  },
+  {
+   "name": "exact-fit-minus-1cpt",
+   "text": "あいうえおかきくけこ",
+   "size": 1000,
+   "boxWidth": 9565,
+   "boxHeight": 2200,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "あいうえおかきくけ",
+     "こ"
+    ],
+    "lineWidths_milliEm": [
+     8576,
+     890
+    ]
+   }
+  },
+  {
+   "name": "kinsoku-line-start",
+   "text": "あいうえおかきくけこ。さしす",
+   "size": 1000,
+   "boxWidth": 9566,
+   "boxHeight": 3000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "あいうえおかきくけ",
+     "こ。さしす"
+    ],
+    "lineWidths_milliEm": [
+     8576,
+     4269
+    ]
+   }
+  },
+  {
+   "name": "kinsoku-line-end",
+   "text": "あいうえおかきくけ「こさしす」",
+   "size": 1000,
+   "boxWidth": 9176,
+   "boxHeight": 3000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "あいうえおかきくけ",
+     "「こさしす」"
+    ],
+    "lineWidths_milliEm": [
+     8576,
+     4669
+    ]
+   }
+  },
+  {
+   "name": "latin-word-kept",
+   "text": "受講番号 ABCD-1234 を確認",
+   "size": 1000,
+   "boxWidth": 9000,
+   "boxHeight": 4000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "受講番号 ",
+     "ABCD-1234 を確",
+     "認"
+    ],
+    "lineWidths_milliEm": [
+     4333,
+     8864,
+     1000
+    ]
+   }
+  },
+  {
+   "name": "latin-word-split-when-too-long",
+   "text": "https://example.invalid/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "size": 1000,
+   "boxWidth": 8000,
+   "boxHeight": 6000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "https://examp",
+     "le.invalid/aaa",
+     "aaaaaaaaaaaa",
+     "aaaaaaaaaaaa",
+     "aaaaa"
+    ],
+    "lineWidths_milliEm": [
+     7834,
+     7382,
+     7788,
+     7788,
+     3245
+    ]
+   }
+  },
+  {
+   "name": "explicit-lf",
+   "text": "一行目\n二行目\n\n四行目",
+   "size": 1200,
+   "boxWidth": 20000,
+   "boxHeight": 7000,
+   "lineHeight": 150,
+   "expected": {
+    "lines": [
+     "一行目",
+     "二行目",
+     "",
+     "四行目"
+    ],
+    "lineWidths_milliEm": [
+     3000,
+     3000,
+     0,
+     3000
+    ]
+   }
+  },
+  {
+   "name": "trailing-spaces-kept",
+   "text": "左　　\n  右",
+   "size": 1000,
+   "boxWidth": 20000,
+   "boxHeight": 3000,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "左　　",
+     "  右"
+    ],
+    "lineWidths_milliEm": [
+     2332,
+     1666
+    ]
+   }
+  },
+  {
+   "name": "height-exact",
+   "text": "ああああああああああああああああああああああああああああああ",
+   "size": 1000,
+   "boxWidth": 9890,
+   "boxHeight": 3400,
+   "lineHeight": 120,
+   "expected": {
+    "lines": [
+     "ああああああああああ",
+     "ああああああああああ",
+     "ああああああああああ"
+    ],
+    "lineWidths_milliEm": [
+     9790,
+     9790,
+     9790
+    ]
+   }
+  },
+  {
+   "name": "height-overflow",
+   "text": "あああああああああああああああああああああああああああああああ",
+   "size": 1000,
+   "boxWidth": 9890,
+   "boxHeight": 3400,
+   "lineHeight": 120,
+   "expected": {
+    "error": "text-overflow",
+    "lines": [
+     "ああああああああああ",
+     "ああああああああああ",
+     "ああああああああああ",
+     "あ"
+    ]
+   }
+  },
+  {
+   "name": "unsupported-supplementary",
+   "text": "吉と𠮷",
+   "size": 1000,
+   "boxWidth": 20000,
+   "boxHeight": 2000,
+   "lineHeight": 120,
+   "expected": {
+    "error": "unsupported-text",
+    "index": 2
+   }
+  },
+  {
+   "name": "forbidden-percent-p",
+   "text": "100%pass",
+   "size": 1000,
+   "boxWidth": 20000,
+   "boxHeight": 2000,
+   "lineHeight": 120,
+   "expected": {
+    "error": "unsupported-text",
+    "index": 3
+   }
+  },
+  {
+   "name": "body-certificate",
+   "text": "あなたは「やさしい書類作成講座（全6回）」の課程を修了されたことをここに証します。今後のご活躍をお祈りいたします。",
+   "size": 1400,
+   "boxWidth": 45000,
+   "boxHeight": 12000,
+   "lineHeight": 180,
+   "expected": {
+    "lines": [
+     "あなたは「やさしい書類作成講座（全6回）」の課程を修了されたことをここ",
+     "に証します。今後のご活躍をお祈りいたします。"
+    ],
+    "lineWidths_milliEm": [
+     31989,
+     20434
+    ]
+   }
+  }
+ ]
+}

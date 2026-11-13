@@ -244,7 +244,7 @@ public static class MultipartPdfUpload
         return new PdfRestriction(owner, user ?? "", print, copy, edit);
     }
 
-    private static string ReadFileName(ContentDispositionHeaderValue disposition)
+    internal static string ReadFileName(ContentDispositionHeaderValue disposition)
     {
         if (disposition.FileNameStar.HasValue) return disposition.FileNameStar.ToString();
         var decoded = disposition.FileName;
@@ -264,7 +264,7 @@ public static class MultipartPdfUpload
         return result.ToString();
     }
 
-    private static string ReadBoundary(HttpRequest request)
+    internal static string ReadBoundary(HttpRequest request)
     {
         if (!MediaTypeHeaderValue.TryParse(request.ContentType, out var contentType) ||
             !contentType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase))
@@ -275,7 +275,7 @@ public static class MultipartPdfUpload
         return boundary;
     }
 
-    private static ContentDispositionHeaderValue ReadDisposition(MultipartSection section)
+    internal static ContentDispositionHeaderValue ReadDisposition(MultipartSection section)
     {
         if (!ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var disposition) ||
             !disposition.DispositionType.Equals("form-data", StringComparison.OrdinalIgnoreCase))
@@ -298,7 +298,7 @@ public static class MultipartPdfUpload
         return copied;
     }
 
-    private static async Task<MultipartSection?> ReadNextAsync(MultipartReader reader, CancellationToken cancellationToken)
+    internal static async Task<MultipartSection?> ReadNextAsync(MultipartReader reader, CancellationToken cancellationToken)
     {
         try
         {
@@ -310,7 +310,7 @@ public static class MultipartPdfUpload
         }
     }
 
-    private static async ValueTask<int> ReadBodyAsync(Stream body, Memory<byte> buffer, CancellationToken cancellationToken)
+    internal static async ValueTask<int> ReadBodyAsync(Stream body, Memory<byte> buffer, CancellationToken cancellationToken)
     {
         try
         {

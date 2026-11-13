@@ -15,7 +15,8 @@ internal static class PdfEndpointHelpers
         Action<HttpResponse>? onSend = null,
         string contentType = "application/pdf",
         bool images = false,
-        string? tooLargeTitle = null)
+        string? tooLargeTitle = null,
+        int? processingTimeoutSeconds = null)
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         using var diagnostics = new PdfProcessingDiagnostics(context);
@@ -37,7 +38,7 @@ internal static class PdfEndpointHelpers
                     stage.Complete();
                 }
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(operation.Token);
-                timeout.CancelAfter(TimeSpan.FromSeconds(options.QpdfTimeoutSeconds));
+                timeout.CancelAfter(TimeSpan.FromSeconds(processingTimeoutSeconds ?? options.QpdfTimeoutSeconds));
                 try
                 {
                     using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Process);
@@ -63,6 +64,14 @@ internal static class PdfEndpointHelpers
                 try { files.Dispose(); }
                 catch (Exception) { diagnostics.LogCleanupFailure(); }
             }
+        }
+        catch (ComposeProblem exception)
+        {
+            diagnostics.Outcome = PdfOutcome.Rejected;
+            var extensions = exception.Extensions.Where(item => item.Value is not null)
+                .ToDictionary(item => item.Key, item => item.Value);
+            await Results.Problem(statusCode: exception.Status, title: "PDFを合成できませんでした。",
+                extensions: extensions).ExecuteAsync(context);
         }
         catch (PdfFillTemplateException exception)
         {

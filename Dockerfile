@@ -26,6 +26,8 @@ COPY scripts/verify-pdfcpu-modules.py /tools/scripts/verify-pdfcpu-modules.py
 COPY third_party/ /tools/third_party/
 COPY THIRD_PARTY_NOTICES.md /tools/THIRD_PARTY_NOTICES.md
 RUN /tools/scripts/install-pdfcpu.sh /opt/amane-pdf
+COPY scripts/install-compose-mincho.sh /tools/scripts/install-compose-mincho.sh
+RUN /tools/scripts/install-compose-mincho.sh /opt/amane-pdf
 COPY scripts/install-pdfium.sh /tools/scripts/install-pdfium.sh
 RUN /tools/scripts/install-pdfium.sh /opt/pdfium
 

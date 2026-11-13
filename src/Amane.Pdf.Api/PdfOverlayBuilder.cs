@@ -8,7 +8,7 @@ internal sealed record OverlayCanvas(string BlankPath, string LayerPath, IReadOn
     long JsonBudget, long PdfBudget);
 internal sealed record OverlayStage(string Name, double Milliseconds, long Bytes = 0, int Objects = 0);
 
-internal sealed class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions> options)
+internal sealed partial class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions> options)
 {
     internal const string Failure = "PDF描画処理に失敗しました。";
     internal const long InputLimitBytes = 50 * 1048576;

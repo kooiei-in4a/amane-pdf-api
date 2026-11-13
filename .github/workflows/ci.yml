@@ -43,6 +43,7 @@ jobs:
       - name: Install locked pdfcpu and Japanese font
         run: |
           scripts/install-pdfcpu.sh "$RUNNER_TEMP/pdfcpu"
+          scripts/install-compose-mincho.sh "$RUNNER_TEMP/pdfcpu"
           echo "Pdf__PdfcpuPath=$RUNNER_TEMP/pdfcpu/bin/pdfcpu" >> "$GITHUB_ENV"
           echo "Pdf__PdfcpuConfigDir=$RUNNER_TEMP/pdfcpu/config" >> "$GITHUB_ENV"
           echo "Pdf__RenderFontDir=$RUNNER_TEMP/pdfcpu/fonts" >> "$GITHUB_ENV"
@@ -140,6 +141,7 @@ jobs:
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-glyphs-validation.py amane-pdf-api:ci
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/fill-template-validation.py amane-pdf-api:ci
           "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/pdfcpu-update-validation.py amane-pdf-api:ci
+          "$RUNNER_TEMP/fill-template-venv/bin/python" scripts/compose-validation.py amane-pdf-api:ci
 
       - name: Verify image import layout, orientation, metadata and alpha (CI tools only)
         run: /usr/bin/python3 scripts/from-images-validation.py amane-pdf-api:ci
