@@ -342,7 +342,7 @@ def main():
             ("4000_lines", draw_lines, success),
         ]
     if args.combined_proposal:
-        cases.append(("40_plus_10", lambda api, folder: boundary(api, folder, 40, 20, MIB // 2), success))
+        cases.append(("40_plus_10", lambda api, folder: boundary(api, folder, 40, 20, MIB // 2), too_complex))
     results = {}
     unexpected = []
     for name, case, expected in cases:
