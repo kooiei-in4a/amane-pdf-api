@@ -8,7 +8,6 @@ internal static class PdfToImagesEndpoint
 {
     private const int MaxPages = 50;
     private const long MaxOutput = 64L * 1024 * 1024;
-    private const long MaxJob = 124L * 1024 * 1024;
     private const int ZipHeadroom = 16 * 1024;
 
     internal static async Task HandleAsync(HttpContext context, QpdfProcessor qpdf, PdfRenderer renderer,
@@ -24,6 +23,9 @@ internal static class PdfToImagesEndpoint
         var png = false;
         PdfPageSelection? selection = null;
         var settings = options.Value;
+        // The same job budget as redact applies to PDFium's shared execution group.
+        var jobLimit = settings.RedactJobLimitBytes / 4096 * 4096;
+        var inputLimit = Math.Min(settings.MaxFileBytes, jobLimit);
         await PdfEndpointHelpers.ExecuteAsync(context, settings, "images.zip", () =>
         {
             var query = context.Request.Query;
@@ -35,19 +37,20 @@ internal static class PdfToImagesEndpoint
                 !int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out dpi) || dpi is < 72 or > 200)
                 throw new BadHttpRequestException("Invalid dpi query.");
             if (query.TryGetValue("pages", out var pages)) selection = PdfPageSelection.Parse(pages.ToString());
-        }, (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, settings, token),
-        (files, token) => RenderAsync(files, qpdf, renderer, settings, dpi, png, selection, token), contentType: "application/zip");
+        }, (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, inputLimit, token),
+        (files, token) => RenderAsync(files, qpdf, renderer, settings, jobLimit, dpi, png, selection, token),
+        maxRequestBytes: inputLimit + PdfOptions.MultipartOverheadBytes, contentType: "application/zip");
     }
 
     private static async Task RenderAsync(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfRenderer renderer,
-        PdfOptions options, int dpi, bool png, PdfPageSelection? selection, CancellationToken token)
+        PdfOptions options, long jobLimit, int dpi, bool png, PdfPageSelection? selection, CancellationToken token)
     {
         await qpdf.ValidateAsync(files, token);
         var directory = Path.GetFullPath(files.DirectoryPath);
         var input = Path.GetFullPath(files.InputPath);
         var inputBytes = CleanCapacity.Allocated(new FileInfo(input).Length);
         var metadata = Path.Combine(directory, "images-metadata.json");
-        var metadataLimit = Math.Min(options.OverlayJsonLimitBytes, MaxJob - inputBytes - 4096);
+        var metadataLimit = Math.Min(options.OverlayJsonLimitBytes, jobLimit - inputBytes - 4096);
         if (metadataLimit <= 0) throw new PdfRenderException(PdfRenderReason.TooComplex);
         (int Page, PdfPageAttributes Attributes, int Width, int Height)[] plans;
         try
@@ -85,7 +88,7 @@ internal static class PdfToImagesEndpoint
             token.ThrowIfCancellationRequested();
             // The rendered page temporarily exists both on disk and within the ZIP.
             var budget = Math.Min(MaxOutput - bounded.Length - ZipHeadroom,
-                (MaxJob - inputBytes - CleanCapacity.Allocated(bounded.Length) - ZipHeadroom) / 2);
+                (jobLimit - inputBytes - CleanCapacity.Allocated(bounded.Length) - ZipHeadroom) / 2);
             if (budget <= 0) throw OutputTooLarge();
             var page = plan.Attributes;
             var render = new RenderPage(input, imagePath, plan.Page, page.DisplayWidth / page.UserUnit,

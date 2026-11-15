@@ -7,15 +7,19 @@ namespace Amane.Pdf.Api;
 public static class MultipartPdfUpload
 {
     public static async Task<string> ReadAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
-        => (await ReadCoreAsync(request, files, options, requirePassword: true, cancellationToken)).Password
+        => (await ReadCoreAsync(request, files, options.MaxFileBytes, requirePassword: true, cancellationToken)).Password
             ?? throw new BadHttpRequestException("Missing required field.");
 
     public static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options, CancellationToken cancellationToken)
-        => _ = await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken);
+        => _ = await ReadCoreAsync(request, files, options.MaxFileBytes, requirePassword: false, cancellationToken);
+
+    internal static async Task ReadFileAsync(HttpRequest request, TemporaryPdfFiles files, long maxFileBytes,
+        CancellationToken token)
+        => _ = await ReadCoreAsync(request, files, maxFileBytes, requirePassword: false, token);
 
     internal static async Task<string> ReadFileNameAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, CancellationToken cancellationToken)
-        => (await ReadCoreAsync(request, files, options, requirePassword: false, cancellationToken)).FileName;
+        => (await ReadCoreAsync(request, files, options.MaxFileBytes, requirePassword: false, cancellationToken)).FileName;
 
     internal static async Task ReadFileAndImageAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, CancellationToken token)
@@ -154,11 +158,11 @@ public static class MultipartPdfUpload
         return paths;
     }
 
-    private static async Task<(string? Password, string FileName)> ReadCoreAsync(HttpRequest request, TemporaryPdfFiles files, PdfOptions options,
+    private static async Task<(string? Password, string FileName)> ReadCoreAsync(HttpRequest request, TemporaryPdfFiles files, long maxFileBytes,
         bool requirePassword, CancellationToken cancellationToken)
     {
         var boundary = ReadBoundary(request);
-        using var body = new SizeLimitedReadStream(request.Body, options.MaxRequestBytes);
+        using var body = new SizeLimitedReadStream(request.Body, checked(maxFileBytes + PdfOptions.MultipartOverheadBytes));
         var reader = new MultipartReader(boundary, body);
         var hasFile = false;
         string? password = null;
@@ -173,7 +177,7 @@ public static class MultipartPdfUpload
             {
                 hasFile = true;
                 fileName = ReadFileName(disposition);
-                await CopyFileAsync(section.Body, files.InputPath, options.MaxFileBytes, buffer, cancellationToken);
+                await CopyFileAsync(section.Body, files.InputPath, maxFileBytes, buffer, cancellationToken);
             }
             else if (requirePassword && name == "password" && !isFile && password is null)
             {

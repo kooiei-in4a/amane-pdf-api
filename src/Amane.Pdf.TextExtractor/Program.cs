@@ -27,6 +27,8 @@ static int Extract(string input, string output, int maxPages, int maxCharacters)
         using var json = new Utf8JsonWriter(stream);
         json.WriteStartObject();
         json.WriteStartArray("pages");
+        var scanned = 0;
+        var scanLimit = Math.Max(4096, 4 * maxCharacters);
         var characters = 0;
         var unavailable = 0;
         var meaningful = 0;
@@ -38,14 +40,17 @@ static int Extract(string input, string output, int maxPages, int maxCharacters)
             foreach (var letter in page.Letters)
             foreach (var rune in letter.Value.EnumerateRunes())
             {
-                if (++characters > maxCharacters) return 3;
+                if (++scanned > scanLimit) return 3;
                 if (Rune.IsWhiteSpace(rune)) continue;
                 meaningful++;
                 if (rune == Rune.ReplacementChar ||
                     Rune.GetUnicodeCategory(rune) is UnicodeCategory.PrivateUse or UnicodeCategory.Control or UnicodeCategory.Format)
                     unavailable++;
                 else
+                {
+                    if (++characters > maxCharacters) return 3;
                     text.Append(rune.ToString());
+                }
             }
             json.WriteStringValue(text.ToString());
         }
@@ -54,6 +59,6 @@ static int Extract(string input, string output, int maxPages, int maxCharacters)
         return meaningful == 0 || unavailable * 5 > meaningful ? 2 : 0;
     }
     catch (OutOfMemoryException) { return 3; }
-    catch (IOException) { return 1; }
-    catch (Exception) { return 2; }
+    // PdfPig and I/O failures are internal errors. Never log extractor exceptions.
+    catch (Exception) { return 1; }
 }

@@ -25,9 +25,10 @@ public static class PdfCompressEndpoint
                 return;
             }
             var bytes = query["maxBytes"].ToString();
-            if (bytes.Length == 0 || bytes[0] == '0' ||
+            // Numeric parsing accepts trailing NUL even with NumberStyles.None.
+            if (bytes.Length == 0 || bytes[0] == '0' || bytes[^1] == '\0' ||
                 !long.TryParse(bytes, NumberStyles.None, CultureInfo.InvariantCulture, out var size) ||
-                bytes.Any(ch => ch is < '0' or > '9') || size < 102_400 || size > options.Value.MaxFileBytes)
+                size < 102_400 || size > options.Value.MaxFileBytes)
                 throw new BadHttpRequestException("Invalid maxBytes query.");
             target = size;
         },

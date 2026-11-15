@@ -367,9 +367,9 @@ curl --fail-with-body -F file=@input.pdf \
 | 4 | 1169 px | 45 |
 | 5 | 827 px | 45 |
 
-各段階は元PDFのJPEGから作成します。djpegの1/8刻みの縮尺で上限以下になる最大の寸法を選びます。検証済みの結果が目標に達した時点で終了します。目標に届かない場合は、容量と時間の範囲で検証できた最小のPDFを200で返します。画像以外が大きいPDFや、対象JPEGを含まないPDFでも利用できます。`X-Pdf-Target-Reached` は実際の返却サイズに応じた `true` または `false` で、`X-Pdf-Images-Recompressed` は返却したPDFの置換数です。
+候補画像は初回の段階で選び、後続の段階でも使います。各段階は元PDFのJPEGから作成します。djpegの1/8刻みの縮尺で上限以下になる最大の寸法を選びます。検証済みの結果が目標に達した時点で終了します。目標に届かない場合は、容量と時間の範囲で検証できた最小のPDFを200で返します。画像以外が大きいPDFや、対象JPEGを含まないPDFでも利用できます。`X-Pdf-Target-Reached` は実際の返却サイズに応じた `true` または `false` で、`X-Pdf-Images-Recompressed` は返却したPDFの置換数です。
 
-目標モードでは入力検証後、同じ開始時刻から既定21秒までを試行と出力検証に使います。試行中に期限が来た場合は、前の検証済み結果か、検証済みの入力を返します。
+目標モードでは可逆最適化と画像変換を既定21秒で打ち切り、新しい段階の開始を止めます。処理中の段階で採用済みの画像は、共通の処理期限（既定30秒）までにPDFへ書き出し、検証します。処理期限に達した場合は504です。
 
 ### PDF文字差分（Linux）
 
@@ -381,11 +381,11 @@ old  比較元のPDF
 new  比較先のPDF
 ```
 
-2つのファイルを1つずつ指定します。順序は任意です。各PDFは単一PDF上限、合計は `Pdf__MaxMergeInputBytes`（既定50 MiB）です。PDFごとに既定300ページ・抽出50万文字まで。抽出から差分生成まで既定30秒を共有します。
+2つのファイルを1つずつ指定します。順序は任意です。各PDFは単一PDF上限、合計は `Pdf__MaxMergeInputBytes`（既定50 MiB）です。PDFごとに既定300ページ・比較に使える文字50万字まで。空白などを含む走査文字数は4,096字と文字数設定の4倍の大きい方を上限とします。抽出から差分生成まで既定30秒を共有します。
 
 成功時の `application/json` には、`old`・`new` の `pages` と `characters`、`changes`、`truncated` が含まれます。各変更は `insert`・`delete`・`replace` と、該当する側の先頭ページ番号・文字列、前後最大30文字の元文書の文脈を返します。比較と文脈からUnicode空白を除きます。変更は先頭1000件までで、残りがあれば `truncated: true` です。PDF内の文字の描画順で比較するため、段組みや縦書きはPDFの内部順序に左右されます。
 
-スキャン画像など抽出できる文字がない場合は422 `text-unavailable`、ページ数・文字数・差分計算の上限を超えた場合は422 `too-large-to-compare` です。文字の比較が対象で、画像・書式・レイアウトは差分に含みません。
+スキャン画像など抽出できる文字がない場合は422 `text-unavailable`、ページ数・文字数・差分計算の上限を超えた場合は422 `too-large-to-compare` です。抽出プログラム内部の失敗は500です。文字の比較が対象で、画像・書式・レイアウトは差分に含みません。
 
 ### PDFから画像（Linux）
 
@@ -398,7 +398,7 @@ file  PDFファイル一つ
 
 `format` は `png` または `jpeg`、`dpi` は72〜200の整数です。`pages` は既存のページ選択形式で、省略時は全ページです。CropBox、回転、UserUnitを反映した寸法で白背景に描画します。
 
-1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。最大50ページ、1ページ1,600万画素、ZIP最大64 MiB、ジョブ一時領域最大124 MiBです。対応する上限超過は422 `too-many-pages`、`page-too-large`、`output-too-large` です。黒塗りと描画枠を共有し、使用中は503です。
+1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。最大50ページ、1ページ1,600万画素、ZIP最大64 MiBです。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。対応する上限超過は422 `too-many-pages`、`page-too-large`、`output-too-large` です。黒塗りと描画枠を共有し、使用中は503です。
 
 ### PDFページ番号（Linux）
 
@@ -672,7 +672,7 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__MaxRedactReplacementBytes` | `31457280`（30 MiB） | 黒塗りのJPEG合計。正、30 MiB以下 |
 | `Pdf__RedactOutputLimitBytes` | `65011712`（62 MiB） | 黒塗り出力。正、62 MiB以下 |
 | `Pdf__RedactJsonLimitBytes` | `33554432`（32 MiB） | 黒塗りの各構造・更新JSON。正、32 MiB以下 |
-| `Pdf__RedactJobLimitBytes` | `130023424`（124 MiB） | 黒塗りの全ファイル割当。正、124 MiB以下、4 KiB切上げ後の入力上限以上 |
+| `Pdf__RedactJobLimitBytes` | `130023424`（124 MiB） | 黒塗りとPDF→画像のジョブごとの全ファイル割当。正、124 MiB以下、4 KiB切上げ後の入力上限以上 |
 | `Pdf__RenderDataLimitBytes` | `402653184`（384 MiB） | PDFium描画子プロセスのRLIMIT_DATA。正、384 MiB以下 |
 | `Pdf__DotnetPath` | `/usr/bin/dotnet` | 描画子プロセスのdotnet。絶対path |
 | `Pdf__TextExtractorPath` | `/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll` | 比較用の文字抽出プログラム |
