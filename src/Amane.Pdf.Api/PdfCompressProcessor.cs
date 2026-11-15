@@ -27,6 +27,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
     ];
 
     private const long OutputHeadroom = 4 * 1024 * 1024;
+    private static readonly TimeSpan TargetFinishMargin = TimeSpan.FromSeconds(1);
     private readonly List<(PdfObjectRef Reference, string Jpeg, string Entry)> adopted = [];
     private long originalBytes;
     private long adoptedBytes;
@@ -117,7 +118,12 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         var inputBytes = new FileInfo(files.InputPath).Length;
         var bestBytes = inputBytes;
         var bestCount = 0;
-        using var attempts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        // A pass may finish its adopted images after the soft deadline, but must stop
+        // before the request deadline so the validated best file can still be returned.
+        using var finish = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var finishRemaining = TimeSpan.FromSeconds(options.QpdfTimeoutSeconds) - TargetFinishMargin - Stopwatch.GetElapsedTime(start);
+        if (finishRemaining <= TimeSpan.Zero) finish.Cancel(); else finish.CancelAfter(finishRemaining);
+        using var attempts = CancellationTokenSource.CreateLinkedTokenSource(finish.Token);
         var remaining = TimeSpan.FromSeconds(options.CompressSoftTimeoutSeconds) - Stopwatch.GetElapsedTime(start);
         if (remaining <= TimeSpan.Zero) attempts.Cancel(); else attempts.CancelAfter(remaining);
         try
@@ -136,10 +142,11 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                     try
                     {
                         var pass = new PdfCompressProcessor(options, files, best);
-                        // The pass stops image work at the soft deadline and finishes under the request deadline.
-                        var count = await pass.CompressPassAsync(step, start, token, candidates);
+                        // The pass stops image work at the soft deadline and finishes before the request deadline.
+                        var count = await pass.CompressPassAsync(step, start, finish.Token, candidates, requireAdopted: true);
                         candidates = pass.CandidateImages;
-                        KeepResult(count);
+                        // Without adopted images the pass would only repeat the lossless output.
+                        if (count > 0) KeepResult(count);
                         if (bestBytes <= maxBytes || candidates is not { Length: > 0 }) break;
                     }
                     catch (CompressLimitException) { }
@@ -183,7 +190,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
     }
 
     private async Task<int> CompressPassAsync(CompressionStep step, long start, CancellationToken hardToken,
-        CompressImage[]? candidates = null)
+        CompressImage[]? candidates = null, bool requireAdopted = false)
     {
         var inputBytes = new FileInfo(files.InputPath).Length;
         ReserveInputs(inputBytes);
@@ -249,6 +256,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         catch (CompressLimitException) { }
         catch (OperationCanceledException) when (!hardToken.IsCancellationRequested && soft.IsCancellationRequested) { }
         hardToken.ThrowIfCancellationRequested();
+        if (requireAdopted && adopted.Count == 0) return 0;
         await FinishAsync(inputBytes, hardToken);
         return adopted.Count;
     }

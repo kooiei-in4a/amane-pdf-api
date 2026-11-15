@@ -33,7 +33,8 @@ internal static class PdfToImagesEndpoint
             png = query["format"] is [ "png" ];
             if (!png && query["format"] is not [ "jpeg" ]) throw new BadHttpRequestException("Invalid format query.");
             var value = query["dpi"].ToString();
-            if (value.Length is < 2 or > 3 || value[0] == '0' ||
+            // Numeric parsing accepts trailing NUL even with NumberStyles.None.
+            if (value.Length is < 2 or > 3 || value[0] == '0' || value[^1] == '\0' ||
                 !int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out dpi) || dpi is < 72 or > 200)
                 throw new BadHttpRequestException("Invalid dpi query.");
             if (query.TryGetValue("pages", out var pages)) selection = PdfPageSelection.Parse(pages.ToString());

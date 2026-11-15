@@ -129,6 +129,51 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    public async Task TargetCompressionReturnsBestFileWhenPassCannotFinishBeforeDeadline()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:QpdfTimeoutSeconds"] = "6",
+            ["Pdf:CompressSoftTimeoutSeconds"] = "3"
+        });
+        var source = CompressFixtures.Pdf(await CompressFixtures.JpegAsync(test));
+        Assert.IsGreaterThan(102_400, source.Length);
+        var pidMarker = Path.Combine(test.Root, "qpdf-update.pid");
+        var wrapper = Path.Combine(test.Root, "qpdf.sh");
+        // Only the lossy pass writes with --update-from-json; stall it past the soft deadline.
+        await File.WriteAllTextAsync(wrapper, $$"""
+            #!/bin/sh
+            for argument in "$@"; do
+                case "$argument" in --update-from-json=*) printf '%s' "$$" > '{{pidMarker}}'; exec sleep 60 ;; esac
+            done
+            exec qpdf "$@"
+            """);
+        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
+        using var form = PdfTestContext.FileForm(source);
+        using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=102400", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("false", response.Headers.GetValues("X-Pdf-Target-Reached").Single());
+        Assert.AreEqual("0", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 1);
+        Assert.IsFalse(Directory.Exists("/proc/" + await File.ReadAllTextAsync(pidMarker)));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("72%00")]
+    [DataRow("072")]
+    [DataRow("201")]
+    public async Task ToImagesRejectsInvalidDpi(string dpi)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        await test.AssertRejectedBeforeReadingBodyAsync("/api/pdf/to-images?format=png&dpi=" + dpi, form);
+    }
+
+    [TestMethod]
     public async Task TargetCompressionSelectsImagesOnceAcrossStages()
     {
         if (!OperatingSystem.IsLinux()) return;
