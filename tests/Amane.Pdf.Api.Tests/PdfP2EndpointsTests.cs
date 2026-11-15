@@ -223,7 +223,7 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
-    public async Task ToImagesRejectsPageLimitsAndSharesRenderSlot()
+    public async Task ToImagesRejectsPageAndImageLimitsAndSharesRenderSlotWithCompare()
     {
         if (!OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext();
@@ -234,11 +234,25 @@ public sealed class PdfP2EndpointsTests
             using var json = JsonDocument.Parse(await rejected.Content.ReadAsByteArrayAsync());
             Assert.AreEqual("too-many-pages", json.RootElement.GetProperty("reason").GetString());
         }
+        // 10001 x 3000 x 3 exceeds the DCT sample limit measured for PDFium.
+        var image = CompressFixtures.Pdf(await CompressFixtures.JpegAsync(test), width: 10_001, height: 3000);
+        using (var large = PdfTestContext.FileForm(image))
+        using (var rejected = await test.Client.PostAsync("/api/pdf/to-images?format=png&dpi=72", large))
+        {
+            Assert.AreEqual(422, (int)rejected.StatusCode);
+            using var json = JsonDocument.Parse(await rejected.Content.ReadAsByteArrayAsync());
+            Assert.AreEqual("too-complex", json.RootElement.GetProperty("reason").GetString());
+        }
         using var lease = test.Factory.Services.GetRequiredService<RenderSlot>().TryAcquire();
         Assert.IsNotNull(lease);
         using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
         using var busy = await test.Client.PostAsync("/api/pdf/to-images?format=jpeg&dpi=200", form);
         Assert.AreEqual(HttpStatusCode.ServiceUnavailable, busy.StatusCode);
+        using var compare = new MultipartFormDataContent();
+        compare.Add(new ByteArrayContent(PdfTestContext.Fixture), "old", "old.pdf");
+        compare.Add(new ByteArrayContent(PdfTestContext.Fixture), "new", "new.pdf");
+        using var compareBusy = await test.Client.PostAsync("/api/pdf/compare", compare);
+        Assert.AreEqual(HttpStatusCode.ServiceUnavailable, compareBusy.StatusCode);
         test.AssertClean();
     }
 

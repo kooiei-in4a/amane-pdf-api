@@ -16,7 +16,9 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
     private readonly record struct CompressionStep(int LongEdge, string Quality, bool StrictSize = false)
     {
         internal int ScaleFor(int longEdge)
-            => StrictSize ? Math.Min(8, LongEdge * 8 / longEdge) : Scale(longEdge, LongEdge);
+            // Strict steps never exceed the long edge, except images larger than 8x
+            // the target, which djpeg can only reduce to 1/8.
+            => StrictSize ? Math.Clamp(LongEdge * 8 / longEdge, 1, 8) : Scale(longEdge, LongEdge);
     }
 
     private static readonly CompressionStep[] TargetSteps =
@@ -548,7 +550,6 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             var original = JpegHeader.Read(raw, image.Length, options.CompressMaxPixels, token);
             if (original is null || original.Width != image.Width || original.Height != image.Height || original.Components != image.Components) return;
             var scale = step.ScaleFor(Math.Max(image.Width, image.Height));
-            if (scale == 0) return;
             var pnmLimit = checked(PnmSize(image.Width, image.Height, image.Components, scale) + 512);
             if (pnmLimit > options.CompressPnmLimitBytes) return;
             Capacity.Reserve(pnm, BoundedOutput.FileSizeLimit(pnmLimit));

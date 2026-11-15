@@ -59,8 +59,11 @@ internal static class PdfToImagesEndpoint
             var ranges = selection?.GetRanges(boxes.Pages.Count) ?? [(1, boxes.Pages.Count)];
             if (ranges.Sum(range => (long)range.End - range.Start + 1) > MaxPages)
                 throw new PdfRenderException(PdfRenderReason.TooManyPages);
+            // Apply redact's measured PDFium image limits before rendering any page.
+            var document = new RedactDocument(boxes, token);
             plans = ranges.SelectMany(range => Enumerable.Range(range.Start, range.End - range.Start + 1)).Select(number =>
             {
+                CheckImages(document, number);
                 var page = boxes.Read(number - 1, token);
                 var width = Math.Ceiling(page.DisplayWidth * dpi / 72);
                 var height = Math.Ceiling(page.DisplayHeight * dpi / 72);
@@ -96,6 +99,16 @@ internal static class PdfToImagesEndpoint
             await using (var target = entry.Open())
                 await source.CopyToAsync(target, token);
             File.Delete(imagePath);
+        }
+    }
+
+    private static void CheckImages(RedactDocument document, int page)
+    {
+        try { document.CheckImages(page); }
+        catch (PdfRedactException exception)
+        {
+            throw new PdfRenderException(exception.Reason == PdfRedactReason.UnsupportedPdf
+                ? PdfRenderReason.UnsupportedPdf : PdfRenderReason.TooComplex);
         }
     }
 

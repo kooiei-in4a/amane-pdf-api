@@ -21,10 +21,17 @@ internal static class PdfCompareEndpoint
         options.MaxCompareCharacters is >= 1 and <= 500_000 &&
         !string.IsNullOrWhiteSpace(options.TextExtractorPath) && Path.IsPathFullyQualified(options.TextExtractorPath);
 
-    internal static Task HandleAsync(HttpContext context, QpdfProcessor qpdf, IOptions<PdfOptions> options)
+    internal static async Task HandleAsync(HttpContext context, QpdfProcessor qpdf, RenderSlot slot, IOptions<PdfOptions> options)
     {
+        // The extractor has the same DATA 384 MiB budget as the renderer, so only one may run at a time.
+        using var lease = slot.TryAcquire();
+        if (lease is null)
+        {
+            await Results.Problem(statusCode: 503, title: "PDF処理の同時実行上限に達しました。").ExecuteAsync(context);
+            return;
+        }
         var settings = options.Value;
-        return PdfEndpointHelpers.ExecuteAsync(context, settings, null,
+        await PdfEndpointHelpers.ExecuteAsync(context, settings, null,
             () => PdfEndpointHelpers.ValidateQueryKeys(context.Request.Query),
             (files, token) => MultipartPdfUpload.ReadCompareFilesAsync(context.Request, files, settings, token),
             (files, token) => CompareAsync(files, qpdf, settings, token),
