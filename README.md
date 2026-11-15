@@ -13,7 +13,9 @@ PDFや画像を、入力検証と容量・時間の制限のもとで処理す�
 - `POST /api/pdf/restrict` によるPDFの印刷・コピー・編集権限の制限
 - `POST /api/pdf/unlock` による、正しいuser / owner passwordでの暗号化解除
 - `POST /api/pdf/optimize` によるPDFのlossless構造最適化
-- Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮
+- Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮、目標サイズ指定
+- Linuxの `POST /api/pdf/compare` によるPDFの文字差分比較
+- Linuxの `POST /api/pdf/to-images` によるPDFからPNG・JPEGへの変換とZIP返却
 - Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
@@ -319,6 +321,7 @@ curl --fail-with-body \
 ```text
 POST /api/pdf/compress?level=standard
 POST /api/pdf/compress?level=strong
+POST /api/pdf/compress?maxBytes=2097152
 Content-Type: multipart/form-data
 
 file  PDFファイル一つ
@@ -329,9 +332,9 @@ file  PDFファイル一つ
 | standard | 1754 px | 75 |
 | strong | 1169 px | 60 |
 
-`level`は一つだけ必須です。未知の値・query key・重複は400です。multipartも`file`一つだけとし、passwordなどの追加fieldは400です。成功は200、`application/pdf`、固定名`compressed.pdf`です。非Linuxにはこのendpointを登録しません。lossless構造最適化の`optimize`は従来どおりです。
+`level` と `maxBytes` のいずれか一つを指定します。未知の値・query key・重複は400です。multipartも`file`一つだけとし、passwordなどの追加fieldは400です。成功は200、`application/pdf`、固定名`compressed.pdf`です。非Linuxにはこのendpointを登録しません。lossless構造最適化の`optimize`は従来どおりです。
 
-目標は上限ではなく、原画像が十分大きい場合の下限の目安です。長辺が目標以下なら縮小せず、拡大もしません。それ以外は整数の`M = min(8, max(1, ceil(目標×8÷長辺)))`を選び、djpegの`-scale M/8`で縮小します。長辺は目標以上、通常は目標の約2倍までになります。極端な縦横比では1/8でも2倍を超えます。8064×6048は両levelとも長辺2016 pxになりますが、品質75／60の違いは残ります。
+固定 `level` の長辺は、原画像が十分大きい場合の下限の目安です。長辺が目標以下なら縮小せず、拡大もしません。それ以外は整数の`M = min(8, max(1, ceil(目標×8÷長辺)))`を選び、djpegの`-scale M/8`で縮小します。長辺は目標以上、通常は目標の約2倍までになります。極端な縦横比では1/8でも2倍を超えます。8064×6048は両levelとも長辺2016 pxになりますが、品質75／60の違いは残ります。
 
 対象はページResourcesから直接参照される固有の画像XObjectで、DCTDecodeだけ、DecodeParmsなし、BitsPerComponent 8、生JPEG 32 KiB以上、初期値1億画素以下です。JPEGのprecision 8・成分数1／3・実寸とPDF辞書が一致する必要があります。DeviceGray／DeviceRGB、Nが一致するICCBased、辞書を持つCalGray／CalRGBを扱います。ImageMask=true、Decode、color key Mask配列、Matte付きSMask、未解決・循環参照は除外します。Form内、inline image、CMYK、Indexed／Lab／Separation／DeviceN、Flate／JPEG 2000／JBIG2／CCITTなどの再圧縮は対象外です。ColorSpaceとprofile、保持対象のMask／SMask、Interpolateは維持します。ICC header・acsp、Range／Alternate、WhitePointの値域は検査しません。
 
@@ -351,6 +354,51 @@ curl --fail-with-body -F file=@input.pdf \
 ```
 
 サイト側のUI・利用者向け制限・ヘッダーの伝達は[amane-tools-site #38](https://github.com/kooiei-in4a/amane-tools-site/issues/38)で扱います。
+
+#### 目標サイズ指定
+
+`maxBytes` は 102,400 bytes から `Pdf__MaxFileBytes`（既定50 MiB）までの、先頭ゼロのないASCII整数です。入力が目標以下なら構造の可逆最適化だけを試します。それ以外は、まず可逆最適化を試し、必要な場合は次の順序でJPEGを再圧縮します。
+
+| 段階 | 長辺の上限 | JPEG品質 |
+| --- | ---: | ---: |
+| 1 | 1754 px | 75 |
+| 2 | 1754 px | 60 |
+| 3 | 1169 px | 60 |
+| 4 | 1169 px | 45 |
+| 5 | 827 px | 45 |
+
+各段階は元PDFのJPEGから作成します。djpegの1/8刻みの縮尺で上限以下になる最大の寸法を選びます。検証済みの結果が目標に達した時点で終了します。目標に届かない場合は、容量と時間の範囲で検証できた最小のPDFを200で返します。画像以外が大きいPDFや、対象JPEGを含まないPDFでも利用できます。`X-Pdf-Target-Reached` は実際の返却サイズに応じた `true` または `false` で、`X-Pdf-Images-Recompressed` は返却したPDFの置換数です。
+
+目標モードでは入力検証後、同じ開始時刻から既定21秒までを試行と出力検証に使います。試行中に期限が来た場合は、前の検証済み結果か、検証済みの入力を返します。
+
+### PDF文字差分（Linux）
+
+```text
+POST /api/pdf/compare
+Content-Type: multipart/form-data
+
+old  比較元のPDF
+new  比較先のPDF
+```
+
+2つのファイルを1つずつ指定します。順序は任意です。各PDFは単一PDF上限、合計は `Pdf__MaxMergeInputBytes`（既定50 MiB）です。PDFごとに既定300ページ・抽出50万文字まで。抽出から差分生成まで既定30秒を共有します。
+
+成功時の `application/json` には、`old`・`new` の `pages` と `characters`、`changes`、`truncated` が含まれます。各変更は `insert`・`delete`・`replace` と、該当する側の先頭ページ番号・文字列、前後最大30文字の元文書の文脈を返します。比較と文脈からUnicode空白を除きます。変更は先頭1000件までで、残りがあれば `truncated: true` です。PDF内の文字の描画順で比較するため、段組みや縦書きはPDFの内部順序に左右されます。
+
+スキャン画像など抽出できる文字がない場合は422 `text-unavailable`、ページ数・文字数・差分計算の上限を超えた場合は422 `too-large-to-compare` です。文字の比較が対象で、画像・書式・レイアウトは差分に含みません。
+
+### PDFから画像（Linux）
+
+```text
+POST /api/pdf/to-images?format=png&dpi=150&pages=1-3
+Content-Type: multipart/form-data
+
+file  PDFファイル一つ
+```
+
+`format` は `png` または `jpeg`、`dpi` は72〜200の整数です。`pages` は既存のページ選択形式で、省略時は全ページです。CropBox、回転、UserUnitを反映した寸法で白背景に描画します。
+
+1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。最大50ページ、1ページ1,600万画素、ZIP最大64 MiB、ジョブ一時領域最大124 MiBです。対応する上限超過は422 `too-many-pages`、`page-too-large`、`output-too-large` です。黒塗りと描画枠を共有し、使用中は503です。
 
 ### PDFページ番号（Linux）
 
@@ -627,6 +675,9 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__RedactJobLimitBytes` | `130023424`（124 MiB） | 黒塗りの全ファイル割当。正、124 MiB以下、4 KiB切上げ後の入力上限以上 |
 | `Pdf__RenderDataLimitBytes` | `402653184`（384 MiB） | PDFium描画子プロセスのRLIMIT_DATA。正、384 MiB以下 |
 | `Pdf__DotnetPath` | `/usr/bin/dotnet` | 描画子プロセスのdotnet。絶対path |
+| `Pdf__TextExtractorPath` | `/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll` | 比較用の文字抽出プログラム |
+| `Pdf__MaxComparePages` | `300` | 比較対象PDF1つあたりのページ上限 |
+| `Pdf__MaxCompareCharacters` | `500000` | 比較対象PDF1つあたりの抽出文字上限 |
 | `Pdf__RendererPath` | `/opt/amane-pdf/renderer/Amane.Pdf.Renderer.dll` | 描画プログラム。絶対path |
 | `Pdf__PdfiumPath` | `/opt/amane-pdf/lib/libpdfium.so` | lock済みPDFium。絶対path |
 | `Pdf__RenderFontDir` | `/opt/amane-pdf/fonts` | BIZ UDPゴシックTTFのdir。絶対path |

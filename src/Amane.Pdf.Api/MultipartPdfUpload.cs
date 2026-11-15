@@ -95,6 +95,28 @@ public static class MultipartPdfUpload
         => ReadMultipleAsync(request, options, 2, options.MaxMergeFiles, options.MaxMergeInputBytes,
             options.MaxMergeRequestBytes, files.MergeInputPath, cancellationToken);
 
+    internal static async Task ReadCompareFilesAsync(HttpRequest request, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken token)
+    {
+        using var body = new SizeLimitedReadStream(request.Body, options.MaxMergeRequestBytes);
+        var reader = new MultipartReader(ReadBoundary(request), body);
+        var buffer = new byte[64 * 1024];
+        var received = new HashSet<string>(StringComparer.Ordinal);
+        long total = 0;
+        while (await ReadNextAsync(reader, token) is { } section)
+        {
+            var disposition = ReadDisposition(section);
+            var name = HeaderUtilities.RemoveQuotes(disposition.Name).Value;
+            if (name is not ("old" or "new") || (!disposition.FileName.HasValue && !disposition.FileNameStar.HasValue) ||
+                !received.Add(name))
+                throw new BadHttpRequestException("Unexpected compare field.");
+            var remaining = Math.Min(options.MaxFileBytes, options.MaxMergeInputBytes - total);
+            total += await CopyFileAsync(section.Body, files.MergeInputPath(name == "old" ? 1 : 2), remaining, buffer, token);
+        }
+        if (received.Count != 2) throw new BadHttpRequestException("Both compare files are required.");
+        while (await ReadBodyAsync(body, buffer, token) != 0) { }
+    }
+
     internal static Task<IReadOnlyList<string>> ReadImageFilesAsync(HttpRequest request, TemporaryPdfFiles files,
         PdfOptions options, CancellationToken token)
         => ReadMultipleAsync(request, options, 1, options.MaxImageFiles, options.MaxImageInputBytes,

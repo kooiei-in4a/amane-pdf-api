@@ -50,6 +50,7 @@ internal static class Program
                 if (bitmap == IntPtr.Zero) return 5;
                 try
                 {
+                    if (options.Png) return PngWriter.Write(bitmap, options);
                     foreach (var fill in options.Fills)
                         if (Pdfium.FPDFBitmap_FillRect(bitmap, fill.Left, fill.Top,
                             fill.Right - fill.Left, fill.Bottom - fill.Top, 0xFF000000) == 0) return 1;
@@ -137,32 +138,33 @@ internal static class Program
 
 internal readonly record struct Fill(int Left, int Top, int Right, int Bottom);
 
-internal sealed record Arguments(bool SelfTest, string Pdfium, string FontDirectory, string Input,
+internal sealed record Arguments(bool SelfTest, bool Png, string Pdfium, string FontDirectory, string Input,
     string Output, int Page, double ExpectedWidth, double ExpectedHeight, int Width, int Height,
     long MaxBytes, IReadOnlyList<Fill> Fills)
 {
     internal static Arguments? Parse(string[] args)
     {
-        if (args.Length == 0 || args[0] is not ("self-test" or "render-jpeg") || args.Length % 2 != 1) return null;
+        if (args.Length == 0 || args[0] is not ("self-test" or "render-jpeg" or "render-png") || args.Length % 2 != 1) return null;
         var selfTest = args[0] == "self-test";
+        var png = args[0] == "render-png";
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         var fills = new List<string>();
         for (var i = 1; i < args.Length; i += 2)
         {
-            if (!selfTest && args[i] == "--fill") { fills.Add(args[i + 1]); continue; }
+            if (!selfTest && !png && args[i] == "--fill") { fills.Add(args[i + 1]); continue; }
             if (args[i] is not ("--pdfium" or "--font-dir") && (selfTest ||
                 args[i] is not ("--input" or "--output" or "--page" or "--expect-size" or "--width" or "--height" or "--quality" or "--max-bytes"))) return null;
             if (!values.TryAdd(args[i], args[i + 1])) return null;
         }
         string Value(string key) => values.GetValueOrDefault(key, "");
         bool Absolute(string key) => Path.IsPathFullyQualified(Value(key)) && !Value(key).Contains('\0');
-        if (!Absolute("--pdfium") || !Absolute("--font-dir") || values.Count != (selfTest ? 2 : 10)) return null;
-        if (selfTest) return new(true, Value("--pdfium"), Value("--font-dir"), "", "", 0, 0, 0, 0, 0, 0, []);
+        if (!Absolute("--pdfium") || !Absolute("--font-dir") || values.Count != (selfTest ? 2 : png ? 9 : 10)) return null;
+        if (selfTest) return new(true, false, Value("--pdfium"), Value("--font-dir"), "", "", 0, 0, 0, 0, 0, 0, []);
         if (!Absolute("--input") || !Absolute("--output") ||
             File.Exists(Value("--output")) || Directory.Exists(Value("--output")) ||
             !PositiveInt(Value("--page"), out var page) || !PositiveInt(Value("--width"), out var width) ||
             !PositiveInt(Value("--height"), out var height) || (long)width * height > 16_000_000 ||
-            Value("--quality") != "85" || fills.Count > 100 ||
+            (png ? values.ContainsKey("--quality") : Value("--quality") != "85") || fills.Count > 100 ||
             !long.TryParse(Value("--max-bytes"), NumberStyles.None, CultureInfo.InvariantCulture, out var maxBytes) ||
             maxBytes is <= 0 or long.MaxValue) return null;
         var expected = Value("--expect-size").Split(',');
@@ -177,7 +179,7 @@ internal sealed record Arguments(bool SelfTest, string Pdfium, string FontDirect
                 left >= right || top >= bottom || right > width || bottom > height) return null;
             rectangles.Add(new(left, top, right, bottom));
         }
-        return new(false, Value("--pdfium"), Value("--font-dir"), Value("--input"), Value("--output"),
+        return new(false, png, Value("--pdfium"), Value("--font-dir"), Value("--input"), Value("--output"),
             page, expectedWidth, expectedHeight, width, height, maxBytes, rectangles);
     }
 

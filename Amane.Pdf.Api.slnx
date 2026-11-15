@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Amane.Pdf.Api/Amane.Pdf.Api.csproj" />
     <Project Path="src/Amane.Pdf.Renderer/Amane.Pdf.Renderer.csproj" />
+    <Project Path="src/Amane.Pdf.TextExtractor/Amane.Pdf.TextExtractor.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Amane.Pdf.Api.Tests/Amane.Pdf.Api.Tests.csproj" />

@@ -32,7 +32,7 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None, restriction=None):
+def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None, restriction=None, named_files=()):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
     inputs = files if files is not None else ([] if file is None else [file])
@@ -40,6 +40,11 @@ def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, r
         parts.append(
             (f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="../../untrusted.pdf"\r\n'
              "Content-Type: application/octet-stream\r\n\r\n").encode() + input_file + b"\r\n"
+        )
+    for name, data in named_files:
+        parts.append(
+            (f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; filename="input.pdf"\r\n'
+             "Content-Type: application/pdf\r\n\r\n").encode() + data + b"\r\n"
         )
     if password is not None:
         parts.append(
@@ -577,9 +582,45 @@ def compress_smoke(image):
     print("Docker compress: both levels/color/gray/permissions/startup/FSIZE I/O errors/three copyrights PASS")
 
 
+def p2_smoke(api):
+    body, content_type = multipart(FIXTURE, password=None)
+    status, headers, result = api.request("POST", "/api/pdf/compress?maxBytes=102400", body, content_type)
+    assert status == 200 and headers["X-Pdf-Target-Reached"] == "true"
+    assert headers["X-Pdf-Images-Recompressed"] == "0" and len(result) <= 102400
+
+    status, headers, result = api.request("POST", "/api/pdf/to-images?format=png&dpi=72", body, content_type)
+    assert status == 200 and headers["Content-Type"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(result)) as archive:
+        assert archive.namelist() == ["page-001.png"] and archive.testzip() is None
+        png = archive.read("page-001.png")
+        assert png[:8] == b"\x89PNG\r\n\x1a\n" and png[16:24] == b"\0\0\0\xc8" * 2
+        offset, compressed = 8, []
+        while offset < len(png):
+            size = int.from_bytes(png[offset:offset + 4], "big")
+            chunk = png[offset + 4:offset + 8 + size]
+            assert zlib.crc32(chunk) == int.from_bytes(png[offset + 8 + size:offset + 12 + size], "big")
+            if chunk[:4] == b"IDAT":
+                compressed.append(chunk[4:])
+            offset += 12 + size
+        scanlines = zlib.decompress(b"".join(compressed))
+        assert len(scanlines) == 200 * (1 + 200 * 3) and b"\0\0\0" in scanlines
+
+    revised = FIXTURE.replace(b"Hello PDF", b"Hello QDF")
+    assert revised != FIXTURE
+    body, content_type = multipart(password=None, named_files=[("old", FIXTURE), ("new", revised)])
+    status, headers, result = api.request("POST", "/api/pdf/compare", body, content_type)
+    assert status == 200 and headers["Content-Type"] == "application/json"
+    assert "Content-Disposition" not in headers
+    change, = json.loads(result)["changes"]
+    assert change == {"type": "replace", "old": {"page": 1, "text": "P"},
+                      "new": {"page": 1, "text": "Q"}, "before": "Hello", "after": "DF"}
+    api.assert_clean()
+
+
 def main(image):
     with running_container(image, isolated=True) as api:
         pdfcpu_smoke(api)
+        p2_smoke(api)
     for setting in ("Pdf__PdfcpuPath=/missing/pdfcpu", "Pdf__PdfcpuConfigDir=/missing/config",
                     "Pdf__PdfcpuAddressSpaceLimitBytes=268435456"):
         assert_startup_failure(image, (setting,), "pdfcpu・日本語フォントの自己テストに失敗しました。")

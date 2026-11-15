@@ -10,7 +10,7 @@ internal sealed record RenderPage(string InputPath, string OutputPath, int Page,
 
 // PdfRedactProcessor maps PdfRenderException to PdfRedactException.
 // PdfEndpointHelpers returns HTTP 422 with the corresponding redact reason.
-internal enum PdfRenderReason { TooComplex, UnsupportedPdf, OutputTooLarge }
+internal enum PdfRenderReason { TooComplex, UnsupportedPdf, OutputTooLarge, PageTooLarge, TooManyPages }
 internal sealed class PdfRenderException(PdfRenderReason reason) : Exception("PDFの描画に失敗しました。")
 {
     internal PdfRenderReason Reason { get; } = reason;
@@ -34,7 +34,13 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
             new Dictionary<string, string> { ["DOTNET_EnableDiagnostics"] = "0" },
             memoryLimit: ProcessMemoryLimit.Data) with { WorkingDirectory = directory };
 
-    internal async Task RenderJpegAsync(TemporaryPdfFiles files, RenderPage page, CancellationToken token)
+    internal Task RenderJpegAsync(TemporaryPdfFiles files, RenderPage page, CancellationToken token)
+        => RenderAsync(files, page, png: false, token);
+
+    internal Task RenderPngAsync(TemporaryPdfFiles files, RenderPage page, CancellationToken token)
+        => RenderAsync(files, page, png: true, token);
+
+    private async Task RenderAsync(TemporaryPdfFiles files, RenderPage page, bool png, CancellationToken token)
     {
         using var stage = PdfProcessingDiagnostics.Measure(PdfStage.Render);
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
@@ -46,11 +52,12 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
             page.MaxBytes is <= 0 or long.MaxValue) throw new ArgumentException(Failure);
         var arguments = new List<string>
         {
-            "render-jpeg", "--input", page.InputPath, "--page", Number(page.Page),
+            png ? "render-png" : "render-jpeg", "--input", page.InputPath, "--page", Number(page.Page),
             "--expect-size", string.Create(CultureInfo.InvariantCulture, $"{page.ExpectedWidth},{page.ExpectedHeight}"),
-            "--width", Number(page.Width), "--height", Number(page.Height), "--quality", "85",
+            "--width", Number(page.Width), "--height", Number(page.Height),
             "--max-bytes", Number(page.MaxBytes), "--output", page.OutputPath
         };
+        if (!png) arguments.AddRange(["--quality", "85"]);
         foreach (var fill in page.Fills)
         {
             arguments.Add("--fill");

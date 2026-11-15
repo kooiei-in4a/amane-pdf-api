@@ -8,11 +8,22 @@ namespace Amane.Pdf.Api;
 
 internal sealed record CompressImage(PdfObjectRef Reference, int Width, int Height, int Components, long Length);
 
-internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles files)
+internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles files, string? bestPath = null)
 {
     internal PdfOptions Options => options;
     internal TemporaryPdfFiles Files => files;
     internal CompressCapacity Capacity { get; } = new(options.CompressJobLimitBytes);
+    private readonly record struct CompressionStep(int LongEdge, string Quality, bool StrictSize = false)
+    {
+        internal int ScaleFor(int longEdge)
+            => StrictSize ? Math.Min(8, LongEdge * 8 / longEdge) : Scale(longEdge, LongEdge);
+    }
+
+    private static readonly CompressionStep[] TargetSteps =
+    [
+        new(1754, "75", true), new(1754, "60", true), new(1169, "60", true), new(1169, "45", true), new(827, "45", true)
+    ];
+
     private const long OutputHeadroom = 4 * 1024 * 1024;
     private readonly List<(PdfObjectRef Reference, string Jpeg, string Entry)> adopted = [];
     private long originalBytes;
@@ -94,10 +105,83 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         return result.Length;
     }
 
-    internal async Task<int> CompressAsync(string level, long start, CancellationToken hardToken)
+    internal Task<int> CompressAsync(string level, long start, CancellationToken hardToken)
+        => CompressPassAsync(level == "standard" ? new(1754, "75") : new(1169, "60"), start, hardToken);
+
+    internal static async Task<(int Count, bool Reached)> CompressTargetAsync(PdfOptions options, TemporaryPdfFiles files,
+        long maxBytes, long start, CancellationToken token)
+    {
+        var best = Path.Combine(files.DirectoryPath, "best.pdf");
+        var inputBytes = new FileInfo(files.InputPath).Length;
+        var bestBytes = inputBytes;
+        var bestCount = 0;
+        using var attempts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var remaining = TimeSpan.FromSeconds(options.CompressSoftTimeoutSeconds) - Stopwatch.GetElapsedTime(start);
+        if (remaining <= TimeSpan.Zero) attempts.Cancel(); else attempts.CancelAfter(remaining);
+        try
+        {
+            var lossless = new PdfCompressProcessor(options, files, best);
+            lossless.ReserveInputs(inputBytes);
+            await lossless.FinishAsync(inputBytes, attempts.Token);
+            KeepResult(0, preferWithinTarget: inputBytes <= maxBytes);
+            ClearPass();
+            if (inputBytes > maxBytes && bestBytes > maxBytes)
+            {
+                foreach (var step in TargetSteps)
+                {
+                    attempts.Token.ThrowIfCancellationRequested();
+                    try
+                    {
+                        var pass = new PdfCompressProcessor(options, files, best);
+                        var count = await pass.CompressPassAsync(step, start, attempts.Token);
+                        KeepResult(count);
+                        if (bestBytes <= maxBytes) break;
+                        if (!pass.HadImageCandidates) break;
+                    }
+                    catch (CompressLimitException) { }
+                    finally { ClearPass(); }
+                }
+            }
+        }
+        catch (CompressLimitException) { File.Delete(files.OutputPath); }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested && attempts.IsCancellationRequested) { }
+        token.ThrowIfCancellationRequested();
+        // The input passed qpdf validation before any attempt. A timed-out pass
+        // can leave a partial output, so only promote an already validated file.
+        File.Move(File.Exists(best) ? best : files.InputPath, files.OutputPath, overwrite: true);
+        return (bestCount, bestBytes <= maxBytes);
+
+        void ClearPass()
+        {
+            foreach (var path in Directory.GetFiles(files.DirectoryPath))
+                if (path != best && path != files.InputPath) File.Delete(path);
+        }
+
+        void KeepResult(int count, bool preferWithinTarget = false)
+        {
+            var size = new FileInfo(files.OutputPath).Length;
+            if (size <= bestBytes || (preferWithinTarget && size <= maxBytes))
+            {
+                File.Move(files.OutputPath, best, overwrite: true);
+                bestBytes = size;
+                bestCount = count;
+            }
+            else File.Delete(files.OutputPath);
+        }
+    }
+
+    private bool HadImageCandidates { get; set; }
+
+    private void ReserveInputs(long inputBytes)
+    {
+        Capacity.Reserve(files.InputPath, inputBytes);
+        if (bestPath is not null && File.Exists(bestPath)) Capacity.Reserve(bestPath, new FileInfo(bestPath).Length);
+    }
+
+    private async Task<int> CompressPassAsync(CompressionStep step, long start, CancellationToken hardToken)
     {
         var inputBytes = new FileInfo(files.InputPath).Length;
-        Capacity.Reserve(files.InputPath, inputBytes);
+        ReserveInputs(inputBytes);
         using var soft = CancellationTokenSource.CreateLinkedTokenSource(hardToken);
         var remaining = TimeSpan.FromSeconds(options.CompressSoftTimeoutSeconds) - Stopwatch.GetElapsedTime(start);
         if (remaining <= TimeSpan.Zero) soft.Cancel(); else soft.CancelAfter(remaining);
@@ -107,7 +191,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             var images = await SelectImagesAsync(metadata, soft.Token);
             var selected = images.OrderByDescending(image => image.Length).Take(options.CompressMaxImages).ToList();
             metadata.DeleteExcept(selected.Select(image => image.Reference).ToHashSet());
-            var target = level == "standard" ? 1754 : 1169;
+            HadImageCandidates = selected.Count > 0;
             while (selected.Count > 0)
             {
                 soft.Token.ThrowIfCancellationRequested();
@@ -116,7 +200,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                 foreach (var image in selected.Take(50))
                 {
                     var imagePnm = checked(PnmSize(image.Width, image.Height, image.Components,
-                        Scale(Math.Max(image.Width, image.Height), target)) + 512);
+                        step.ScaleFor(Math.Max(image.Width, image.Height))) + 512);
                     if (imagePnm > options.CompressPnmLimitBytes)
                     {
                         break;
@@ -134,7 +218,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                     continue;
                 }
                 selected.RemoveRange(0, batch.Count);
-                if (!await ProcessBatchAsync(batch, slot, target, level, metadata, soft.Token, hardToken))
+                if (!await ProcessBatchAsync(batch, slot, step, metadata, soft.Token, hardToken))
                 {
                     // One bounded fallback per image, never retry a single-image failure.
                     if (batch.Count > 1)
@@ -142,7 +226,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                         {
                             soft.Token.ThrowIfCancellationRequested();
                             await ProcessBatchAsync([image], CompressCapacity.Allocated(checked(image.Length + 4096)),
-                                target, level, metadata, soft.Token, hardToken);
+                                step, metadata, soft.Token, hardToken);
                         }
                 }
             }
@@ -390,7 +474,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         return n is { ValueKind: JsonValueKind.Number } && n.Value.TryGetInt32(out var count) && count is 1 or 3 ? count : 0;
     }
 
-    private async Task<bool> ProcessBatchAsync(List<CompressImage> batch, long slot, int target, string level,
+    private async Task<bool> ProcessBatchAsync(List<CompressImage> batch, long slot, CompressionStep step,
         CompressMetadata metadata, CancellationToken softToken, CancellationToken hardToken)
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
@@ -436,7 +520,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             {
                 softToken.ThrowIfCancellationRequested();
                 var raw = rawPaths[image.Reference];
-                await ConvertAsync(image, raw, target, level, metadata, softToken, hardToken);
+                await ConvertAsync(image, raw, step, metadata, softToken, hardToken);
                 File.Delete(raw);
                 Capacity.Reserve(directory, --remaining * slot);
             }
@@ -449,7 +533,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         }
     }
 
-    private async Task ConvertAsync(CompressImage image, string raw, int target, string level,
+    private async Task ConvertAsync(CompressImage image, string raw, CompressionStep step,
         CompressMetadata metadata, CancellationToken softToken, CancellationToken hardToken)
     {
         using var conversion = CancellationTokenSource.CreateLinkedTokenSource(softToken);
@@ -463,7 +547,8 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         {
             var original = JpegHeader.Read(raw, image.Length, options.CompressMaxPixels, token);
             if (original is null || original.Width != image.Width || original.Height != image.Height || original.Components != image.Components) return;
-            var scale = Scale(Math.Max(image.Width, image.Height), target);
+            var scale = step.ScaleFor(Math.Max(image.Width, image.Height));
+            if (scale == 0) return;
             var pnmLimit = checked(PnmSize(image.Width, image.Height, image.Components, scale) + 512);
             if (pnmLimit > options.CompressPnmLimitBytes) return;
             Capacity.Reserve(pnm, BoundedOutput.FileSizeLimit(pnmLimit));
@@ -474,7 +559,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             foreach (var (executable, arguments, output, budget) in new (string, string[], string, long)[]
             {
                 (options.DjpegPath, ["-scale", $"{scale}/8", "-maxmemory", "64M", "-maxscans", "100", "-strict", "-outfile", pnm, raw], pnm, pnmLimit),
-                (options.CjpegPath, ["-quality", level == "standard" ? "75" : "60", "-optimize", "-maxmemory", "64M", "-strict", "-outfile", jpeg, pnm], jpeg, jpegBudget)
+                (options.CjpegPath, ["-quality", step.Quality, "-optimize", "-maxmemory", "64M", "-strict", "-outfile", jpeg, pnm], jpeg, jpegBudget)
             })
             {
                 var result = await BoundedOutput.RunAsync(fsize => ProcessMemoryLimits.CreateRequest(options.PrlimitPath,
@@ -503,7 +588,7 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             var outputLimit = checked(new FileInfo(files.InputPath).Length - nextR + nextA + OutputHeadroom);
             var nextAllocation = checked(adoptedAllocation + CompressCapacity.Allocated(bytes));
             var nextEntries = checked(entryAllocation + CompressCapacity.Allocated(entryBytes.Length));
-            if (!Capacity.CanFinalize(new FileInfo(files.InputPath).Length, nextAllocation, nextEntries, nextJ, outputLimit)) return;
+            if (!Capacity.CanFinalize(new FileInfo(files.InputPath).Length, RetainedOutputAllocation(), nextAllocation, nextEntries, nextJ, outputLimit)) return;
             Capacity.Reserve(jpeg, bytes);
             Capacity.Reserve(entry, entryBytes.Length);
             await using (var file = TemporaryPdfFiles.CreatePrivateFile(entry)) await file.WriteAsync(entryBytes, token);
@@ -524,10 +609,13 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         }
     }
 
+    private long RetainedOutputAllocation()
+        => bestPath is not null && File.Exists(bestPath) ? CompressCapacity.Allocated(new FileInfo(bestPath).Length) : 0;
+
     private async Task FinishAsync(long inputBytes, CancellationToken token)
     {
         var keep = adopted.Select(item => item.Jpeg).Append(files.InputPath).Concat(adopted.Select(item => item.Entry)).ToHashSet(StringComparer.Ordinal);
-        foreach (var path in Directory.GetFiles(files.DirectoryPath)) if (!keep.Contains(path)) Capacity.Delete(path);
+        foreach (var path in Directory.GetFiles(files.DirectoryPath)) if (path != bestPath && !keep.Contains(path)) Capacity.Delete(path);
         var update = Path.Combine(files.DirectoryPath, "update.json");
         if (adopted.Count > 0)
         {
@@ -548,7 +636,10 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         }
         var estimate = checked(inputBytes - originalBytes + adoptedBytes + OutputHeadroom);
         if (CompressCapacity.Allocated(estimate) > Capacity.Remaining)
+        {
+            if (bestPath is not null) throw new CompressLimitException();
             throw new InvalidOperationException("PDF output capacity is insufficient.");
+        }
         var budget = Capacity.ReserveWrite(files.OutputPath, estimate);
         using (TemporaryPdfFiles.CreatePrivateFile(files.OutputPath)) { }
         var arguments = new List<string> { files.InputPath };

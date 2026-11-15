@@ -11,7 +11,8 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
             PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options) &&
-            StampImageInput.IsValid(options) && PdfRenderer.IsValid(options) && PdfRedactProcessor.IsValid(options))) &&
+            StampImageInput.IsValid(options) && PdfRenderer.IsValid(options) && PdfRedactProcessor.IsValid(options) &&
+            PdfCompareEndpoint.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
@@ -44,6 +45,8 @@ app.MapPost("/api/pdf/unlock", PdfUnlockEndpoint.HandleAsync).RequireRateLimitin
 app.MapPost("/api/pdf/optimize", PdfOptimizeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 if (OperatingSystem.IsLinux())
 {
+    app.MapPost("/api/pdf/compare", PdfCompareEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/to-images", PdfToImagesEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/redact", PdfRedactEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/compress", PdfCompressEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/clean", PdfCleanEndpoint.HandleAsync).RequireRateLimiting("pdf");

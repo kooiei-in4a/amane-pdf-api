@@ -10,9 +10,9 @@ internal sealed class CompressCapacity(long limit)
     internal long Peak { get; private set; }
     internal long Remaining => limit - Used;
     internal static long Allocated(long bytes) => checked((bytes + 4095) / 4096 * 4096);
-    internal bool CanFinalize(long inputBytes, long jpegAllocation, long entriesAllocation, long jsonBytes, long outputBytes)
+    internal bool CanFinalize(long inputBytes, long retainedOutputAllocation, long jpegAllocation, long entriesAllocation, long jsonBytes, long outputBytes)
     {
-        var retained = checked(Allocated(inputBytes) + jpegAllocation + Allocated(jsonBytes));
+        var retained = checked(Allocated(inputBytes) + retainedOutputAllocation + jpegAllocation + Allocated(jsonBytes));
         // Joining entries and writing the PDF are distinct peaks. When only the
         // rounded estimate fits, the external writer uses its last byte as the sentinel.
         return checked(retained + entriesAllocation) <= limit && checked(retained + Allocated(outputBytes)) <= limit;

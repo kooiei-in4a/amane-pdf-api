@@ -148,6 +148,18 @@ job台帳は4 KiB単位、初期値124 MiBです。入力、metadata、raw、PNM
 
 標準条件はmemory 1.5 GiB・swapなし・CPU 1・tmpfs 256 MiB・同時2・non-root・read-only・network noneです。2×124 MiBのjobに8 MiBのtmpfs余裕を残します。tmpfsもcgroup memoryへ含まれるので、ファイルの容量式だけで成立を判断しません。上限は設定可能な安全境界であり、拡大するときはREADMEのメモリ式・tmpfs式と実測を見直します。Webシステムのプラン別サイズ・回数制限はサイト側の責務です。[圧縮の実測記録](compress-validation.md)は対象fixtureでの確認であり、任意の入力の成功を保証しません。
 
+目標サイズ指定は可逆最適化から試し、JPEGを再圧縮する各段階を元PDFから処理します。一時領域の台帳に検証済みの最小出力を含め、試行の残り時間にその段階の書き出しとqpdf検証も含めます。期限を迎えた段階の部分ファイルは破棄します。固定 `level` の処理は従来のJPEG縮尺と時間配分を使います。
+
+## PDF文字差分（Linux）
+
+compareは入力2件をqpdfで検査してから、固定版PdfPigで1件ずつ文字を抽出します。抽出は別の.NETプロセスで実行し、既存のRunnerで期限・中断時の終了待ちを行います。子プロセスにはCORE=0、RLIMIT_DATA 384 MiB、managed heap 256 MiB、出力8 MiBの上限を適用します。抽出文字と応答JSONは0700のジョブ内の0600ファイルに置き、送信後または異常時に削除します。ログには文字列を記録しません。
+
+Unicode空白と制御・書式・私用領域・置換文字を抽出時に除きます。差分は編集距離、比較処理量、応答件数を制限し、Unicodeスカラー単位で切り出した結果をJSONエンコーダーで値として直列化します。
+
+## PDFから画像（Linux）
+
+to-imagesはqpdfの上限付きメタデータから表示寸法を決め、個々のページを描画する前にページ数と画素数を検査します。PDFiumの別プロセスと黒塗りの描画枠を共有します。PNGは1行ずつ圧縮し、JPEG・PNGともに1ページ分の画像をZIPへ格納すると削除します。作成中ZIPとページ画像が重なる分もジョブ容量の見積りに含め、完成したZIPを送信します。
+
 ## 画像からPDFの生成（Linux）
 
 from-imagesは拡張子・MIME・元ファイル名を参照せず、内容がJPEGまたは静止PNGの画像を1〜30枚、合計50 MiBまで受け付けます。既存のstreaming multipart、共通実行枠、アップロード後30秒のdeadline、Runnerのkill tree・wait・drainとjob削除を使用します。未知field、quality、画像数、単一file・入力合計・request全量（epilogueを含む）の制限を検査します。

@@ -41,6 +41,9 @@ public sealed class PdfOptions
     public long RedactJobLimitBytes { get; set; } = 124 * 1024 * 1024;
     public long RenderDataLimitBytes { get; set; } = 384 * 1024 * 1024;
     public string DotnetPath { get; set; } = "/usr/bin/dotnet";
+    public string TextExtractorPath { get; set; } = "/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll";
+    public int MaxComparePages { get; set; } = 300;
+    public int MaxCompareCharacters { get; set; } = 500_000;
     public string RendererPath { get; set; } = "/opt/amane-pdf/renderer/Amane.Pdf.Renderer.dll";
     public string PdfiumPath { get; set; } = "/opt/amane-pdf/lib/libpdfium.so";
     public string RenderFontDir { get; set; } = "/opt/amane-pdf/fonts";
