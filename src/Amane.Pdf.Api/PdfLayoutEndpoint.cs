@@ -52,13 +52,18 @@ internal static class PdfLayoutEndpoint
             // Optional-content defaults depend on the original catalog.
             if (input.Catalog(token).TryGetProperty("/OCProperties", out _))
                 throw PdfOverlayInputException.Unsupported();
+            PdfFlattenEndpoint.ThrowIfAppearancesMustBeGenerated(input, token);
             pages = Enumerable.Range(0, input.Pages.Count).Select(i => input.Read(i, token)).ToArray();
-            job.WriteJson(update, writer => WriteSourceUpdate(writer, input, pages), token);
+            // Form values and comments are burned into the source pages. Links and popups
+            // cannot be burned in and would not work on the new sheets.
+            var annotations = PdfFlattenEndpoint.ChangedAnnotations(input,
+                subtype => subtype is not ("/Link" or "/Popup"), token).ToDictionary(page => page.Page, page => page.Kept);
+            job.WriteJson(update, writer => WriteSourceUpdate(writer, input, pages, annotations), token);
         }
 
         var normalized = job.PathFor("page-sources.pdf");
-        await job.WritePdfAsync(normalized, [files.InputPath, "--update-from-json=" + update, normalized],
-            options.OverlayOutputLimitBytes, token);
+        await job.WritePdfAsync(normalized, [files.InputPath, "--update-from-json=" + update,
+            "--flatten-annotations=all", "--remove-acroform", normalized], options.OverlayOutputLimitBytes, token);
         job.Delete(update);
         job.Delete(files.InputPath);
 
@@ -83,6 +88,10 @@ internal static class PdfLayoutEndpoint
         using (var metadata = await job.ReadAsync(imported, token, generated: true))
         {
             if (metadata.Pages.Count != sheets.Length) throw new InvalidOperationException("Incorrect layout page count.");
+            // qpdf's overlay copies annotations from source pages. Only annotations without
+            // a usable appearance can remain here, and they would not match the new placement.
+            if (PdfFlattenEndpoint.ChangedAnnotations(metadata, _ => false, token).Count > 0)
+                throw new PdfNeedsAppearanceException();
             job.WriteJson(update, writer => WriteSheetContents(writer, metadata, sheets, sizes, pagesPerSheet, token), token);
         }
         await job.WritePdfAsync(files.OutputPath, [imported, "--update-from-json=" + update, files.OutputPath],
@@ -92,7 +101,8 @@ internal static class PdfLayoutEndpoint
         await qpdf.ValidateOutputAsync(files.OutputPath, token);
     }
 
-    private static void WriteSourceUpdate(Utf8JsonWriter writer, PdfPageBoxes input, PdfPageAttributes[] pages)
+    private static void WriteSourceUpdate(Utf8JsonWriter writer, PdfPageBoxes input, PdfPageAttributes[] pages,
+        Dictionary<PdfObjectRef, JsonElement[]> annotations)
     {
         PdfPageJob.StartUpdate(writer);
         for (var i = 0; i < pages.Length; i++)
@@ -101,7 +111,10 @@ internal static class PdfLayoutEndpoint
             writer.WriteStartObject(reference.Key);
             writer.WriteStartObject("value");
             foreach (var property in input.Dictionary(reference).EnumerateObject())
-                if (property.Name is not ("/TrimBox" or "/Rotate" or "/UserUnit" or "/Annots")) property.WriteTo(writer);
+                if (property.Name is not ("/TrimBox" or "/Rotate" or "/UserUnit") &&
+                    (property.Name != "/Annots" || !annotations.ContainsKey(reference)))
+                    property.WriteTo(writer);
+            if (annotations.TryGetValue(reference, out var kept)) PdfFlattenEndpoint.WriteAnnotations(writer, kept);
             writer.WritePropertyName("/TrimBox");
             pages[i].Crop.Write(writer);
             writer.WriteNumber("/Rotate", 0);

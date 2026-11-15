@@ -30,6 +30,9 @@ internal static class PdfOcrEndpoint
         }
 
         var settings = options.Value;
+        // PDFium's shared execution group uses the same job budget as redact and to-images.
+        var jobLimit = settings.RedactJobLimitBytes / 4096 * 4096;
+        var inputLimit = Math.Min(settings.MaxFileBytes, jobLimit);
         var language = Horizontal;
         PdfPageSelection? selection = null;
         await PdfEndpointHelpers.ExecuteAsync(context, settings, "ocr.pdf", () =>
@@ -43,15 +46,16 @@ internal static class PdfOcrEndpoint
                 _ => throw new BadHttpRequestException("Invalid direction query.")
             };
             if (query.TryGetValue("pages", out var pages)) selection = PdfPageSelection.Parse(pages.ToString());
-        }, (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, settings, token),
-        (files, token) => OcrAsync(files, qpdf, renderer, settings, language, selection, token),
+        }, (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, inputLimit, token),
+        (files, token) => OcrAsync(files, qpdf, renderer, settings, jobLimit, language, selection, token),
+        maxRequestBytes: inputLimit + PdfOptions.MultipartOverheadBytes,
         processingTimeoutSeconds: settings.OcrTimeoutSeconds, renderFailureTitle: "このPDFをOCR処理できません。");
     }
 
     private static async Task OcrAsync(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfRenderer renderer,
-        PdfOptions settings, string language, PdfPageSelection? selection, CancellationToken token)
+        PdfOptions settings, long jobLimit, string language, PdfPageSelection? selection, CancellationToken token)
     {
-        var job = new PdfPageJob(files, qpdf, settings);
+        var job = new PdfPageJob(files, qpdf, settings, jobLimit);
         job.TrackInput();
         await qpdf.ValidateAsync(files, token);
         var source = Path.GetFullPath(files.InputPath);

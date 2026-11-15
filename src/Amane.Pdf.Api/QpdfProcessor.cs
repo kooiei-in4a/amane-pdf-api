@@ -294,18 +294,21 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
             throw new InvalidOperationException("PDF processing failed.");
     }
 
-    internal async Task FlattenAsync(TemporaryPdfFiles files, long budget, CancellationToken token)
+    internal async Task FlattenAsync(TemporaryPdfFiles files, string? updatePath, long budget, CancellationToken token)
     {
         await using (var stream = TemporaryPdfFiles.CreatePrivateFile(files.JobPath))
         {
-            await JsonSerializer.SerializeAsync(stream, new
+            var job = new Dictionary<string, string>
             {
-                inputFile = files.InputPath,
-                outputFile = files.OutputPath,
-                generateAppearances = "",
-                flattenAnnotations = "all",
-                removeAcroform = ""
-            }, cancellationToken: token);
+                ["inputFile"] = files.InputPath,
+                ["outputFile"] = files.OutputPath,
+                ["generateAppearances"] = "",
+                ["flattenAnnotations"] = "all",
+                ["removeAcroform"] = ""
+            };
+            // qpdf applies the update after reading the input and before flattening.
+            if (updatePath is not null) job["updateFromJson"] = updatePath;
+            await JsonSerializer.SerializeAsync(stream, job, cancellationToken: token);
         }
         using (TemporaryPdfFiles.CreatePrivateFile(files.OutputPath)) { }
         var result = await RunBoundedWriteAsync(["--job-json-file=" + files.JobPath],

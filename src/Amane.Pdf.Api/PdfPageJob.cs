@@ -3,9 +3,9 @@ using System.Text.Json;
 namespace Amane.Pdf.Api;
 
 // The request owns all files, including partially written files on cancellation.
-internal sealed class PdfPageJob(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfOptions options)
+internal sealed class PdfPageJob(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfOptions options, long? jobLimit = null)
 {
-    private readonly OverlayCapacity capacity = new(options.OverlayJobLimitBytes);
+    private readonly OverlayCapacity capacity = new(jobLimit ?? options.OverlayJobLimitBytes);
     internal string PathFor(string name) => Path.Combine(files.DirectoryPath, name);
     internal void TrackInput() => capacity.Reserve(files.InputPath, new FileInfo(files.InputPath).Length);
     internal long Reserve(string path, long limit) => capacity.ReserveWrite(path, limit, external: true);

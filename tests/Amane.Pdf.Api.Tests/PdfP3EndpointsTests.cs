@@ -64,6 +64,66 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    public async Task FlattenKeepsLinksAndRemovesPopupsOfBurnedInComments()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var source = await PdfAsync(test, WithLinkAndPopup(FlattenFixture()), "links");
+        var output = await PostPdfAsync(test, "/api/pdf/flatten", source, "flattened.pdf");
+        await test.AssertValidPdfAsync(output, 1);
+        var path = Path.Combine(test.Root, "flattened.pdf");
+        await File.WriteAllBytesAsync(path, output);
+        Assert.AreEqual("/Link", string.Join(',', await AnnotationSubtypesAsync(path)));
+        Assert.Contains("日本語", await ExtractTextAsync(path));
+        CollectionAssert.AreEqual(await RenderWithPopplerAsync(Path.Combine(test.Root, "links.pdf")),
+            await RenderWithPopplerAsync(path));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task LayoutBurnsInFormValuesAndCommentsAndDropsLinks()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var source = await PdfAsync(test, WithLinkAndPopup(FlattenFixture()), "form-layout");
+        var output = await PostPdfAsync(test, "/api/pdf/resize?size=a4", source, "resized.pdf");
+        await test.AssertValidPdfAsync(output, 1);
+        var path = Path.Combine(test.Root, "resized-form.pdf");
+        await File.WriteAllBytesAsync(path, output);
+        Assert.IsEmpty(await AnnotationSubtypesAsync(path));
+        var (_, json) = await test.QpdfAsync("--json", "--json-stream-data=none", path);
+        Assert.DoesNotContain("\"/AcroForm\"", json);
+        var text = await ExtractTextAsync(path);
+        Assert.Contains("Hello PDF", text);
+        Assert.Contains("日本語", text);
+        // The 300x200 page fills the A4 landscape width. The comment's red icon is centered at (210, 40).
+        var scale = 841.8898 / 300;
+        var bottom = (595.2756 - 200 * scale) / 2;
+        CollectionAssert.AreEqual(new byte[] { 255, 0, 0 },
+            Pixel(await RenderWithPopplerAsync(path), 210 * scale / 841.8898, 1 - (bottom + 40 * scale) / 595.2756));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("missing")]
+    [DataRow("regenerate")]
+    public async Task LayoutRejectsFormsWithoutUsableAppearance(string variant)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var fixture = FlattenFixture();
+        var objects = OverlayFixtures.Objects(fixture);
+        if (variant == "missing") objects["obj:6 0 R"]!["value"]!.AsObject().Remove("/AP");
+        if (variant == "regenerate") objects["obj:5 0 R"]!["value"]!["/NeedAppearances"] = true;
+        using var form = PdfTestContext.FileForm(await PdfAsync(test, fixture, "layout-appearance"));
+        using var response = await test.Client.PostAsync("/api/pdf/n-up?pages-per-sheet=2", form);
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        using var result = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("needs-appearance", result.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     [DataRow(2, 3)]
     [DataRow(4, 2)]
     [DataRow(1, 5)]
@@ -179,6 +239,21 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    public async Task OcrLimitsUploadToTheSharedRenderJobBudget()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:MaxRedactInputBytes"] = "4096",
+            ["Pdf:RedactJobLimitBytes"] = "16384"
+        });
+        using var large = PdfTestContext.FileForm(new byte[16_385]);
+        using var response = await test.Client.PostAsync(Horizontal, large);
+        Assert.AreEqual(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrSharesRenderSlotTimesOutAndAllowsOtherPdfOperations()
     {
         if (!OperatingSystem.IsLinux()) return;
@@ -289,6 +364,36 @@ public sealed class PdfP3EndpointsTests
         objects["obj:9 0 R"] = Stream("0 0 1 RG 2 w 5 5 m 30 22 l 60 5 l S", Appearance(100, 30));
         objects["obj:11 0 R"] = Stream("1 0 0 rg 0 0 20 20 re f", Appearance(20, 20));
         return json;
+    }
+
+    // Adds a link without an appearance and a popup belonging to the comment.
+    private static JsonObject WithLinkAndPopup(JsonObject fixture)
+    {
+        var objects = OverlayFixtures.Objects(fixture);
+        objects["obj:17 0 R"] = JsonNode.Parse("""
+            {"value":{"/Type":"/Annot","/Subtype":"/Link","/Rect":[30,150,130,175],"/Border":[0,0,0],
+              "/A":{"/S":"/URI","/URI":"u:https://example.com/"}}}
+            """);
+        objects["obj:18 0 R"] = JsonNode.Parse("""
+            {"value":{"/Type":"/Annot","/Subtype":"/Popup","/Rect":[180,60,290,120],"/Parent":"10 0 R"}}
+            """);
+        objects["obj:10 0 R"]!["value"]!["/Popup"] = "18 0 R";
+        objects["obj:3 0 R"]!["value"]!["/Annots"]!.AsArray().Add("17 0 R");
+        objects["obj:3 0 R"]!["value"]!["/Annots"]!.AsArray().Add("18 0 R");
+        objects["trailer"]!["value"]!["/Size"] = 19;
+        return fixture;
+    }
+
+    private static async Task<string[]> AnnotationSubtypesAsync(string path)
+    {
+        using var fixtures = new OverlayJob();
+        using var metadata = await fixtures.Metadata(path);
+        return metadata.Pages.SelectMany(page =>
+        {
+            if (!metadata.Dictionary(page).TryGetProperty("/Annots", out var annotations)) return [];
+            return metadata.Resolve(annotations, default).EnumerateArray()
+                .Select(annotation => metadata.Resolve(annotation, default).GetProperty("/Subtype").GetString()!);
+        }).ToArray();
     }
 
     private static JsonObject Appearance(int width, int height) => new()
