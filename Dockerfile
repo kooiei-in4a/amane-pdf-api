@@ -51,6 +51,7 @@ ENV Pdf__PdfcpuPath=/opt/amane-pdf/bin/pdfcpu \
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs \
+        tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert \
     && rm -f /usr/bin/pebble \
     && test ! -e /usr/bin/pebble && test ! -L /usr/bin/pebble \
     && rm -rf /var/lib/apt/lists/*

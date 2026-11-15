@@ -48,7 +48,7 @@ public sealed class TemporaryPdfFiles : IDisposable
 
     public TemporaryPdfFiles(string root)
     {
-        DirectoryPath = Path.Combine(root, Convert.ToHexString(RandomNumberGenerator.GetBytes(16)));
+        DirectoryPath = Path.GetFullPath(Path.Combine(root, Convert.ToHexString(RandomNumberGenerator.GetBytes(16))));
         if (OperatingSystem.IsWindows())
         {
             Directory.CreateDirectory(DirectoryPath);

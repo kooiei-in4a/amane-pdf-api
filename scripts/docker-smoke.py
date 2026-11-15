@@ -617,15 +617,79 @@ def p2_smoke(api):
     api.assert_clean()
 
 
+def p3_smoke(api, japanese_pdf):
+    root = "/tmp/p3-smoke"
+    api.exec("mkdir", "-m", "700", root)
+
+    def send(path, pdf, filename):
+        body, content_type = multipart(pdf, password=None)
+        status, headers, result = api.request("POST", "/api/pdf/" + path, body, content_type)
+        assert status == 200, (path, status, result[:200] if status != 200 else b"")
+        assert headers["Content-Type"] == "application/pdf" and "filename=" + filename in headers["Content-Disposition"]
+        return result
+
+    def copy(name, data):
+        docker("exec", "-i", api.name, "sh", "-c", f"umask 077; cat > {root}/{name}", data=data)
+
+    objects = {
+        "obj:1 0 R": {"value": {"/Type": "/Catalog", "/Pages": "2 0 R", "/AcroForm": {"/Fields": ["4 0 R"]}}},
+        "obj:2 0 R": {"value": {"/Type": "/Pages", "/Kids": ["3 0 R"], "/Count": 1}},
+        "obj:3 0 R": {"value": {"/Type": "/Page", "/Parent": "2 0 R", "/MediaBox": [0, 0, 200, 200],
+                              "/Annots": ["4 0 R"], "/Resources": {}}},
+        "obj:4 0 R": {"value": {"/Type": "/Annot", "/Subtype": "/Widget", "/FT": "/Tx", "/T": "u:sample",
+                              "/V": "u:smoke", "/AP": {"/N": "5 0 R"}, "/Rect": [15, 20, 35, 40], "/F": 4}},
+        "obj:5 0 R": {"stream": {"dict": {"/Type": "/XObject", "/Subtype": "/Form", "/BBox": [0, 0, 20, 20]},
+                                  "data": base64.b64encode(b"1 0 0 rg 0 0 20 20 re f").decode()}},
+        "trailer": {"value": {"/Root": "1 0 R", "/Size": 6}},
+    }
+    copy("form.json", json.dumps({"qpdf": [{"jsonversion": 2, "pdfversion": "1.7"}, objects]}).encode())
+    api.exec("qpdf", "--json-input", root + "/form.json", root + "/form.pdf")
+    flattened = send("flatten", api.exec("cat", root + "/form.pdf").stdout, "flattened.pdf")
+    copy("flattened.pdf", flattened)
+    assert api.page_rotations(flattened) == [0]
+    metadata = api.exec("qpdf", "--json", "--json-stream-data=none", root + "/flattened.pdf").stdout
+    assert b'"/Annots"' not in metadata and b'"/AcroForm"' not in metadata and b'"/Form"' in metadata
+
+    pages = api.merge([FIXTURE, api.rotate(FIXTURE), FIXTURE])
+    for arrangement, count in (("n-up?pages-per-sheet=2", 2), ("n-up?pages-per-sheet=4", 1), ("resize?size=a4", 3)):
+        filename = "resized.pdf" if arrangement.startswith("resize") else "n-up.pdf"
+        assert api.page_rotations(send(arrangement, pages, filename)) == [0] * count
+
+    models = api.exec("tesseract", "--list-langs").stdout.splitlines()
+    assert b"jpn" in models and b"jpn_vert" in models
+    for package in ("tesseract-ocr", "libtesseract5", "tesseract-ocr-jpn", "tesseract-ocr-jpn-vert", "libleptonica6"):
+        api.exec("test", "-r", f"/usr/share/doc/{package}/copyright")
+    api.exec("test", "-r", "/usr/share/common-licenses/Apache-2.0")
+
+    body, content_type = multipart(japanese_pdf, password=None)
+    path = "/api/pdf/to-images?format=png&dpi=200"
+    status, _, result = api.request("POST", path, body, content_type)
+    assert status == 200
+    with zipfile.ZipFile(io.BytesIO(result)) as images:
+        scan = images.read("page-001.png")
+    scanned = send("from-images?quality=original", scan, "images.pdf")
+    copy("ocr.pdf", send("ocr?direction=horizontal", scanned, "ocr.pdf"))
+    api.exec("qpdf", "--check", root + "/ocr.pdf")
+    api.exec("dotnet", "/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll", root + "/ocr.pdf", root + "/text.json", "1", "200")
+    text, = json.loads(api.exec("cat", root + "/text.json").stdout)["pages"]
+    assert "日本語" in text
+    api.exec("rm", "-rf", root)
+    api.assert_clean()
+    print("Docker flatten/A4 layout/Japanese OCR PASS", flush=True)
+
+
 def main(image):
     with running_container(image, isolated=True) as api:
-        pdfcpu_smoke(api)
+        japanese_pdf = pdfcpu_smoke(api)
         p2_smoke(api)
+        p3_smoke(api, japanese_pdf)
     for setting in ("Pdf__PdfcpuPath=/missing/pdfcpu", "Pdf__PdfcpuConfigDir=/missing/config",
                     "Pdf__PdfcpuAddressSpaceLimitBytes=268435456"):
         assert_startup_failure(image, (setting,), "pdfcpu・日本語フォントの自己テストに失敗しました。")
     for setting in ("Pdf__PdfiumPath=/missing/libpdfium.so", "Pdf__RenderFontDir=/tmp"):
         assert_startup_failure(image, (setting,), "描画プログラム（PDFium）の自己テストに失敗しました。")
+    assert_startup_failure(image, ("Pdf__TesseractPath=/missing/tesseract",),
+                           "Tesseractの日本語モデルの確認に失敗しました。")
     clean_smoke(image)
     compress_smoke(image)
     split_smoke(image)

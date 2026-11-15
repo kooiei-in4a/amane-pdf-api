@@ -101,6 +101,10 @@ internal sealed class PdfPageBoxes : IDisposable
         catch (JsonException) { throw new InvalidOperationException(PdfOverlayBuilder.Failure); }
     }
 
+    internal JsonElement Catalog(CancellationToken token)
+        => Resolve(document.RootElement.GetProperty("qpdf")[1].GetProperty("trailer")
+            .GetProperty("value").GetProperty("/Root"), token);
+
     internal JsonElement Dictionary(PdfObjectRef reference)
     {
         if (!objects.TryGetValue(reference, out var obj) || obj.ValueKind != JsonValueKind.Object ||
@@ -197,6 +201,14 @@ internal sealed class PdfPageBoxes : IDisposable
 
     internal void WriteUpdate(Utf8JsonWriter writer, int from, IReadOnlyList<PdfPageAttributes> originals,
         bool restore, CancellationToken token)
+        => WriteUpdate(writer, i => from - 1 + i, originals, restore, token);
+
+    internal void WriteUpdate(Utf8JsonWriter writer, IReadOnlyList<int> pages, IReadOnlyList<PdfPageAttributes> originals,
+        bool restore, CancellationToken token)
+        => WriteUpdate(writer, i => pages[i] - 1, originals, restore, token);
+
+    private void WriteUpdate(Utf8JsonWriter writer, Func<int, int> pageIndex, IReadOnlyList<PdfPageAttributes> originals,
+        bool restore, CancellationToken token)
     {
         writer.WriteStartObject(); writer.WriteStartArray("qpdf"); writer.WriteStartObject();
         writer.WriteNumber("jsonversion", 2); writer.WriteEndObject(); writer.WriteStartObject();
@@ -204,7 +216,7 @@ internal sealed class PdfPageBoxes : IDisposable
         {
             token.ThrowIfCancellationRequested();
             var original = originals[i];
-            var reference = Pages[from - 1 + i];
+            var reference = Pages[pageIndex(i)];
             var page = Dictionary(reference);
             writer.WriteStartObject(reference.Key); writer.WriteStartObject("value");
             foreach (var property in page.EnumerateObject())

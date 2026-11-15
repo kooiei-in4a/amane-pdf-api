@@ -12,7 +12,7 @@ builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
             PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options) &&
             StampImageInput.IsValid(options) && PdfRenderer.IsValid(options) && PdfRedactProcessor.IsValid(options) &&
-            PdfCompareEndpoint.IsValid(options))) &&
+            PdfCompareEndpoint.IsValid(options) && PdfOcrEndpoint.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();
@@ -45,6 +45,10 @@ app.MapPost("/api/pdf/unlock", PdfUnlockEndpoint.HandleAsync).RequireRateLimitin
 app.MapPost("/api/pdf/optimize", PdfOptimizeEndpoint.HandleAsync).RequireRateLimiting("pdf");
 if (OperatingSystem.IsLinux())
 {
+    app.MapPost("/api/pdf/flatten", PdfFlattenEndpoint.HandleAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/n-up", PdfLayoutEndpoint.NUpAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/resize", PdfLayoutEndpoint.ResizeAsync).RequireRateLimiting("pdf");
+    app.MapPost("/api/pdf/ocr", PdfOcrEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/compare", PdfCompareEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/to-images", PdfToImagesEndpoint.HandleAsync).RequireRateLimiting("pdf");
     app.MapPost("/api/pdf/redact", PdfRedactEndpoint.HandleAsync).RequireRateLimiting("pdf");
@@ -74,6 +78,13 @@ try
     await PdfcpuProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
     await PdfFromImagesProcessor.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
     await PdfRenderer.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+    await PdfOcrEndpoint.ValidateStartupAsync(pdfOptions, startupDeadline.Token);
+}
+catch (PdfOcrStartupException)
+{
+    app.Logger.LogCritical("Tesseractの日本語モデルの確認に失敗しました。");
+    await app.DisposeAsync();
+    return 1;
 }
 catch (PdfRendererStartupException)
 {

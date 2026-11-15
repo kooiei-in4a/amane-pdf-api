@@ -294,6 +294,27 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
             throw new InvalidOperationException("PDF processing failed.");
     }
 
+    internal async Task FlattenAsync(TemporaryPdfFiles files, long budget, CancellationToken token)
+    {
+        await using (var stream = TemporaryPdfFiles.CreatePrivateFile(files.JobPath))
+        {
+            await JsonSerializer.SerializeAsync(stream, new
+            {
+                inputFile = files.InputPath,
+                outputFile = files.OutputPath,
+                generateAppearances = "",
+                flattenAnnotations = "all",
+                removeAcroform = ""
+            }, cancellationToken: token);
+        }
+        using (TemporaryPdfFiles.CreatePrivateFile(files.OutputPath)) { }
+        var result = await RunBoundedWriteAsync(["--job-json-file=" + files.JobPath],
+            files.OutputPath, budget, token);
+        if (result.ExceedsBudget) throw PdfOverlayInputException.TooComplex();
+        if (result.ExitCode == 3) throw new PdfInputException();
+        if (!result.Succeeded) throw new InvalidOperationException("PDF flattening failed.");
+    }
+
     internal async Task RunOverlayWriteAsync(TemporaryPdfFiles files, string[] arguments, string outputPath,
         long budget, CancellationToken token)
     {

@@ -16,6 +16,9 @@ PDFや画像を、入力検証と容量・時間の制限のもとで処理す�
 - Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮、目標サイズ指定
 - Linuxの `POST /api/pdf/compare` によるPDFの文字差分比較
 - Linuxの `POST /api/pdf/to-images` によるPDFからPNG・JPEGへの変換とZIP返却
+- Linuxの `POST /api/pdf/flatten` によるフォーム・注釈の焼き込み
+- Linuxの `POST /api/pdf/n-up` と `POST /api/pdf/resize` によるA4割付・サイズ統一
+- Linuxの `POST /api/pdf/ocr` による日本語スキャンPDFの検索用文字レイヤー追加
 - Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
 - Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
 - Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
@@ -398,7 +401,7 @@ file  PDFファイル一つ
 
 `format` は `png` または `jpeg`、`dpi` は72〜200の整数です。`pages` は既存のページ選択形式で、省略時は全ページです。CropBox、回転、UserUnitを反映した寸法で白背景に描画します。
 
-1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。最大50ページ、1ページ1,600万画素、ZIP最大64 MiBです。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。対応する上限超過は422 `too-many-pages`、`page-too-large`、`output-too-large` です。黒塗りと描画枠を共有し、使用中は503です。
+1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。最大50ページ、1ページ1,600万画素、ZIP最大64 MiBです。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。対応する上限超過は422 `too-many-pages`、`page-too-large`、`output-too-large` です。黒塗り・OCR・文字比較と描画枠を共有し、使用中は503です。
 
 ### PDFページ番号（Linux）
 
@@ -609,6 +612,46 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 
 エラーはASP.NET Core標準の`application/problem+json`です。固定文言のみを返し、内部path、password、PDF本文、stack trace、qpdf出力は返しません。
 
+### フォームと注釈の焼き込み（Linux）
+
+```text
+POST /api/pdf/flatten
+Content-Type: multipart/form-data
+
+file: PDF
+```
+
+フォーム欄やコメント・手書き注釈に保存された正常外観を、qpdf 12の焼き込み処理でページ内容に取り込みます。成功時は200、`application/pdf`、`flattened.pdf`。日本語の値も、PDFに有効な外観がある場合はその表示を維持します。外観の再生成を要求するフォーム（`/NeedAppearances true`）、XFA、正常外観を使えず注釈が残るPDFは422 `needs-appearance` です。コメントはアイコン等の外観が焼き込まれ、ポップアップ本文などの操作は失われます。電子署名や署名欄を含むPDFは422 `signature-structure` です。暗号化PDFには対応しません。
+
+### A4割付とサイズ統一（Linux）
+
+```text
+POST /api/pdf/n-up?pages-per-sheet=2
+POST /api/pdf/n-up?pages-per-sheet=4
+POST /api/pdf/resize?size=a4
+Content-Type: multipart/form-data
+
+file: PDF
+```
+
+2in1はA4横の左→右、4in1はA4縦の左上→右上→左下→右下に配置します。最後のシートの空きセルは白紙です。サイズ統一は表示上の縦横に合わせてA4縦または横にし、正方形はA4縦にします。両方ともCropBoxとページの回転を考慮し、縦横比を保ってセルや用紙の中央に配置します。ページ内容はベクターのまま保持します。新しい用紙に描画内容を移すため、フォーム・しおり・リンク等の注釈は引き継ぎません。署名関連構造や、文書全体で表示状態を管理するレイヤー付きPDFは422です。
+
+成功時は200、`application/pdf`、固定名 `n-up.pdf` / `resized.pdf` です。入力は既定50 MiB、対象は `Pdf__OverlayMaxPages`（既定1,000ページ）までです。出力はqpdfで検査します。
+
+### スキャンPDFの日本語OCR（Linux）
+
+```text
+POST /api/pdf/ocr?direction=horizontal
+POST /api/pdf/ocr?direction=vertical&pages=1-3
+Content-Type: multipart/form-data
+
+file: PDF
+```
+
+`direction` は必須で、横書き `horizontal` または縦書き `vertical` を選びます。`pages` を省略すると全ページが対象です。例 `1-3,5`。範囲外、重複した指定、対象が `Pdf__MaxOcrPages`（既定・最大10ページ）を超える場合は400です。全ページを出力し、選んだページにだけ透明な検索用の文字レイヤーを加えます。元のページの表示、順序、用紙サイズを保ちます。200、`application/pdf`、固定名 `ocr.pdf` で返します。
+
+描画は300 dpi、1ページ1,600万画素までです。黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、処理が `Pdf__OcrTimeoutSeconds`（既定90秒）を超えると504です。入力は既定50 MiBで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。文字間に空白が入り、長い語で検索しにくい場合があります。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
+
 ## 内部の処理時間ログ
 
 `PdfProcessing` categoryのInformationログに、リクエスト終了時の結果・時間（EventId 8102）と、段階別の時間・回数（8101）を記録します。全イベントにサーバーで新規生成する `RequestId`（UUID）を付け、同一操作の並行リクエストも突合できます。利用者のheader・query・TraceIdentifier・Activity IDは識別子に使いません。処理名は固定allowlist、段階はRequestValidation／Upload／Process／InputValidation／Render／OutputValidation／Send／Cleanupです。実際に通った段階だけを出力し、繰り返すページ処理も集計するため、Informationログは1リクエスト最大9件です。一時ディレクトリの削除に失敗した場合はErrorログ（8103、`PdfCleanupFailed`）が1件加わり、合計で最大10件です。PDF本文、ファイル名、パスワード、query、request header、一時path、外部ツールの出力、例外本文は渡しません。
@@ -655,6 +698,9 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__CleanJsonLimitBytes` | `33554432`（32 MiB） | cleanの入力・更新・出力検査JSONの各上限。int.MaxValue以下 |
 | `Pdf__CleanOutputLimitBytes` | `56623104`（54 MiB） | cleanの最終PDF上限 |
 | `Pdf__CleanJobLimitBytes` | `130023424`（124 MiB） | cleanの一時ファイル割当合計。4 KiB単位の入力上限以上が必須 |
+| `Pdf__MaxOcrPages` | `10` | OCR対象ページ数の上限。1〜10 |
+| `Pdf__OcrTimeoutSeconds` | `90` | アップロード後のOCR処理全体の最大秒数 |
+| `Pdf__TesseractPath` | `tesseract` | Tesseract実行ファイル。起動時に日本語の2モデルを確認 |
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
@@ -815,6 +861,8 @@ Dockerfile
 Linuxでは、未存在または空のprefixへ固定取得物を導入し、API起動と全テストに設定を渡してください。installerは管理外の既存ファイルを上書きしません。別architectureでは取得を明示的に失敗させます。
 
 ```bash
+# Ubuntu 26.04のLinux開発環境
+sudo apt-get install tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert poppler-utils
 scripts/install-pdfcpu.sh /tmp/amane-pdf-tools
 export Pdf__PdfcpuPath=/tmp/amane-pdf-tools/bin/pdfcpu
 export Pdf__PdfcpuConfigDir=/tmp/amane-pdf-tools/config

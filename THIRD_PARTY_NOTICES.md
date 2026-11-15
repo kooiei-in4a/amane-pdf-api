@@ -72,6 +72,12 @@ FreeTypeの配布表示: Portions of this software are copyright © 1996-2002, 2
 
 qpdf本体の著作権表示およびライセンス条件は、qpdfの配布物と公式Repositoryを参照してください。
 
+## Tesseract（日本語OCR）
+
+- [Tesseract](https://github.com/tesseract-ocr/tesseract) と日本語モデル（横書き `jpn`、縦書き `jpn_vert`）はApache-2.0です。モデルの上流は [tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) です。
+- Ubuntu 26.04のaptパッケージから導入します。著作権表示と許諾条件はコンテナ内の `/usr/share/doc/tesseract-ocr/copyright`、`/usr/share/doc/libtesseract5/copyright`、`/usr/share/doc/tesseract-ocr-jpn/copyright`、`/usr/share/doc/tesseract-ocr-jpn-vert/copyright` および `/usr/share/common-licenses/Apache-2.0` にあります。
+- 画像処理ライブラリ [Leptonica](https://github.com/DanBloomberg/leptonica) はTesseractのapt依存で、BSD-2-Clauseの表示は `/usr/share/doc/libleptonica6/copyright` にあります。その他のapt依存の表示も各パッケージの `/usr/share/doc/<package>/copyright` にあります。
+
 ## prlimit（util-linux）
 
 Linuxではqpdfのメモリ制限にprlimitを使用します。

@@ -67,14 +67,10 @@ internal static class PdfToImagesEndpoint
             var document = new RedactDocument(boxes, token);
             plans = ranges.SelectMany(range => Enumerable.Range(range.Start, range.End - range.Start + 1)).Select(number =>
             {
-                CheckImages(document, number);
+                PdfRenderer.CheckImages(document, number);
                 var page = boxes.Read(number - 1, token);
-                var width = Math.Ceiling(page.DisplayWidth * dpi / 72);
-                var height = Math.Ceiling(page.DisplayHeight * dpi / 72);
-                if (!double.IsFinite(width) || !double.IsFinite(height) || width < 1 || height < 1 ||
-                    width > RedactRaster.MaxSide || height > RedactRaster.MaxSide || width * height > RedactRaster.MaxPixels)
-                    throw new PdfRenderException(PdfRenderReason.PageTooLarge);
-                return (number, page, (int)width, (int)height);
+                var (width, height) = PdfRenderer.GetPixelSize(page, dpi);
+                return (number, page, width, height);
             }).ToArray();
         }
         finally { File.Delete(metadata); }
@@ -103,16 +99,6 @@ internal static class PdfToImagesEndpoint
             await using (var target = entry.Open())
                 await source.CopyToAsync(target, token);
             File.Delete(imagePath);
-        }
-    }
-
-    private static void CheckImages(RedactDocument document, int page)
-    {
-        try { document.CheckImages(page); }
-        catch (PdfRedactException exception)
-        {
-            throw new PdfRenderException(exception.Reason == PdfRedactReason.UnsupportedPdf
-                ? PdfRenderReason.UnsupportedPdf : PdfRenderReason.TooComplex);
         }
     }
 
