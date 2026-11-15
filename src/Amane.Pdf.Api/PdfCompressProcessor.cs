@@ -155,7 +155,8 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
             }
         }
         catch (CompressLimitException) { File.Delete(files.OutputPath); }
-        catch (OperationCanceledException) when (!token.IsCancellationRequested && attempts.IsCancellationRequested) { }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested &&
+            (finish.IsCancellationRequested || attempts.IsCancellationRequested)) { }
         token.ThrowIfCancellationRequested();
         // The input passed qpdf validation before any attempt. A timed-out pass
         // can leave a partial output, so only promote an already validated file.
