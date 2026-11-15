@@ -1,6 +1,6 @@
 namespace Amane.Pdf.Api;
 
-// redact, to-images and compare hold the single render slot from before upload through response and cleanup.
+// redact, to-images, compare and ocr hold the single render slot from before upload through response and cleanup.
 // If the slot is occupied, the endpoint returns 503 before reading the upload.
 internal sealed class RenderSlot : IDisposable
 {
