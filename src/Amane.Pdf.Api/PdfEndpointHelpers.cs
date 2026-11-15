@@ -83,11 +83,14 @@ internal static class PdfEndpointHelpers
         catch (PdfCompareException exception)
         {
             diagnostics.Outcome = PdfOutcome.Rejected;
-            var unavailable = exception.Reason == PdfCompareReason.TextUnavailable;
-            await Results.Problem(statusCode: 422,
-                title: unavailable ? "このPDFから比較に必要な文字を抽出できません。" : "PDFの文字比較が処理上限を超えています。",
-                extensions: new Dictionary<string, object?> { ["reason"] = unavailable ? "text-unavailable" : "too-large-to-compare" })
-                .ExecuteAsync(context);
+            var (reason, title) = exception.Reason switch
+            {
+                PdfCompareReason.TextUnavailable => ("text-unavailable", "このPDFから比較に必要な文字を抽出できません。"),
+                PdfCompareReason.UnsupportedPdf => ("unsupported-pdf", "このPDFの構造には文字抽出が対応していません。"),
+                _ => ("too-large-to-compare", "PDFの文字比較が処理上限を超えています。")
+            };
+            await Results.Problem(statusCode: 422, title: title,
+                extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
         }
         catch (PdfRenderException exception)
         {

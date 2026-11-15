@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Amane.Pdf.TextExtractor;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -49,6 +50,45 @@ public sealed class PdfP2EndpointsTests
             await test.AssertValidPdfAsync(output, 1);
             test.AssertClean();
         }
+    }
+
+    [TestMethod]
+    public async Task TargetCompressionTriesJpegWhenLosslessEstimateExceedsCapacity()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var source = CompressFixtures.Pdf(await CompressFixtures.JpegAsync(test));
+        var capacity = CompressCapacity.Allocated(source.Length) +
+            CompressCapacity.Allocated(source.Length + 4 * 1024 * 1024) - 4096;
+        test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.CompressJobLimitBytes = capacity;
+        var target = source.Length / 4;
+        Assert.IsGreaterThanOrEqualTo(102_400, target);
+        using var form = PdfTestContext.FileForm(source);
+        using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=" + target.ToString(CultureInfo.InvariantCulture), form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("true", response.Headers.GetValues("X-Pdf-Target-Reached").Single());
+        Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        var output = await response.Content.ReadAsByteArrayAsync();
+        Assert.IsLessThanOrEqualTo(target, output.Length);
+        await test.AssertValidPdfAsync(output, 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task TargetCompressionKeepsInputWhenLosslessWouldIncreaseItsSize()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        // For this small PDF, the object stream and cross-reference stream cost more than they save.
+        var source = TextPdf("A");
+        using var form = PdfTestContext.FileForm(source);
+        using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=102400", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.AreEqual("true", response.Headers.GetValues("X-Pdf-Target-Reached").Single());
+        Assert.AreEqual("0", response.Headers.GetValues("X-Pdf-Images-Recompressed").Single());
+        var output = await response.Content.ReadAsByteArrayAsync();
+        Assert.IsTrue(source.AsSpan().SequenceEqual(output));
+        test.AssertClean();
     }
 
     [TestMethod]
@@ -264,13 +304,93 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    public void ExtractorClassifiesOnlyPdfPigInputExceptionsAsUnsupported()
+    {
+        // PdfPig recovers from the broken fonts tried so far, so classify the exception types directly.
+        // CompareRejectsPdfPigPageParsingFailure covers the stack depth exception with a real PDF.
+        foreach (var exception in new Exception[]
+                 {
+                     new UglyToad.PdfPig.Core.PdfDocumentFormatException("format"),
+                     new UglyToad.PdfPig.Fonts.InvalidFontFormatException("font"),
+                     new UglyToad.PdfPig.Fonts.CorruptCompressedDataException("data")
+                 })
+            Assert.IsTrue(Amane.Pdf.TextExtractor.Program.IsUnsupportedInput(exception), exception.GetType().Name);
+        Assert.IsFalse(Amane.Pdf.TextExtractor.Program.IsUnsupportedInput(new InvalidOperationException()));
+        Assert.IsFalse(Amane.Pdf.TextExtractor.Program.IsUnsupportedInput(new OutOfMemoryException()));
+    }
+
+    [TestMethod]
+    public async Task CompareRejectsPdfPigPageParsingFailure()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new() { ["Pdf:TextExtractorPath"] = ExtractorPath() });
+        // qpdf accepts this content stream, but PdfPig refuses its array nesting depth.
+        var input = ContentPdf(new string('[', 260) + "1" + new string(']', 260) + "\nBT /F1 12 Tf (A) Tj ET");
+        await test.AssertValidPdfAsync(input, 1);
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(input), "old", "old.pdf");
+        form.Add(new ByteArrayContent(TextPdf("A")), "new", "new.pdf");
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(422, (int)response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("unsupported-pdf", json.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task CompareRunsNearLimitDiffInBoundedWorker(bool stall)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:TextExtractorPath"] = ExtractorPath(),
+            ["Pdf:QpdfTimeoutSeconds"] = stall ? "6" : "30"
+        });
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var marker = Path.Combine(test.Root, "diff.pid");
+        var runner = Path.Combine(test.Root, "compare-worker.sh");
+        await File.WriteAllTextAsync(runner, $$"""
+            #!/bin/sh
+            if [ "$2" = "--diff" ]; then
+                [ "$(ulimit -d)" = 393216 ] && [ "$DOTNET_GCHeapHardLimit" = 0x10000000 ] || exit 1
+                printf '%s' "$$" > '{{marker}}'
+                {{(stall ? "exec sleep 60" : "")}}
+            fi
+            exec '{{options.DotnetPath}}' "$@"
+            """);
+        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        options.DotnetPath = runner;
+
+        // Disjoint alphabets give an insertion/deletion distance of exactly 4,096.
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(TextPdf(new string('A', 2048))), "old", "old.pdf");
+        form.Add(new ByteArrayContent(TextPdf(new string('B', 2048))), "new", "new.pdf");
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(stall ? HttpStatusCode.GatewayTimeout : HttpStatusCode.OK, response.StatusCode);
+        Assert.IsTrue(File.Exists(marker));
+        Assert.IsFalse(Directory.Exists("/proc/" + await File.ReadAllTextAsync(marker)));
+        if (!stall)
+        {
+            using var json = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+            var change = json.RootElement.GetProperty("changes").EnumerateArray().Single();
+            Assert.AreEqual("replace", change.GetProperty("type").GetString());
+            Assert.AreEqual(2048, change.GetProperty("old").GetProperty("text").GetString()!.Length);
+            Assert.AreEqual(2048, change.GetProperty("new").GetProperty("text").GetString()!.Length);
+        }
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task CompareReportsExtractorExceptionsAsInternalError()
     {
         if (!OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext();
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var broken = Path.Combine(test.Root, "broken.pdf");
-        await File.WriteAllTextAsync(broken, "%PDF-1.4\n%%EOF");
+        // The undefined font raises InvalidOperationException, which does not classify the failure.
+        await File.WriteAllBytesAsync(broken, ContentPdf("BT /F2 12 Tf (A) Tj ET"));
         var result = await ExternalProcessRunner.RunAsync(new(options.DotnetPath,
             [ExtractorPath(), broken, Path.Combine(test.Root, "text.json"), "300", "500000"]), CancellationToken.None);
         Assert.AreEqual(1, result.ExitCode);
@@ -339,13 +459,13 @@ public sealed class PdfP2EndpointsTests
     [TestMethod]
     public void TextDiffPreservesScalarAndPageBoundariesAndTruncates()
     {
-        var result = TextDiff.Compare(Side("甲🐈乙丙丁"), Side("甲🐕乙丁戊"), CancellationToken.None);
+        var result = TextDiff.Compare(Side("甲🐈乙丙丁"), Side("甲🐕乙丁戊"));
         CollectionAssert.AreEqual(new[] { "replace", "delete", "insert" }, result.Changes.Select(change => change.Type).ToArray());
         Assert.AreEqual("🐈", result.Changes[0].Old?.Text);
         Assert.AreEqual(2, result.Changes[0].New?.Page);
         Assert.AreEqual("甲", result.Changes[0].Before);
         var many = TextDiff.Compare(Side(string.Concat(Enumerable.Repeat("甲乙", 1001))),
-            Side(string.Concat(Enumerable.Repeat("丙乙", 1001))), CancellationToken.None);
+            Side(string.Concat(Enumerable.Repeat("丙乙", 1001))));
         Assert.HasCount(1000, many.Changes);
         Assert.IsTrue(many.Truncated);
 
@@ -442,13 +562,15 @@ public sealed class PdfP2EndpointsTests
         test.AssertClean();
     }
 
-    private static byte[] TextPdf(string text) => CompressFixtures.Objects(
+    private static byte[] TextPdf(string text) => ContentPdf($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET");
+
+    private static byte[] ContentPdf(string content) => CompressFixtures.Objects(
     [
         "<< /Type /Catalog /Pages 2 0 R >>"u8.ToArray(),
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>"u8.ToArray(),
         "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"u8.ToArray(),
         "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"u8.ToArray(),
-        CompressFixtures.Stream("", Encoding.ASCII.GetBytes($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET"))
+        CompressFixtures.Stream("", Encoding.ASCII.GetBytes(content))
     ]);
 
     private static string ExtractorPath() => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,
