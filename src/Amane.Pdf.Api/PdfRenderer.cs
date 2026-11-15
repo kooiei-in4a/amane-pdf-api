@@ -34,6 +34,26 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
             new Dictionary<string, string> { ["DOTNET_EnableDiagnostics"] = "0" },
             memoryLimit: ProcessMemoryLimit.Data) with { WorkingDirectory = directory };
 
+    internal static (int Width, int Height) GetPixelSize(PdfPageAttributes page, int dpi)
+    {
+        var width = Math.Ceiling(page.DisplayWidth * dpi / 72);
+        var height = Math.Ceiling(page.DisplayHeight * dpi / 72);
+        if (!double.IsFinite(width) || !double.IsFinite(height) || width < 1 || height < 1 ||
+            width > RedactRaster.MaxSide || height > RedactRaster.MaxSide || width * height > RedactRaster.MaxPixels)
+            throw new PdfRenderException(PdfRenderReason.PageTooLarge);
+        return ((int)width, (int)height);
+    }
+
+    internal static void CheckImages(RedactDocument document, int page)
+    {
+        try { document.CheckImages(page); }
+        catch (PdfRedactException exception)
+        {
+            throw new PdfRenderException(exception.Reason == PdfRedactReason.UnsupportedPdf
+                ? PdfRenderReason.UnsupportedPdf : PdfRenderReason.TooComplex);
+        }
+    }
+
     internal Task RenderJpegAsync(TemporaryPdfFiles files, RenderPage page, CancellationToken token)
         => RenderAsync(files, page, png: false, token);
 

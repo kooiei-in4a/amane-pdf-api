@@ -31,7 +31,7 @@ jobs:
         run: bash scripts/nuget-audit.sh
 
       - name: Install PDF tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs poppler-utils tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert
 
       - name: Setup Go for binary metadata verification
         # Goはgo version -mの検証専用。aptでコンパイラのソースまで取得する待ち時間を避ける。

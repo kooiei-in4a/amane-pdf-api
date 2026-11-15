@@ -18,8 +18,7 @@ internal static class PdfFormDetector
     private static bool ContainsRestrictedStructure(PdfPageBoxes metadata, bool includeForms, CancellationToken token)
     {
         // Follow the trailer's Root rather than treating every Catalog-like dictionary as the root.
-        var trailer = metadata.Document.RootElement.GetProperty("qpdf")[1].GetProperty("trailer").GetProperty("value");
-        var root = metadata.Resolve(trailer.GetProperty("/Root"), token);
+        var root = metadata.Catalog(token);
         foreach (var property in root.EnumerateObject())
         {
             var key = Name(property.Name);

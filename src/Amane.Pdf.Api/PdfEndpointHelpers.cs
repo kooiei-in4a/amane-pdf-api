@@ -16,7 +16,8 @@ internal static class PdfEndpointHelpers
         string contentType = "application/pdf",
         bool images = false,
         string? tooLargeTitle = null,
-        int? processingTimeoutSeconds = null)
+        int? processingTimeoutSeconds = null,
+        string? renderFailureTitle = null)
     {
         var stopping = context.RequestServices.GetRequiredService<IHostApplicationLifetime>().ApplicationStopping;
         using var diagnostics = new PdfProcessingDiagnostics(context);
@@ -99,7 +100,7 @@ internal static class PdfEndpointHelpers
                 PdfRenderReason.UnsupportedPdf => "unsupported-pdf",
                 _ => "too-complex"
             };
-            await Results.Problem(statusCode: 422, title: "このPDFを画像に変換できません。",
+            await Results.Problem(statusCode: 422, title: renderFailureTitle ?? "このPDFを画像に変換できません。",
                 extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
         }
         catch (PdfRedactException exception)
@@ -158,6 +159,12 @@ internal static class PdfEndpointHelpers
             diagnostics.Outcome = PdfOutcome.Rejected;
             await Results.Problem(statusCode: 422, title: "このPDFは情報除去の処理上限を超えています。",
                 extensions: new Dictionary<string, object?> { ["reason"] = "too-complex" }).ExecuteAsync(context);
+        }
+        catch (PdfNeedsAppearanceException)
+        {
+            diagnostics.Outcome = PdfOutcome.Rejected;
+            await Results.Problem(statusCode: 422, title: "フォームや注釈に焼き込みに必要な外観がありません。",
+                extensions: new Dictionary<string, object?> { ["reason"] = "needs-appearance" }).ExecuteAsync(context);
         }
         catch (PdfOverlayInputException exception)
         {

@@ -17,6 +17,9 @@ public sealed class PdfOptions
     public long OverlayOutputLimitBytes { get; set; } = 62 * 1024 * 1024;
     public long OverlayJobLimitBytes { get; set; } = 124 * 1024 * 1024;
     public int OverlayMaxPages { get; set; } = 1000;
+    public int MaxOcrPages { get; set; } = 10;
+    public int OcrTimeoutSeconds { get; set; } = 90;
+    public string TesseractPath { get; set; } = "tesseract";
     public int QpdfTimeoutSeconds { get; set; } = 30;
     public int MaxConcurrentProcesses { get; set; } = 2;
     public const int MultipartOverheadBytes = 64 * 1024;
