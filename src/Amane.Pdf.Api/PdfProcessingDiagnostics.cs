@@ -33,6 +33,7 @@ internal sealed class PdfProcessingDiagnostics : IDisposable
             "/api/pdf/page-numbers" => "page-numbers", "/api/pdf/fill-template" => "fill-template",
             "/api/pdf/watermark" => "watermark", "/api/pdf/stamp-image" => "stamp-image",
             "/api/pdf/compose" => "compose",
+            "/api/pdf/compare" => "compare", "/api/pdf/to-images" => "to-images",
             "/api/pdf/merge" => "merge", "/api/pdf/split" => "split", "/api/pdf/rotate" => "rotate",
             "/api/pdf/extract" => "extract", "/api/pdf/delete-pages" => "delete-pages",
             "/api/pdf/reorder" => "reorder", _ => "unknown"

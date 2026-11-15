@@ -39,9 +39,9 @@ public sealed class JpegHeaderTests
     public void FinalizationCapacity_IncludesEntryAndUpdateCoexistence_AndRounding()
     {
         const long mib = 1024 * 1024;
-        Assert.IsFalse(new CompressCapacity(13 * mib).CanFinalize(mib, mib, 6 * mib, 6 * mib, 4 * mib));
-        Assert.IsTrue(new CompressCapacity(14 * mib).CanFinalize(mib, mib, 6 * mib, 6 * mib, 4 * mib));
-        Assert.IsFalse(new CompressCapacity(14 * mib).CanFinalize(mib, mib, 6 * mib, 6 * mib + 1, 4 * mib));
+        Assert.IsFalse(new CompressCapacity(13 * mib).CanFinalize(mib, 0, mib, 6 * mib, 6 * mib, 4 * mib));
+        Assert.IsTrue(new CompressCapacity(14 * mib).CanFinalize(mib, 0, mib, 6 * mib, 6 * mib, 4 * mib));
+        Assert.IsFalse(new CompressCapacity(14 * mib).CanFinalize(mib, 0, mib, 6 * mib, 6 * mib + 1, 4 * mib));
         var capacity = new CompressCapacity(14 * mib);
         capacity.Reserve("input", mib); capacity.Reserve("jpeg", mib); capacity.Reserve("entries", 6 * mib);
         capacity.Reserve("update", 6 * mib); // Joining can reserve the full update before deleting entries.

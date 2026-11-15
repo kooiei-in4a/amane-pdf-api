@@ -7,7 +7,7 @@ internal static class PdfEndpointHelpers
     public static async Task ExecuteAsync(
         HttpContext context,
         PdfOptions options,
-        string downloadFileName,
+        string? downloadFileName,
         Action? validateRequest,
         Func<TemporaryPdfFiles, CancellationToken, Task> readUploadAsync,
         Func<TemporaryPdfFiles, CancellationToken, Task> processAsync,
@@ -78,6 +78,29 @@ internal static class PdfEndpointHelpers
             diagnostics.Outcome = PdfOutcome.Rejected;
             await Results.Problem(statusCode: 422, title: exception.Title,
                 extensions: new Dictionary<string, object?> { ["reason"] = exception.Code }).ExecuteAsync(context);
+        }
+        catch (PdfCompareException exception)
+        {
+            diagnostics.Outcome = PdfOutcome.Rejected;
+            var unavailable = exception.Reason == PdfCompareReason.TextUnavailable;
+            await Results.Problem(statusCode: 422,
+                title: unavailable ? "このPDFから比較に必要な文字を抽出できません。" : "PDFの文字比較が処理上限を超えています。",
+                extensions: new Dictionary<string, object?> { ["reason"] = unavailable ? "text-unavailable" : "too-large-to-compare" })
+                .ExecuteAsync(context);
+        }
+        catch (PdfRenderException exception)
+        {
+            diagnostics.Outcome = PdfOutcome.Rejected;
+            var reason = exception.Reason switch
+            {
+                PdfRenderReason.PageTooLarge => "page-too-large",
+                PdfRenderReason.TooManyPages => "too-many-pages",
+                PdfRenderReason.OutputTooLarge => "output-too-large",
+                PdfRenderReason.UnsupportedPdf => "unsupported-pdf",
+                _ => "too-complex"
+            };
+            await Results.Problem(statusCode: 422, title: "このPDFを画像に変換できません。",
+                extensions: new Dictionary<string, object?> { ["reason"] = reason }).ExecuteAsync(context);
         }
         catch (PdfRedactException exception)
         {
@@ -217,14 +240,14 @@ internal static class PdfEndpointHelpers
         if (bodySize is { IsReadOnly: false }) bodySize.MaxRequestBodySize = maxRequestBytes;
     }
 
-    private static async Task SendFileAsync(HttpContext context, string path, string fileName, CancellationToken cancellationToken,
+    private static async Task SendFileAsync(HttpContext context, string path, string? fileName, CancellationToken cancellationToken,
         Action<HttpResponse>? onSend, string contentType)
     {
         await using var output = File.OpenRead(path);
         cancellationToken.ThrowIfCancellationRequested();
         context.Response.ContentType = contentType;
         context.Response.ContentLength = output.Length;
-        context.Response.Headers.ContentDisposition = $"attachment; filename={fileName}";
+        if (fileName is not null) context.Response.Headers.ContentDisposition = $"attachment; filename={fileName}";
         onSend?.Invoke(context.Response);
         await output.CopyToAsync(context.Response.Body, cancellationToken);
     }

@@ -4,8 +4,10 @@ WORKDIR /src
 COPY global.json ./
 COPY src/Amane.Pdf.Api/Amane.Pdf.Api.csproj src/Amane.Pdf.Api/
 COPY src/Amane.Pdf.Renderer/Amane.Pdf.Renderer.csproj src/Amane.Pdf.Renderer/
+COPY src/Amane.Pdf.TextExtractor/*.csproj src/Amane.Pdf.TextExtractor/packages.lock.json src/Amane.Pdf.TextExtractor/
 RUN dotnet restore src/Amane.Pdf.Api/Amane.Pdf.Api.csproj
 RUN dotnet restore src/Amane.Pdf.Renderer/Amane.Pdf.Renderer.csproj
+RUN dotnet restore src/Amane.Pdf.TextExtractor/Amane.Pdf.TextExtractor.csproj --locked-mode
 
 COPY src/Amane.Pdf.Api/ src/Amane.Pdf.Api/
 RUN dotnet publish src/Amane.Pdf.Api/Amane.Pdf.Api.csproj \
@@ -16,6 +18,10 @@ RUN dotnet publish src/Amane.Pdf.Api/Amane.Pdf.Api.csproj \
 COPY src/Amane.Pdf.Renderer/ src/Amane.Pdf.Renderer/
 RUN dotnet publish src/Amane.Pdf.Renderer/Amane.Pdf.Renderer.csproj \
     --configuration Release --no-restore --output /app/renderer /p:UseAppHost=false
+
+COPY src/Amane.Pdf.TextExtractor/ src/Amane.Pdf.TextExtractor/
+RUN dotnet publish src/Amane.Pdf.TextExtractor/Amane.Pdf.TextExtractor.csproj \
+    --configuration Release --no-restore --output /app/text-extractor /p:UseAppHost=false
 
 FROM ubuntu:26.04 AS pdfcpu-tools
 RUN apt-get update \
@@ -53,6 +59,8 @@ COPY --from=build --chown=app:app /app/publish ./
 COPY --from=pdfcpu-tools /opt/amane-pdf/ /opt/amane-pdf/
 COPY --from=pdfcpu-tools /opt/pdfium/ /opt/amane-pdf/
 COPY --from=build /app/renderer/ /opt/amane-pdf/renderer/
+COPY --from=build /app/text-extractor/ /opt/amane-pdf/text-extractor/
+COPY third_party/pdfpig/ /opt/amane-pdf/licenses/pdfpig/
 
 USER app
 EXPOSE 8080

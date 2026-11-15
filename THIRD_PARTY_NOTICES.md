@@ -127,3 +127,7 @@ POSSIBILITY OF SUCH DAMAGE.
 ```
 
 zlibライセンスの部分には、無保証・損害責任の否認、商用利用を含む利用・変更・再配布の許可、原作者の詐称禁止、変更版の明示、ソース配布時の表示保持が定められています。第三者ソフトウェアの原著作権表示・ライセンスを削除せず、上のcopyrightファイルをコンテナへ残します。poppler-utils／Pillow／NumPyはCIと一時fixture生成・測定のみに使い、runtime imageへ追加しません。
+
+## PdfPig（文字抽出）
+
+PDF文字差分では [PdfPig 0.1.16](https://github.com/UglyToad/PdfPig/tree/v0.1.16) を別プロセスで使用します。NuGetパッケージはバージョンとハッシュを固定しています。Apache License 2.0と同梱コンポーネントのライセンスは [LICENSE](third_party/pdfpig/LICENSE)、著作権表示は [NOTICES.txt](third_party/pdfpig/NOTICES.txt) を参照してください。両ファイルをコンテナの `/opt/amane-pdf/licenses/pdfpig/` に収録します。
