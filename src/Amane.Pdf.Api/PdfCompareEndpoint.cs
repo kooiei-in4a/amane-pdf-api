@@ -46,6 +46,9 @@ internal static class PdfCompareEndpoint
         await RunWorkerAsync([oldPath, oldText], oldText, files, options, token);
         await RunWorkerAsync([newPath, newText], newText, files, options, token);
         await RunWorkerAsync(["--diff", oldText, newText, files.OutputPath], files.OutputPath, files, options, token);
+        // Keep only the response while it is sent.
+        File.Delete(oldText);
+        File.Delete(newText);
     }
 
     private static async Task RunWorkerAsync(string[] args, string output, TemporaryPdfFiles files,

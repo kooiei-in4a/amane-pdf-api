@@ -304,6 +304,22 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    public void ExtractorClassifiesOnlyPdfPigInputExceptionsAsUnsupported()
+    {
+        // PdfPig recovers from the broken fonts tried so far, so classify the exception types directly.
+        // CompareRejectsPdfPigPageParsingFailure covers the stack depth exception with a real PDF.
+        foreach (var exception in new Exception[]
+                 {
+                     new UglyToad.PdfPig.Core.PdfDocumentFormatException("format"),
+                     new UglyToad.PdfPig.Fonts.InvalidFontFormatException("font"),
+                     new UglyToad.PdfPig.Fonts.CorruptCompressedDataException("data")
+                 })
+            Assert.IsTrue(Amane.Pdf.TextExtractor.Program.IsUnsupportedInput(exception), exception.GetType().Name);
+        Assert.IsFalse(Amane.Pdf.TextExtractor.Program.IsUnsupportedInput(new InvalidOperationException()));
+        Assert.IsFalse(Amane.Pdf.TextExtractor.Program.IsUnsupportedInput(new OutOfMemoryException()));
+    }
+
+    [TestMethod]
     public async Task CompareRejectsPdfPigPageParsingFailure()
     {
         if (!OperatingSystem.IsLinux()) return;

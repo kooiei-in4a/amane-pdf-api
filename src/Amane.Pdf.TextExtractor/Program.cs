@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Core;
+using UglyToad.PdfPig.Fonts;
 
 namespace Amane.Pdf.TextExtractor;
 
@@ -69,8 +70,12 @@ internal static class Program
             json.WriteEndObject();
             return meaningful == 0 || unavailable * 5 > meaningful ? 2 : 0;
         }
-        catch (Exception exception) when (exception is PdfDocumentFormatException or PdfDocumentStackDepthException) { return 4; }
+        catch (Exception exception) when (IsUnsupportedInput(exception)) { return 4; }
     }
+
+    // These PdfPig types identify unsupported input. Other exception types stay internal errors.
+    internal static bool IsUnsupportedInput(Exception exception) => exception is PdfDocumentFormatException or
+        PdfDocumentStackDepthException or InvalidFontFormatException or CorruptCompressedDataException;
 
     [SupportedOSPlatform("linux")]
     private static int Diff(string oldPath, string newPath, string output, int maxPages, int maxCharacters)
