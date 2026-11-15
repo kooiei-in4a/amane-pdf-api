@@ -128,11 +128,15 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
         if (remaining <= TimeSpan.Zero) attempts.Cancel(); else attempts.CancelAfter(remaining);
         try
         {
-            var lossless = new PdfCompressProcessor(options, files, best);
-            lossless.ReserveInputs(inputBytes);
-            await lossless.FinishAsync(inputBytes, attempts.Token);
-            KeepResult(0, preferWithinTarget: inputBytes <= maxBytes);
-            ClearPass();
+            try
+            {
+                var lossless = new PdfCompressProcessor(options, files, best);
+                lossless.ReserveInputs(inputBytes);
+                await lossless.FinishAsync(inputBytes, attempts.Token);
+                KeepResult(0);
+            }
+            catch (CompressLimitException) { }
+            finally { ClearPass(); }
             if (inputBytes > maxBytes && bestBytes > maxBytes)
             {
                 CompressImage[]? candidates = null;
@@ -154,7 +158,6 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                 }
             }
         }
-        catch (CompressLimitException) { File.Delete(files.OutputPath); }
         catch (OperationCanceledException) when (!token.IsCancellationRequested &&
             (finish.IsCancellationRequested || attempts.IsCancellationRequested)) { }
         token.ThrowIfCancellationRequested();
@@ -169,10 +172,10 @@ internal sealed class PdfCompressProcessor(PdfOptions options, TemporaryPdfFiles
                 if (path != best && path != files.InputPath) File.Delete(path);
         }
 
-        void KeepResult(int count, bool preferWithinTarget = false)
+        void KeepResult(int count)
         {
             var size = new FileInfo(files.OutputPath).Length;
-            if (size <= bestBytes || (preferWithinTarget && size <= maxBytes))
+            if (size < bestBytes || (size == bestBytes && count > 0))
             {
                 File.Move(files.OutputPath, best, overwrite: true);
                 bestBytes = size;

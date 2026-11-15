@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Amane.Pdf.Api;
+namespace Amane.Pdf.TextExtractor;
 
 internal sealed record CompareText(Rune[] Text, int[] PageNumbers, int Pages)
 {
@@ -12,6 +12,8 @@ internal sealed record CompareExcerpt(int Page, string Text);
 internal sealed record CompareChange(string Type, CompareExcerpt? Old, CompareExcerpt? New, string Before, string After);
 internal sealed record CompareResult(CompareSide Old, CompareSide New, IReadOnlyList<CompareChange> Changes, bool Truncated);
 
+internal sealed class CompareLimitException : Exception;
+
 internal static class TextDiff
 {
     private const int MaxDistance = 4096;
@@ -20,9 +22,9 @@ internal static class TextDiff
     private const int ContextLength = 30;
     private readonly record struct Edit(int Old, int New, bool Insert);
 
-    internal static CompareResult Compare(CompareText oldText, CompareText newText, CancellationToken token)
+    internal static CompareResult Compare(CompareText oldText, CompareText newText)
     {
-        var edits = FindEdits(oldText.Text, newText.Text, token);
+        var edits = FindEdits(oldText.Text, newText.Text);
         var changes = new List<CompareChange>();
         var index = 0;
         while (index < edits.Count && changes.Count < MaxChanges)
@@ -60,9 +62,9 @@ internal static class TextDiff
         return result.ToString();
     }
 
-    private static List<Edit> FindEdits(Rune[] oldText, Rune[] newText, CancellationToken token)
+    private static List<Edit> FindEdits(Rune[] oldText, Rune[] newText)
     {
-        if (Math.Abs(oldText.Length - newText.Length) > MaxDistance) throw TooLarge();
+        if (Math.Abs(oldText.Length - newText.Length) > MaxDistance) throw new CompareLimitException();
 
         // Myers' frontier. Row d stores only diagonals reachable in exactly d edits.
         // Keeping the rows allows backtracking and bounds the trace to about 32 MiB.
@@ -70,7 +72,6 @@ internal static class TextDiff
         var work = 0;
         for (var distance = 0; distance <= MaxDistance; distance++)
         {
-            token.ThrowIfCancellationRequested();
             var frontier = new int[distance + 1];
             trace.Add(frontier);
             for (var step = 0; step <= distance; step++)
@@ -95,12 +96,11 @@ internal static class TextDiff
                     return Backtrack(trace, oldText.Length, newText.Length);
             }
         }
-        throw TooLarge();
+        throw new CompareLimitException();
 
         void CheckWork()
         {
-            if (++work > MaxWork) throw TooLarge();
-            if ((work & 4095) == 0) token.ThrowIfCancellationRequested();
+            if (++work > MaxWork) throw new CompareLimitException();
         }
     }
 
@@ -125,6 +125,4 @@ internal static class TextDiff
         edits.Reverse();
         return edits;
     }
-
-    private static PdfCompareException TooLarge() => new(PdfCompareReason.TooLarge);
 }

@@ -1,11 +1,9 @@
 using System.Globalization;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 
 namespace Amane.Pdf.Api;
 
-internal enum PdfCompareReason { TextUnavailable, TooLarge }
+internal enum PdfCompareReason { TextUnavailable, TooLarge, UnsupportedPdf }
 internal sealed class PdfCompareException(PdfCompareReason reason) : Exception
 {
     internal PdfCompareReason Reason { get; } = reason;
@@ -13,9 +11,8 @@ internal sealed class PdfCompareException(PdfCompareReason reason) : Exception
 
 internal static class PdfCompareEndpoint
 {
-    private const long ExtractorMemory = 384 * 1024 * 1024;
-    private const long ExtractorFileLimit = 8 * 1024 * 1024; // Includes CoreCLR bootstrap and escaped UTF-16.
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private const long WorkerMemory = 384 * 1024 * 1024;
+    private const long WorkerFileLimit = 8 * 1024 * 1024; // Includes CoreCLR bootstrap and escaped UTF-16.
 
     internal static bool IsValid(PdfOptions options) => options.MaxComparePages is >= 1 and <= 300 &&
         options.MaxCompareCharacters is >= 1 and <= 500_000 &&
@@ -23,7 +20,7 @@ internal static class PdfCompareEndpoint
 
     internal static async Task HandleAsync(HttpContext context, QpdfProcessor qpdf, RenderSlot slot, IOptions<PdfOptions> options)
     {
-        // The extractor has the same DATA 384 MiB budget as the renderer, so only one may run at a time.
+        // The workers share the renderer's 384 MiB DATA budget. Run them one at a time.
         using var lease = slot.TryAcquire();
         if (lease is null)
         {
@@ -44,49 +41,27 @@ internal static class PdfCompareEndpoint
         var newPath = files.MergeInputPath(2);
         await qpdf.ValidateAsync(oldPath, token);
         await qpdf.ValidateAsync(newPath, token);
-        var oldText = await ExtractAsync(files, oldPath, options, token);
-        var newText = await ExtractAsync(files, newPath, options, token);
-        var result = TextDiff.Compare(oldText, newText, token);
-        await using var output = TemporaryPdfFiles.CreatePrivateFile(files.OutputPath);
-        await JsonSerializer.SerializeAsync(output, result, JsonOptions, token);
+        var oldText = Path.Combine(files.DirectoryPath, "compare-old.json");
+        var newText = Path.Combine(files.DirectoryPath, "compare-new.json");
+        await RunWorkerAsync([oldPath, oldText], oldText, files, options, token);
+        await RunWorkerAsync([newPath, newText], newText, files, options, token);
+        await RunWorkerAsync(["--diff", oldText, newText, files.OutputPath], files.OutputPath, files, options, token);
     }
 
-    private static async Task<CompareText> ExtractAsync(TemporaryPdfFiles files, string input, PdfOptions options, CancellationToken token)
+    private static async Task RunWorkerAsync(string[] args, string output, TemporaryPdfFiles files,
+        PdfOptions options, CancellationToken token)
     {
-        var output = Path.GetFullPath(Path.Combine(files.DirectoryPath, "compare-text.json"));
         var request = ProcessMemoryLimits.CreateRequest(options.PrlimitPath, options.DotnetPath,
-            [options.TextExtractorPath, Path.GetFullPath(input), output,
-                options.MaxComparePages.ToString(CultureInfo.InvariantCulture),
+            [options.TextExtractorPath, .. args, options.MaxComparePages.ToString(CultureInfo.InvariantCulture),
                 options.MaxCompareCharacters.ToString(CultureInfo.InvariantCulture)],
-            ExtractorMemory, ExtractorFileLimit,
+            WorkerMemory, WorkerFileLimit,
             new Dictionary<string, string> { ["DOTNET_GCHeapHardLimit"] = "0x10000000", ["DOTNET_EnableDiagnostics"] = "0" },
-            memoryLimit: ProcessMemoryLimit.Data) with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) };
-        try
-        {
-            var result = await ExternalProcessRunner.RunAsync(request, token);
-            if (result.ExitCode == 2) throw new PdfCompareException(PdfCompareReason.TextUnavailable);
-            if (result.ExitCode is 3 or 137) throw new PdfCompareException(PdfCompareReason.TooLarge);
-            if (result.ExitCode != 0 || !File.Exists(output)) throw new InvalidOperationException("PDF text extraction failed.");
+            memoryLimit: ProcessMemoryLimit.Data) with { WorkingDirectory = files.DirectoryPath };
 
-            await using var stream = File.OpenRead(output);
-            using var json = await JsonDocument.ParseAsync(stream, cancellationToken: token);
-            var pages = json.RootElement.GetProperty("pages").EnumerateArray().ToArray();
-            if (pages.Length > options.MaxComparePages) throw new PdfCompareException(PdfCompareReason.TooLarge);
-            var text = new List<Rune>();
-            var pageNumbers = new List<int>();
-            for (var page = 0; page < pages.Length; page++)
-            {
-                token.ThrowIfCancellationRequested();
-                foreach (var rune in (pages[page].GetString() ?? "").EnumerateRunes())
-                {
-                    if (text.Count >= options.MaxCompareCharacters) throw new PdfCompareException(PdfCompareReason.TooLarge);
-                    text.Add(rune);
-                    pageNumbers.Add(page + 1);
-                }
-            }
-            if (text.Count == 0) throw new PdfCompareException(PdfCompareReason.TextUnavailable);
-            return new([.. text], [.. pageNumbers], pages.Length);
-        }
-        finally { File.Delete(output); }
+        var result = await ExternalProcessRunner.RunAsync(request, token);
+        if (result.ExitCode == 2) throw new PdfCompareException(PdfCompareReason.TextUnavailable);
+        if (result.ExitCode is 3 or 137) throw new PdfCompareException(PdfCompareReason.TooLarge);
+        if (result.ExitCode == 4) throw new PdfCompareException(PdfCompareReason.UnsupportedPdf);
+        if (result.ExitCode != 0 || !File.Exists(output)) throw new InvalidOperationException("PDF comparison worker failed.");
     }
 }
