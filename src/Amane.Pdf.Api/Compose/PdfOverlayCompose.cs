@@ -163,7 +163,8 @@ internal sealed partial class PdfOverlayBuilder
                 capacity.Delete(update);
             }
 
-            await qpdf.ValidateOutputAsync(files.OutputPath, token);
+            try { await qpdf.ValidateOutputAsync(files.OutputPath, token); }
+            catch (PdfInputException) { throw new InvalidOperationException(Failure); }
             using var final = await Metadata(files.OutputPath, generated: true);
             if (final.Encrypted != false || final.Pages.Count != pages.Length ||
                 original.Where((page, index) => !page.SameEffective(final.Read(index, token))).Any())
