@@ -477,31 +477,39 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
-    [DataRow("png", "png")]
-    [DataRow("jpeg", "jpg")]
-    public async Task ToImagesReturnsSelectedPageAsZip(string format, string suffix)
+    [DataRow("png", "png", "2", 2, 1)]
+    [DataRow("jpeg", "jpg", "2", 2, 1)]
+    [DataRow("png", "png", "1-3", 1, 3)]
+    [DataRow("jpeg", "jpg", "1-3", 1, 3)]
+    public async Task ToImagesReturnsSelectedPagesAsStoredZip(string format, string suffix, string pages,
+        int firstPage, int pageCount)
     {
         if (!OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext();
         using var form = PdfTestContext.FileForm(await test.CreatePagedPdfAsync(3));
-        using var response = await test.Client.PostAsync("/api/pdf/to-images?format=" + format + "&dpi=72&pages=2", form);
+        using var response = await test.Client.PostAsync("/api/pdf/to-images?format=" + format + "&dpi=72&pages=" + pages, form);
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
         Assert.AreEqual("application/zip", response.Content.Headers.ContentType?.MediaType);
         Assert.AreEqual("images.zip", response.Content.Headers.ContentDisposition?.FileName);
-        using var bytes = new MemoryStream(await response.Content.ReadAsByteArrayAsync());
-        using var zip = new ZipArchive(bytes, ZipArchiveMode.Read);
-        var entry = zip.Entries.Single();
-        Assert.AreEqual("page-002." + suffix, entry.FullName);
-        using var rendered = entry.Open();
-        var header = new byte[24];
-        rendered.ReadExactly(header);
-        if (format == "png")
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        using var zip = new ZipArchive(new MemoryStream(bytes), ZipArchiveMode.Read);
+        Assert.HasCount(pageCount, zip.Entries);
+        PdfSplitTests.AssertStoredDosHeaders(bytes, pageCount);
+        for (var i = 0; i < pageCount; i++)
         {
-            CollectionAssert.AreEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, header[..8]);
-            Assert.IsGreaterThan(0, BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16)));
-            Assert.IsGreaterThan(0, BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20)));
+            var entry = zip.Entries[i];
+            Assert.AreEqual($"page-{firstPage + i:D3}.{suffix}", entry.FullName);
+            using var rendered = entry.Open();
+            var header = new byte[24];
+            rendered.ReadExactly(header);
+            if (format == "png")
+            {
+                CollectionAssert.AreEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }, header[..8]);
+                Assert.IsGreaterThan(0, BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(16)));
+                Assert.IsGreaterThan(0, BinaryPrimitives.ReadInt32BigEndian(header.AsSpan(20)));
+            }
+            else CollectionAssert.AreEqual(new byte[] { 255, 216 }, header[..2]);
         }
-        else CollectionAssert.AreEqual(new byte[] { 255, 216 }, header[..2]);
         test.AssertClean();
     }
 
@@ -560,6 +568,99 @@ public sealed class PdfP2EndpointsTests
         using var json = JsonDocument.Parse(await rejectedOutput.Content.ReadAsByteArrayAsync());
         Assert.AreEqual("output-too-large", json.RootElement.GetProperty("reason").GetString());
         test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(false, "too-complex")]
+    [DataRow(true, "output-too-large")]
+    public async Task ToImagesPreservesSecondPageFailureAndCleansJob(bool exceedsBudget, string reason)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:MaxRedactInputBytes"] = "4096",
+            ["Pdf:RedactJobLimitBytes"] = "32768"
+        });
+        var marker = await ReplaceSecondPageRendererAsync(test, exceedsBudget
+            ? """
+                max_bytes=${14}
+                output=${16}
+                exec truncate -s "$((max_bytes + 1))" "$output"
+                """
+            : "exit 5");
+        using var form = PdfTestContext.FileForm(await test.CreatePagedPdfAsync(2));
+        using var response = await test.Client.PostAsync("/api/pdf/to-images?format=png&dpi=72", form);
+        Assert.IsTrue(File.Exists(marker), "The renderer must reach page two after writing the first ZIP entry.");
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual(reason, problem.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(false, "Timeout")]
+    [DataRow(true, "ClientCancelled")]
+    public async Task ToImagesPreservesOutcomeWhenSecondPageIsInterrupted(bool cancelClient, string outcome)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new() { ["Pdf:QpdfTimeoutSeconds"] = cancelClient ? "30" : "4" });
+        var marker = await ReplaceSecondPageRendererAsync(test, "exec sleep 60");
+        using var form = PdfTestContext.FileForm(await test.CreatePagedPdfAsync(2));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var request = test.Client.PostAsync("/api/pdf/to-images?format=png&dpi=72", form, cancellation.Token);
+        try
+        {
+            if (cancelClient)
+            {
+                while (!File.Exists(marker))
+                {
+                    Assert.IsFalse(request.IsCompleted, "The renderer must reach page two.");
+                    await Task.Delay(20, cancellation.Token);
+                }
+                cancellation.Cancel();
+                await Assert.ThrowsAsync<OperationCanceledException>(async () => { using var response = await request; });
+            }
+            else
+            {
+                using var response = await request;
+                Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
+                Assert.IsTrue(File.Exists(marker), "The renderer must reach page two.");
+            }
+        }
+        finally { cancellation.Cancel(); }
+
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (true)
+        {
+            lock (test.Logs)
+            {
+                if (test.Logs.Any(log => log.StartsWith("PDF request ", StringComparison.Ordinal) &&
+                    log.Contains($"Operation=to-images Outcome={outcome} ", StringComparison.Ordinal))) break;
+            }
+            await Task.Delay(20, deadline.Token);
+        }
+        var pid = await File.ReadAllTextAsync(marker);
+        Assert.IsFalse(Directory.Exists("/proc/" + pid));
+        test.AssertClean();
+    }
+
+    private static async Task<string> ReplaceSecondPageRendererAsync(PdfTestContext test, string action)
+    {
+        if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var marker = Path.Combine(test.Root, "second-page.pid");
+        var runner = Path.Combine(test.Root, "to-images-renderer.sh");
+        await File.WriteAllTextAsync(runner, $$"""
+            #!/bin/sh
+            if [ "$5" = --page ] && [ "$6" = 2 ]; then
+                printf '%s' "$$" > '{{marker}}'
+                {{action}}
+            fi
+            exec '{{options.DotnetPath}}' "$@"
+            """);
+        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        options.DotnetPath = runner;
+        return marker;
     }
 
     private static byte[] TextPdf(string text) => ContentPdf($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET");

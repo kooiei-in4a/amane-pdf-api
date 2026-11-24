@@ -24,12 +24,12 @@ internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, 
     {
         Stream? ownedOutput = output;
         Stream? partInput = null;
-        PdfSplitZipStream? bounded = null;
+        PdfZipWriteStream? bounded = null;
         try
         {
             var capacity = new PdfSplitCapacity(new FileInfo(files.InputPath).Length,
                 options.MaxSplitOutputBytes, options.MaxSplitJobBytes, zipOverheadBytes);
-            bounded = new(output, capacity, token);
+            bounded = new(output, capacity.CheckZipLength, static () => new PdfSplitOutputTooLargeException(), token);
             var archive = new ZipArchive(bounded, ZipArchiveMode.Create, leaveOpen: true);
             foreach (var part in parts)
             {
@@ -46,14 +46,14 @@ internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, 
                 var entryStream = entry.Open();
                 await partInput.CopyToAsync(entryStream, 128 * 1024, token);
                 entryStream.Dispose();
-                Close(ref partInput);
+                PdfZipWriteStream.CloseOwnedStream(ref partInput);
                 File.Delete(path);
                 capacity.ReleasePart();
             }
             archive.Dispose();
             token.ThrowIfCancellationRequested();
             capacity.CheckZipLength(output.Length);
-            Close(ref ownedOutput);
+            PdfZipWriteStream.CloseOwnedStream(ref ownedOutput);
             token.ThrowIfCancellationRequested();
             return capacity.AcceptedPdfBytes;
         }
@@ -65,15 +65,8 @@ internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, 
         finally
         {
             // Only streams left over after a primary failure remain here. Preserve that failure.
-            try { Close(ref partInput); } catch { }
-            try { Close(ref ownedOutput); } catch { }
+            try { PdfZipWriteStream.CloseOwnedStream(ref partInput); } catch { }
+            try { PdfZipWriteStream.CloseOwnedStream(ref ownedOutput); } catch { }
         }
-    }
-
-    private static void Close(ref Stream? stream)
-    {
-        var owned = stream;
-        stream = null; // A throwing close is never retried.
-        owned?.Dispose();
     }
 }
