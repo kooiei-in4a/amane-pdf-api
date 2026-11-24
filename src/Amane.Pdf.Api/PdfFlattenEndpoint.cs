@@ -40,7 +40,8 @@ internal static class PdfFlattenEndpoint
         job.Commit(files.OutputPath, budget);
         if (update is not null) job.Delete(update);
         job.Delete(files.InputPath);
-        await qpdf.ValidateOutputAsync(files.OutputPath, token);
+        try { await qpdf.ValidateOutputAsync(files.OutputPath, token); }
+        catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
         using var output = await job.ReadAsync(files.OutputPath, token, generated: true);
         if (output.Pages.Count != pageCount || output.Catalog(token).TryGetProperty("/AcroForm", out _))
             throw new InvalidOperationException("PDF flattening did not remove the form or changed the page count.");

@@ -100,7 +100,11 @@ internal static class PdfOcrEndpoint
             job.Commit(image, imageBudget);
             var (layer, lines) = await RecognizePageAsync(files, job, settings, language, image, i, pixels[i], token);
             job.Delete(image);
-            if (await qpdf.GetPageCountAsync(layer, token) != 1) throw new InvalidOperationException(Failure);
+            try
+            {
+                if (await qpdf.GetPageCountAsync(layer, token) != 1) throw new InvalidOperationException(Failure);
+            }
+            catch (PdfInputException) { throw new InvalidOperationException(Failure); }
             textLayers.Add(layer);
             var content = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-content-{i}.bin"));
             var height = pixels[i].Height;
@@ -129,7 +133,8 @@ internal static class PdfOcrEndpoint
             settings.OverlayGeneratedLimitBytes, token);
         job.Delete(textUpdate);
         job.Delete(merged);
-        await qpdf.ValidateOutputAsync(combined, token);
+        try { await qpdf.ValidateOutputAsync(combined, token); }
+        catch (PdfInputException) { throw new InvalidOperationException(Failure); }
 
         var overlaid = job.PathFor("ocr-overlay.pdf");
         var destinations = string.Join(',', pages.Select(page => page.ToString(CultureInfo.InvariantCulture)));
@@ -148,7 +153,8 @@ internal static class PdfOcrEndpoint
             settings.OverlayOutputLimitBytes, token);
         job.Delete(overlaid);
         job.Delete(update);
-        await qpdf.ValidateOutputAsync(files.OutputPath, token);
+        try { await qpdf.ValidateOutputAsync(files.OutputPath, token); }
+        catch (PdfInputException) { throw new InvalidOperationException(Failure); }
 
         using var result = await job.ReadAsync(files.OutputPath, token, generated: true);
         if (result.Pages.Count != count ||

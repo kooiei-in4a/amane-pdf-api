@@ -17,6 +17,42 @@ public sealed class PdfP3EndpointsTests
     private const string SearchTerm = "東京都";
 
     [TestMethod]
+    [DataRow("/api/pdf/flatten", "--check", "output.pdf", 2)]
+    [DataRow("/api/pdf/flatten", "--check", "output.pdf", 3)]
+    [DataRow("/api/pdf/n-up?pages-per-sheet=2", "--check", "output.pdf", 3)]
+    [DataRow(Horizontal, "--show-npages", "ocr-text-0.pdf", 3)]
+    [DataRow(Horizontal, "--check", "ocr-text.pdf", 3)]
+    [DataRow(Horizontal, "--check", "output.pdf", 3)]
+    public async Task GeneratedPdfInspectionFailureReturnsInternalError(
+        string route, string command, string generatedFile, int exitCode)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var scripts = new OverlayJob();
+        var marker = Path.Combine(scripts.Root, "output-checked");
+        var qpdf = scripts.Script($$"""
+            if [ "$1" = '{{command}}' ] && [ "${2##*/}" = '{{generatedFile}}' ]; then
+                [ -s "$2" ] || exit 99
+                touch '{{marker}}'
+                exit {{exitCode}}
+            fi
+            exec qpdf "$@"
+            """);
+        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = qpdf });
+        var input = route.StartsWith("/api/pdf/n-up", StringComparison.Ordinal) ?
+            await test.CreatePagedPdfAsync(2) : PdfTestContext.Fixture;
+        using var form = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(route, form);
+        Assert.IsTrue(File.Exists(marker), "The generated PDF must reach the injected inspection.");
+        Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("PDF処理に失敗しました。", problem.RootElement.GetProperty("title").GetString());
+        Assert.IsTrue(test.Logs.Any(log => log.StartsWith("PDF request ", StringComparison.Ordinal) &&
+            log.Contains("Outcome=InternalError ", StringComparison.Ordinal)));
+        Assert.Contains("PDF処理で内部障害が発生しました。", test.Logs);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task FlattenKeepsJapaneseAppearanceAndAnnotationsInPageContents()
     {
         if (!OperatingSystem.IsLinux()) return;

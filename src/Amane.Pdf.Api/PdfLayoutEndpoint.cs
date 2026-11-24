@@ -98,7 +98,8 @@ internal static class PdfLayoutEndpoint
             options.OverlayOutputLimitBytes, token);
         job.Delete(imported);
         job.Delete(update);
-        await qpdf.ValidateOutputAsync(files.OutputPath, token);
+        try { await qpdf.ValidateOutputAsync(files.OutputPath, token); }
+        catch (PdfInputException) { throw new InvalidOperationException("PDF output validation failed."); }
     }
 
     private static void WriteSourceUpdate(Utf8JsonWriter writer, PdfPageBoxes input, PdfPageAttributes[] pages,

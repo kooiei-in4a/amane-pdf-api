@@ -111,6 +111,35 @@ public sealed class PdfComposeTests
     }
 
     [TestMethod]
+    public async Task GeneratedPdfInspectionFailureReturnsInternalError()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var scripts = new OverlayJob();
+        var marker = Path.Combine(scripts.Root, "output-checked");
+        var qpdf = scripts.Script($$"""
+            if [ "$1" = --check ] && [ "${2##*/}" = output.pdf ]; then
+                [ -s "$2" ] || exit 99
+                touch '{{marker}}'
+                exit 3
+            fi
+            exec qpdf "$@"
+            """);
+        await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = qpdf });
+        var png = StampFixtures.Png(transparency: true);
+        using var form = Form(ImageLayout(png).ToJsonString());
+        form.Add(new ByteArrayContent(png), "image", ImageId);
+        using var response = await test.Client.PostAsync(Endpoint, form);
+        Assert.IsTrue(File.Exists(marker), "The generated PDF must reach the injected inspection.");
+        Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("PDF処理に失敗しました。", problem.RootElement.GetProperty("title").GetString());
+        Assert.IsTrue(test.Logs.Any(log => log.StartsWith("PDF request ", StringComparison.Ordinal) &&
+            log.Contains("Outcome=InternalError ", StringComparison.Ordinal)));
+        Assert.Contains("PDF処理で内部障害が発生しました。", test.Logs);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public void RepeatedFieldTextIsNotLimitedByAnAggregateOfExpandedElements()
     {
         var doc = ImageLayout([]);

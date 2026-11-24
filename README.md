@@ -610,8 +610,8 @@ Content-Typeや拡張子だけでPDFを判定せず、実qpdfの`--check`を使�
 | 200 | 処理済みPDF、splitは完成ZIPを返却 |
 | 400 | multipart/query形式不正、未知のクエリキー、必須項目不足/重複、予期しないfield、mergeのファイル数不足/超過、passwordまたはページ指定等の仕様違反、splitの分割数不足/超過 |
 | 413 | 単一PDF、merge入力合計、またはmultipartリクエスト総量のサイズ超過 |
-| 422 | 空ファイル、非PDF、破損/警告のあるPDF、処理上限超過、unlock以外の既暗号化PDF。unlockとcompareは各機能のreason表を参照 |
-| 500 | qpdf実行環境や処理中の想定外の内部障害 |
+| 422 | 空ファイル、非PDF、破損/警告のある入力PDF、処理上限超過、unlock以外の既暗号化PDF。unlockとcompareは各機能のreason表を参照 |
+| 500 | APIが生成したPDFの検査失敗、qpdf実行環境や処理中の想定外の内部障害 |
 | 503 | 同時PDF処理数の上限超過（待ち行列なし） |
 | 504 | qpdfの検査と各PDF処理全体の制限時間超過 |
 
