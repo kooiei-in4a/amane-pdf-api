@@ -956,12 +956,15 @@ python3 scripts/ocr-search-validation.py amane-pdf-api:ci
 検索結果の強調表示の位置は、`OcrTextLayer` の配置の定数を変えたときとリリース前に、ChromiumとFirefoxの実ブラウザで確認します（CIでは実行しません）。`--highlight` で、横書き・回転+CropBox・縦書きと横見出しの試料のOCR出力PDFと、元画像から求めた語ごとの期待矩形を保存し、`highlight.mjs` で実際の強調表示と比べます。ChromiumのIoUが0.60未満の語があると終了コード1です。
 
 ```bash
-npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional
-npx --prefix scripts/ocr-search playwright-core install chromium firefox
-python3 scripts/ocr-search-validation.py amane-pdf-api:ci --highlight /tmp/ocr-highlight
-for c in horizontal horizontal-rotated-cropped vertical-with-heading; do
-  node scripts/ocr-search/highlight.mjs /tmp/ocr-highlight/$c-ocr.pdf /tmp/ocr-highlight/$c-expected.json /tmp/ocr-highlight/shots-$c
-done
+(
+  set -e
+  npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional
+  npx --prefix scripts/ocr-search playwright-core install chromium firefox
+  python3 scripts/ocr-search-validation.py amane-pdf-api:ci --highlight /tmp/ocr-highlight
+  for c in horizontal horizontal-rotated-cropped vertical-with-heading; do
+    node scripts/ocr-search/highlight.mjs "/tmp/ocr-highlight/$c-ocr.pdf" "/tmp/ocr-highlight/$c-expected.json" "/tmp/ocr-highlight/shots-$c"
+  done
+)
 ```
 
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
