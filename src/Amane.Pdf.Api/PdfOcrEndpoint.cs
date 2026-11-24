@@ -89,6 +89,7 @@ internal static class PdfOcrEndpoint
         }
 
         var textLayers = new List<string>();
+        var contents = new List<string>();
         for (var i = 0; i < pages.Length; i++)
         {
             var imageBudget = job.Reserve(image, ImageLimit);
@@ -97,19 +98,37 @@ internal static class PdfOcrEndpoint
                 page.DisplayWidth / page.UserUnit, page.DisplayHeight / page.UserUnit,
                 pixels[i].Width, pixels[i].Height, imageBudget, []), token);
             job.Commit(image, imageBudget);
-            var layer = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{i}.pdf"));
-            await RecognizeAsync(files, job, settings, language, image, layer, token);
+            var (layer, lines) = await RecognizePageAsync(files, job, settings, language, image, i, pixels[i], token);
             job.Delete(image);
             if (await qpdf.GetPageCountAsync(layer, token) != 1) throw new InvalidOperationException(Failure);
             textLayers.Add(layer);
+            var content = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-content-{i}.bin"));
+            var height = pixels[i].Height;
+            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, language == Vertical, height, Dpi, token), token);
+            contents.Add(content);
         }
 
-        var combined = job.PathFor("ocr-text.pdf");
+        var merged = job.PathFor("ocr-text-merged.pdf");
         var merge = new List<string> { "--empty", "--pages" };
         foreach (var layer in textLayers) merge.AddRange([layer, "1"]);
-        merge.AddRange(["--", combined]);
-        await job.WritePdfAsync(combined, [.. merge], settings.OverlayGeneratedLimitBytes, token);
+        merge.AddRange(["--", merged]);
+        await job.WritePdfAsync(merged, [.. merge], settings.OverlayGeneratedLimitBytes, token);
         foreach (var layer in textLayers) job.Delete(layer);
+
+        // Keep Tesseract's page and GlyphLessFont, but replace its word-by-word content stream (Issue #116).
+        var textUpdate = job.PathFor("ocr-text-update.json");
+        using (var layers = await job.ReadAsync(merged, token, generated: true))
+        {
+            if (layers.Pages.Count != pages.Length) throw new InvalidOperationException(Failure);
+            job.WriteJson(textUpdate, writer => WriteTextUpdate(writer, layers, contents, pixels, token), token,
+                settings.OverlayGeneratedJsonLimitBytes);
+        }
+        foreach (var content in contents) job.Delete(content);
+        var combined = job.PathFor("ocr-text.pdf");
+        await job.WritePdfAsync(combined, [merged, "--update-from-json=" + textUpdate, combined],
+            settings.OverlayGeneratedLimitBytes, token);
+        job.Delete(textUpdate);
+        job.Delete(merged);
         await qpdf.ValidateOutputAsync(combined, token);
 
         var overlaid = job.PathFor("ocr-overlay.pdf");
@@ -137,19 +156,98 @@ internal static class PdfOcrEndpoint
             throw new InvalidOperationException(Failure);
     }
 
-    private static async Task RecognizeAsync(TemporaryPdfFiles files, PdfPageJob job, PdfOptions settings,
-        string language, string image, string layer, CancellationToken token)
+    private static async Task<(string Layer, List<OcrTextLayer.Line> Lines)> RecognizePageAsync(TemporaryPdfFiles files,
+        PdfPageJob job, PdfOptions settings, string language, string image, int index, (int Width, int Height) size,
+        CancellationToken token)
     {
+        var layer = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{index}.pdf"));
+        if (language != Vertical)
+            return (layer, await RecognizeAsync(files, job, settings, Horizontal, "6", image, layer, size, token));
+
+        // jpn_vert --psm 5 slices horizontal headings and captions into vertical "columns", while page segmentation
+        // with both models misreads a short isolated column. Keep the recognition Tesseract is more confident in.
+        var columns = await RecognizeAsync(files, job, settings, Vertical, "5", image, layer, size, token);
+        var segmented = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{index}-segmented.pdf"));
+        var lines = await RecognizeAsync(files, job, settings, Horizontal + "+" + Vertical, "3", image, segmented, size, token);
+        if (OcrTextLayer.MeanConfidence(lines) <= OcrTextLayer.MeanConfidence(columns))
+        {
+            job.Delete(segmented);
+            return (layer, columns);
+        }
+        job.Delete(layer);
+        return (segmented, lines);
+    }
+
+    // Writes Tesseract's text-only PDF and TSV in one recognition, then reads and deletes the TSV.
+    private static async Task<List<OcrTextLayer.Line>> RecognizeAsync(TemporaryPdfFiles files, PdfPageJob job,
+        PdfOptions settings, string models, string psm, string image, string layer, (int Width, int Height) size,
+        CancellationToken token)
+    {
+        var tsv = Path.ChangeExtension(layer, ".tsv");
         var budget = job.Reserve(layer, settings.OverlayGeneratedLimitBytes);
+        var tsvBudget = job.Reserve(tsv, settings.OverlayGeneratedLimitBytes);
+        // prlimit's file size limit applies to each output file, so use the smaller reservation.
+        var fileBudget = Math.Min(budget, tsvBudget);
         var basePath = Path.ChangeExtension(Path.GetFullPath(layer), null);
-        var psm = language == Vertical ? "5" : "6";
-        string[] arguments = [image, basePath, "-l", language, "--psm", psm, "--dpi",
-            Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "pdf"];
+        string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
+            Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "pdf", "tsv"];
         var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
-            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
-        if (result.ExceedsBudget) throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
-        if (!result.Succeeded) throw new InvalidOperationException(Failure);
+            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, fileBudget, token);
+        var tsvInfo = new FileInfo(tsv);
+        if (result.ExceedsBudget || tsvInfo.Exists && tsvInfo.Length > fileBudget)
+            throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
+        if (!result.Succeeded || !tsvInfo.Exists) throw new InvalidOperationException(Failure);
         job.Commit(layer, budget);
+        job.Commit(tsv, tsvBudget);
+        var lines = OcrTextLayer.Read(tsv, size.Width, size.Height, token);
+        job.Delete(tsv);
+        return lines;
+    }
+
+    private static void WriteTextUpdate(System.Text.Json.Utf8JsonWriter writer, PdfPageBoxes layers,
+        IReadOnlyList<string> contents, (int Width, int Height)[] pixels, CancellationToken token)
+    {
+        PdfPageJob.StartUpdate(writer);
+        for (var i = 0; i < contents.Count; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            var reference = layers.Pages[i];
+            var page = layers.Dictionary(reference);
+            var media = layers.Box(page.GetProperty("/MediaBox"), token);
+            if (Math.Abs(media.Width - pixels[i].Width * 72.0 / Dpi) > 0.02 ||
+                Math.Abs(media.Height - pixels[i].Height * 72.0 / Dpi) > 0.02 || media.Left != 0 || media.Bottom != 0)
+                throw new InvalidOperationException(Failure);
+            if (!page.TryGetProperty("/Contents", out var contentValue) ||
+                PdfObjectRef.Parse(contentValue) is not { } contentRef ||
+                !layers.Objects.TryGetValue(contentRef, out var contentObject) || !contentObject.TryGetProperty("stream", out _))
+                throw new InvalidOperationException(Failure);
+            var fonts = layers.Resolve(layers.Resolve(page.GetProperty("/Resources"), token).GetProperty("/Font"), token);
+            var font = fonts.EnumerateObject().ToArray();
+            if (font.Length != 1 || PdfObjectRef.Parse(font[0].Value) is not { } fontRef)
+                throw new InvalidOperationException(Failure);
+
+            writer.WriteStartObject(reference.Key);
+            writer.WriteStartObject("value");
+            foreach (var property in page.EnumerateObject())
+                if (property.Name is not "/Resources") property.WriteTo(writer);
+            writer.WriteStartObject("/Resources");
+            writer.WriteStartObject("/Font");
+            writer.WriteString("/" + OcrTextLayer.FontName, fontRef.Text);
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+
+            writer.WriteStartObject(contentRef.Key);
+            writer.WriteStartObject("stream");
+            writer.WriteStartObject("dict");
+            writer.WriteEndObject();
+            writer.WriteBase64String("data", File.ReadAllBytes(contents[i]));
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+            writer.Flush();
+        }
+        PdfPageJob.EndUpdate(writer);
     }
 
     internal static async Task ValidateStartupAsync(PdfOptions options, CancellationToken token)

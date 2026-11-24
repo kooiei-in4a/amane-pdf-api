@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>OCR highlight check</title>
+<link rel="stylesheet" href="/pdfjs/web/pdf_viewer.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #808080; }
+  #viewerContainer { position: absolute; inset: 0; overflow: auto; }
+  .expected { position: absolute; outline: 2px solid #d00; pointer-events: none; z-index: 10; }
+</style>
+</head>
+<body>
+<div id="viewerContainer"><div id="viewer" class="pdfViewer"></div></div>
+<script type="module">
+// Opens a PDF with the PDF.js 6.3 viewer components (the same PDFViewer, PDFFindController and text layer
+// as the generic viewer) and reports where the selected search highlight is drawn, in 300 dpi display pixels.
+import * as pdfjsLib from "/pdfjs/build/pdf.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdfjs/build/pdf.worker.mjs";
+globalThis.pdfjsLib = pdfjsLib;
+const { EventBus, PDFViewer, PDFFindController, PDFLinkService } = await import("/pdfjs/web/pdf_viewer.mjs");
+
+const container = document.getElementById("viewerContainer");
+const eventBus = new EventBus();
+const linkService = new PDFLinkService({ eventBus });
+const findController = new PDFFindController({ eventBus, linkService });
+const viewer = new PDFViewer({ container, eventBus, linkService, findController });
+linkService.setViewer(viewer);
+const rendered = new Promise(resolve => eventBus.on("textlayerrendered", e => { if (e.pageNumber === 1) resolve(); }));
+eventBus.on("pagesinit", () => { viewer.currentScaleValue = "page-width"; });
+const doc = await pdfjsLib.getDocument({ url: "/pdf", cMapUrl: "/pdfjs/cmaps/", standardFontDataUrl: "/pdfjs/standard_fonts/" }).promise;
+viewer.setDocument(doc);
+linkService.setDocument(doc);
+await rendered;
+const display = (await doc.getPage(1)).getViewport({ scale: 300 / 72 });
+const page = () => document.querySelector('.page[data-page-number="1"]');
+
+window.ocrCheck = {
+  async highlight(query) {
+    eventBus.dispatch("find", { source: null, type: "", query, caseSensitive: false, entireWord: false,
+      highlightAll: true, findPrevious: false, matchDiacritics: false });
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const wrapper = page().querySelector(".canvasWrapper").getBoundingClientRect();
+    const boxes = [...page().querySelectorAll(".textLayer .highlight.selected")].map(span => span.getBoundingClientRect())
+      .filter(r => r.width > 0 && r.height > 0)
+      .map(r => [(r.left - wrapper.left) / wrapper.width * display.width, (r.top - wrapper.top) / wrapper.height * display.height,
+        (r.right - wrapper.left) / wrapper.width * display.width, (r.bottom - wrapper.top) / wrapper.height * display.height]);
+    return boxes.length ? boxes.reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]) : null;
+  },
+  // Outlines a box (300 dpi display pixels) and returns its CSS-pixel rectangle for a screenshot.
+  outline(box) {
+    page().querySelectorAll(".expected").forEach(e => e.remove());
+    const wrapper = page().querySelector(".canvasWrapper");
+    const sx = wrapper.clientWidth / display.width, sy = wrapper.clientHeight / display.height;
+    const div = Object.assign(document.createElement("div"), { className: "expected" });
+    Object.assign(div.style, { left: wrapper.offsetLeft + box[0] * sx + "px", top: wrapper.offsetTop + box[1] * sy + "px",
+      width: (box[2] - box[0]) * sx + "px", height: (box[3] - box[1]) * sy + "px" });
+    page().append(div);
+    const r = div.getBoundingClientRect();
+    return [r.left, r.top, r.width, r.height];
+  },
+};
+document.body.dataset.ready = "1";
+</script>
+</body>
+</html>
