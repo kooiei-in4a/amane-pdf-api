@@ -301,6 +301,28 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task OcrFitsTesseractPdfAndTsvIntoASmallJobBudget(bool vertical)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        // Tesseract writes the text PDF and the TSV in one run. Reserving the PDF first must not take the space
+        // that the TSV needs; main succeeded with these limits before the TSV output was added.
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:RedactJobLimitBytes"] = "8388608",
+            ["Pdf:MaxRedactInputBytes"] = "4194304"
+        });
+        var scanned = await ScanAsync(test, vertical);
+        var output = await PostPdfAsync(test, "/api/pdf/ocr?direction=" + (vertical ? "vertical" : "horizontal"),
+            scanned, "ocr.pdf");
+        var path = Path.Combine(test.Root, "small-budget.pdf");
+        await File.WriteAllBytesAsync(path, output);
+        Assert.Contains(SearchTerm, Normalize(await ExtractTextAsync(path, "-raw")));
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrSharesRenderSlotTimesOutAndAllowsOtherPdfOperations()
     {
         if (!OperatingSystem.IsLinux()) return;

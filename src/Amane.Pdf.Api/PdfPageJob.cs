@@ -9,6 +9,7 @@ internal sealed class PdfPageJob(TemporaryPdfFiles files, QpdfProcessor qpdf, Pd
     internal string PathFor(string name) => Path.Combine(files.DirectoryPath, name);
     internal void TrackInput() => capacity.Reserve(files.InputPath, new FileInfo(files.InputPath).Length);
     internal long Reserve(string path, long limit) => capacity.ReserveWrite(path, limit, external: true);
+    internal long ReservePair(string first, string second, long limit) => capacity.ReserveWritePair(first, second, limit);
     internal void Commit(string path, long budget) => capacity.Commit(path, budget);
     internal void Delete(string path) => capacity.Delete(path);
 

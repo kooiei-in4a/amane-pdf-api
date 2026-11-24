@@ -3,7 +3,8 @@
 //   npm ci --ignore-scripts --omit=optional && npx playwright-core install chromium firefox
 //   node highlight.mjs <ocr.pdf> <expected.json> [out_dir]
 // expected.json maps each search term to its ink box on the first page in 300 dpi display pixels
-// ([left, top, right, bottom]); use null when the position is unknown. Prints the IoU per browser and saves
+// ([left, top, right, bottom]); use null when the position is unknown. `ocr-search-validation.py --highlight DIR`
+// writes the regression samples' OCR outputs and expected boxes measured from the source images. Prints the IoU per browser and saves
 // screenshots (highlight plus the expected box outlined in red) to out_dir. Exits 1 if a Chromium IoU is
 // below --min (default 0.6). Firefox results are for visual review: its fallback font widens Latin and digits.
 import fs from "node:fs";

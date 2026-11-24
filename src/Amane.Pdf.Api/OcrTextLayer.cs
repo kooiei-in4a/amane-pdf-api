@@ -34,9 +34,16 @@ internal static class OcrTextLayer
     // PDF.js spreads a line item evenly over its characters. Trailing punctuation has a narrow ink box, so the last
     // word of such a line gets the line's median character pitch; stretching other words overshoots.
     private const string TrailingPunctuation = "。、．，」』）〕】";
+    // PDF.js search drops a line break right after a CJK character so that wrapped Japanese text matches, which
+    // also joins independent fields ("開館時間" + "返却ポスト" matched "時間返却"). After the last CJK word of a field,
+    // U+034F COMBINING GRAPHEME JOINER (invisible, attached without a position check, kept by search
+    // normalization) turns that line break into a space. A field ends at a new Tesseract block, an orientation
+    // change, a gap above FieldGap line thicknesses, lines that do not overlap, or a step backwards.
+    internal const char FieldBoundary = '\u034F';
+    internal const double FieldGap = 1.5;
 
     internal sealed record Word(int Left, int Top, int Width, int Height, string Text, double Confidence);
-    internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words);
+    internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words, int Block = 1);
 
     internal static List<Line> Read(string path, int imageWidth, int imageHeight, CancellationToken token)
     {
@@ -62,7 +69,7 @@ internal static class OcrTextLayer
                 if ((long)left + width > imageWidth || (long)top + height > imageHeight) throw new InvalidDataException();
                 if (level == 4)
                 {
-                    lines.Add(new(left, top, width, height, []));
+                    lines.Add(new(left, top, width, height, [], key.Item1));
                     current = key;
                 }
                 else if (level == 5)
@@ -131,11 +138,13 @@ internal static class OcrTextLayer
         writer.WriteLine("3 Tr");
         var count = 0;
         var plan = new List<(double Advance, bool Separated, bool Joined)>();
-        foreach (var line in lines)
+        var placed = lines.Where(line => line.Words.Count > 0 && (IsVertical(line, vertical) ? line.Width : line.Height) > 0)
+            .ToArray();
+        for (var index = 0; index < placed.Length; index++)
         {
-            var lineVertical = vertical && line.Height > line.Width * VerticalLineAspect;
+            var line = placed[index];
+            var lineVertical = IsVertical(line, vertical);
             var thickness = lineVertical ? line.Width : line.Height;
-            if (thickness <= 0 || line.Words.Count == 0) continue;
             var fontSize = thickness * k * FontSizeRatio;
             plan.Clear();
             for (var i = 0; i < line.Words.Count; i++)
@@ -185,8 +194,30 @@ internal static class OcrTextLayer
                 writer.WriteLine("> ] TJ");
                 if (separated) writer.WriteLine("100 Tz [ <0020> ] TJ");
             }
+            if (index + 1 < placed.Length && EndsCjk(last) && EndsField(line, placed[index + 1], vertical))
+                writer.WriteLine(Invariant($"100 Tz [ <{(int)FieldBoundary:x4}> ] TJ"));
         }
         writer.WriteLine("ET");
+    }
+
+    private static bool IsVertical(Line line, bool vertical) => vertical && line.Height > line.Width * VerticalLineAspect;
+
+    // Lines of one paragraph follow each other closely and overlap across the reading direction.
+    internal static bool EndsField(Line line, Line next, bool vertical)
+    {
+        var lineVertical = IsVertical(line, vertical);
+        if (line.Block != next.Block || lineVertical != IsVertical(next, vertical)) return true;
+        if (lineVertical)
+        {
+            var thickness = Math.Max(line.Width, next.Width);
+            var overlap = Math.Min(line.Top + line.Height, next.Top + next.Height) - Math.Max(line.Top, next.Top);
+            var gap = line.Left - (next.Left + next.Width);
+            return overlap <= 0 || next.Left > line.Left || gap > FieldGap * thickness;
+        }
+        var height = Math.Max(line.Height, next.Height);
+        var shared = Math.Min(line.Left + line.Width, next.Left + next.Width) - Math.Max(line.Left, next.Left);
+        var below = next.Top - (line.Top + line.Height);
+        return shared <= 0 || next.Top < line.Top || below > FieldGap * height;
     }
 
     private static int Number(string value)

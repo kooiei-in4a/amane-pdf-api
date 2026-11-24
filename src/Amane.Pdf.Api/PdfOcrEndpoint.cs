@@ -184,21 +184,19 @@ internal static class PdfOcrEndpoint
         CancellationToken token)
     {
         var tsv = Path.ChangeExtension(layer, ".tsv");
-        var budget = job.Reserve(layer, settings.OverlayGeneratedLimitBytes);
-        var tsvBudget = job.Reserve(tsv, settings.OverlayGeneratedLimitBytes);
-        // prlimit's file size limit applies to each output file, so use the smaller reservation.
-        var fileBudget = Math.Min(budget, tsvBudget);
+        // prlimit's file size limit applies to each output file; reserve the same budget for both before running.
+        var budget = job.ReservePair(layer, tsv, settings.OverlayGeneratedLimitBytes);
         var basePath = Path.ChangeExtension(Path.GetFullPath(layer), null);
         string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
             Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "pdf", "tsv"];
         var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
-            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, fileBudget, token);
+            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
         var tsvInfo = new FileInfo(tsv);
-        if (result.ExceedsBudget || tsvInfo.Exists && tsvInfo.Length > fileBudget)
+        if (result.ExceedsBudget || tsvInfo.Exists && tsvInfo.Length > budget)
             throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
         if (!result.Succeeded || !tsvInfo.Exists) throw new InvalidOperationException(Failure);
         job.Commit(layer, budget);
-        job.Commit(tsv, tsvBudget);
+        job.Commit(tsv, budget);
         var lines = OcrTextLayer.Read(tsv, size.Width, size.Height, token);
         job.Delete(tsv);
         return lines;

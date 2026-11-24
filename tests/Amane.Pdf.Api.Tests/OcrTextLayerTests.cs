@@ -194,6 +194,55 @@ public sealed class OcrTextLayerTests
         Assert.AreEqual(100 * K, shows[0].Advance, 0.002);
     }
 
+    [TestMethod]
+    [DataRow(0, 170, 500, 50, 1, false, false, DisplayName = "next line of a wrapped paragraph")]
+    [DataRow(0, 226, 500, 50, 1, false, true, DisplayName = "gap above 1.5 line heights")]
+    [DataRow(700, 170, 500, 50, 1, false, true, DisplayName = "no horizontal overlap")]
+    [DataRow(0, 170, 500, 50, 2, false, true, DisplayName = "another Tesseract block")]
+    [DataRow(0, 20, 500, 50, 1, false, true, DisplayName = "next line above")]
+    [DataRow(0, 170, 50, 400, 1, true, true, DisplayName = "orientation change on a vertical page")]
+    public void EndsFieldSeparatesIndependentLinesOnly(int left, int top, int width, int height, int block,
+        bool vertical, bool ends)
+    {
+        // A horizontal line 600x50 at (0, 100), so its bottom edge is at 150.
+        var line = new OcrTextLayer.Line(0, 100, 600, 50, [new(0, 100, 50, 50, "開館", 90)]);
+        var next = new OcrTextLayer.Line(left, top, width, height, [new(left, top, 50, 50, "時間", 90)], block);
+        Assert.AreEqual(ends, OcrTextLayer.EndsField(line, next, vertical));
+    }
+
+    [TestMethod]
+    public void EndsFieldFollowsColumnsRightToLeftOnVerticalPages()
+    {
+        var column = new OcrTextLayer.Line(500, 100, 50, 400, [new(500, 100, 50, 100, "返却", 90)]);
+        Assert.IsFalse(OcrTextLayer.EndsField(column, column with { Left = 430 }, true));
+        Assert.IsTrue(OcrTextLayer.EndsField(column, column with { Left = 300 }, true));
+        Assert.IsTrue(OcrTextLayer.EndsField(column, column with { Left = 570 }, true));
+        Assert.IsTrue(OcrTextLayer.EndsField(column, column with { Left = 430, Top = 600 }, true));
+    }
+
+    [TestMethod]
+    public void WriteMarksTheEndOfJapaneseFieldsForPdfJsSearch()
+    {
+        var boundary = $"100 Tz [ <{(int)OcrTextLayer.FieldBoundary:x4}> ] TJ";
+        OcrTextLayer.Line Line(int left, int top, string text, int block = 1)
+            => new(left, top, 300, 50, [new(left, top, 300, 50, text, 90)], block);
+
+        // Far apart: 開館時間 ... 返却ポスト ... Dark Mode. Only lines ending in CJK get the marker.
+        var (separate, _) = Write([Line(100, 100, "開館時間"), Line(1300, 1600, "返却ポスト"), Line(500, 2400, "Mode")],
+            vertical: false, imageHeight: 3500);
+        Assert.AreEqual(2, separate.Split(boundary).Length - 1);
+        StringAssert.Contains(separate, Convert.ToHexStringLower(Encoding.BigEndianUnicode.GetBytes("返却ポスト")) + "> ] TJ\n" + boundary);
+
+        // A wrapped paragraph keeps its line break removable, so 開館時|間 still matches 開館時間.
+        var (wrapped, _) = Write([Line(100, 100, "中央図書館の開館時"), Line(100, 170, "間は午前九時から")],
+            vertical: false, imageHeight: 3500);
+        Assert.DoesNotContain(boundary, wrapped);
+
+        // A line ending in Latin text already becomes a space in PDF.js search.
+        var (latin, _) = Write([Line(100, 100, "Dark"), Line(1300, 1600, "返却")], vertical: false, imageHeight: 3500);
+        Assert.DoesNotContain(boundary, latin);
+    }
+
     private static (string Text, Show[] Shows) Write(IReadOnlyList<OcrTextLayer.Line> lines, bool vertical, int imageHeight)
     {
         using var stream = new MemoryStream();
