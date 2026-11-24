@@ -671,11 +671,11 @@ request結果はSuccess／Rejected／Timeout／ClientCancelled／Stopping／Inte
 
 ## 描画プログラム（PDFium、Linux x86_64）
 
-`Amane.Pdf.Renderer` は別プロセスでPDFの1ページを描き、指定の画素矩形を黒で塗ってからJPEG（baseline、4:2:0、品質85）にします。画像化方式の黒塗り（`POST /api/pdf/redact`）と、将来のPDF→画像・OCRの基盤です。PDFiumをAPIプロセス内で読み込まず、PDFtoImage・SkiaSharp・NuGetの画像ライブラリは使いません。
+`Amane.Pdf.Renderer` は別プロセスでPDFの1ページを描き、JPEG（`render-jpeg`、baseline、4:2:0、品質85）またはPNG（`render-png`）を出力します。黒塗り（`POST /api/pdf/redact`）、画像変換（`POST /api/pdf/to-images`）、OCR（`POST /api/pdf/ocr`）で使用します。指定の画素矩形を黒で塗る `--fill` はJPEG出力でのみ使えます。PDFiumをAPIプロセス内で読み込まず、PDFtoImage・SkiaSharp・NuGetの画像ライブラリは使いません。
 
 PDFiumは `third_party/pdfium.lock` の `chromium/8100` を `scripts/install-pdfium.sh` で取得し、tgz全体のsha256を検証します。`--pdfium` の絶対pathだけから共有ライブラリを読み、V8・XFAなしのbuildを使います。pdfcpuと同じ検証済みBIZ UDPゴシックTTFを渡します。Linuxの起動時には、埋め込みなしの `/MS-Mincho`・`/UniJIS-UCS2-H` の「日本語」、黒い塗り、JPEG生成を実際に検査します。失敗時は「描画プログラム（PDFium）の自己テストに失敗しました。」だけを記録し、待受前に終了コード1で停止します。他の自己テストと固定30秒の起動deadlineを共有します。
 
-描画は最大1600万画素、範囲100個です。ページ寸法を0.01 pt以内で照合してから描き、JPEGが `--max-bytes` を超えたらファイルを作りません。塗る前の画像は出力せず、成功時のJPEGだけをCreateNew・0600で作ります。子プロセスはCORE 0・DATA 384 MiB・FSIZE（JPEG予算+1）、診断socketなしで実行し、timeout・cancelでkillして終了を待ちます。CoreCLRのW^X用memfdのため、FSIZEは起動時だけ最低8 MiBとし、プログラム内でPDFiumを読む前に予算+1へ下げます。AS制限は使いません。共有描画枠は待ち0・1枠です。呼び出し元がrequest全体で枠と一時ファイルの削除を管理します。
+描画は最大1600万画素、黒塗りの矩形は最大100個です。ページ寸法を0.01 pt以内で照合してから描き、出力ファイルはCreateNew・0600で作ります。JPEGは指定された黒塗りと `--max-bytes` の検査を済ませてから書き出します。PNGは書込み中に同じ上限を検査し、失敗時に途中のファイルを削除します。子プロセスはCORE 0・DATA 384 MiB・FSIZE（画像の出力予算+1）、診断socketなしで実行し、timeout・cancelでkillして終了を待ちます。CoreCLRのW^X用memfdのため、FSIZEは起動時だけ最低8 MiBとし、プログラム内でPDFiumを読む前に予算+1へ下げます。AS制限は使いません。共有描画枠は待ち0・1枠です。呼び出し元がrequest全体で枠と一時ファイルの削除を管理します。
 
 PDFiumは対応外の内容やメモリ不足で画像を黙って省略する場合があります。黒塗りAPIでは画像サイズの事前検査も行いますが、完全な見た目の一致は保証できないため結果を確認してください。[設計書](docs/redact-design.md)と[描画基盤の検証記録](docs/renderer-validation.md)を参照してください。
 

@@ -25,7 +25,7 @@ internal static class PdfOcrEndpoint
         using var lease = slot.TryAcquire();
         if (lease is null)
         {
-            await Results.Problem(statusCode: 503, title: "重いPDF処理の同時実行上限に達しました。").ExecuteAsync(context);
+            await Results.Problem(statusCode: 503, title: "PDF処理の同時実行上限に達しました。").ExecuteAsync(context);
             return;
         }
 
