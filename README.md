@@ -657,7 +657,9 @@ file: PDF
 
 `direction` は必須で、横書き `horizontal` または縦書き `vertical` を選びます。`pages` を省略すると全ページが対象です。例 `1-3,5`。範囲外、重複した指定、対象が `Pdf__MaxOcrPages`（既定・最大10ページ）を超える場合は400です。全ページを出力し、選んだページにだけ透明な検索用の文字レイヤーを加えます。元のページの表示、順序、用紙サイズを保ちます。200、`application/pdf`、固定名 `ocr.pdf` で返します。
 
-描画は300 dpi、1ページ1,600万画素までです。黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、処理が `Pdf__OcrTimeoutSeconds`（既定90秒）を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。文字間に空白が入り、長い語で検索しにくい場合があります。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
+描画は300 dpi、1ページ1,600万画素までです。黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、処理が `Pdf__OcrTimeoutSeconds`（既定90秒）を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
+
+検索用の文字は、Tesseractが認識した語の位置から置き直します。日本語の語の間には空白を入れず、英数字の単語の間と、離れた欄・段の間には空白を入れます。このため、日本語の文中の空白（全角・半角）や、間隔の狭い表の欄の区切りは詰まることがあります。PDF.jsは日本語の直後の改行を検索時に無視するため、離れた欄・段の終わりには表示されない区切り文字（U+034F）を置き、別の欄の語とつながって一致しないようにします。コピーした文章にもこの文字が含まれます（表示はされません）。縦書き（`vertical`）では、縦書きの列として読む認識と、縦書き・横書きを分けて読む認識の両方を行い、Tesseractの信頼度が高い結果を使います。縦書きのページにある横書きの見出しや説明も検索できますが、処理時間は横書きの約2倍です。縦中横の数字は認識されません。PDF.jsで検索したときの強調表示が元の行に重なるように配置しています。ビューアの代替フォントによっては、数字や英字を含む行で強調の位置がずれることがあります。
 
 ## 内部の処理時間ログ
 
@@ -943,6 +945,27 @@ python3 scripts/redact-validation.py amane-pdf-api:ci
 ```
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名のGo SDK・font archive・OFLをローカルから読む検証用optionで、checksumの検査は省略しません。pdfcpu moduleと依存はbuild時にGo proxyとchecksum databaseから取得します。ソースのmodule checksum・go.mod・binary metadata・licenseを照合し、SDKとビルドcacheはruntimeへ含めません。
+
+OCRの文字レイヤーは、CIでPDF.js 6.3.289の検索処理（ビューアと同じ `PDFFindController`）でも確認します。日本語の語句が空白で分断されずに見つかること、行をまたぐ語、英字の単語間の空白、離れた欄の語どうしが連結しないこと、回転・CropBox付きのページ、縦書きのページの横書きの見出しが対象です。Node.jsとpdfjs-distはCI・検証専用で、runtimeには追加しません。
+
+```bash
+npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional --omit=dev
+python3 scripts/ocr-search-validation.py amane-pdf-api:ci
+```
+
+検索結果の強調表示の位置は、`OcrTextLayer` の配置の定数を変えたときとリリース前に、ChromiumとFirefoxの実ブラウザで確認します（CIでは実行しません）。`--highlight` で、横書き・回転+CropBox・縦書きと横見出しの試料のOCR出力PDFと、元画像から求めた語ごとの期待矩形を保存し、`highlight.mjs` で実際の強調表示と比べます。ChromiumのIoUが0.60未満の語があると終了コード1です。
+
+```bash
+(
+  set -e
+  npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional
+  npx --prefix scripts/ocr-search playwright-core install chromium firefox
+  python3 scripts/ocr-search-validation.py amane-pdf-api:ci --highlight /tmp/ocr-highlight
+  for c in horizontal horizontal-rotated-cropped vertical-with-heading; do
+    node scripts/ocr-search/highlight.mjs "/tmp/ocr-highlight/$c-ocr.pdf" "/tmp/ocr-highlight/$c-expected.json" "/tmp/ocr-highlight/shots-$c"
+  done
+)
+```
 
 CIはUbuntu 26.04 runnerでrestore、Release build、全自動テスト、Docker build、Docker runとsmoke test、合成fixtureの構造・データ・Poppler描画比較を実行します。poppler-utils／Pillow／NumPyはCI・測定専用で、runtimeには追加しません。Ubuntu hostのqpdf AppArmorは拡張子なしのraw出力を拒否するため、hostテストでは同じ配布バイナリの一時コピーをPATHへ置きます。runtimeのRunnerや起動時自己テストには特例を設けません。runtime stageのベースは `mcr.microsoft.com/dotnet/aspnet:10.0-resolute`（Ubuntu 26.04）です。
 

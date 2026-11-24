@@ -207,6 +207,53 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    public async Task OcrKeepsJapanesePhrasesWholeAndLatinWordsApart()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        string[] lines = ["中央図書館の開館時間は午前九時から午後七時までです。", "返却ポストは正面入口の東側にあります。",
+            "本製品は Windows 11 と macOS に対応しています。"];
+        var scanned = await ScanPageAsync(test, "phrases", lines.Select((text, i) => new
+        {
+            page = 1, x = 0.06m, y = 0.08m + 0.05m * i, width = 0.9m, height = 0.04m, fontSize = 18, align = "left", text
+        }).ToArray());
+        var path = Path.Combine(test.Root, "phrases-ocr.pdf");
+        await File.WriteAllBytesAsync(path, await PostPdfAsync(test, Horizontal, scanned, "ocr.pdf"));
+        // Spaces are significant here: PDF.js and pdftotext both fail to find 開館時間 in "開館 時 間".
+        var text = (await ExtractTextAsync(path, "-raw")).Normalize(NormalizationForm.FormKC);
+        foreach (var phrase in new[] { "中央図書館", "開館時間", "午前九時", "午後七時", "返却ポスト", "正面入口", "Windows 11" })
+            Assert.Contains(phrase, text);
+        Assert.DoesNotContain("Windows11", text);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrReadsHorizontalHeadingsOnVerticalPages()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        string[] columns = ["中央図書館の開館時間は午前九時からです。", "返却ポストは正面入口の東側にあります。",
+            "休館日は毎月第三月曜日です。", "本人確認書類の画像が必要です。", "市民課までお問い合わせください。"];
+        var fields = columns.SelectMany((column, c) => column.Select((character, i) => (object)new
+        {
+            page = 1, x = 0.80m - 0.07m * c, y = 0.12m + 0.03m * i, width = 0.05m, height = 0.03m, fontSize = 18,
+            align = "center", text = character.ToString()
+        })).Append(new
+        {
+            page = 1, x = 0.08m, y = 0.04m, width = 0.6m, height = 0.04m, fontSize = 20, align = "left",
+            text = "中央図書館だより　第3号"
+        }).ToArray();
+        var scanned = await ScanPageAsync(test, "vertical-heading", fields);
+        var path = Path.Combine(test.Root, "vertical-heading-ocr.pdf");
+        await File.WriteAllBytesAsync(path, await PostPdfAsync(test, "/api/pdf/ocr?direction=vertical", scanned, "ocr.pdf"));
+        // jpn_vert --psm 5 alone slices the heading into vertical "columns"; page segmentation keeps it readable.
+        var text = (await ExtractTextAsync(path, "-raw")).Normalize(NormalizationForm.FormKC);
+        foreach (var phrase in new[] { "中央図書館だより", "開館時間", "返却ポスト", "本人確認書類", "市民課" })
+            Assert.Contains(phrase, text);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrChecksQueryAndPageLimitAndPreservesUnselectedPages()
     {
         if (!OperatingSystem.IsLinux()) return;
@@ -250,6 +297,28 @@ public sealed class PdfP3EndpointsTests
         using var large = PdfTestContext.FileForm(new byte[16_385]);
         using var response = await test.Client.PostAsync(Horizontal, large);
         Assert.AreEqual(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task OcrFitsTesseractPdfAndTsvIntoASmallJobBudget(bool vertical)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        // Tesseract writes the text PDF and the TSV in one run. Reserving the PDF first must not take the space
+        // that the TSV needs; main succeeded with these limits before the TSV output was added.
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:RedactJobLimitBytes"] = "8388608",
+            ["Pdf:MaxRedactInputBytes"] = "4194304"
+        });
+        var scanned = await ScanAsync(test, vertical);
+        var output = await PostPdfAsync(test, "/api/pdf/ocr?direction=" + (vertical ? "vertical" : "horizontal"),
+            scanned, "ocr.pdf");
+        var path = Path.Combine(test.Root, "small-budget.pdf");
+        await File.WriteAllBytesAsync(path, output);
+        Assert.Contains(SearchTerm, Normalize(await ExtractTextAsync(path, "-raw")));
         test.AssertClean();
     }
 
@@ -447,6 +516,21 @@ public sealed class PdfP3EndpointsTests
                 width = 0.15m, height = 0.09m, fontSize = 24, align = "center", text = character.ToString() }).ToArray()
             : [new { page = 1, x = 0.16m, y = 0.17m, width = 0.68m, height = 0.12m,
                 fontSize = 24, align = "center", text = Japanese }];
+        using var fill = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(fields));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", fill);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        var png = await RenderPngAsync(test, await filled.Content.ReadAsByteArrayAsync(), 200);
+        using var images = new MultipartFormDataContent();
+        images.Add(new ByteArrayContent(png), "file", "scan.png");
+        using var scanned = await test.Client.PostAsync("/api/pdf/from-images?quality=original", images);
+        Assert.AreEqual(HttpStatusCode.OK, scanned.StatusCode, await scanned.Content.ReadAsStringAsync());
+        return await scanned.Content.ReadAsByteArrayAsync();
+    }
+
+    // Draws text on a blank A4 page with fill-template and scans it at 200 dpi into an image-only PDF.
+    private static async Task<byte[]> ScanPageAsync(PdfTestContext test, string name, object[] fields)
+    {
+        var blank = await PdfAsync(test, JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject(), name + "-blank");
         using var fill = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(fields));
         using var filled = await test.Client.PostAsync("/api/pdf/fill-template", fill);
         Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());

@@ -148,3 +148,13 @@ jobs:
 
       - name: Verify stamp image orientation, transparency and non-target pages (CI tools only)
         run: /usr/bin/python3 scripts/stamp-image-validation.py amane-pdf-api:ci
+
+      - name: Setup Node for PDF.js OCR search validation (CI tools only)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Verify OCR text layer with PDF.js search (CI tools only)
+        run: |
+          npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional --omit=dev --no-audit --no-fund
+          /usr/bin/python3 scripts/ocr-search-validation.py amane-pdf-api:ci

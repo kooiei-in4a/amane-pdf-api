@@ -1,0 +1,12 @@
+{
+  "name": "amane-pdf-ocr-search-validation",
+  "private": true,
+  "description": "CI-only PDF.js checks for the OCR text layer (Issue #116). Not part of the runtime image.",
+  "type": "module",
+  "dependencies": {
+    "pdfjs-dist": "6.3.289"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.1"
+  }
+}

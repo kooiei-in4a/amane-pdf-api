@@ -9,6 +9,7 @@ internal sealed class PdfPageJob(TemporaryPdfFiles files, QpdfProcessor qpdf, Pd
     internal string PathFor(string name) => Path.Combine(files.DirectoryPath, name);
     internal void TrackInput() => capacity.Reserve(files.InputPath, new FileInfo(files.InputPath).Length);
     internal long Reserve(string path, long limit) => capacity.ReserveWrite(path, limit, external: true);
+    internal long ReservePair(string first, string second, long limit) => capacity.ReserveWritePair(first, second, limit);
     internal void Commit(string path, long budget) => capacity.Commit(path, budget);
     internal void Delete(string path) => capacity.Delete(path);
 
@@ -19,14 +20,25 @@ internal sealed class PdfPageJob(TemporaryPdfFiles files, QpdfProcessor qpdf, Pd
         Commit(path, budget);
     }
 
-    internal void WriteJson(string path, Action<Utf8JsonWriter> write, CancellationToken token)
+    internal void WriteJson(string path, Action<Utf8JsonWriter> write, CancellationToken token, long? limit = null)
     {
-        var budget = capacity.ReserveWrite(path, options.OverlayGeneratedLimitBytes);
+        var budget = capacity.ReserveWrite(path, limit ?? options.OverlayGeneratedLimitBytes);
         using (var file = TemporaryPdfFiles.CreatePrivateFile(path))
         using (var bounded = new OverlayLimitedWriteStream(file, budget, token))
         using (var writer = new Utf8JsonWriter(bounded))
         {
             write(writer);
+        }
+        Commit(path, budget);
+    }
+
+    internal void WriteFile(string path, Action<Stream> write, CancellationToken token)
+    {
+        var budget = capacity.ReserveWrite(path, options.OverlayGeneratedLimitBytes);
+        using (var file = TemporaryPdfFiles.CreatePrivateFile(path))
+        using (var bounded = new OverlayLimitedWriteStream(file, budget, token))
+        {
+            write(bounded);
         }
         Commit(path, budget);
     }
