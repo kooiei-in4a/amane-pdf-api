@@ -24,7 +24,7 @@ public sealed class PdfSplitZipTests
     public async Task Abort_RejectsEveryMutationWithoutTouchingUnderlyingStream()
     {
         using var raw = new FaultStream();
-        var stream = new PdfSplitZipStream(raw, new(1, 10, 1048576, 2), CancellationToken.None);
+        var stream = CreateStream(raw, 2);
         stream.Abort();
         foreach (var operation in Mutations)
             await Assert.ThrowsAsync<InvalidOperationException>(() => operation(stream));
@@ -37,7 +37,7 @@ public sealed class PdfSplitZipTests
     {
         using var raw = new FaultStream();
         using var cancellation = new CancellationTokenSource();
-        var stream = new PdfSplitZipStream(raw, new(1, 10, 1048576, 0), cancellation.Token);
+        var stream = CreateStream(raw, 0, cancellation.Token);
         cancellation.Cancel();
         foreach (var operation in Mutations)
             await Assert.ThrowsAsync<OperationCanceledException>(() => operation(stream));
@@ -50,7 +50,7 @@ public sealed class PdfSplitZipTests
         foreach (var operation in Mutations.Take(6))
         {
             using var raw = new FaultStream();
-            var stream = new PdfSplitZipStream(raw, new(1, 10, 1048576, 0), CancellationToken.None);
+            var stream = CreateStream(raw, 0);
             await Assert.ThrowsAsync<PdfSplitOutputTooLargeException>(() => operation(stream));
             Assert.AreEqual(0L, raw.Length);
             Assert.AreEqual(0, raw.Mutations);
@@ -61,7 +61,7 @@ public sealed class PdfSplitZipTests
     public void HeaderRewrites_UseFileLengthInsteadOfCumulativeWrites()
     {
         using var raw = new MemoryStream();
-        var stream = new PdfSplitZipStream(raw, new(1, 10, 1048576, 3), CancellationToken.None);
+        var stream = CreateStream(raw, 3);
         stream.Write(new byte[3]);
         stream.Seek(0, SeekOrigin.Begin);
         stream.Write(new byte[3]);
@@ -127,6 +127,10 @@ public sealed class PdfSplitZipTests
         Assert.AreEqual(1, raw.Faults);
         Assert.AreEqual(1, raw.DisposeCalls);
     }
+
+    private static PdfZipWriteStream CreateStream(Stream raw, long overhead, CancellationToken token = default) =>
+        new(raw, new PdfSplitCapacity(1, 10, 1048576, overhead).CheckZipLength,
+            static () => new PdfSplitOutputTooLargeException(), token);
 
     private sealed class FaultStream : MemoryStream
     {

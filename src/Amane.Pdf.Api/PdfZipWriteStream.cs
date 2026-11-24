@@ -1,10 +1,18 @@
 namespace Amane.Pdf.Api;
 
-// Does not own the underlying stream. The ZIP builder closes it explicitly, including after Abort.
-internal sealed class PdfSplitZipStream(Stream underlying, PdfSplitCapacity capacity, CancellationToken token) : Stream
+// The ZIP builder owns and closes the underlying stream, including after Abort.
+internal sealed class PdfZipWriteStream(Stream underlying, Action<long> checkLength,
+    Func<Exception> outputTooLarge, CancellationToken token) : Stream
 {
     private bool aborted;
     internal void Abort() => aborted = true;
+    internal static void CloseOwnedStream(ref Stream? stream)
+    {
+        var owned = stream;
+        stream = null; // A throwing close is never retried.
+        owned?.Dispose();
+    }
+
     public override bool CanRead => false;
     public override bool CanSeek => underlying.CanSeek;
     public override bool CanWrite => underlying.CanWrite && !aborted;
@@ -18,13 +26,14 @@ internal sealed class PdfSplitZipStream(Stream underlying, PdfSplitCapacity capa
     {
         token.ThrowIfCancellationRequested();
         caller.ThrowIfCancellationRequested();
-        if (aborted) throw new InvalidOperationException("Split ZIP was aborted.");
+        if (aborted) throw new InvalidOperationException("ZIP was aborted.");
     }
     private void CheckWrite(int count, CancellationToken caller = default)
     {
         CheckState(caller);
-        if (underlying.Position > long.MaxValue - count) throw new PdfSplitOutputTooLargeException();
-        capacity.CheckZipLength(Math.Max(underlying.Length, underlying.Position + count));
+        var position = underlying.Position;
+        if (position > long.MaxValue - count) throw outputTooLarge();
+        checkLength(Math.Max(underlying.Length, position + count));
     }
     public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
     public override void Write(ReadOnlySpan<byte> buffer)
@@ -48,7 +57,7 @@ internal sealed class PdfSplitZipStream(Stream underlying, PdfSplitCapacity capa
     {
         CheckState();
         ArgumentOutOfRangeException.ThrowIfNegative(value);
-        capacity.CheckZipLength(value);
+        checkLength(value);
         underlying.SetLength(value);
     }
     public override long Seek(long offset, SeekOrigin origin) { CheckState(); return underlying.Seek(offset, origin); }

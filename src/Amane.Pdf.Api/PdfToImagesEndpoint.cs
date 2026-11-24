@@ -75,31 +75,58 @@ internal static class PdfToImagesEndpoint
         }
         finally { File.Delete(metadata); }
 
-        await using var output = TemporaryPdfFiles.CreatePrivateFile(files.OutputPath);
-        using var bounded = new CleanLimitedWriteStream(output, MaxOutput, token, OutputTooLarge);
-        using var zip = new ZipArchive(bounded, ZipArchiveMode.Create, leaveOpen: true);
-        var extension = png ? "png" : "jpg";
-        var imagePath = Path.Combine(directory, "rendered." + extension);
-        foreach (var plan in plans)
+        Stream? output = TemporaryPdfFiles.CreatePrivateFile(files.OutputPath);
+        Stream? source = null;
+        var bounded = new PdfZipWriteStream(output, CheckZipLength, OutputTooLarge, token);
+        try
         {
-            token.ThrowIfCancellationRequested();
-            // The rendered page temporarily exists both on disk and within the ZIP.
-            var budget = Math.Min(MaxOutput - bounded.Length - ZipHeadroom,
-                (jobLimit - inputBytes - CleanCapacity.Allocated(bounded.Length) - ZipHeadroom) / 2);
-            if (budget <= 0) throw OutputTooLarge();
-            var page = plan.Attributes;
-            var render = new RenderPage(input, imagePath, plan.Page, page.DisplayWidth / page.UserUnit,
-                page.DisplayHeight / page.UserUnit, plan.Width, plan.Height, budget, []);
-            if (png) await renderer.RenderPngAsync(files, render, token);
-            else await renderer.RenderJpegAsync(files, render, token);
-            var entry = zip.CreateEntry(string.Create(CultureInfo.InvariantCulture, $"page-{plan.Page:D3}.{extension}"),
-                CompressionLevel.NoCompression);
-            entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
-            await using (var source = File.OpenRead(imagePath))
-            await using (var target = entry.Open())
+            var zip = new ZipArchive(bounded, ZipArchiveMode.Create, leaveOpen: true);
+            var extension = png ? "png" : "jpg";
+            var imagePath = Path.Combine(directory, "rendered." + extension);
+            foreach (var plan in plans)
+            {
+                token.ThrowIfCancellationRequested();
+                // The rendered page temporarily exists both on disk and within the ZIP.
+                var budget = Math.Min(MaxOutput - bounded.Length - ZipHeadroom,
+                    (jobLimit - inputBytes - CleanCapacity.Allocated(bounded.Length) - ZipHeadroom) / 2);
+                if (budget <= 0) throw OutputTooLarge();
+                var page = plan.Attributes;
+                var render = new RenderPage(input, imagePath, plan.Page, page.DisplayWidth / page.UserUnit,
+                    page.DisplayHeight / page.UserUnit, plan.Width, plan.Height, budget, []);
+                if (png) await renderer.RenderPngAsync(files, render, token);
+                else await renderer.RenderJpegAsync(files, render, token);
+                var entry = zip.CreateEntry(string.Create(CultureInfo.InvariantCulture, $"page-{plan.Page:D3}.{extension}"),
+                    CompressionLevel.NoCompression);
+                entry.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+                source = File.OpenRead(imagePath);
+                // Close the entry only after the copy succeeds, as in split.
+                var target = entry.Open();
                 await source.CopyToAsync(target, token);
-            File.Delete(imagePath);
+                target.Dispose();
+                PdfZipWriteStream.CloseOwnedStream(ref source);
+                File.Delete(imagePath);
+            }
+            zip.Dispose();
+            token.ThrowIfCancellationRequested();
+            PdfZipWriteStream.CloseOwnedStream(ref output);
+            token.ThrowIfCancellationRequested();
         }
+        catch
+        {
+            bounded.Abort();
+            throw;
+        }
+        finally
+        {
+            // Preserve the original failure if closing a file also fails.
+            try { PdfZipWriteStream.CloseOwnedStream(ref source); } catch { }
+            try { PdfZipWriteStream.CloseOwnedStream(ref output); } catch { }
+        }
+    }
+
+    private static void CheckZipLength(long length)
+    {
+        if (length > MaxOutput) throw OutputTooLarge();
     }
 
     private static PdfRenderException OutputTooLarge() => new(PdfRenderReason.OutputTooLarge);

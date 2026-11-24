@@ -81,6 +81,7 @@ public sealed class PdfSplitTests
         for (var i = 0; i < count; i++)
         {
             Assert.AreEqual(0x04034b50u, BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(offset)));
+            Assert.AreEqual(0, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 6)) & 0x0008); // No data descriptor
             Assert.AreEqual((ushort)0, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 8))); // Stored
             Assert.AreEqual((ushort)0, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 10))); // DOS time
             Assert.AreEqual((ushort)33, BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(offset + 12))); // 1980-01-01
