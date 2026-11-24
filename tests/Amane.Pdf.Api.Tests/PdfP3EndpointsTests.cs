@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -223,22 +225,8 @@ public sealed class PdfP3EndpointsTests
         Assert.Contains(SearchTerm, Normalize(await ExtractTextAsync(outputPath, "-raw")));
         CollectionAssert.AreEqual(await RenderPngAsync(test, scanned), await RenderPngAsync(test, ocr));
         if (!vertical)
-        {
-            var bbox = await ExtractTextAsync(outputPath, "-cropbox", "-bbox");
-            var words = System.Xml.Linq.XDocument.Parse(bbox).Descendants()
-                .Where(node => node.Name.LocalName == "word").ToArray();
-            static double Number(System.Xml.Linq.XElement element, string attribute)
-                => double.Parse(element.Attribute(attribute)!.Value, System.Globalization.CultureInfo.InvariantCulture);
-            var sourceImage = await RenderWithPopplerAsync(Path.Combine(test.Root, "cropped.pdf"));
-            var image = Foreground(sourceImage);
-            // At 72 dpi the displayed raster dimensions also give the rotated page size in points.
-            // pdftotext's page dimensions are unrotated even though the word bounds are rotated.
-            var (width, height, _) = PpmHeader(sourceImage);
-            Assert.AreEqual(image.Left, words.Min(word => Number(word, "xMin")) / width, 0.05);
-            Assert.AreEqual(image.Top, words.Min(word => Number(word, "yMin")) / height, 0.05);
-            Assert.AreEqual(image.Right, words.Max(word => Number(word, "xMax")) / width, 0.05);
-            Assert.AreEqual(image.Bottom, words.Max(word => Number(word, "yMax")) / height, 0.05);
-        }
+            await AssertOcrTextMatchesForegroundAsync(await RenderWithPopplerAsync(Path.Combine(test.Root, "cropped.pdf")),
+                outputPath, 1);
         test.AssertClean();
     }
 
@@ -307,17 +295,39 @@ public sealed class PdfP3EndpointsTests
         using var badRange = await test.Client.PostAsync(Horizontal + "&pages=12", tooMany);
         Assert.AreEqual(HttpStatusCode.BadRequest, badRange.StatusCode);
 
-        var scanned = await ScanAsync(test, vertical: false);
-        using var mergeForm = PdfTestContext.MergeForm(scanned, scanned, scanned);
+        var tokyo = await ScanAsync(test, vertical: false);
+        const string osakaSearchTerm = "大阪府";
+        var osaka = await ScanPageAsync(test, "osaka",
+        [
+            new { page = 1, x = 0.52m, y = 0.37m, width = 0.45m, height = 0.12m,
+                fontSize = 24, align = "center", text = "大阪府大阪市" }
+        ]);
+        var osakaPath = Path.Combine(test.Root, "osaka-scan.pdf");
+        await File.WriteAllBytesAsync(osakaPath, osaka);
+        var croppedOsaka = await RotateWithCropAsync(test, osakaPath);
+        using var mergeForm = PdfTestContext.MergeForm(tokyo, tokyo, croppedOsaka);
         using var merge = await test.Client.PostAsync("/api/pdf/merge", mergeForm);
         Assert.AreEqual(HttpStatusCode.OK, merge.StatusCode);
-        var output = await PostPdfAsync(test, Horizontal + "&pages=3,1", await merge.Content.ReadAsByteArrayAsync(), "ocr.pdf");
+        var input = await merge.Content.ReadAsByteArrayAsync();
+        var inputPath = Path.Combine(test.Root, "selected-input.pdf");
+        await File.WriteAllBytesAsync(inputPath, input);
+        var output = await PostPdfAsync(test, Horizontal + "&pages=3,1", input, "ocr.pdf");
         await test.AssertValidPdfAsync(output, 3);
         var path = Path.Combine(test.Root, "selected.pdf");
         await File.WriteAllBytesAsync(path, output);
-        foreach (var page in new[] { "1", "3" })
-            Assert.Contains(SearchTerm, Normalize(await ExtractTextAsync(path, "-f", page, "-l", page)));
+        var first = Normalize(await ExtractTextAsync(path, "-f", "1", "-l", "1"));
+        Assert.Contains(SearchTerm, first);
+        Assert.DoesNotContain(osakaSearchTerm, first);
+        var third = Normalize(await ExtractTextAsync(path, "-f", "3", "-l", "3"));
+        Assert.Contains(osakaSearchTerm, third);
+        Assert.DoesNotContain(SearchTerm, third);
         Assert.AreEqual("", Normalize(await ExtractTextAsync(path, "-f", "2", "-l", "2")));
+
+        var firstPage = await RenderWithPopplerAsync(inputPath, 1);
+        var thirdPage = await RenderWithPopplerAsync(inputPath, 3);
+        Assert.AreNotEqual(PpmHeader(firstPage).Width, PpmHeader(thirdPage).Width);
+        await AssertOcrTextMatchesForegroundAsync(firstPage, path, 1);
+        await AssertOcrTextMatchesForegroundAsync(thirdPage, path, 3);
         test.AssertClean();
     }
 
@@ -382,6 +392,8 @@ public sealed class PdfP3EndpointsTests
             using var competing = PdfTestContext.FileForm(PdfTestContext.Fixture);
             using var second = await test.Client.PostAsync(Horizontal, competing);
             Assert.AreEqual(HttpStatusCode.ServiceUnavailable, second.StatusCode);
+            using var problem = JsonDocument.Parse(await second.Content.ReadAsByteArrayAsync());
+            Assert.AreEqual("PDF処理の同時実行上限に達しました。", problem.RootElement.GetProperty("title").GetString());
             using var drawing = await test.Client.PostAsync("/api/pdf/to-images?format=png&dpi=72", competing);
             Assert.AreEqual(HttpStatusCode.ServiceUnavailable, drawing.StatusCode);
             await PostPdfAsync(test, "/api/pdf/optimize", PdfTestContext.Fixture, "optimized.pdf");
@@ -649,6 +661,23 @@ public sealed class PdfP3EndpointsTests
 
     private static async Task<string> ExtractTextAsync(string path, params string[] options)
         => Encoding.UTF8.GetString(await ToolAsync("pdftotext", [.. options, path, "-"]));
+
+    private static async Task AssertOcrTextMatchesForegroundAsync(byte[] sourceImage, string outputPath, int page)
+    {
+        var pageNumber = page.ToString(CultureInfo.InvariantCulture);
+        var bbox = await ExtractTextAsync(outputPath, "-f", pageNumber, "-l", pageNumber, "-cropbox", "-bbox");
+        var words = XDocument.Parse(bbox).Descendants().Where(node => node.Name.LocalName == "word").ToArray();
+        static double Number(XElement element, string attribute)
+            => double.Parse(element.Attribute(attribute)!.Value, CultureInfo.InvariantCulture);
+        var image = Foreground(sourceImage);
+        // At 72 dpi the displayed raster dimensions also give the rotated page size in points.
+        // pdftotext's page dimensions are unrotated even though the word bounds are rotated.
+        var (width, height, _) = PpmHeader(sourceImage);
+        Assert.AreEqual(image.Left, words.Min(word => Number(word, "xMin")) / width, 0.05);
+        Assert.AreEqual(image.Top, words.Min(word => Number(word, "yMin")) / height, 0.05);
+        Assert.AreEqual(image.Right, words.Max(word => Number(word, "xMax")) / width, 0.05);
+        Assert.AreEqual(image.Bottom, words.Max(word => Number(word, "yMax")) / height, 0.05);
+    }
 
     private static string Normalize(string text)
         => string.Concat(text.Normalize(NormalizationForm.FormKC).Where(c => !char.IsWhiteSpace(c)));
