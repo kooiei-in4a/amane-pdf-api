@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""OCR済みPDFをPDF.jsの検索で確かめる（Issue #116、CI専用ツール）。
+"""OCR済みPDFをPDF.jsの検索で確かめる（Issue #116、#126）。
 
-fill-templateで描いた日本語の文書を200 dpiの画像だけのPDFにし、実コンテナの /api/pdf/ocr に送る。
-出力をPDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で検索し、語句が空白で分断されずに
-見つかること、欧文の単語間の空白が保たれること、離れた欄の語どうしが連結しないこと、縦書きのページの
-横書きの見出しが読めることを確かめる。
+fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
+PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
+欧文の単語間の空白が保たれること、離れた欄の語が連結しないことを確かめる。縦書きの横見出し、
+罫線付きの表、影、上下逆さの試料も検索する。--benchmark で上限ページ数の処理時間を測る。
 事前に scripts/ocr-search で `npm ci --ignore-scripts --omit=optional --omit=dev` を実行しておく。
 
 --highlight DIR を付けると、横書き・回転+CropBox・縦書きと横見出しの試料について、OCR出力PDFと、元画像から
@@ -41,7 +41,8 @@ LINES = ["中央図書館の開館時間は午前九時から午後七時まで�
 COLUMNS = ["中央図書館の開館時間は午前九時からです。", "返却ポストは正面入口の東側にあります。",
            "休館日は毎月第三月曜日です。", "本人確認書類の画像が必要です。", "市民課までお問い合わせください。"]
 HORIZONTAL_TERMS = ["中央図書館", "開館時間", "午前九時", "午後七時", "返却ポスト", "正面入口", "Windows 11"]
-VERTICAL_TERMS = ["中央図書館だより", "開館時間", "返却ポスト", "本人確認書類", "市民課"]
+VERTICAL_TERMS = ["中央図書館だより", "第3号", "開館時間", "午前九時", "返却ポスト", "正面入口", "休館日",
+                  "本人確認書類", "市民課"]
 # 同じページの離れた位置にある独立した語。PDF.jsはCJK直後の改行を検索時に除くため、境界がないと
 # 「時間返却」が一致してしまう。
 SEPARATE_FIELDS = [(0.08, 0.10, "開館時間"), (0.55, 0.45, "返却ポスト"), (0.20, 0.70, "Dark Mode を選択")]
@@ -54,10 +55,40 @@ HEADING = "中央図書館だより　第3号"
 HIGHLIGHT_TERMS = {
     "horizontal": HORIZONTAL_TERMS,
     "horizontal-rotated-cropped": HORIZONTAL_TERMS,
-    "vertical-with-heading": ["中央図書館だより", "第3号", "開館時間", "午前九時", "返却ポスト", "正面入口", "休館日",
-                              "本人確認書類", "市民課"],
+    "vertical-with-heading": VERTICAL_TERMS,
 }
 FONT = "/opt/amane-pdf/fonts/BIZUDPGothic-Regular.ttf"
+MINCHO = "/opt/amane-pdf/fonts/BIZUDPMincho-Regular.ttf"
+INVOICE_ROWS = [
+    ("品名", "数量", "単価", "金額"),
+    ("返却ポスト", "2", "6,400", "12,800"),
+    ("案内看板", "3", "4,500", "13,500"),
+    ("展示棚", "4", "9,200", "36,800"),
+    ("受付台", "1", "35,000", "35,000"),
+    ("会議机", "5", "8,800", "44,000"),
+    ("事務椅子", "6", "7,200", "43,200"),
+    ("書類ケース", "8", "1,500", "12,000"),
+]
+TABLE_TERMS = ["品名", "数量", "単価", "金額", "返却ポスト", "案内看板", "展示棚", "12,800", "36,800"]
+INVOICE_TERMS = [
+    "請求書", "株式会社", "中央事務用品", "請求番号", "お支払期限", "納品先", "中央図書館", "担当者",
+    "備品購入", "小計", "消費税", "合計金額", "197,300", "19,730", "217,030",
+    *TABLE_TERMS, "受付台", "会議机", "事務椅子", "書類ケース", "6,400", "4,500", "9,200", "35,000",
+    "44,000", "43,200",
+]
+DOCUMENT_LINES = [
+    "中央図書館の開館時間は午前九時から午後七時までです。",
+    "返却ポストは正面入口の東側にあります。",
+    "休館日は毎月第三月曜日です。",
+    "本人確認書類を持って受付窓口までお越しください。",
+    "利用登録には住所と氏名の記入が必要です。",
+    "図書資料は一度に十冊まで借りることができます。",
+    "返却期限は貸出日から二週間です。",
+    "予約資料の取り置き期間は一週間です。",
+    "詳しくは市民課までお問い合わせください。",
+]
+DOCUMENT_TERMS = ["中央図書館", "開館時間", "午前九時", "午後七時", "返却ポスト", "正面入口", "休館日",
+                  "本人確認書類", "受付窓口", "利用登録", "返却期限", "市民課"]
 
 
 def form(parts):
@@ -70,9 +101,9 @@ def form(parts):
     return body + f"--{boundary}--\r\n".encode(), "multipart/form-data; boundary=" + boundary
 
 
-def post(api, path, parts, expected_type):
+def post(api, path, parts, expected_type, timeout=40):
     body, content_type = form(parts)
-    status, headers, output = api.request("POST", path, body, content_type)
+    status, headers, output = api.request("POST", path, body, content_type, timeout=timeout)
     assert status == 200 and headers["Content-Type"].startswith(expected_type), (path, status, output[:300])
     return output
 
@@ -121,11 +152,97 @@ def find(directory, name, pdf, terms):
     return json.loads(result.stdout)
 
 
-def ocr(api, direction, pdf):
+def ocr(api, quality, direction, pdf):
     start = time.monotonic()
-    output = post(api, f"/api/pdf/ocr?direction={direction}", [("file", "scan.pdf", "application/pdf", pdf)],
-                  "application/pdf")
+    output = post(api, f"/api/pdf/ocr?direction={direction}&quality={quality}",
+                  [("file", "../../untrusted.pdf", "application/pdf", pdf)], "application/pdf", timeout=200)
     return output, time.monotonic() - start
+
+
+def image_pdf(api, image, dpi, quality):
+    jpeg = io.BytesIO()
+    image.save(jpeg, format="JPEG", quality=quality, dpi=(dpi, dpi))
+    return post(api, "/api/pdf/from-images?quality=original",
+                [("file", "scan.jpg", "image/jpeg", jpeg.getvalue())], "application/pdf")
+
+
+def invoice_scans(api, font_path):
+    from PIL import Image, ImageDraw, ImageFont
+    table = Image.new("L", (1654, 2339), 255)
+    draw = ImageDraw.Draw(table)
+    font = ImageFont.truetype(str(font_path), 36)
+    columns = (130, 670, 840, 1130, 1524)
+    top, row_height = 575, 96
+    bottom = top + len(INVOICE_ROWS) * row_height
+    for x in columns:
+        draw.line((x, top, x, bottom), fill=0, width=3)
+    for index in range(len(INVOICE_ROWS) + 1):
+        y = top + index * row_height
+        draw.line((columns[0], y, columns[-1], y), fill=0, width=3)
+    for index, row in enumerate(INVOICE_ROWS):
+        for x, text in zip(columns, row):
+            draw.text((x + 25, top + index * row_height + 26), text, fill=0, font=font)
+
+    invoice = table.copy()
+    draw = ImageDraw.Draw(invoice)
+    draw.text((130, 120), "請求書", fill=0, font=ImageFont.truetype(str(font_path), 62))
+    for index, text in enumerate(("株式会社 中央事務用品", "請求番号 2026-11-26", "お支払期限 2026年12月末日",
+                                  "納品先 中央図書館", "担当者 備品購入係")):
+        draw.text((130, 225 + 56 * index), text, fill=0, font=font)
+    for index, (label, amount) in enumerate((("小計", "197,300"), ("消費税", "19,730"), ("合計金額", "217,030"))):
+        y = bottom + 45 + 62 * index
+        draw.text((840, y), label, fill=0, font=font)
+        draw.text((1155, y), amount, fill=0, font=font)
+    return image_pdf(api, invoice, 200, 75), image_pdf(api, table, 200, 75)
+
+
+def document_scans(api, font_path):
+    from PIL import Image, ImageChops, ImageDraw, ImageFont
+    image = Image.new("L", (1654, 2339), 255)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(str(font_path), 39)
+    for index, text in enumerate(DOCUMENT_LINES):
+        draw.text((165, 275 + index * 112), text, fill=0, font=font)
+    # 約35%の照度差を左右に付ける。JPEGにして撮影・スキャン時の劣化を加える。
+    gradient = Image.frombytes("L", (image.width, 1),
+                               bytes(round(255 - 89 * x / (image.width - 1)) for x in range(image.width)))
+    shadow = ImageChops.multiply(image, gradient.resize(image.size))
+    return (image_pdf(api, shadow, 200, 75),
+            image_pdf(api, image.transpose(Image.Transpose.ROTATE_180), 200, 75))
+
+
+def dense_scan(api, font_path, direction):
+    from PIL import Image, ImageDraw, ImageFont
+    image = Image.new("L", (2480, 3508), 255)
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(str(font_path), round(11 * 300 / 72))
+    text = "".join(DOCUMENT_LINES)
+    text = (text * (1680 // len(text) + 1))[:1680]
+    if direction == "vertical":
+        for index, character in enumerate(text):
+            column, row = divmod(index, 60)
+            draw.text((2300 - 79 * column, 195 + 52 * row), character, fill=0, font=font)
+    else:
+        for row in range(35):
+            draw.text((135, 210 + 86 * row), text[row * 48:(row + 1) * 48], fill=0, font=font)
+    return image_pdf(api, image, 300, 85)
+
+
+def benchmark(api, directory, qualities):
+    font = directory / "BIZUDPMincho-Regular.ttf"
+    font.write_bytes(api.exec("cat", MINCHO).stdout)
+    # 同じ1ページから各方式の上限ページ数のPDFを作り、1リクエストずつ送る。
+    for direction in ("vertical", "horizontal"):
+        page = directory / f"dense-{direction}.pdf"
+        page.write_bytes(dense_scan(api, font, direction))
+        for quality in qualities:
+            count = 5 if quality == "high" else 10
+            source = directory / f"dense-{direction}-{count}.pdf"
+            subprocess.run(["qpdf", "--empty", "--pages", *([str(page), "1"] * count), "--", str(source)],
+                           check=True, timeout=60)
+            _, seconds = ocr(api, quality, direction, source.read_bytes())
+            print(f"{quality} dense-{direction}-{count}: HTTP 200, {seconds:.2f} s", flush=True)
+            api.assert_clean()
 
 
 def ink(directory, name, pdf):
@@ -200,9 +317,12 @@ def expected_boxes(directory, name, pdf, font_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image")
+    parser.add_argument("--quality", choices=("both", "standard", "high"), default="both")
+    parser.add_argument("--benchmark", action="store_true", help="上限ページ数の密な文書で応答時間を測る")
     parser.add_argument("--artifacts", type=Path, help="OCRの入力と出力のPDFを保存する")
     parser.add_argument("--highlight", type=Path, help="強調表示の実測用に、OCR出力PDFと元画像から求めた期待矩形を保存する")
     args = parser.parse_args()
+    qualities = ("standard", "high") if args.quality == "both" else (args.quality,)
     assert (SEARCH / "node_modules/pdfjs-dist").is_dir(), "Run npm ci in scripts/ocr-search first."
     with tempfile.TemporaryDirectory(prefix="amane-ocr-search-") as temporary, smoke.running_container(args.image) as api:
         directory = Path(temporary)
@@ -221,33 +341,64 @@ def main():
         wrapped = scan(api, directory, "wrapped", [
             {"page": 1, "x": 0.08, "y": round(0.10 + 0.035 * i, 3), "width": 0.84, "height": 0.03, "fontSize": 20,
              "align": "left", "text": text} for i, text in enumerate(WRAPPED_LINES)])
+        font_path = directory / "BIZUDPGothic-Regular.ttf"
+        font_path.write_bytes(api.exec("cat", FONT).stdout)
+        invoice, table = invoice_scans(api, font_path)
+        shadow, upside_down = document_scans(api, font_path)
         cases = [("horizontal", "horizontal", horizontal, HORIZONTAL_TERMS, ["Windows11"]),
                  ("separate-fields", "horizontal", separate, SEPARATE_TERMS, SEPARATE_ABSENT),
                  ("wrapped-paragraph", "horizontal", wrapped, WRAPPED_TERMS, []),
                  ("horizontal-rotated-cropped", "horizontal", rotate_with_crop(directory, horizontal),
                   HORIZONTAL_TERMS, ["Windows11"]),
-                 ("vertical-with-heading", "vertical", vertical, VERTICAL_TERMS, [])]
-        for name, direction, source, terms, absent in cases:
-            output, seconds = ocr(api, direction, source)
-            found = find(directory, name, output, terms + absent)
-            if args.artifacts:
-                args.artifacts.mkdir(parents=True, exist_ok=True)
-                (args.artifacts / f"{name}-scan.pdf").write_bytes(source)
-                (args.artifacts / f"{name}-ocr.pdf").write_bytes(output)
-            if args.highlight and name in HIGHLIGHT_TERMS:
-                args.highlight.mkdir(parents=True, exist_ok=True)
-                font_path = directory / "BIZUDPGothic-Regular.ttf"
-                if not font_path.exists():
-                    font_path.write_bytes(api.exec("cat", FONT).stdout)
-                (args.highlight / f"{name}-ocr.pdf").write_bytes(output)
-                (args.highlight / f"{name}-expected.json").write_text(json.dumps(
-                    {term: [round(v, 1) for v in box] for term, box in expected_boxes(directory, name, source, font_path).items()},
-                    ensure_ascii=False, indent=1))
-            missing = [term for term in terms if found[term] == 0]
-            joined = [term for term in absent if found[term] > 0]
-            assert not missing and not joined, (name, found)
-            print(f"{name}: {len(terms)}/{len(terms)} terms found by PDF.js, {len(absent)} joins absent, {seconds:.2f} s")
-            api.assert_clean()
+                 ("vertical-with-heading", "vertical", vertical, VERTICAL_TERMS, []),
+                 ("ruled-invoice", "horizontal", invoice, INVOICE_TERMS, []),
+                 ("ruled-table", "horizontal", table, TABLE_TERMS, []),
+                 ("shadow", "horizontal", shadow, DOCUMENT_TERMS, []),
+                 ("upside-down", "horizontal", upside_down, DOCUMENT_TERMS, [])]
+        failures = []
+        for quality in qualities:
+            artifacts = args.artifacts
+            if artifacts and len(qualities) > 1:
+                artifacts /= quality
+            for name, direction, source, terms, absent in cases:
+                output, seconds = ocr(api, quality, direction, source)
+                found = find(directory, name, output, terms + absent)
+                if artifacts:
+                    artifacts.mkdir(parents=True, exist_ok=True)
+                    (artifacts / f"{name}-scan.pdf").write_bytes(source)
+                    (artifacts / f"{name}-ocr.pdf").write_bytes(output)
+                if args.highlight and name in HIGHLIGHT_TERMS and (quality == "high" or len(qualities) == 1):
+                    args.highlight.mkdir(parents=True, exist_ok=True)
+                    (args.highlight / f"{name}-ocr.pdf").write_bytes(output)
+                    boxes = expected_boxes(directory, name, source, font_path)
+                    (args.highlight / f"{name}-expected.json").write_text(json.dumps(
+                        {term: [round(v, 1) for v in box] for term, box in boxes.items()}, ensure_ascii=False, indent=1))
+                required = terms
+                minimum = len(terms)
+                if name == "vertical-with-heading" and quality == "standard":
+                    required = terms[2:]
+                    minimum = len(required)
+                elif name == "ruled-invoice":
+                    required = ["品名", "金額", "合計金額", "返却ポスト", "12,800"]
+                    minimum = 30
+                elif name == "ruled-table":
+                    required = ["品名", "金額", "返却ポスト"]
+                    minimum = 8
+                elif name == "shadow":
+                    required = ["開館時間", "返却ポスト", "本人確認書類"]
+                    minimum = 10
+                hits = sum(found[term] > 0 for term in terms)
+                joined = [term for term in absent if found[term] > 0]
+                print(f"{quality} {name}: {hits}/{len(terms)} terms found by PDF.js, "
+                      f"{len(absent) - len(joined)}/{len(absent)} unwanted joins absent, {seconds:.2f} s", flush=True)
+                if hits < minimum or any(found[term] == 0 for term in required) or joined:
+                    failures.append((quality, name, found))
+                api.assert_clean()
+        assert not failures, failures
+        if args.benchmark:
+            benchmark(api, directory, qualities)
+        logs = smoke.docker("logs", api.name)
+        assert all(term.encode() not in logs.stdout + logs.stderr for term in ("中央図書館", "返却ポスト"))
         events = dict(line.split() for line in api.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
         assert events["oom"] == events["oom_kill"] == "0", events
         print("OCR search (PDF.js 6.3.289): PASS")

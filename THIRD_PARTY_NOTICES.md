@@ -76,6 +76,7 @@ qpdf本体の著作権表示およびライセンス条件は、qpdfの配布物
 
 - [Tesseract](https://github.com/tesseract-ocr/tesseract) と日本語モデル（横書き `jpn`、縦書き `jpn_vert`）はApache-2.0です。モデルの上流は [tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) です。
 - Ubuntu 26.04のaptパッケージから導入します。著作権表示と許諾条件はコンテナ内の `/usr/share/doc/tesseract-ocr/copyright`、`/usr/share/doc/libtesseract5/copyright`、`/usr/share/doc/tesseract-ocr-jpn/copyright`、`/usr/share/doc/tesseract-ocr-jpn-vert/copyright` および `/usr/share/common-licenses/Apache-2.0` にあります。
+- 高精度の日本語モデルは [tessdata_best の固定コミット](https://github.com/tesseract-ocr/tessdata_best/tree/e12c65a915945e4c28e237a9b52bc4a8f39a0cec) の `jpn` と `jpn_vert` です。ライセンスは [Apache-2.0](https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/LICENSE) です。向きの検出に使う `osd` は両方式でUbuntuの `tesseract-ocr-osd` を使います。著作権表示と許諾条件は `/usr/share/doc/tesseract-ocr-osd/copyright` にあります。
 - 画像処理ライブラリ [Leptonica](https://github.com/DanBloomberg/leptonica) はTesseractのapt依存で、BSD-2-Clauseの表示は `/usr/share/doc/libleptonica6/copyright` にあります。その他のapt依存の表示も各パッケージの `/usr/share/doc/<package>/copyright` にあります。
 
 ## prlimit（util-linux）

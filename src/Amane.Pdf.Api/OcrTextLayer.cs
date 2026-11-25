@@ -42,7 +42,7 @@ internal static class OcrTextLayer
     internal const char FieldBoundary = '\u034F';
     internal const double FieldGap = 1.5;
 
-    internal sealed record Word(int Left, int Top, int Width, int Height, string Text, double Confidence);
+    internal sealed record Word(int Left, int Top, int Width, int Height, string Text);
     internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words, int Block = 1);
 
     internal static List<Line> Read(string path, int imageWidth, int imageHeight, CancellationToken token)
@@ -81,7 +81,7 @@ internal static class OcrTextLayer
                         throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
                     var confidence = double.Parse(columns[10], NumberStyles.Float, CultureInfo.InvariantCulture);
                     if (!double.IsFinite(confidence)) throw new InvalidDataException();
-                    lines[^1].Words.Add(new(left, top, width, height, word, confidence));
+                    lines[^1].Words.Add(new(left, top, width, height, word));
                 }
             }
         }
@@ -92,18 +92,6 @@ internal static class OcrTextLayer
         }
         token.ThrowIfCancellationRequested();
         return lines;
-    }
-
-    // Character-weighted mean of Tesseract's word confidence (0-100), used to choose between two recognitions.
-    internal static double MeanConfidence(IReadOnlyList<Line> lines)
-    {
-        double sum = 0, count = 0;
-        foreach (var word in lines.SelectMany(line => line.Words))
-        {
-            sum += Math.Max(word.Confidence, 0) * word.Text.Length;
-            count += word.Text.Length;
-        }
-        return count == 0 ? 0 : sum / count;
     }
 
     internal static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x30FF or >= 0x3400 and <= 0x4DBF or

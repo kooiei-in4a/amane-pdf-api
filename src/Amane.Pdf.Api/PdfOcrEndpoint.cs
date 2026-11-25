@@ -17,7 +17,10 @@ internal static class PdfOcrEndpoint
 
     internal static bool IsValid(PdfOptions options) =>
         options.MaxOcrPages is >= 1 and <= 10 && options.OcrTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
-        !string.IsNullOrWhiteSpace(options.TesseractPath) && !options.TesseractPath.Contains('\0');
+        options.MaxOcrHighPages is >= 1 and <= 5 && options.OcrHighTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
+        !string.IsNullOrWhiteSpace(options.TesseractPath) && !options.TesseractPath.Contains('\0') &&
+        !string.IsNullOrWhiteSpace(options.TessdataBestDir) && !options.TessdataBestDir.Contains('\0') &&
+        Path.IsPathFullyQualified(options.TessdataBestDir);
 
     internal static async Task HandleAsync(HttpContext context, QpdfProcessor qpdf, PdfRenderer renderer,
         RenderSlot slot, IOptions<PdfOptions> options)
@@ -33,27 +36,31 @@ internal static class PdfOcrEndpoint
         // PDFium's shared execution group uses the same job budget as redact and to-images.
         var jobLimit = settings.RedactJobLimitBytes / 4096 * 4096;
         var inputLimit = Math.Min(settings.MaxFileBytes, jobLimit);
-        var language = Horizontal;
+        var query = context.Request.Query;
+        var quality = query.TryGetValue("quality", out var value) ? value.ToString() : "standard";
+        var high = quality == "high";
+        var vertical = false;
         PdfPageSelection? selection = null;
         await PdfEndpointHelpers.ExecuteAsync(context, settings, "ocr.pdf", () =>
         {
-            var query = context.Request.Query;
-            PdfEndpointHelpers.ValidateQueryKeys(query, "direction", "pages");
-            language = query["direction"].ToString() switch
+            PdfEndpointHelpers.ValidateQueryKeys(query, "direction", "pages", "quality");
+            vertical = query["direction"].ToString() switch
             {
-                "horizontal" => Horizontal,
-                "vertical" => Vertical,
+                "horizontal" => false,
+                "vertical" => true,
                 _ => throw new BadHttpRequestException("Invalid direction query.")
             };
+            if (quality is not ("standard" or "high")) throw new BadHttpRequestException("Invalid quality query.");
             if (query.TryGetValue("pages", out var pages)) selection = PdfPageSelection.Parse(pages.ToString());
         }, (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, inputLimit, token),
-        (files, token) => OcrAsync(files, qpdf, renderer, settings, jobLimit, language, selection, token),
+        (files, token) => OcrAsync(files, qpdf, renderer, settings, jobLimit, high, vertical, selection, token),
         maxRequestBytes: inputLimit + PdfOptions.MultipartOverheadBytes,
-        processingTimeoutSeconds: settings.OcrTimeoutSeconds, renderFailureTitle: "このPDFをOCR処理できません。");
+        processingTimeoutSeconds: high ? settings.OcrHighTimeoutSeconds : settings.OcrTimeoutSeconds,
+        renderFailureTitle: "このPDFをOCR処理できません。");
     }
 
     private static async Task OcrAsync(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfRenderer renderer,
-        PdfOptions settings, long jobLimit, string language, PdfPageSelection? selection, CancellationToken token)
+        PdfOptions settings, long jobLimit, bool high, bool vertical, PdfPageSelection? selection, CancellationToken token)
     {
         var job = new PdfPageJob(files, qpdf, settings, jobLimit);
         job.TrackInput();
@@ -70,7 +77,8 @@ internal static class PdfOcrEndpoint
             count = input.Pages.Count;
             if (count == 0) throw new PdfInputException();
             var ranges = selection?.GetRanges(count) ?? [(1, count)];
-            if (ranges.Sum(range => (long)range.End - range.Start + 1) > settings.MaxOcrPages)
+            var maxPages = high ? settings.MaxOcrHighPages : settings.MaxOcrPages;
+            if (ranges.Sum(range => (long)range.End - range.Start + 1) > maxPages)
                 throw new BadHttpRequestException("OCR page limit exceeded.");
             if (PdfFormDetector.ContainsSignatureStructure(input, token))
                 throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
@@ -98,7 +106,8 @@ internal static class PdfOcrEndpoint
                 page.DisplayWidth / page.UserUnit, page.DisplayHeight / page.UserUnit,
                 pixels[i].Width, pixels[i].Height, imageBudget, []), token);
             job.Commit(image, imageBudget);
-            var (layer, lines) = await RecognizePageAsync(files, job, settings, language, image, i, pixels[i], token);
+            var layer = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{i}.pdf"));
+            var lines = await RecognizePageAsync(files, job, settings, high, vertical, image, layer, pixels[i], token);
             job.Delete(image);
             try
             {
@@ -108,7 +117,7 @@ internal static class PdfOcrEndpoint
             textLayers.Add(layer);
             var content = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-content-{i}.bin"));
             var height = pixels[i].Height;
-            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, language == Vertical, height, Dpi, token), token);
+            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, vertical, height, Dpi, token), token);
             contents.Add(content);
         }
 
@@ -162,39 +171,26 @@ internal static class PdfOcrEndpoint
             throw new InvalidOperationException(Failure);
     }
 
-    private static async Task<(string Layer, List<OcrTextLayer.Line> Lines)> RecognizePageAsync(TemporaryPdfFiles files,
-        PdfPageJob job, PdfOptions settings, string language, string image, int index, (int Width, int Height) size,
-        CancellationToken token)
-    {
-        var layer = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{index}.pdf"));
-        if (language != Vertical)
-            return (layer, await RecognizeAsync(files, job, settings, Horizontal, "6", image, layer, size, token));
-
-        // jpn_vert --psm 5 slices horizontal headings and captions into vertical "columns", while page segmentation
-        // with both models misreads a short isolated column. Keep the recognition Tesseract is more confident in.
-        var columns = await RecognizeAsync(files, job, settings, Vertical, "5", image, layer, size, token);
-        var segmented = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{index}-segmented.pdf"));
-        var lines = await RecognizeAsync(files, job, settings, Horizontal + "+" + Vertical, "3", image, segmented, size, token);
-        if (OcrTextLayer.MeanConfidence(lines) <= OcrTextLayer.MeanConfidence(columns))
-        {
-            job.Delete(segmented);
-            return (layer, columns);
-        }
-        job.Delete(layer);
-        return (segmented, lines);
-    }
-
     // Writes Tesseract's text-only PDF and TSV in one recognition, then reads and deletes the TSV.
-    private static async Task<List<OcrTextLayer.Line>> RecognizeAsync(TemporaryPdfFiles files, PdfPageJob job,
-        PdfOptions settings, string models, string psm, string image, string layer, (int Width, int Height) size,
-        CancellationToken token)
+    private static async Task<List<OcrTextLayer.Line>> RecognizePageAsync(TemporaryPdfFiles files, PdfPageJob job,
+        PdfOptions settings, bool high, bool vertical, string image, string layer,
+        (int Width, int Height) size, CancellationToken token)
     {
         var tsv = Path.ChangeExtension(layer, ".tsv");
         // prlimit's file size limit applies to each output file; reserve the same budget for both before running.
         var budget = job.ReservePair(layer, tsv, settings.OverlayGeneratedLimitBytes);
         var basePath = Path.ChangeExtension(Path.GetFullPath(layer), null);
+        var (models, psm) = (high, vertical) switch
+        {
+            (true, true) => (Horizontal + "+" + Vertical, "3"),
+            (false, true) => (Vertical, "5"),
+            _ => (Horizontal, "1")
+        };
+        string[] tessdata = high ? ["--tessdata-dir", settings.TessdataBestDir] : [];
+        // Set the output flags directly so neither model directory needs a copy of Tesseract's configs.
         string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
-            Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "pdf", "tsv"];
+            Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "-c", "thresholding_method=2",
+            .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
         var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
             with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
         var tsvInfo = new FileInfo(tsv);
@@ -259,12 +255,19 @@ internal static class PdfOcrEndpoint
         if (!OperatingSystem.IsLinux()) return;
         try
         {
-            var result = await ExternalProcessRunner.RunAsync(CreateRequest(options, ["--list-langs"], null, 8192), token);
-            if (result.ExitCode != 0 || result.Stdout is null) throw new InvalidOperationException();
-            var languages = Encoding.UTF8.GetString(result.Stdout).Split('\n', StringSplitOptions.TrimEntries);
-            if (!languages.Contains(Horizontal) || !languages.Contains(Vertical)) throw new InvalidOperationException();
+            await ValidateLanguagesAsync(options, ["--list-langs"], token);
+            await ValidateLanguagesAsync(options, ["--tessdata-dir", options.TessdataBestDir, "--list-langs"], token);
         }
         catch (Exception) { throw new PdfOcrStartupException(); }
+    }
+
+    private static async Task ValidateLanguagesAsync(PdfOptions options, string[] arguments, CancellationToken token)
+    {
+        var result = await ExternalProcessRunner.RunAsync(CreateRequest(options, arguments, null, 8192), token);
+        if (result.ExitCode != 0 || result.Stdout is null) throw new InvalidOperationException();
+        var languages = Encoding.UTF8.GetString(result.Stdout).Split('\n', StringSplitOptions.TrimEntries);
+        if (!languages.Contains(Horizontal) || !languages.Contains(Vertical) || !languages.Contains("osd"))
+            throw new InvalidOperationException();
     }
 
     private static ExternalProcessRequest CreateRequest(PdfOptions options, string[] arguments, long? fileLimit,

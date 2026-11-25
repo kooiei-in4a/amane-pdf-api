@@ -19,7 +19,10 @@ public sealed class PdfOptions
     public int OverlayMaxPages { get; set; } = 1000;
     public int MaxOcrPages { get; set; } = 10;
     public int OcrTimeoutSeconds { get; set; } = 90;
+    public int MaxOcrHighPages { get; set; } = 5;
+    public int OcrHighTimeoutSeconds { get; set; } = 180;
     public string TesseractPath { get; set; } = "tesseract";
+    public string TessdataBestDir { get; set; } = "/opt/amane-pdf/tessdata-best";
     public int QpdfTimeoutSeconds { get; set; } = 30;
     public int MaxConcurrentProcesses { get; set; } = 2;
     public const int MultipartOverheadBytes = 64 * 1024;

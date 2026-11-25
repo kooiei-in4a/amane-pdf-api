@@ -119,7 +119,7 @@ class ApiContainer:
     def exec(self, *arguments):
         return docker("exec", self.name, *arguments)
 
-    def request(self, method, path, body=b"", content_type=None, chunked=False):
+    def request(self, method, path, body=b"", content_type=None, chunked=False, timeout=40):
         if method == "POST":
             self.post_count += 1
         if self.isolated:
@@ -143,7 +143,7 @@ class ApiContainer:
         headers = {}
         if content_type:
             headers["Content-Type"] = content_type
-        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=40)
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=timeout)
         try:
             payload = (body[i:i + 4096] for i in range(0, len(body), 4096)) if chunked else body
             connection.request(method, path, body=payload, headers=headers, encode_chunked=chunked)

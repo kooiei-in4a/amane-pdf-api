@@ -649,17 +649,26 @@ file: PDF
 
 ```text
 POST /api/pdf/ocr?direction=horizontal
-POST /api/pdf/ocr?direction=vertical&pages=1-3
+POST /api/pdf/ocr?direction=vertical&pages=1-3&quality=high
 Content-Type: multipart/form-data
 
 file: PDF
 ```
 
-`direction` は必須で、横書き `horizontal` または縦書き `vertical` を選びます。`pages` を省略すると全ページが対象です。例 `1-3,5`。範囲外、重複した指定、対象が `Pdf__MaxOcrPages`（既定・最大10ページ）を超える場合は400です。全ページを出力し、選んだページにだけ透明な検索用の文字レイヤーを加えます。元のページの表示、順序、用紙サイズを保ちます。200、`application/pdf`、固定名 `ocr.pdf` で返します。
+`direction` は必須です。横書きは `horizontal`、縦書きは `vertical` を指定します。`quality` は標準の `standard`（省略時の既定値）または高精度の `high` です。キーの大文字小文字は区別せず、値は区別します。空・未知・重複の指定はアップロード本文を読む前に400で返します。
 
-描画は300 dpi、1ページ1,600万画素までです。黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、処理が `Pdf__OcrTimeoutSeconds`（既定90秒）を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
+| 方式 | 対象ページ上限 | 処理時間上限 | 密な文書の応答時間の目安 |
+| --- | ---: | ---: | --- |
+| 標準 `standard` | 10 | 90秒 | 横書き約40秒、縦書き約55秒（10ページ） |
+| 高精度 `high` | 5 | 180秒 | 横書き約95秒、縦書き約100秒（5ページ） |
 
-検索用の文字は、Tesseractが認識した語の位置から置き直します。日本語の語の間には空白を入れず、英数字の単語の間と、離れた欄・段の間には空白を入れます。このため、日本語の文中の空白（全角・半角）や、間隔の狭い表の欄の区切りは詰まることがあります。PDF.jsは日本語の直後の改行を検索時に無視するため、離れた欄・段の終わりには表示されない区切り文字（U+034F）を置き、別の欄の語とつながって一致しないようにします。コピーした文章にもこの文字が含まれます（表示はされません）。縦書き（`vertical`）では、縦書きの列として読む認識と、縦書き・横書きを分けて読む認識の両方を行い、Tesseractの信頼度が高い結果を使います。縦書きのページにある横書きの見出しや説明も検索できますが、処理時間は横書きの約2倍です。縦中横の数字は認識されません。PDF.jsで検索したときの強調表示が元の行に重なるように配置しています。ビューアの代替フォントによっては、数字や英字を含む行で強調の位置がずれることがあります。
+両方式とも、横書きでページの向きを判定し、明るさのむらに対応する二値化と、罫線付きの表に対応するページ分割を使います。高精度は精度重視の日本語モデルを使い、誤読、記号、小さい文字、縦書きページ内の横書きの見出しの認識を改善します。検証時の通常の横書き1ページは標準で約1秒、高精度で約2秒でした。時間は文字量や画質で変わります。[OCRの検証記録](docs/ocr-quality-validation.md)
+
+`pages` を省略すると全ページが対象です。たとえば `pages=1-3,5` は4ページを対象にします。範囲外・重複の指定や、方式ごとの対象ページ上限を超えた場合は400です。全ページを出力し、選んだページに透明な検索用の文字レイヤーを加えます。元のページの表示、順序、用紙サイズを保ちます。200、`application/pdf`、固定名 `ocr.pdf` で返します。
+
+描画は300 dpi、1ページ1,600万画素までです。黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、方式ごとの処理時間上限を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
+
+検索用の文字は、Tesseractが認識した語の位置から置き直します。日本語の語の間には空白を入れず、英数字の単語の間と、離れた欄・段の間には空白を入れます。このため、日本語の文中の空白（全角・半角）や、間隔の狭い表の欄の区切りは詰まることがあります。PDF.jsは日本語の直後の改行を検索時に無視するため、離れた欄・段の終わりには表示されない区切り文字（U+034F）を置き、別の欄の語とつながって一致しないようにします。コピーした文章にもこの文字が含まれます（表示はされません）。縦中横の数字は認識されません。PDF.jsで検索したときの強調表示が元の行に重なるように配置しています。ビューアの代替フォントによっては、数字や英字を含む行で強調の位置がずれることがあります。
 
 ## 内部の処理時間ログ
 
@@ -707,9 +716,12 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__CleanJsonLimitBytes` | `33554432`（32 MiB） | cleanの入力・更新・出力検査JSONの各上限。int.MaxValue以下 |
 | `Pdf__CleanOutputLimitBytes` | `56623104`（54 MiB） | cleanの最終PDF上限 |
 | `Pdf__CleanJobLimitBytes` | `130023424`（124 MiB） | cleanの一時ファイル割当合計。4 KiB単位の入力上限以上が必須 |
-| `Pdf__MaxOcrPages` | `10` | OCR対象ページ数の上限。1〜10 |
-| `Pdf__OcrTimeoutSeconds` | `90` | アップロード後のOCR処理全体の最大秒数 |
-| `Pdf__TesseractPath` | `tesseract` | Tesseract実行ファイル。起動時に日本語の2モデルを確認 |
+| `Pdf__MaxOcrPages` | `10` | 標準OCRの対象ページ数の上限。1〜10 |
+| `Pdf__OcrTimeoutSeconds` | `90` | アップロード後の標準OCR処理全体の上限（秒） |
+| `Pdf__MaxOcrHighPages` | `5` | 高精度OCRの対象ページ数の上限。1〜5 |
+| `Pdf__OcrHighTimeoutSeconds` | `180` | アップロード後の高精度OCR処理全体の上限（秒） |
+| `Pdf__TesseractPath` | `tesseract` | Tesseract実行ファイル。起動時に両方式の `jpn`・`jpn_vert`・`osd` を確認 |
+| `Pdf__TessdataBestDir` | `/opt/amane-pdf/tessdata-best` | 高精度のモデルディレクトリの絶対パス |
 | `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
@@ -871,7 +883,10 @@ Linuxでは、未存在または空のprefixへ固定取得物を導入し、API
 
 ```bash
 # Ubuntu 26.04のLinux開発環境
-sudo apt-get install tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert poppler-utils
+sudo apt-get install tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert tesseract-ocr-osd poppler-utils
+sh scripts/install-tessdata-best.sh /tmp/amane-pdf-tessdata-best
+ln -s /usr/share/tesseract-ocr/*/tessdata/osd.traineddata /tmp/amane-pdf-tessdata-best/osd.traineddata
+export Pdf__TessdataBestDir=/tmp/amane-pdf-tessdata-best
 scripts/install-pdfcpu.sh /tmp/amane-pdf-tools
 export Pdf__PdfcpuPath=/tmp/amane-pdf-tools/bin/pdfcpu
 export Pdf__PdfcpuConfigDir=/tmp/amane-pdf-tools/config
@@ -946,14 +961,14 @@ python3 scripts/redact-validation.py amane-pdf-api:ci
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名のGo SDK・font archive・OFLをローカルから読む検証用optionで、checksumの検査は省略しません。pdfcpu moduleと依存はbuild時にGo proxyとchecksum databaseから取得します。ソースのmodule checksum・go.mod・binary metadata・licenseを照合し、SDKとビルドcacheはruntimeへ含めません。
 
-OCRの文字レイヤーは、CIでPDF.js 6.3.289の検索処理（ビューアと同じ `PDFFindController`）でも確認します。日本語の語句が空白で分断されずに見つかること、行をまたぐ語、英字の単語間の空白、離れた欄の語どうしが連結しないこと、回転・CropBox付きのページ、縦書きのページの横書きの見出しが対象です。Node.jsとpdfjs-distはCI・検証専用で、runtimeには追加しません。
+OCRの文字レイヤーは、CIで両方式をPDF.js 6.3.289の検索処理（ビューアと同じ `PDFFindController`）でも確認します。日本語の語句が空白で分断されずに見つかること、行をまたぐ語、英字の単語間の空白、離れた欄の語どうしが連結しないこと、回転・CropBox付きのページ、縦書きのページの横書きの見出し、罫線付きの表、影のあるページ、上下逆さのページが対象です。Node.js、pdfjs-dist、PillowはCI・検証で使います。
 
 ```bash
 npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional --omit=dev
 python3 scripts/ocr-search-validation.py amane-pdf-api:ci
 ```
 
-検索結果の強調表示の位置は、`OcrTextLayer` の配置の定数を変えたときとリリース前に、ChromiumとFirefoxの実ブラウザで確認します（CIでは実行しません）。`--highlight` で、横書き・回転+CropBox・縦書きと横見出しの試料のOCR出力PDFと、元画像から求めた語ごとの期待矩形を保存し、`highlight.mjs` で実際の強調表示と比べます。ChromiumのIoUが0.60未満の語があると終了コード1です。
+検索結果の強調表示の位置は、`OcrTextLayer` の配置の定数を変えたときとリリース前に、ChromiumとFirefoxの実ブラウザで確認します（CIでは実行しません）。`--highlight` で、高精度の横書き・回転+CropBox・縦書きと横見出しのOCR出力PDFと、元画像から求めた語ごとの期待矩形を保存し、`highlight.mjs` で実際の強調表示と比べます。ChromiumのIoUが0.60未満の語があると終了コード1です。
 
 ```bash
 (
