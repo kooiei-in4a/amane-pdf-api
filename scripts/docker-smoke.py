@@ -664,7 +664,7 @@ def p3_smoke(api):
         api.exec("test", "-r", f"/usr/share/doc/{package}/copyright")
     api.exec("test", "-r", "/usr/share/common-licenses/Apache-2.0")
 
-    # Automatic page segmentation can ignore the lone footer used by pdfcpu_smoke.
+    # Sauvola binarization can miss the lone short footer used by pdfcpu_smoke.
     # Use a scanned Japanese document with several body lines to check the OCR text layer.
     fixtures = Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures"
     copy("ocr-blank.json", (fixtures / "pdfcpu-blank.json").read_bytes())
