@@ -25,7 +25,8 @@ public sealed class OcrTextLayerTests
             "5\t1\t1\t1\t1\t3\t230\t20\t10\t50\t95\t ",
             "4\t1\t1\t1\t2\t0\t10\t80\t200\t40\t-1\t",
             "5\t1\t1\t1\t2\t1\t10\t80\t200\t40\t70\tDark");
-        var lines = OcrTextLayer.Read(file.Path, 1000, 1000, default);
+        var lines = OcrTextLayer.Read(file.Path, 1000, 1000, default, out var confidence);
+        Assert.AreEqual(80.5, confidence);
         Assert.HasCount(2, lines);
         Assert.AreEqual(new(10, 20, 300, 50, lines[0].Words), lines[0]);
         CollectionAssert.AreEqual(new[] { "開館", "時間" }, lines[0].Words.Select(word => word.Text).ToArray());

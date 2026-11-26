@@ -13,6 +13,10 @@ internal static class PdfOcrEndpoint
     private const long ImageLimit = 64 * 1024 * 1024;
     private const long TesseractMemoryLimit = 384 * 1024 * 1024;
     private const string Failure = "PDFのOCR処理に失敗しました。";
+    // Tesseract's word confidence ranges from 0 to 100.
+    private const double LowWordConfidence = 50;
+    private static readonly string[] StandardSauvola = ["-c", "thresholding_method=2",
+        "-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"];
     private const string Horizontal = "jpn";
     private const string Vertical = "jpn_vert";
 
@@ -210,7 +214,6 @@ internal static class PdfOcrEndpoint
     {
         var tsv = Path.ChangeExtension(layer, ".tsv");
         var hocr = vertical ? null : Path.ChangeExtension(layer, ".hocr");
-        string[] outputs = hocr is null ? [layer, tsv] : [layer, tsv, hocr];
         var basePath = Path.ChangeExtension(Path.GetFullPath(layer), null);
         var (models, psm) = (high, vertical) switch
         {
@@ -221,38 +224,76 @@ internal static class PdfOcrEndpoint
         var dpi = raster.Dpi.ToString(CultureInfo.InvariantCulture);
         var directory = Path.GetFullPath(files.DirectoryPath);
         string[] tessdata = high ? ["--tessdata-dir", settings.TessdataBestDir] : [];
-        // Set the output flags directly so neither model directory needs a copy of Tesseract's configs.
-        string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi", dpi,
-            "-c", "textonly_pdf=1", .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
-        if (hocr is not null)
-            arguments = [.. arguments, "-c", "tessedit_create_hocr=1"];
-        if (high || vertical) return (await RecognizeAsync([.. arguments, "-c", "thresholding_method=2"])).Lines;
+        string[] sauvola = ["-c", "thresholding_method=2"];
+        if (vertical) return (await RecognizeAsync(sauvola)).Lines;
+        if (high)
+        {
+            var first = await RecognizeAsync(sauvola);
+            if (first.Rotated || first.Confidence is not < LowWordConfidence ||
+                await DetectOrientationAsync(settings, image, directory, dpi, StandardSauvola, token)
+                    is not { Degrees: 180, Confidence: > 0 })
+                return first.Lines;
 
-        string[] sauvola = ["-c", "thresholding_method=2", "-c", "thresholding_window_size=0.33",
-            "-c", "thresholding_kfactor=0.32"];
+            // OSD and the recognition model must both see a half turn. Retry only the text,
+            // keeping the existing PDF's page geometry and GlyphLessFont for either result.
+            try
+            {
+                var turned = await RecognizeAsync([.. sauvola, "-c", "min_orientation_margin=0"], writePdf: false);
+                if (turned.Confidence is >= LowWordConfidence &&
+                    turned.Lines.All(line => line.Words.Count == 0 || line.Angle == 180))
+                    return turned.Lines;
+            }
+            catch (Exception exception) when (exception is PdfOverlayInputException or PdfRenderException or InvalidOperationException)
+            {
+                // A failed optional attempt must preserve the completed original recognition.
+            }
+            finally
+            {
+                job.Delete(tsv);
+                job.Delete(hocr!);
+            }
+            return first.Lines;
+        }
+
         var useAdaptiveOtsu = OcrPageImage.SelectBinarization(image, raster.Width, raster.Height, token) ==
             OcrBinarization.AdaptiveOtsu &&
-            await DetectOrientationAsync(settings, image, directory, dpi, sauvola, token) is { IsConfidentlyUpright: true };
+            await DetectOrientationAsync(settings, image, directory, dpi, StandardSauvola, token)
+                is { IsConfidentlyUpright: true };
 
-        var (lines, rotated) = useAdaptiveOtsu
-            ? await RecognizeAsync([.. arguments, "-c", "thresholding_method=1", "-c", "thresholding_tile_size=0.5",
+        var (lines, rotated, _) = useAdaptiveOtsu
+            ? await RecognizeAsync(["-c", "thresholding_method=1", "-c", "thresholding_tile_size=0.5",
                 "-c", "thresholding_smooth_kernel_size=0.03", "-c", "thresholding_score_fraction=0"])
-            : await RecognizeAsync([.. arguments, .. sauvola]);
+            : await RecognizeAsync(StandardSauvola);
         var hasWords = lines.Any(line => line.Words.Count > 0);
         if (hasWords && !(useAdaptiveOtsu && rotated)) return lines;
 
         // Free the first output before retrying under the same request deadline and job budget.
         job.Delete(layer);
-        string[] retry = hasWords ? sauvola : ["-c", "thresholding_method=2", "-c",
+        string[] retry = hasWords ? StandardSauvola : ["-c", "thresholding_method=2", "-c",
             "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
-        return (await RecognizeAsync([.. arguments, .. retry])).Lines;
+        return (await RecognizeAsync(retry)).Lines;
 
-        async Task<(List<OcrTextLayer.Line> Lines, bool Rotated)> RecognizeAsync(string[] recognitionArguments)
+        async Task<(List<OcrTextLayer.Line> Lines, bool Rotated, double? Confidence)> RecognizeAsync(
+            string[] thresholding, bool writePdf = true)
         {
+            // Set the output flags directly so neither model directory needs a copy of Tesseract's configs.
+            string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi", dpi,
+                "-c", "textonly_pdf=1", .. tessdata, "-c", writePdf ? "tessedit_create_pdf=1" : "tessedit_create_pdf=0",
+                "-c", "tessedit_create_tsv=1"];
+            if (hocr is not null)
+                arguments = [.. arguments, "-c", "tessedit_create_hocr=1"];
+            arguments = [.. arguments, .. thresholding];
+            string[] outputs = (writePdf, hocr) switch
+            {
+                (true, null) => [layer, tsv],
+                (true, _) => [layer, tsv, hocr],
+                _ => [tsv, hocr!]
+            };
+
             // prlimit's per-file limit applies to all outputs; reserve that same budget for each before running.
             var budget = job.ReserveWrites(settings.OverlayGeneratedLimitBytes, outputs);
-            var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, recognitionArguments, limit)
-                with { WorkingDirectory = directory }, layer, budget, token);
+            var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
+                with { WorkingDirectory = directory }, outputs[0], budget, token);
             var sidecars = outputs.Skip(1).Select(path => new FileInfo(path)).ToArray();
             if (result.ExceedsBudget || sidecars.Any(file => file.Exists && file.Length > budget))
                 throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
@@ -261,12 +302,12 @@ internal static class PdfOcrEndpoint
                 throw new PdfRenderException(PdfRenderReason.TooComplex);
             if (!result.Succeeded || sidecars.Any(file => !file.Exists)) throw new InvalidOperationException(Failure);
             foreach (var output in outputs) job.Commit(output, budget);
-            var recognizedLines = OcrTextLayer.Read(tsv, raster.Width, raster.Height, token);
+            var recognizedLines = OcrTextLayer.Read(tsv, raster.Width, raster.Height, token, out var confidence);
             job.Delete(tsv);
-            if (hocr is null) return (recognizedLines, false);
+            if (hocr is null) return (recognizedLines, false, confidence);
             var reportedRotation = OcrTextLayer.Orient(recognizedLines, hocr, raster.Width, raster.Height, token);
             job.Delete(hocr);
-            return (recognizedLines, reportedRotation);
+            return (recognizedLines, reportedRotation, confidence);
         }
     }
 
