@@ -20,8 +20,8 @@ internal static class TextDiff
     private const int MaxWork = 32_000_000;
     private const int MaxChanges = 1000;
     private const int ContextLength = 30;
-    private readonly record struct Edit(int Old, int New, int Deleted, int Inserted);
-    private readonly record struct PageText(int Id, int Start, int End);
+    private readonly record struct Edit(int Old, int New, int Deleted, int Inserted, bool IsBlock = false);
+    private readonly record struct PageText(int Id, int Start, int End, int BodyStart, int BodyEnd);
 
     internal static CompareResult Compare(CompareText oldText, CompareText newText)
     {
@@ -39,7 +39,8 @@ internal static class TextDiff
                 newEnd += edits[index].Inserted;
                 index++;
             }
-            while (index < edits.Count && edits[index].Old == oldEnd && edits[index].New == newEnd);
+            while (!first.IsBlock && index < edits.Count && !edits[index].IsBlock &&
+                edits[index].Old == oldEnd && edits[index].New == newEnd);
 
             var beforeStart = Math.Max(0, first.Old - ContextLength);
             var before = Slice(oldText.Text, beforeStart, first.Old);
@@ -65,21 +66,24 @@ internal static class TextDiff
 
     private static List<Edit> FindDocumentEdits(CompareText oldText, CompareText newText)
     {
-        var remainingWork = MaxWork;
+        // Reserve enough of the shared budget to align pages even if character matching exhausts its share.
+        var pageWork = 2 * (oldText.Text.Length + newText.Text.Length) + oldText.Pages * newText.Pages;
+        var remainingWork = MaxWork - pageWork;
         try
         {
             return FindEdits(oldText.Text, newText.Text, ref remainingWork);
         }
-        catch (CompareLimitException) when (remainingWork > 0)
+        catch (CompareLimitException)
         {
+            remainingWork += pageWork;
             return FindPageEdits(oldText, newText, ref remainingWork);
         }
     }
 
     private static List<Edit> FindPageEdits(CompareText oldText, CompareText newText, ref int remainingWork)
     {
-        // Intern exact page text so equality checks in the page alignment do not rescan long pages.
-        ChargeWork(ref remainingWork, oldText.Text.Length + newText.Text.Length);
+        // Charge for identifying the page bodies and comparing their excluded edge text.
+        ChargeWork(ref remainingWork, 2 * (oldText.Text.Length + newText.Text.Length));
         var pageIds = new Dictionary<string, int>(StringComparer.Ordinal);
         var oldPages = ReadPages(oldText, pageIds);
         var newPages = ReadPages(newText, pageIds);
@@ -92,7 +96,7 @@ internal static class TextDiff
             matches[i, j] = oldPages[i].Id == newPages[j].Id
                 ? 1 + matches[i + 1, j + 1]
                 : Math.Max(matches[i + 1, j], matches[i, j + 1]);
-        if (matches[0, 0] == 0) throw new CompareLimitException();
+        if (matches[0, 0] == 0) return [new(0, 0, oldText.Text.Length, newText.Text.Length, IsBlock: true)];
 
         var edits = new List<Edit>();
         var oldStart = 0;
@@ -105,6 +109,11 @@ internal static class TextDiff
             {
                 AppendGapEdits(edits, oldText.Text, oldStart..oldPage.Start, newText.Text, newStart..newPage.Start,
                     ref remainingWork);
+                // Keep edits to edge text in the result even when it was ignored for page matching.
+                AppendEdgeEdit(edits, oldText.Text, oldPage.Start..oldPage.BodyStart,
+                    newText.Text, newPage.Start..newPage.BodyStart);
+                AppendEdgeEdit(edits, oldText.Text, oldPage.BodyEnd..oldPage.End,
+                    newText.Text, newPage.BodyEnd..newPage.End);
                 oldStart = oldPage.End;
                 newStart = newPage.End;
                 i++;
@@ -127,12 +136,49 @@ internal static class TextDiff
             var page = document.PageNumbers[start];
             var end = start + 1;
             while (end < document.Text.Length && document.PageNumbers[end] == page) end++;
-            var text = Slice(document.Text, start, end);
+            var bodyStart = SkipPageNumber(document.Text, start, end, 1);
+            var bodyEnd = SkipPageNumber(document.Text, end - 1, bodyStart - 1, -1) + 1;
+            if (bodyStart == bodyEnd) (bodyStart, bodyEnd) = (start, end);
+            var text = Slice(document.Text, bodyStart, bodyEnd);
             if (!pageIds.TryGetValue(text, out var id)) pageIds.Add(text, id = pageIds.Count);
-            pages.Add(new(id, start, end));
+            pages.Add(new(id, start, end, bodyStart, bodyEnd));
             start = end;
         }
         return pages;
+    }
+
+    private static int SkipPageNumber(Rune[] text, int start, int stop, int step)
+    {
+        var index = Skip(Rune.IsWhiteSpace, start);
+        if (index == stop) return index;
+        var dashed = text[index].Value == '-';
+        var digitsStart = dashed ? Skip(Rune.IsWhiteSpace, index + step) : index;
+        var digitsEnd = Skip(Rune.IsDigit, digitsStart);
+        if (digitsEnd == digitsStart) return index;
+        var separator = Skip(Rune.IsWhiteSpace, digitsEnd);
+        if (dashed)
+            return separator != stop && text[separator].Value == '-' ? Skip(Rune.IsWhiteSpace, separator + step) : index;
+        if (separator != stop && text[separator].Value == '/')
+        {
+            var totalStart = Skip(Rune.IsWhiteSpace, separator + step);
+            var totalEnd = Skip(Rune.IsDigit, totalStart);
+            if (totalEnd != totalStart) return Skip(Rune.IsWhiteSpace, totalEnd);
+        }
+        return separator;
+
+        int Skip(Func<Rune, bool> predicate, int position)
+        {
+            while (position != stop && predicate(text[position])) position += step;
+            return position;
+        }
+    }
+
+    private static void AppendEdgeEdit(List<Edit> edits, Rune[] oldText, Range oldEdge, Rune[] newText, Range newEdge)
+    {
+        var (oldStart, oldLength) = oldEdge.GetOffsetAndLength(oldText.Length);
+        var (newStart, newLength) = newEdge.GetOffsetAndLength(newText.Length);
+        if (!oldText.AsSpan(oldStart, oldLength).SequenceEqual(newText.AsSpan(newStart, newLength)))
+            edits.Add(new(oldStart, newStart, oldLength, newLength, IsBlock: true));
     }
 
     private static void AppendGapEdits(List<Edit> edits, Rune[] oldText, Range oldGap, Rune[] newText, Range newGap,
@@ -142,17 +188,31 @@ internal static class TextDiff
         var (newStart, newLength) = newGap.GetOffsetAndLength(newText.Length);
         if (oldLength == 0 || newLength == 0)
         {
-            if (oldLength != newLength) edits.Add(new(oldStart, newStart, oldLength, newLength));
+            if (oldLength != newLength) edits.Add(new(oldStart, newStart, oldLength, newLength, IsBlock: true));
             return;
         }
-        foreach (var edit in FindEdits(oldText.AsSpan(oldStart, oldLength), newText.AsSpan(newStart, newLength), ref remainingWork))
+        List<Edit> gapEdits;
+        try
+        {
+            gapEdits = FindEdits(oldText.AsSpan(oldStart, oldLength), newText.AsSpan(newStart, newLength), ref remainingWork);
+        }
+        catch (CompareLimitException)
+        {
+            edits.Add(new(oldStart, newStart, oldLength, newLength, IsBlock: true));
+            return;
+        }
+        foreach (var edit in gapEdits)
             edits.Add(edit with { Old = oldStart + edit.Old, New = newStart + edit.New });
     }
 
     private static void ChargeWork(ref int remainingWork, int amount = 1)
     {
+        if (amount > remainingWork)
+        {
+            remainingWork = 0;
+            throw new CompareLimitException();
+        }
         remainingWork -= amount;
-        if (remainingWork < 0) throw new CompareLimitException();
     }
 
     private static List<Edit> FindEdits(ReadOnlySpan<Rune> oldText, ReadOnlySpan<Rune> newText, ref int remainingWork)

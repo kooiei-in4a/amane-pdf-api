@@ -285,8 +285,8 @@ public sealed class PdfP2EndpointsTests
     {
         if (!OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext(new() { ["Pdf:TextExtractorPath"] = ExtractorPath() });
-        var original = Pages("Original agreement", 10);
-        var added = Pages("New supplemental terms", count);
+        var original = ContractPages("Original agreement", 10);
+        var added = ContractPages("New supplemental terms", count);
         var expanded = original.Take(offset).Concat(added).Concat(original.Skip(offset));
         var expected = string.Concat(added.SelectMany(page => page)).Replace(" ", "", StringComparison.Ordinal);
         Assert.IsGreaterThan(4096, expected.Length);
@@ -307,10 +307,64 @@ public sealed class PdfP2EndpointsTests
         Assert.AreEqual(expected, excerpt.GetProperty("text").GetString());
         Assert.IsFalse(json.RootElement.GetProperty("truncated").GetBoolean());
         test.AssertClean();
+    }
 
-        static string[][] Pages(string title, int pages) => Enumerable.Range(1, pages).Select(page =>
-            Enumerable.Range(1, 25).Select(line =>
-                FormattableString.Invariant($"{title} page {page:00} item {line:00} governs the annual term.")).ToArray()).ToArray();
+    [TestMethod]
+    [DataRow("dash", false)]
+    [DataRow("dash", true)]
+    [DataRow("fraction", false)]
+    [DataRow("fraction", true)]
+    [DataRow("header", false)]
+    public async Task CompareAlignsNumberedPagesAfterInsertingOrDeletingFivePages(string format, bool delete)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new() { ["Pdf:TextExtractorPath"] = ExtractorPath() });
+        var original = ContractPages("Original agreement", 10);
+        var added = ContractPages("New supplemental terms", 5);
+        var revised = original.Take(5).Concat(added).Concat(original.Skip(5)).ToArray();
+        var originalPdf = PageTextPdf(NumberPages(original, format));
+        var revisedPdf = PageTextPdf(NumberPages(revised, format));
+        using var form = CompareForm(delete ? revisedPdf : originalPdf, delete ? originalPdf : revisedPdf);
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        using var json = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        var changes = json.RootElement.GetProperty("changes").EnumerateArray().ToArray();
+        var action = delete ? "delete" : "insert";
+        var change = changes.Single(item => item.GetProperty("type").GetString() == action);
+        var excerpt = change.GetProperty(delete ? "old" : "new");
+        Assert.AreEqual(6, excerpt.GetProperty("page").GetInt32());
+        Assert.AreEqual(ComparableText(NumberPages(revised, format).Skip(5).Take(5)), excerpt.GetProperty("text").GetString());
+        Assert.IsTrue(changes.Any(item => item.GetProperty("type").GetString() == "replace"),
+            "The text of the renumbered pages is still compared.");
+        Assert.IsFalse(json.RootElement.GetProperty("truncated").GetBoolean());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(4)]
+    [DataRow(5)]
+    public async Task CompareReturnsOneReplacementWhenPagesAreInsertedBesideASmallEdit(int editedPage)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new() { ["Pdf:TextExtractorPath"] = ExtractorPath() });
+        var original = ContractPages("Original agreement", 10);
+        var originalPdf = PageTextPdf(original);
+        var before = ComparableText([original[editedPage]]);
+        original[editedPage][0] = original[editedPage][0].Replace("annual term.", "annual team.", StringComparison.Ordinal);
+        var added = ContractPages("New supplemental terms", 5);
+        var revised = original.Take(5).Concat(added).Concat(original.Skip(5)).ToArray();
+        using var form = CompareForm(originalPdf, PageTextPdf(revised));
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        using var json = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        var change = json.RootElement.GetProperty("changes").EnumerateArray().Single();
+        Assert.AreEqual("replace", change.GetProperty("type").GetString());
+        Assert.AreEqual(editedPage + 1, change.GetProperty("old").GetProperty("page").GetInt32());
+        Assert.AreEqual(editedPage + 1, change.GetProperty("new").GetProperty("page").GetInt32());
+        Assert.AreEqual(before, change.GetProperty("old").GetProperty("text").GetString());
+        Assert.AreEqual(ComparableText(revised.Skip(editedPage).Take(6)), change.GetProperty("new").GetProperty("text").GetString());
+        Assert.IsFalse(json.RootElement.GetProperty("truncated").GetBoolean());
+        test.AssertClean();
     }
 
     [TestMethod]
@@ -551,7 +605,10 @@ public sealed class PdfP2EndpointsTests
         Assert.AreEqual(new CompareExcerpt(3, "六"), result.Changes[1].New);
         Assert.AreEqual(new CompareExcerpt(5, inserted), result.Changes[2].New);
         Assert.IsFalse(result.Truncated);
-        Assert.ThrowsExactly<CompareLimitException>(() => TextDiff.Compare(Side(deleted), Side(inserted)));
+        var unaligned = TextDiff.Compare(Side(deleted), Side(inserted)).Changes.Single();
+        Assert.AreEqual("replace", unaligned.Type);
+        Assert.AreEqual(new CompareExcerpt(1, deleted), unaligned.Old);
+        Assert.AreEqual(new CompareExcerpt(1, inserted), unaligned.New);
 
         static CompareText Side(params string[] pages) => new(
             [.. pages.SelectMany(page => page.EnumerateRunes())],
@@ -747,6 +804,29 @@ public sealed class PdfP2EndpointsTests
     }
 
     private static byte[] TextPdf(string text) => ContentPdf($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET");
+
+    private static string[][] ContractPages(string title, int pages) => Enumerable.Range(1, pages).Select(page =>
+        Enumerable.Range(1, 25).Select(line =>
+            FormattableString.Invariant($"{title} page {page:00} item {line:00} governs the annual term.")).ToArray()).ToArray();
+
+    private static IEnumerable<string[]> NumberPages(string[][] pages, string format) =>
+        pages.Select<string[], string[]>((page, i) => format switch
+        {
+            "dash" => [.. page, FormattableString.Invariant($" - {i + 1} - ")],
+            "fraction" => [.. page, FormattableString.Invariant($" {i + 1} / {pages.Length} ")],
+            _ => [FormattableString.Invariant($" {i + 1} "), .. page]
+        });
+
+    private static string ComparableText(IEnumerable<string[]> pages) =>
+        string.Concat(pages.SelectMany(page => page)).Replace(" ", "", StringComparison.Ordinal);
+
+    private static MultipartFormDataContent CompareForm(byte[] oldPdf, byte[] newPdf)
+    {
+        var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(oldPdf), "old", "old.pdf");
+        form.Add(new ByteArrayContent(newPdf), "new", "new.pdf");
+        return form;
+    }
 
     private static byte[] PageTextPdf(IEnumerable<string[]> pages)
     {
