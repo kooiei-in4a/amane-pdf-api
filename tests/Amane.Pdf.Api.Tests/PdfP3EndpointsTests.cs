@@ -231,6 +231,105 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    public async Task OcrSearchesMixedA4A3AndA2ScansWithoutChangingTheirAppearance()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var scans = new List<byte[]>();
+        (int Width, int Height)[] sizes = [(595, 842), (842, 1191), (1191, 842), (1191, 1684)];
+        for (var i = 0; i < sizes.Length; i++)
+        {
+            var (width, height) = sizes[i];
+            var fixture = JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject();
+            OverlayFixtures.Page(fixture)["/MediaBox"] = new JsonArray(0, 0, width, height);
+            var blank = await PdfAsync(test, fixture, $"large-ocr-blank-{i}");
+            using var fill = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(new[]
+            {
+                new { page = 1, x = 0.1m, y = 0.1m, width = 0.8m, height = 0.08m, fontSize = 20,
+                    align = "left", text = "中央図書館の開館時間は午前九時からです。" },
+                new { page = 1, x = 0.1m, y = 0.2m, width = 0.8m, height = 0.08m, fontSize = 20,
+                    align = "left", text = "返却ポストは正面入口の東側にあります。" }
+            }));
+            using var filled = await test.Client.PostAsync("/api/pdf/fill-template", fill);
+            Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+            var png = Path.Combine(test.Root, $"large-ocr-{i}.png");
+            await File.WriteAllBytesAsync(png, await RenderPngAsync(test, await filled.Content.ReadAsByteArrayAsync(), 200));
+            var scan = Path.Combine(test.Root, $"large-ocr-{i}.pdf");
+            await ToolAsync(options.PdfcpuPath, ["-c", options.PdfcpuConfigDir, "--offline", "import", "--",
+                FormattableString.Invariant($"dim:{width} {height}, pos:c, sc:1 rel"), scan, png]);
+            scans.Add(await File.ReadAllBytesAsync(scan));
+        }
+
+        using var mergeForm = PdfTestContext.MergeForm([.. scans]);
+        using var merge = await test.Client.PostAsync("/api/pdf/merge", mergeForm);
+        Assert.AreEqual(HttpStatusCode.OK, merge.StatusCode);
+        var input = await merge.Content.ReadAsByteArrayAsync();
+        var inputPath = Path.Combine(test.Root, "mixed-input.pdf");
+        var outputPath = Path.Combine(test.Root, "mixed-ocr.pdf");
+        await File.WriteAllBytesAsync(inputPath, input);
+        var output = await PostPdfAsync(test, Horizontal, input, "ocr.pdf");
+        await test.AssertValidPdfAsync(output, sizes.Length);
+        await File.WriteAllBytesAsync(outputPath, output);
+        for (var i = 0; i < sizes.Length; i++)
+        {
+            var page = i + 1;
+            var pageNumber = page.ToString(CultureInfo.InvariantCulture);
+            var original = await RenderWithPopplerAsync(inputPath, page);
+            var (width, height, _) = PpmHeader(original);
+            Assert.AreEqual(sizes[i].Width, width, 1);
+            Assert.AreEqual(sizes[i].Height, height, 1);
+            Assert.AreEqual("", Normalize(await ExtractTextAsync(inputPath, "-f", pageNumber, "-l", pageNumber)));
+            Assert.Contains("開館時間", Normalize(await ExtractTextAsync(outputPath, "-f", pageNumber, "-l", pageNumber, "-raw")));
+            CollectionAssert.AreEqual(original, await RenderWithPopplerAsync(outputPath, page));
+            await AssertOcrTextMatchesForegroundAsync(original, outputPath, page);
+        }
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrRejectsPagesThatExceedThePixelLimitAtMinimumDpi()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var fixture = JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject();
+        OverlayFixtures.Page(fixture)["/MediaBox"] = new JsonArray(0, 0, 4001, 4000);
+        using var form = PdfTestContext.FileForm(await PdfAsync(test, fixture, "too-large-ocr"));
+        using var response = await test.Client.PostAsync(Horizontal, form);
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("page-too-large", problem.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(134, 422, "too-complex")]
+    [DataRow(126, 500, null)]
+    [DataRow(127, 500, null)]
+    public async Task OcrClassifiesTesseractAbortSeparatelyFromStartupFailures(int exitCode, int status, string? reason)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        using var scripts = new OverlayJob();
+        options.TesseractPath = scripts.Script($"""
+            if [ {exitCode} -eq 134 ]; then
+                printf 'partial' > "$2.pdf"
+                printf 'partial' > "$2.tsv"
+            fi
+            exit {exitCode}
+            """);
+
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var response = await test.Client.PostAsync(Horizontal + "&quality=high", form);
+        Assert.AreEqual(status, (int)response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        if (reason is null) Assert.IsFalse(problem.RootElement.TryGetProperty("reason", out _));
+        else Assert.AreEqual(reason, problem.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrKeepsJapanesePhrasesWholeAndLatinWordsApart()
     {
         if (!OperatingSystem.IsLinux()) return;
