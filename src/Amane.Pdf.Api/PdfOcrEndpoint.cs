@@ -221,19 +221,30 @@ internal static class PdfOcrEndpoint
         string[] tessdata = high ? ["--tessdata-dir", settings.TessdataBestDir] : [];
         // Set the output flags directly so neither model directory needs a copy of Tesseract's configs.
         string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
-            raster.Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "-c", "thresholding_method=2",
-            .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
+            raster.Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
         if (hocr is not null)
             arguments = [.. arguments, "-c", "tessedit_create_hocr=1"];
-        if (high || vertical) return await RecognizeAsync(arguments);
+        if (high || vertical) return await RecognizeAsync([.. arguments, "-c", "thresholding_method=2"]);
 
-        var lines = await RecognizeAsync([.. arguments, "-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"]);
+        string[] otsu = ["-c", "thresholding_method=0"];
+        var binarization = OcrPageImage.SelectBinarization(image, raster.Width, raster.Height, token);
+        string[] thresholding = binarization switch
+        {
+            OcrBinarization.Sauvola => ["-c", "thresholding_method=2", "-c", "thresholding_window_size=0.33",
+                "-c", "thresholding_kfactor=0.32"],
+            OcrBinarization.AdaptiveOtsu => ["-c", "thresholding_method=1", "-c", "thresholding_tile_size=0.5",
+                "-c", "thresholding_smooth_kernel_size=0.03", "-c", "thresholding_score_fraction=0"],
+            _ => otsu
+        };
+        var lines = await RecognizeAsync([.. arguments, .. thresholding]);
         if (lines.Any(line => line.Words.Count > 0)) return lines;
 
-        // Small-print documents need a wider window, but it can erase a short line (Issues #128, #134).
         // Free the first output before reserving space for one retry, under the same request deadline.
+        // Use the Sauvola settings that recovered short lines in Issue #128 when retrying after Otsu.
         job.Delete(layer);
-        return await RecognizeAsync([.. arguments, "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"]);
+        var retry = binarization == OcrBinarization.Sauvola ? otsu :
+            ["-c", "thresholding_method=2", "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
+        return await RecognizeAsync([.. arguments, .. retry]);
 
         async Task<List<OcrTextLayer.Line>> RecognizeAsync(string[] recognitionArguments)
         {

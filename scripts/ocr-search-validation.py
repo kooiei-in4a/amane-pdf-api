@@ -90,6 +90,8 @@ SMALL_INVOICE_TERMS = [
     "1234567", "お支払期限", "2026年12月31日",
 ]
 SMALL_INVOICE_MINIMUM = 30
+SMALL_INVOICE_REQUIRED_CASES = {"small-ruled-invoice", "small-ruled-invoice-poppler"}
+SMALL_INVOICE_CASES = SMALL_INVOICE_REQUIRED_CASES | {"small-ruled-invoice-poppler-from-images"}
 DOCUMENT_LINES = [
     "中央図書館の開館時間は午前九時から午後七時までです。",
     "返却ポストは正面入口の東側にあります。",
@@ -183,6 +185,17 @@ def image_pdf(api, image, dpi, quality):
 def jpeg_pdf(api, jpeg):
     return post(api, "/api/pdf/from-images?quality=original",
                 [("file", "scan.jpg", "image/jpeg", jpeg)], "application/pdf")
+
+
+def poppler_invoice_scans(api):
+    from PIL import Image
+
+    jpeg = (SEARCH / "fixtures/small-ruled-invoice-poppler.jpg").read_bytes()
+    # Reproduce the 200 dpi RGB PDF from the original #134 comparison.
+    pdf = io.BytesIO()
+    with Image.open(io.BytesIO(jpeg)) as scan:
+        scan.convert("RGB").save(pdf, format="PDF", resolution=200, quality=75)
+    return pdf.getvalue(), jpeg_pdf(api, jpeg)
 
 
 def invoice_scans(api, font_path):
@@ -424,6 +437,7 @@ def main():
         invoice, table = invoice_scans(api, font_path)
         # Keep the ReportLab/PDFium raster from #134 fixed so CI sees the same 200 dpi JPEG.
         small_invoice = jpeg_pdf(api, (SEARCH / "fixtures/small-ruled-invoice.jpg").read_bytes())
+        poppler_invoice, poppler_from_images = poppler_invoice_scans(api)
         shadow = shadow_scan(api, font_path)
         cases = [("horizontal", "horizontal", horizontal, HORIZONTAL_TERMS, ["Windows11"]),
                  ("separate-fields", "horizontal", separate, SEPARATE_TERMS, SEPARATE_ABSENT),
@@ -433,6 +447,8 @@ def main():
                  ("vertical-with-heading", "vertical", vertical, VERTICAL_TERMS, []),
                  ("ruled-invoice", "horizontal", invoice, INVOICE_TERMS, []),
                  ("small-ruled-invoice", "horizontal", small_invoice, SMALL_INVOICE_TERMS, []),
+                 ("small-ruled-invoice-poppler", "horizontal", poppler_invoice, SMALL_INVOICE_TERMS, []),
+                 ("small-ruled-invoice-poppler-from-images", "horizontal", poppler_from_images, SMALL_INVOICE_TERMS, []),
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
                  ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
         cases.extend((name, "horizontal", source, NOISE_TERMS, []) for name, source in noise_scans(api, font_path))
@@ -462,10 +478,11 @@ def main():
                           flush=True)
                     if min(scores.values()) < 0.4:
                         failures.append((quality, name, "PDFium", scores))
-                elif name == "small-ruled-invoice":
+                elif name in SMALL_INVOICE_CASES:
                     native = pdfium_search.find(pdfium_library, directory / f"{name}.pdf", terms)
                     print(f"{quality} {name}: PDFium {len(native)}/{len(terms)} terms", flush=True)
-                    if quality == "standard" and len(native) < SMALL_INVOICE_MINIMUM:
+                    if (name in SMALL_INVOICE_REQUIRED_CASES and quality == "standard"
+                            and len(native) < SMALL_INVOICE_MINIMUM):
                         failures.append((quality, name, "PDFium", sorted(native)))
                 if artifacts:
                     artifacts.mkdir(parents=True, exist_ok=True)
@@ -485,9 +502,11 @@ def main():
                 elif name == "ruled-invoice":
                     required = ["品名", "金額", "合計金額", "返却ポスト", "12,800"]
                     minimum = 30
-                elif name == "small-ruled-invoice":
+                elif name in SMALL_INVOICE_CASES:
                     required = []
-                    minimum = SMALL_INVOICE_MINIMUM if quality == "standard" else 0
+                    minimum = (
+                        SMALL_INVOICE_MINIMUM if name in SMALL_INVOICE_REQUIRED_CASES and quality == "standard" else 0
+                    )
                 elif name == "ruled-table":
                     required = ["品名", "金額", "返却ポスト"]
                     minimum = 8
