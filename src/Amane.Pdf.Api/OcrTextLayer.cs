@@ -47,9 +47,14 @@ internal static class OcrTextLayer
     internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words, int Block = 1, int Angle = 0);
 
     internal static List<Line> Read(string path, int imageWidth, int imageHeight, CancellationToken token)
+        => Read(path, imageWidth, imageHeight, token, out _);
+
+    internal static List<Line> Read(string path, int imageWidth, int imageHeight, CancellationToken token,
+        out double? averageConfidence)
     {
         var lines = new List<Line>();
         var words = 0;
+        var confidenceSum = 0.0;
         try
         {
             using var reader = new StreamReader(path, new UTF8Encoding(false, throwOnInvalidBytes: true),
@@ -82,6 +87,7 @@ internal static class OcrTextLayer
                         throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
                     var confidence = double.Parse(columns[10], NumberStyles.Float, CultureInfo.InvariantCulture);
                     if (!double.IsFinite(confidence)) throw new InvalidDataException();
+                    confidenceSum += Math.Clamp(confidence, 0, 100);
                     lines[^1].Words.Add(new(left, top, width, height, word));
                 }
             }
@@ -92,6 +98,7 @@ internal static class OcrTextLayer
             throw new InvalidOperationException(Failure);
         }
         token.ThrowIfCancellationRequested();
+        averageConfidence = words == 0 ? null : confidenceSum / words;
         return lines;
     }
 

@@ -119,7 +119,7 @@ LEDGER_TERMS = [
     "前月繰越", "事務用品", "会費入金", "印刷代", "交通費", "寄付金",
     "120,000", "3,300", "50,000", "12,100", "2,840", "161,760",
 ]
-# Standard and high use their own baseline counts. High rotated ledger is tracked in #138.
+# Each quality has its own baseline. High must recover all terms on the half-turned ledger (#138).
 RULED_ORIENTATION_SCANS = {
     "n-form-clean": (17, 17, RULED_FORM_TERMS),
     "n-form-clean-180": (17, 17, RULED_FORM_TERMS),
@@ -128,7 +128,9 @@ RULED_ORIENTATION_SCANS = {
     "n-ledger": (18, 17, LEDGER_TERMS),
     "n-ledger-noise5": (18, 16, LEDGER_TERMS),
     "n-ledger-fax": (14, 16, LEDGER_TERMS),
-    "n-ledger-180": (18, 0, LEDGER_TERMS),
+    "n-ledger-90": (13, 18, LEDGER_TERMS),
+    "n-ledger-180": (18, 18, LEDGER_TERMS),
+    "n-ledger-270": (18, 17, LEDGER_TERMS),
 }
 DOCUMENT_LINES = [
     "中央図書館の開館時間は午前九時から午後七時までです。",
@@ -441,6 +443,14 @@ def display_checksum(pdf_path):
     return hashlib.sha256(rendered.stdout).digest()
 
 
+def pdfium_display_checksum(api, pdf):
+    rendered = post(api, "/api/pdf/to-images?format=png&dpi=72",
+                    [("file", "display.pdf", "application/pdf", pdf)], "application/zip")
+    with zipfile.ZipFile(io.BytesIO(rendered)) as archive:
+        (page,) = archive.namelist()
+        return hashlib.sha256(archive.read(page)).digest()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image")
@@ -493,6 +503,10 @@ def main():
         review_scans = REVIEW_SCANS | RULED_ORIENTATION_SCANS
         cases.extend((name, "horizontal", (SEARCH / f"fixtures/{name}.pdf").read_bytes(), terms, [])
                      for name, (_, _, terms) in review_scans.items())
+        ledger_checksums = {
+            f"n-ledger-{angle}": pdfium_display_checksum(api, (SEARCH / f"fixtures/n-ledger-{angle}.pdf").read_bytes())
+            for angle in (90, 180, 270)
+        }
         rotated = {}
         upright = document_image(font_path)
         for angle in (90, 180, 270):
@@ -526,7 +540,10 @@ def main():
                             and len(native) < SMALL_INVOICE_MINIMUM):
                         failures.append((quality, name, "PDFium", sorted(native)))
                 elif name in RULED_ORIENTATION_SCANS:
-                    native = pdfium_search.find(pdfium_library, directory / f"{name}.pdf", terms)
+                    output_path = directory / f"{name}.pdf"
+                    if name in ledger_checksums:
+                        assert pdfium_display_checksum(api, output) == ledger_checksums[name], (quality, name, "render changed")
+                    native = pdfium_search.find(pdfium_library, output_path, terms)
                     print(f"{quality} {name}: PDFium {len(native)}/{len(terms)} terms", flush=True)
                     standard_minimum, high_minimum, _ = RULED_ORIENTATION_SCANS[name]
                     minimum = standard_minimum if quality == "standard" else high_minimum
