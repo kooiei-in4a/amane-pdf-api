@@ -620,7 +620,7 @@ def p2_smoke(api):
     api.assert_clean()
 
 
-def p3_smoke(api):
+def p3_smoke(api, short_line_pdf):
     root = "/tmp/p3-smoke"
     api.exec("mkdir", "-m", "700", root)
 
@@ -633,6 +633,21 @@ def p3_smoke(api):
 
     def copy(name, data):
         docker("exec", "-i", api.name, "sh", "-c", f"umask 077; cat > {root}/{name}", data=data)
+
+    def ocr_text(name, pdf):
+        body, content_type = multipart(pdf, password=None)
+        status, _, result = api.request("POST", "/api/pdf/to-images?format=png&dpi=200", body, content_type)
+        assert status == 200
+        with zipfile.ZipFile(io.BytesIO(result)) as images:
+            scan = images.read("page-001.png")
+        scanned = send("from-images?quality=original", scan, "images.pdf")
+        output = f"{root}/{name}.pdf"
+        copy(name + ".pdf", send("ocr?direction=horizontal", scanned, "ocr.pdf"))
+        api.exec("qpdf", "--check", output)
+        text_path = f"{root}/{name}.json"
+        api.exec("dotnet", "/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll", output, text_path, "1", "200")
+        text, = json.loads(api.exec("cat", text_path).stdout)["pages"]
+        return text
 
     objects = {
         "obj:1 0 R": {"value": {"/Type": "/Catalog", "/Pages": "2 0 R", "/AcroForm": {"/Fields": ["4 0 R"]}}},
@@ -665,9 +680,8 @@ def p3_smoke(api):
         api.exec("test", "-r", f"/usr/share/doc/{package}/copyright")
     api.exec("test", "-r", "/usr/share/common-licenses/Apache-2.0")
 
-    # With Sauvola, the old 12 pt one-line fixture produced 0/8 characters with the standard model
-    # and 8/8 with the high-quality model. See docs/ocr-quality-validation.md for the comparison.
-    # Use a scanned Japanese document with several body lines to check the OCR text layer.
+    # Keep both the short-line regression and the multi-line document in the standard OCR smoke test.
+    assert "日本語の起動確認" in ocr_text("short-line-ocr", short_line_pdf)
     fixtures = Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures"
     copy("ocr-blank.json", (fixtures / "pdfcpu-blank.json").read_bytes())
     api.exec("qpdf", "--json-input", root + "/ocr-blank.json", root + "/ocr-blank.pdf")
@@ -678,17 +692,7 @@ def p3_smoke(api):
                "fontSize": 18, "align": "left", "text": line} for i, line in enumerate(lines)]
     japanese_pdf = send("fill-template", api.exec("cat", root + "/ocr-blank.pdf").stdout, "filled.pdf",
                         fields=json.dumps(fields, ensure_ascii=False))
-    body, content_type = multipart(japanese_pdf, password=None)
-    path = "/api/pdf/to-images?format=png&dpi=200"
-    status, _, result = api.request("POST", path, body, content_type)
-    assert status == 200
-    with zipfile.ZipFile(io.BytesIO(result)) as images:
-        scan = images.read("page-001.png")
-    scanned = send("from-images?quality=original", scan, "images.pdf")
-    copy("ocr.pdf", send("ocr?direction=horizontal", scanned, "ocr.pdf"))
-    api.exec("qpdf", "--check", root + "/ocr.pdf")
-    api.exec("dotnet", "/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll", root + "/ocr.pdf", root + "/text.json", "1", "200")
-    text, = json.loads(api.exec("cat", root + "/text.json").stdout)["pages"]
+    text = ocr_text("ocr", japanese_pdf)
     assert all(term in text for term in ("開館時間", "返却ポスト", "日本語"))
     api.exec("rm", "-rf", root)
     api.assert_clean()
@@ -697,9 +701,9 @@ def p3_smoke(api):
 
 def main(image):
     with running_container(image, isolated=True) as api:
-        pdfcpu_smoke(api)
+        short_line_pdf = pdfcpu_smoke(api)
         p2_smoke(api)
-        p3_smoke(api)
+        p3_smoke(api, short_line_pdf)
     for setting in ("Pdf__PdfcpuPath=/missing/pdfcpu", "Pdf__PdfcpuConfigDir=/missing/config",
                     "Pdf__PdfcpuAddressSpaceLimitBytes=268435456"):
         assert_startup_failure(image, (setting,), "pdfcpu・日本語フォントの自己テストに失敗しました。")

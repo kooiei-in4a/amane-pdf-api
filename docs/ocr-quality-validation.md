@@ -36,7 +36,7 @@ PDF.js 6.3.289の `PDFFindController` で、出力PDFから1回以上見つか�
 
 試作の罫線付き請求書は標準32/34語・高精度31/34語、表だけのページは9/9語・8/9語、影は10/12語・12/12語、縦書きの横書き見出しは7/9語・9/9語でした。試作全体は622語を対象にしています。[試作結果（Issue #126）](https://github.com/kooiei-in4a/amane-pdf-api/issues/126)
 
-## 短い1行の標準OCRで文字層が空になる既知の回帰
+## 短い1行の標準OCRで文字層が空になった回帰
 
 **旧試料：標準0/8字・高精度8/8字。** レビューでは、PRの `d1d658d` のイメージを上記の本番相当のコンテナ制約で動かし、12 ptの「日本語の起動確認」だけを描いた旧スモーク試料で確認しました。両方式ともHTTP 200でした。標準では文字層が空になり、高精度では全文を認識しました。ページ番号だけ、署名欄だけ、短い1行だけの文書も、処理が成功したように見えたまま検索できない可能性があります。発生頻度は未計測です。[PR #127 のレビュー](https://github.com/kooiei-in4a/amane-pdf-api/pull/127#issuecomment-7179161029)
 
@@ -47,7 +47,7 @@ PDF.js 6.3.289の `PDFFindController` で、出力PDFから1回以上見つか�
 
 PDFiumのPNGでは、どのPSMでもSauvola（`thresholding_method=2`）のときだけ空になり、従来の二値化（`0`）と適応型Otsu（`1`）では全文を認識しました。文字をページ中央や上端に移しても同じ結果でした。比較した二値化画像の黒画素数は7,012と7,015で、文字の画素が残っていても認識段階で結果が空になりました。同じPDFを `pdftoppm` で300 dpiに描いたPNGでは、画素がほぼ同じでもSauvolaで全文を認識しました。[PR #127 のレビュー](https://github.com/kooiei-in4a/amane-pdf-api/pull/127#issuecomment-7179161029)
 
-`thresholding_window_size=1.0` と `thresholding_kfactor=0.2` の組み合わせで旧試料の認識は回復しました。この調整には #126 の試料での再検証が必要です。
+`thresholding_window_size=1.0` と `thresholding_kfactor=0.2` の組み合わせで1行の試料は回復しましたが、罫線付き請求書は29/34語で既存の合格基準を下回りました。[Issue #128](https://github.com/kooiei-in4a/amane-pdf-api/issues/128) では、標準の横書きに `thresholding_window_size=0.15` と `thresholding_kfactor=0.2` を適用しました。1ページにつき1回の認識で短い1行を抽出でき、複数行の文書も含めてDockerスモークで確認します。
 
 ## 処理時間
 
