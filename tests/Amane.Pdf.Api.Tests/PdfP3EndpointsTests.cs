@@ -635,13 +635,14 @@ public sealed class PdfP3EndpointsTests
         var originalTool = options.TesseractPath;
         using var scripts = new OverlayJob();
         var invocations = Path.Combine(scripts.Root, "tesseract-arguments");
+        var scanned = await ScanAsync(test, vertical: direction == "vertical");
         options.TesseractPath = scripts.Script($"""
             printf '%s\n' "$@" >> '{invocations}'
             exec '{originalTool}' "$@"
             """);
         try
         {
-            await PostPdfAsync(test, "/api/pdf/ocr?direction=" + direction + quality + ForceOcr, PdfTestContext.Fixture, "ocr.pdf");
+            await PostPdfAsync(test, "/api/pdf/ocr?direction=" + direction + quality + ForceOcr, scanned, "ocr.pdf");
         }
         finally
         {
@@ -651,10 +652,55 @@ public sealed class PdfP3EndpointsTests
             "-c", "thresholding_method=2"];
         if (quality == "&quality=high") expected.AddRange(["--tessdata-dir", options.TessdataBestDir]);
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
-        if (quality != "&quality=high" && direction == "horizontal")
-            expected.AddRange(["-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"]);
         if (direction == "horizontal") expected.AddRange(["-c", "tessedit_create_hocr=1"]);
+        if (quality != "&quality=high" && direction == "horizontal")
+            expected.AddRange(["-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task OcrRetriesAnEmptyStandardHorizontalPageOnce(bool retryRecognizesText)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var scanned = await ScanAsync(test, vertical: false);
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var originalTool = options.TesseractPath;
+        using var scripts = new OverlayJob();
+        var attempts = Path.Combine(scripts.Root, "ocr-attempts");
+        var retryExit = retryRecognizesText ? "exit 0" : "";
+        options.TesseractPath = scripts.Script($"""
+            base=$2
+            test ! -e "$base.pdf" && test ! -e "$base.tsv" && test ! -e "$base.hocr" || exit 90
+            case " $* " in
+                *" thresholding_window_size=0.33 "*) printf '%s\n' first >> '{attempts}' ;;
+                *" thresholding_window_size=0.2 "*) printf '%s\n' retry >> '{attempts}' ;;
+                *) exit 91 ;;
+            esac
+            '{originalTool}' "$@" || exit $?
+            case " $* " in
+                *" thresholding_window_size=0.2 "*) {retryExit} ;;
+            esac
+            sed -i '2,$d' "$base.tsv"
+            """);
+        byte[] output;
+        try
+        {
+            output = await PostPdfAsync(test, Horizontal, scanned, "ocr.pdf");
+        }
+        finally
+        {
+            options.TesseractPath = originalTool;
+        }
+        CollectionAssert.AreEqual(new[] { "first", "retry" }, File.ReadAllLines(attempts));
+        var path = Path.Combine(test.Root, "ocr-retry.pdf");
+        await File.WriteAllBytesAsync(path, output);
+        var text = Normalize(await ExtractTextAsync(path, "-raw"));
+        if (retryRecognizesText) Assert.Contains(SearchTerm, text);
+        else Assert.AreEqual("", text);
         test.AssertClean();
     }
 
