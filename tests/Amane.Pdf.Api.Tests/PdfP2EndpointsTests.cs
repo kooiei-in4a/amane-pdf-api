@@ -277,6 +277,43 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    [DataRow(0, 5, false)]
+    [DataRow(5, 5, false)]
+    [DataRow(10, 10, false)]
+    [DataRow(5, 5, true)]
+    public async Task CompareReportsLongRunsOfInsertedOrDeletedPages(int offset, int count, bool delete)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new() { ["Pdf:TextExtractorPath"] = ExtractorPath() });
+        var original = Pages("Original agreement", 10);
+        var added = Pages("New supplemental terms", count);
+        var expanded = original.Take(offset).Concat(added).Concat(original.Skip(offset));
+        var expected = string.Concat(added.SelectMany(page => page)).Replace(" ", "", StringComparison.Ordinal);
+        Assert.IsGreaterThan(4096, expected.Length);
+
+        using var form = new MultipartFormDataContent();
+        var originalPdf = PageTextPdf(original);
+        var expandedPdf = PageTextPdf(expanded);
+        form.Add(new ByteArrayContent(delete ? expandedPdf : originalPdf), "old", "old.pdf");
+        form.Add(new ByteArrayContent(delete ? originalPdf : expandedPdf), "new", "new.pdf");
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        using var json = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        var change = json.RootElement.GetProperty("changes").EnumerateArray().Single();
+        Assert.AreEqual(delete ? "delete" : "insert", change.GetProperty("type").GetString());
+        Assert.AreEqual(JsonValueKind.Null, change.GetProperty(delete ? "new" : "old").ValueKind);
+        var excerpt = change.GetProperty(delete ? "old" : "new");
+        Assert.AreEqual(offset + 1, excerpt.GetProperty("page").GetInt32());
+        Assert.AreEqual(expected, excerpt.GetProperty("text").GetString());
+        Assert.IsFalse(json.RootElement.GetProperty("truncated").GetBoolean());
+        test.AssertClean();
+
+        static string[][] Pages(string title, int pages) => Enumerable.Range(1, pages).Select(page =>
+            Enumerable.Range(1, 25).Select(line =>
+                FormattableString.Invariant($"{title} page {page:00} item {line:00} governs the annual term.")).ToArray()).ToArray();
+    }
+
+    [TestMethod]
     [DataRow(100, "AB CD", 200)]
     [DataRow(5000, "AB CD", 422)]
     [DataRow(100, "ABCDE", 422)]
@@ -410,6 +447,30 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    public async Task CompareReportsAFullDiffOutputAsTooLarge()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        using var scripts = new OverlayJob();
+        options.DotnetPath = scripts.Script("""
+            if [ "$2" = "--diff" ]; then
+                truncate -s 8388608 "$5" || exit 99
+                exit 1
+            fi
+            printf '{"pages":["text"]}' > "$3"
+            """);
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(PdfTestContext.Fixture), "old", "old.pdf");
+        form.Add(new ByteArrayContent(PdfTestContext.Fixture), "new", "new.pdf");
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("too-large-to-compare", json.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task CompareRejectsTextlessPdfAndOverLimitInput()
     {
         if (!OperatingSystem.IsLinux()) return;
@@ -474,6 +535,28 @@ public sealed class PdfP2EndpointsTests
             Rune[] text = [.. s.EnumerateRunes()];
             return new(text, [1, .. Enumerable.Repeat(2, text.Length - 1)], 2);
         }
+    }
+
+    [TestMethod]
+    public void TextDiffKeepsSmallReplacementsBetweenLargePageEdits()
+    {
+        var deleted = new string('削', 4500);
+        var inserted = new string('追', 4500);
+        var old = Side("表紙", deleted, "契約内容", "支払期日は三十日", "注意事項", "最終頁");
+        var revised = Side("表紙", "契約内容", "支払期日は六十日", "注意事項", inserted, "最終頁");
+        var result = TextDiff.Compare(old, revised);
+        CollectionAssert.AreEqual(new[] { "delete", "replace", "insert" }, result.Changes.Select(change => change.Type).ToArray());
+        Assert.AreEqual(new CompareExcerpt(2, deleted), result.Changes[0].Old);
+        Assert.AreEqual(new CompareExcerpt(4, "三"), result.Changes[1].Old);
+        Assert.AreEqual(new CompareExcerpt(3, "六"), result.Changes[1].New);
+        Assert.AreEqual(new CompareExcerpt(5, inserted), result.Changes[2].New);
+        Assert.IsFalse(result.Truncated);
+        Assert.ThrowsExactly<CompareLimitException>(() => TextDiff.Compare(Side(deleted), Side(inserted)));
+
+        static CompareText Side(params string[] pages) => new(
+            [.. pages.SelectMany(page => page.EnumerateRunes())],
+            [.. pages.SelectMany((page, i) => Enumerable.Repeat(i + 1, page.Length))],
+            pages.Length);
     }
 
     [TestMethod]
@@ -664,6 +747,24 @@ public sealed class PdfP2EndpointsTests
     }
 
     private static byte[] TextPdf(string text) => ContentPdf($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET");
+
+    private static byte[] PageTextPdf(IEnumerable<string[]> pages)
+    {
+        List<byte[]> objects = ["<< /Type /Catalog /Pages 2 0 R >>"u8.ToArray(), [],
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"u8.ToArray()];
+        var kids = new List<string>();
+        foreach (var lines in pages)
+        {
+            var page = objects.Count + 1;
+            kids.Add($"{page} 0 R");
+            objects.Add(Encoding.ASCII.GetBytes("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] " +
+                $"/Resources << /Font << /F1 3 0 R >> >> /Contents {page + 1} 0 R >>"));
+            var content = $"BT /F1 12 Tf 40 780 Td ({string.Join(") Tj 0 -24 Td (", lines)}) Tj ET";
+            objects.Add(CompressFixtures.Stream("", Encoding.ASCII.GetBytes(content)));
+        }
+        objects[1] = Encoding.ASCII.GetBytes($"<< /Type /Pages /Kids [{string.Join(' ', kids)}] /Count {kids.Count} >>");
+        return CompressFixtures.Objects(objects);
+    }
 
     private static byte[] ContentPdf(string content) => CompressFixtures.Objects(
     [

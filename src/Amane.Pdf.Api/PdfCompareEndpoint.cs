@@ -65,6 +65,8 @@ internal static class PdfCompareEndpoint
         if (result.ExitCode == 2) throw new PdfCompareException(PdfCompareReason.TextUnavailable);
         if (result.ExitCode is 3 or 137) throw new PdfCompareException(PdfCompareReason.TooLarge);
         if (result.ExitCode == 4) throw new PdfCompareException(PdfCompareReason.UnsupportedPdf);
+        if (result.ExitCode != 0 && new FileInfo(output) is { Exists: true, Length: >= WorkerFileLimit })
+            throw new PdfCompareException(PdfCompareReason.TooLarge);
         if (result.ExitCode != 0 || !File.Exists(output)) throw new InvalidOperationException("PDF comparison worker failed.");
     }
 }
