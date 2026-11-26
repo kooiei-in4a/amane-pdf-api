@@ -396,6 +396,59 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    [DataRow(false, DisplayName = "Small logo")]
+    [DataRow(true, DisplayName = "Large image mostly outside the CropBox")]
+    public async Task OcrSkipsSearchableDocumentWhenImageCoversLessThanHalfOfDisplayedPage(bool cropped)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var blank = await PdfAsync(test, JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject(), "logo-document");
+        using var fill = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(Enumerable.Range(0, 12).Select(index => new
+        {
+            page = 1, x = 0.1m, y = 0.13m + 0.05m * index, width = 0.8m, height = 0.04m, fontSize = 16,
+            align = "left", text = index == 0 ? "中央図書館の開館時間は午前九時からです。" : "返却ポストは正面入口の東側にあります。"
+        }).ToArray()));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", fill);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        var placement = cropped ? "x=0.02&y=0.27&width=0.50" : "x=0.05&y=0.03&width=0.15";
+        using var image = PdfStampImageTests.Form(await filled.Content.ReadAsByteArrayAsync(), StampFixtures.Png(200, cropped ? 400 : 80));
+        using var stamped = await test.Client.PostAsync("/api/pdf/stamp-image?page=1&" + placement, image);
+        Assert.AreEqual(HttpStatusCode.OK, stamped.StatusCode, await stamped.Content.ReadAsStringAsync());
+        var input = await stamped.Content.ReadAsByteArrayAsync();
+        var inputPath = Path.Combine(test.Root, "stamped-document.pdf");
+        await File.WriteAllBytesAsync(inputPath, input);
+        if (cropped)
+        {
+            // The uncut image is larger than half the CropBox. The part visible on the rotated page is smaller.
+            var (code, json) = await test.QpdfAsync("--json", "--json-key=pages", "--json-key=qpdf", inputPath);
+            Assert.AreEqual(0, code);
+            var metadata = JsonNode.Parse(json)!.AsObject();
+            var pageRef = "obj:" + metadata["pages"]![0]!["object"]!.GetValue<string>();
+            var page = OverlayFixtures.Objects(metadata)[pageRef]!.DeepClone();
+            page["value"]!["/CropBox"] = new JsonArray(0, 412, 330, 842);
+            page["value"]!["/Rotate"] = 90;
+            var update = new JsonObject { ["qpdf"] = new JsonArray(new JsonObject { ["jsonversion"] = 2 },
+                new JsonObject { [pageRef] = page }) };
+            var updatePath = Path.Combine(test.Root, "logo-crop.json");
+            await File.WriteAllTextAsync(updatePath, update.ToJsonString());
+            var croppedPath = Path.Combine(test.Root, "cropped-stamped-document.pdf");
+            Assert.AreEqual(0, (await test.QpdfAsync(inputPath, "--update-from-json=" + updatePath, croppedPath)).ExitCode);
+            inputPath = croppedPath;
+            input = await File.ReadAllBytesAsync(inputPath);
+        }
+        var text = Normalize(await ExtractTextAsync(inputPath, "-raw"));
+        Assert.AreEqual(2, text.Split("開館時間", StringSplitOptions.None).Length);
+
+        using var upload = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal, upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.IsTrue(response.Headers.TryGetValues("X-Pdf-Skipped-Pages", out var pages));
+        Assert.AreEqual("1", pages.Single());
+        CollectionAssert.AreEqual(input, await response.Content.ReadAsByteArrayAsync());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrProcessesScanWithVisibleFormValuesInTheBody()
     {
         if (!OperatingSystem.IsLinux()) return;
