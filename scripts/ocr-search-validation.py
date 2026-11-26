@@ -4,8 +4,8 @@
 fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
 PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
 欧文の単語間の空白が保たれること、離れた欄の語が連結しないことを確かめる。縦書きの横見出し、
-罫線付きの表、影・点ノイズ・紙の粒状感のある試料も検索する。画像自体が90°・180°・270°回った試料は
-PDF.jsと同梱のPDFiumの両方で検索し、PDFiumの強調位置も確かめる。--benchmark で上限ページ数の処理時間を測る。
+罫線付きの表・小さい文字の請求書、影・点ノイズ・紙の粒状感のある試料も検索する。画像自体が90°・180°・270°回った試料は
+PDF.jsと同梱のPDFiumの両方で検索し、PDFiumの強調位置も確かめる。小さい文字の請求書も両方で検索する。--benchmark で上限ページ数の処理時間を測る。
 事前に scripts/ocr-search で `npm ci --ignore-scripts --omit=optional --omit=dev` を実行しておく。
 
 --highlight DIR を付けると、横書き・回転+CropBox・縦書きと横見出しの試料について、OCR出力PDFと、元画像から
@@ -82,6 +82,14 @@ INVOICE_TERMS = [
     *TABLE_TERMS, "受付台", "会議机", "事務椅子", "書類ケース", "6,400", "4,500", "9,200", "35,000",
     "44,000", "43,200",
 ]
+SMALL_INVOICE_TERMS = [
+    "請求書", "株式会社サンプル商事", "御中", "2026年11月25日", "INV-2026-0123", "アマネ株式会社",
+    "港区芝公園", "T1234567890123", "¥503,492", "品名", "数量", "単価", "金額", "Webサイト制作費",
+    "サーバー初期設定", "保守サポート", "ドメイン更新", "SSL証明書", "画像素材購入", "交通費", "350,000",
+    "13,200", "2,420", "小計", "457,720", "消費税", "45,772", "合計", "503,492", "みずほ銀行", "芝支店",
+    "1234567", "お支払期限", "2026年12月31日",
+]
+SMALL_INVOICE_MINIMUM = 30
 DOCUMENT_LINES = [
     "中央図書館の開館時間は午前九時から午後七時までです。",
     "返却ポストは正面入口の東側にあります。",
@@ -169,8 +177,12 @@ def ocr(api, quality, direction, pdf):
 def image_pdf(api, image, dpi, quality):
     jpeg = io.BytesIO()
     image.save(jpeg, format="JPEG", quality=quality, dpi=(dpi, dpi))
+    return jpeg_pdf(api, jpeg.getvalue())
+
+
+def jpeg_pdf(api, jpeg):
     return post(api, "/api/pdf/from-images?quality=original",
-                [("file", "scan.jpg", "image/jpeg", jpeg.getvalue())], "application/pdf")
+                [("file", "scan.jpg", "image/jpeg", jpeg)], "application/pdf")
 
 
 def invoice_scans(api, font_path):
@@ -410,6 +422,8 @@ def main():
         pdfium_library = directory / "libpdfium.so"
         pdfium_library.write_bytes(api.exec("cat", "/opt/amane-pdf/lib/libpdfium.so").stdout)
         invoice, table = invoice_scans(api, font_path)
+        # Keep the ReportLab/PDFium raster from #134 fixed so CI sees the same 200 dpi JPEG.
+        small_invoice = jpeg_pdf(api, (SEARCH / "fixtures/small-ruled-invoice.jpg").read_bytes())
         shadow = shadow_scan(api, font_path)
         cases = [("horizontal", "horizontal", horizontal, HORIZONTAL_TERMS, ["Windows11"]),
                  ("separate-fields", "horizontal", separate, SEPARATE_TERMS, SEPARATE_ABSENT),
@@ -418,6 +432,7 @@ def main():
                   HORIZONTAL_TERMS, ["Windows11"]),
                  ("vertical-with-heading", "vertical", vertical, VERTICAL_TERMS, []),
                  ("ruled-invoice", "horizontal", invoice, INVOICE_TERMS, []),
+                 ("small-ruled-invoice", "horizontal", small_invoice, SMALL_INVOICE_TERMS, []),
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
                  ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
         cases.extend((name, "horizontal", source, NOISE_TERMS, []) for name, source in noise_scans(api, font_path))
@@ -447,6 +462,11 @@ def main():
                           flush=True)
                     if min(scores.values()) < 0.4:
                         failures.append((quality, name, "PDFium", scores))
+                elif name == "small-ruled-invoice":
+                    native = pdfium_search.find(pdfium_library, directory / f"{name}.pdf", terms)
+                    print(f"{quality} {name}: PDFium {len(native)}/{len(terms)} terms", flush=True)
+                    if quality == "standard" and len(native) < SMALL_INVOICE_MINIMUM:
+                        failures.append((quality, name, "PDFium", sorted(native)))
                 if artifacts:
                     artifacts.mkdir(parents=True, exist_ok=True)
                     (artifacts / f"{name}-scan.pdf").write_bytes(source)
@@ -465,6 +485,9 @@ def main():
                 elif name == "ruled-invoice":
                     required = ["品名", "金額", "合計金額", "返却ポスト", "12,800"]
                     minimum = 30
+                elif name == "small-ruled-invoice":
+                    required = []
+                    minimum = SMALL_INVOICE_MINIMUM if quality == "standard" else 0
                 elif name == "ruled-table":
                     required = ["品名", "金額", "返却ポスト"]
                     minimum = 8

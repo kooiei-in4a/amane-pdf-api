@@ -203,7 +203,7 @@ internal static class PdfOcrEndpoint
     private static string PageNumbers(IEnumerable<int> pages)
         => string.Join(',', pages.Select(page => page.ToString(CultureInfo.InvariantCulture)));
 
-    // One recognition supplies the text-only PDF, TSV, and line orientation for horizontal text.
+    // Each recognition supplies the text-only PDF, TSV, and line orientation for horizontal text.
     private static async Task<List<OcrTextLayer.Line>> RecognizePageAsync(TemporaryPdfFiles files, PdfPageJob job,
         PdfOptions settings, bool high, bool vertical, string image, string layer,
         (int Width, int Height, int Dpi) raster, CancellationToken token)
@@ -211,8 +211,6 @@ internal static class PdfOcrEndpoint
         var tsv = Path.ChangeExtension(layer, ".tsv");
         var hocr = vertical ? null : Path.ChangeExtension(layer, ".hocr");
         string[] outputs = hocr is null ? [layer, tsv] : [layer, tsv, hocr];
-        // prlimit's per-file limit applies to all outputs; reserve that same budget for each before running.
-        var budget = job.ReserveWrites(settings.OverlayGeneratedLimitBytes, outputs);
         var basePath = Path.ChangeExtension(Path.GetFullPath(layer), null);
         var (models, psm) = (high, vertical) switch
         {
@@ -225,29 +223,41 @@ internal static class PdfOcrEndpoint
         string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
             raster.Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "-c", "thresholding_method=2",
             .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
-        // The default Sauvola settings can drop an entire short line with the standard horizontal model.
-        if (!high && !vertical)
-            arguments = [.. arguments, "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
         if (hocr is not null)
             arguments = [.. arguments, "-c", "tessedit_create_hocr=1"];
-        var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
-            with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
-        var sidecars = outputs.Skip(1).Select(path => new FileInfo(path)).ToArray();
-        if (result.ExceedsBudget || sidecars.Any(file => file.Exists && file.Length > budget))
-            throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
-        // Tesseract can abort with std::bad_alloc when it reaches its per-process memory limit.
-        if (result.InternalFailure && !result.StartFailed)
-            throw new PdfRenderException(PdfRenderReason.TooComplex);
-        if (!result.Succeeded || sidecars.Any(file => !file.Exists)) throw new InvalidOperationException(Failure);
-        foreach (var output in outputs) job.Commit(output, budget);
-        var lines = OcrTextLayer.Read(tsv, raster.Width, raster.Height, token);
-        job.Delete(tsv);
-        if (hocr is not null)
+        if (high || vertical) return await RecognizeAsync(arguments);
+
+        var lines = await RecognizeAsync([.. arguments, "-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"]);
+        if (lines.Any(line => line.Words.Count > 0)) return lines;
+
+        // Small-print documents need a wider window, but it can erase a short line (Issues #128, #134).
+        // Free the first output before reserving space for one retry, under the same request deadline.
+        job.Delete(layer);
+        return await RecognizeAsync([.. arguments, "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"]);
+
+        async Task<List<OcrTextLayer.Line>> RecognizeAsync(string[] recognitionArguments)
         {
-            OcrTextLayer.Orient(lines, hocr, raster.Width, raster.Height, token);
-            job.Delete(hocr);
+            // prlimit's per-file limit applies to all outputs; reserve that same budget for each before running.
+            var budget = job.ReserveWrites(settings.OverlayGeneratedLimitBytes, outputs);
+            var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, recognitionArguments, limit)
+                with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
+            var sidecars = outputs.Skip(1).Select(path => new FileInfo(path)).ToArray();
+            if (result.ExceedsBudget || sidecars.Any(file => file.Exists && file.Length > budget))
+                throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
+            // Tesseract can abort with std::bad_alloc when it reaches its per-process memory limit.
+            if (result.InternalFailure && !result.StartFailed)
+                throw new PdfRenderException(PdfRenderReason.TooComplex);
+            if (!result.Succeeded || sidecars.Any(file => !file.Exists)) throw new InvalidOperationException(Failure);
+            foreach (var output in outputs) job.Commit(output, budget);
+            var recognizedLines = OcrTextLayer.Read(tsv, raster.Width, raster.Height, token);
+            job.Delete(tsv);
+            if (hocr is not null)
+            {
+                OcrTextLayer.Orient(recognizedLines, hocr, raster.Width, raster.Height, token);
+                job.Delete(hocr);
+            }
+            return recognizedLines;
         }
-        return lines;
     }
 
     private static void WriteTextUpdate(System.Text.Json.Utf8JsonWriter writer, PdfPageBoxes layers,
