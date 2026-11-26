@@ -187,14 +187,13 @@ internal static class PdfOcrEndpoint
             _ => (Horizontal, "1")
         };
         string[] tessdata = high ? ["--tessdata-dir", settings.TessdataBestDir] : [];
-        // The default Sauvola settings can drop an entire short line with the standard horizontal model.
-        string[] sauvola = !high && !vertical
-            ? ["-c", "thresholding_window_size=0.15", "-c", "thresholding_kfactor=0.2"]
-            : [];
         // Set the output flags directly so neither model directory needs a copy of Tesseract's configs.
         string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
             Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "-c", "thresholding_method=2",
-            .. sauvola, .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
+            .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
+        // The default Sauvola settings can drop an entire short line with the standard horizontal model.
+        if (!high && !vertical)
+            arguments = [.. arguments, "-c", "thresholding_window_size=0.15", "-c", "thresholding_kfactor=0.2"];
         var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
             with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
         var tsvInfo = new FileInfo(tsv);

@@ -339,10 +339,10 @@ public sealed class PdfP3EndpointsTests
         }
         List<string> expected = ["-l", models, "--psm", psm, "--dpi", "300", "-c", "textonly_pdf=1",
             "-c", "thresholding_method=2"];
-        if (quality != "&quality=high" && direction == "horizontal")
-            expected.AddRange(["-c", "thresholding_window_size=0.15", "-c", "thresholding_kfactor=0.2"]);
         if (quality == "&quality=high") expected.AddRange(["--tessdata-dir", options.TessdataBestDir]);
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
+        if (quality != "&quality=high" && direction == "horizontal")
+            expected.AddRange(["-c", "thresholding_window_size=0.15", "-c", "thresholding_kfactor=0.2"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
         test.AssertClean();
     }
