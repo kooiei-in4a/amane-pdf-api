@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Xml;
 
 namespace Amane.Pdf.Api;
 
@@ -43,7 +44,7 @@ internal static class OcrTextLayer
     internal const double FieldGap = 1.5;
 
     internal sealed record Word(int Left, int Top, int Width, int Height, string Text);
-    internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words, int Block = 1);
+    internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words, int Block = 1, int Angle = 0);
 
     internal static List<Line> Read(string path, int imageWidth, int imageHeight, CancellationToken token)
     {
@@ -97,6 +98,71 @@ internal static class OcrTextLayer
     internal static bool IsCjk(int scalar) => scalar is >= 0x3000 and <= 0x30FF or >= 0x3400 and <= 0x4DBF or
         >= 0x4E00 and <= 0x9FFF or >= 0xF900 and <= 0xFAFF or >= 0xFF00 and <= 0xFFEF or >= 0x20000 and <= 0x3FFFF;
 
+    // hOCR and TSV use the same image-space line boxes. Use hOCR only for the line angle, leaving TSV
+    // responsible for word order and text. Rotate boxes to reading coordinates before spacing the words.
+    internal static void Orient(List<Line> lines, string hocr, int imageWidth, int imageHeight, CancellationToken token)
+    {
+        var angles = new Dictionary<(int Left, int Top, int Width, int Height), int>();
+        try
+        {
+            using var file = File.OpenRead(hocr);
+            using var reader = XmlReader.Create(file, new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Ignore,
+                XmlResolver = null,
+                MaxCharactersInDocument = file.Length
+            });
+            while (reader.Read())
+            {
+                token.ThrowIfCancellationRequested();
+                if (reader.NodeType != XmlNodeType.Element || reader.LocalName != "span" ||
+                    reader.GetAttribute("class") is not ("ocr_line" or "ocr_header" or "ocr_textfloat" or "ocr_caption"))
+                    continue;
+                var title = reader.GetAttribute("title")?.Split(';', StringSplitOptions.TrimEntries);
+                var rotation = title?.FirstOrDefault(part => part.StartsWith("textangle ", StringComparison.Ordinal));
+                if (rotation is null) continue;
+                var angle = Number(rotation["textangle ".Length..]);
+                var box = title![0].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (angle is not (90 or 180 or 270) || box.Length != 5 || box[0] != "bbox")
+                    throw new InvalidDataException();
+                var left = Number(box[1]);
+                var top = Number(box[2]);
+                var width = Number(box[3]) - left;
+                var height = Number(box[4]) - top;
+                if (width < 0 || height < 0 || (long)left + width > imageWidth || (long)top + height > imageHeight)
+                    throw new InvalidDataException();
+                angles[(left, top, width, height)] = angle;
+            }
+        }
+        catch (Exception exception) when (exception is XmlException or InvalidDataException or FormatException or OverflowException)
+        {
+            throw new InvalidOperationException(Failure);
+        }
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            token.ThrowIfCancellationRequested();
+            var line = lines[i];
+            if (!angles.TryGetValue((line.Left, line.Top, line.Width, line.Height), out var angle)) continue;
+            var box = Upright(line.Left, line.Top, line.Width, line.Height, angle, imageWidth, imageHeight);
+            var words = line.Words.Select(word =>
+            {
+                var bounds = Upright(word.Left, word.Top, word.Width, word.Height, angle, imageWidth, imageHeight);
+                return new Word(bounds.Left, bounds.Top, bounds.Width, bounds.Height, word.Text);
+            }).ToList();
+            lines[i] = new(box.Left, box.Top, box.Width, box.Height, words, line.Block, angle);
+        }
+    }
+
+    private static (int Left, int Top, int Width, int Height) Upright(
+        int left, int top, int width, int height, int angle, int imageWidth, int imageHeight) => angle switch
+    {
+        90 => (imageHeight - top - height, left, height, width),
+        180 => (imageWidth - left - width, imageHeight - top - height, width, height),
+        270 => (top, imageWidth - left - width, height, width),
+        _ => throw new InvalidOperationException(Failure)
+    };
+
     internal static bool Joins(string previous, string next, double gap, double thickness)
     {
         if (IsDigitGroup(previous, next)) return gap < DigitGroupJoinGap * thickness;
@@ -116,10 +182,11 @@ internal static class OcrTextLayer
 
     // Writes the content stream for Tesseract's text-only page: the rendered image at dpi, origin bottom-left.
     // The page's font resource is renamed to FontName; GlyphLessFont maps UTF-16 code units to 500/1000 em glyphs.
-    internal static void Write(Stream output, IReadOnlyList<Line> lines, bool vertical, int imageHeight, int dpi,
+    internal static void Write(Stream output, IReadOnlyList<Line> lines, bool vertical, int imageWidth, int imageHeight, int dpi,
         CancellationToken token)
     {
         var k = 72.0 / dpi;
+        var pageWidth = imageWidth * k;
         var pageHeight = imageHeight * k;
         using var writer = new StreamWriter(output, new UTF8Encoding(false), leaveOpen: true) { NewLine = "\n" };
         writer.WriteLine("BT");
@@ -169,6 +236,12 @@ internal static class OcrTextLayer
                 if (pitches.Length > 0)
                     plan[^1] = plan[^1] with { Advance = Math.Max(plan[^1].Advance, last.Length * pitches[pitches.Length / 2]) };
             }
+            var endsField = index + 1 < placed.Length && EndsCjk(last) && EndsField(line, placed[index + 1], vertical);
+            if (line.Angle == 180)
+            {
+                WriteUpsideDown(writer, line, plan, fontSize, k, pageWidth, pageHeight, endsField);
+                continue;
+            }
             for (var i = 0; i < line.Words.Count; i++)
             {
                 var word = line.Words[i];
@@ -176,16 +249,63 @@ internal static class OcrTextLayer
                 var horizontalScale = advance * k / (word.Text.Length * 0.5 * fontSize) * 100;
                 writer.Write(lineVertical
                     ? Invariant($"0 -1 1 0 {(line.Left + (1 - BaselineRatio) * line.Width) * k:0.###} {pageHeight - word.Top * k:0.###} Tm")
-                    : Invariant($"1 0 0 1 {word.Left * k:0.###} {pageHeight - (line.Top + BaselineRatio * line.Height) * k:0.###} Tm"));
+                    : HorizontalMatrix(line, word, k, pageWidth, pageHeight));
                 writer.Write(Invariant($" /{FontName} {fontSize:0.###} Tf {horizontalScale:0.###} Tz [ <"));
                 writer.Write(Convert.ToHexStringLower(Encoding.BigEndianUnicode.GetBytes(word.Text)));
                 writer.WriteLine("> ] TJ");
                 if (separated) writer.WriteLine("100 Tz [ <0020> ] TJ");
             }
-            if (index + 1 < placed.Length && EndsCjk(last) && EndsField(line, placed[index + 1], vertical))
+            if (endsField)
                 writer.WriteLine(Invariant($"100 Tz [ <{(int)FieldBoundary:x4}> ] TJ"));
         }
         writer.WriteLine("ET");
+    }
+
+    // PDFium sorts text objects left to right on the same horizontal baseline, even for a 180° matrix.
+    // Keep each continuous run in one text object. Fit its character pitch to the measured run width,
+    // and start a new object for widely separated fields so their positions still align with the scan.
+    private static void WriteUpsideDown(StreamWriter writer, Line line,
+        List<(double Advance, bool Separated, bool Joined)> plan, double fontSize, double k,
+        double pageWidth, double pageHeight, bool endsField)
+    {
+        var start = 0;
+        var text = new StringBuilder();
+        for (var i = 0; i < line.Words.Count; i++)
+        {
+            var word = line.Words[i];
+            text.Append(word.Text);
+            var last = i + 1 == line.Words.Count;
+            var separateField = !last && plan[i].Separated &&
+                line.Words[i + 1].Left - word.Left - word.Width > FieldGap * line.Height;
+            if (!last && !separateField)
+            {
+                if (plan[i].Separated) text.Append(' ');
+                continue;
+            }
+            var first = line.Words[start];
+            var width = Math.Max(word.Left + plan[i].Advance - first.Left, 1);
+            var scale = width * k / (text.Length * 0.5 * fontSize) * 100;
+            if ((separateField || endsField) && EndsCjk(word.Text)) text.Append(FieldBoundary);
+            writer.Write(HorizontalMatrix(line, first, k, pageWidth, pageHeight));
+            writer.Write(Invariant($" /{FontName} {fontSize:0.###} Tf {scale:0.###} Tz [ <"));
+            writer.Write(Convert.ToHexStringLower(Encoding.BigEndianUnicode.GetBytes(text.ToString())));
+            writer.WriteLine("> ] TJ");
+            text.Clear();
+            start = i + 1;
+        }
+    }
+
+    private static string HorizontalMatrix(Line line, Word word, double k, double pageWidth, double pageHeight)
+    {
+        var x = word.Left * k;
+        var top = (line.Top + BaselineRatio * line.Height) * k;
+        return line.Angle switch
+        {
+            90 => Invariant($"0 1 -1 0 {top:0.###} {x:0.###} Tm"),
+            180 => Invariant($"-1 0 0 -1 {pageWidth - x:0.###} {top:0.###} Tm"),
+            270 => Invariant($"0 -1 1 0 {pageWidth - top:0.###} {pageHeight - x:0.###} Tm"),
+            _ => Invariant($"1 0 0 1 {x:0.###} {pageHeight - top:0.###} Tm")
+        };
     }
 
     private static bool IsVertical(Line line, bool vertical) => vertical && line.Height > line.Width * VerticalLineAspect;
@@ -194,7 +314,7 @@ internal static class OcrTextLayer
     internal static bool EndsField(Line line, Line next, bool vertical)
     {
         var lineVertical = IsVertical(line, vertical);
-        if (line.Block != next.Block || lineVertical != IsVertical(next, vertical)) return true;
+        if (line.Block != next.Block || line.Angle != next.Angle || lineVertical != IsVertical(next, vertical)) return true;
         if (lineVertical)
         {
             var thickness = Math.Max(line.Width, next.Width);

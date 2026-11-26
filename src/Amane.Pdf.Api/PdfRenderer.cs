@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.Options;
 
 namespace Amane.Pdf.Api;
@@ -27,12 +28,13 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
         new[] { value.DotnetPath, value.RendererPath, value.PdfiumPath, value.RenderFontDir }
             .All(path => !string.IsNullOrWhiteSpace(path) && Path.IsPathFullyQualified(path) && !path.Contains('\0'));
 
-    internal ExternalProcessRequest CreateRequest(string directory, IReadOnlyList<string> arguments, long maxBytes)
+    internal ExternalProcessRequest CreateRequest(string directory, IReadOnlyList<string> arguments, long maxBytes,
+        int? stdoutLimit = null)
         => ProcessMemoryLimits.CreateRequest(settings.PrlimitPath, settings.DotnetPath,
             [settings.RendererPath, .. arguments, "--pdfium", settings.PdfiumPath, "--font-dir", settings.RenderFontDir],
             settings.RenderDataLimitBytes, Math.Max(checked(maxBytes + 1), BootstrapFileSizeBytes),
             new Dictionary<string, string> { ["DOTNET_EnableDiagnostics"] = "0" },
-            memoryLimit: ProcessMemoryLimit.Data) with { WorkingDirectory = directory };
+            stdoutLimit, memoryLimit: ProcessMemoryLimit.Data) with { WorkingDirectory = directory };
 
     internal static (int Width, int Height) GetPixelSize(PdfPageAttributes page, int dpi)
     {
@@ -86,6 +88,28 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
 
     internal Task RenderPngAsync(TemporaryPdfFiles files, RenderPage page, CancellationToken token)
         => RenderAsync(files, page, png: true, token);
+
+    internal async Task<int[]> InspectSearchablePagesAsync(TemporaryPdfFiles files, int[] pages, CancellationToken token)
+    {
+        var result = await ExternalProcessRunner.RunAsync(CreateRequest(Path.GetFullPath(files.DirectoryPath),
+            ["inspect-text", "--input", Path.GetFullPath(files.InputPath), "--pages",
+                string.Join(',', pages.Order().Select(page => Number(page)))],
+            maxBytes: 0, stdoutLimit: 128), token);
+        token.ThrowIfCancellationRequested();
+        CheckExitCode(result.ExitCode);
+        if (result.Stdout is null) throw new InvalidOperationException(Failure);
+        var output = Encoding.ASCII.GetString(result.Stdout).Trim();
+        if (output.Length == 0) return [];
+        var skipped = new List<int>();
+        foreach (var item in output.Split(','))
+        {
+            if (!int.TryParse(item, NumberStyles.None, CultureInfo.InvariantCulture, out var page) ||
+                !pages.Contains(page) || (skipped.Count > 0 && skipped[^1] >= page))
+                throw new InvalidOperationException(Failure);
+            skipped.Add(page);
+        }
+        return [.. skipped];
+    }
 
     private async Task RenderAsync(TemporaryPdfFiles files, RenderPage page, bool png, CancellationToken token)
     {

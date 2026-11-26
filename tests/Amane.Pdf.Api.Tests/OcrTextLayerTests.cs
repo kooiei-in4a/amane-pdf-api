@@ -90,7 +90,7 @@ public sealed class OcrTextLayerTests
         Assert.ThrowsExactly<OperationCanceledException>(() => OcrTextLayer.Read(file.Path, 1000, 1000, cancelled.Token));
         var lines = OcrTextLayer.Read(file.Path, 1000, 1000, default);
         Assert.ThrowsExactly<OperationCanceledException>(
-            () => OcrTextLayer.Write(Stream.Null, lines, false, 1000, Dpi, cancelled.Token));
+            () => OcrTextLayer.Write(Stream.Null, lines, false, 1000, 1000, Dpi, cancelled.Token));
     }
 
     [TestMethod]
@@ -242,7 +242,7 @@ public sealed class OcrTextLayerTests
     private static (string Text, Show[] Shows) Write(IReadOnlyList<OcrTextLayer.Line> lines, bool vertical, int imageHeight)
     {
         using var stream = new MemoryStream();
-        OcrTextLayer.Write(stream, lines, vertical, imageHeight, Dpi, default);
+        OcrTextLayer.Write(stream, lines, vertical, 1000, imageHeight, Dpi, default);
         var text = Encoding.ASCII.GetString(stream.ToArray());
         StringAssert.StartsWith(text, "BT\n3 Tr\n");
         StringAssert.EndsWith(text, "ET\n");

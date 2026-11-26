@@ -23,26 +23,28 @@ public sealed class OverlayCapacityTests
         Assert.ThrowsExactly<PdfOverlayInputException>(() => capacity.Reserve("overflow", long.MaxValue));
     }
     [TestMethod]
-    public void PairedToolWrites_ShareTheRemainingBudgetWithinTheJobLimit()
+    [DataRow(2)]
+    [DataRow(3)]
+    public void ToolWritesShareTheRemainingBudgetWithinTheJobLimit(int count)
     {
-        // OCR with RedactJobLimitBytes=8 MiB: the PDF must not take the TSV's space.
+        var paths = new[] { "text.pdf", "text.tsv", "text.hocr" }[..count];
         var capacity = new OverlayCapacity(8 * 1024 * 1024);
         capacity.Reserve("input", 300_000);
-        var budget = capacity.ReserveWritePair("text.pdf", "text.tsv", 8 * 1024 * 1024);
-        Assert.AreEqual((8 * 1024 * 1024 - 303_104) / 4096 / 2 * 4096 - 1, budget);
+        var budget = capacity.ReserveWrites(8 * 1024 * 1024, paths);
+        Assert.AreEqual((8 * 1024 * 1024 - 303_104) / 4096 / count * 4096 - 1, budget);
         Assert.AreEqual(0, (budget + 1) % 4096);
         Assert.IsLessThanOrEqualTo(8L * 1024 * 1024, capacity.Used);
-        Assert.AreEqual(303_104 + 2 * (budget + 1), capacity.Used);
+        Assert.AreEqual(303_104 + count * (budget + 1), capacity.Used);
 
         // With room to spare, each file keeps the per-file limit (plus the sentinel byte in its own block).
         var large = new OverlayCapacity(124 * 1024 * 1024);
-        Assert.AreEqual(8L * 1024 * 1024, large.ReserveWritePair("a.pdf", "a.tsv", 8 * 1024 * 1024));
-        Assert.AreEqual(2 * (8L * 1024 * 1024 + 4096), large.Used);
+        Assert.AreEqual(8L * 1024 * 1024, large.ReserveWrites(8 * 1024 * 1024, paths));
+        Assert.AreEqual(count * (8L * 1024 * 1024 + 4096), large.Used);
 
         // Less than one block per file is still too complex, and nothing is reserved.
         var full = new OverlayCapacity(3 * 4096);
         full.Reserve("input", 2 * 4096);
-        Assert.ThrowsExactly<PdfOverlayInputException>(() => full.ReserveWritePair("b.pdf", "b.tsv", 4096));
+        Assert.ThrowsExactly<PdfOverlayInputException>(() => full.ReserveWrites(4096, paths));
         Assert.AreEqual(2L * 4096, full.Used);
     }
 
