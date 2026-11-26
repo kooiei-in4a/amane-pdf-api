@@ -660,11 +660,13 @@ def p3_smoke(api):
 
     models = api.exec("tesseract", "--list-langs").stdout.splitlines()
     assert b"jpn" in models and b"jpn_vert" in models
-    for package in ("tesseract-ocr", "libtesseract5", "tesseract-ocr-jpn", "tesseract-ocr-jpn-vert", "libleptonica6"):
+    for package in ("tesseract-ocr", "libtesseract5", "tesseract-ocr-jpn", "tesseract-ocr-jpn-vert",
+                    "tesseract-ocr-osd", "libleptonica6"):
         api.exec("test", "-r", f"/usr/share/doc/{package}/copyright")
     api.exec("test", "-r", "/usr/share/common-licenses/Apache-2.0")
 
-    # Sauvola binarization can miss the lone short footer used by pdfcpu_smoke.
+    # With Sauvola, the old 12 pt one-line fixture produced 0/8 characters with the standard model
+    # and 8/8 with the high-quality model. See docs/ocr-quality-validation.md for the comparison.
     # Use a scanned Japanese document with several body lines to check the OCR text layer.
     fixtures = Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures"
     copy("ocr-blank.json", (fixtures / "pdfcpu-blank.json").read_bytes())
@@ -704,6 +706,8 @@ def main(image):
     for setting in ("Pdf__PdfiumPath=/missing/libpdfium.so", "Pdf__RenderFontDir=/tmp"):
         assert_startup_failure(image, (setting,), "描画プログラム（PDFium）の自己テストに失敗しました。")
     assert_startup_failure(image, ("Pdf__TesseractPath=/missing/tesseract",),
+                           "Tesseractの日本語モデルの確認に失敗しました。")
+    assert_startup_failure(image, ("Pdf__TessdataBestDir=/tmp",),
                            "Tesseractの日本語モデルの確認に失敗しました。")
     clean_smoke(image)
     compress_smoke(image)

@@ -36,9 +36,22 @@ PDF.js 6.3.289の `PDFFindController` で、出力PDFから1回以上見つか�
 
 試作の罫線付き請求書は標準32/34語・高精度31/34語、表だけのページは9/9語・8/9語、影は10/12語・12/12語、縦書きの横書き見出しは7/9語・9/9語でした。試作全体は622語を対象にしています。[試作結果（Issue #126）](https://github.com/kooiei-in4a/amane-pdf-api/issues/126)
 
+## 短い1行の標準OCRで文字層が空になる既知の回帰
+
+**旧試料：標準0/8字・高精度8/8字。** レビューでは、PRの `d1d658d` のイメージを上記の本番相当のコンテナ制約で動かし、12 ptの「日本語の起動確認」だけを描いた旧スモーク試料で確認しました。両方式ともHTTP 200でした。標準では文字層が空になり、高精度では全文を認識しました。ページ番号だけ、署名欄だけ、短い1行だけの文書も、処理が成功したように見えたまま検索できない可能性があります。発生頻度は未計測です。[PR #127 のレビュー](https://github.com/kooiei-in4a/amane-pdf-api/pull/127#issuecomment-7179161029)
+
+1. `scripts/docker-smoke.py` の `pdfcpu_smoke` と同じ手順で、`tests/Amane.Pdf.Api.Tests/Fixtures/pdfcpu-blank.json` を `qpdf --json-input` でPDFにし、`pdfcpu-layer.json` を `pdfcpu create` で重ねます。ページ下端中央に旧試料の1行が入ります。
+2. `POST /api/pdf/to-images?format=png&dpi=200` のZIPからPNGを取り出し、`POST /api/pdf/from-images?quality=original` に渡して画像だけのPDFを作ります。
+3. そのPDFを `POST /api/pdf/ocr?direction=horizontal&quality=standard` と `quality=high` に送り、HTTPステータスと出力PDFの文字層を比較します。
+4. 同じ画像PDFからAPIと同じPDFiumレンダラーの `render-png` で300 dpiのPNGを得ます。標準の `jpn` で同じPNGをTesseractに渡し、`--psm 1`・`3`・`6` と `thresholding_method=0`・`1`・`2` を組み合わせてTSVを比較します。描画経路を比べる場合は、同じPDFを `pdftoppm -r 300 -png -singlefile` で描画し、同じ認識条件で比較します。
+
+PDFiumのPNGでは、どのPSMでもSauvola（`thresholding_method=2`）のときだけ空になり、従来の二値化（`0`）と適応型Otsu（`1`）では全文を認識しました。文字をページ中央や上端に移しても同じ結果でした。比較した二値化画像の黒画素数は7,012と7,015で、文字の画素が残っていても認識段階で結果が空になりました。同じPDFを `pdftoppm` で300 dpiに描いたPNGでは、画素がほぼ同じでもSauvolaで全文を認識しました。[PR #127 のレビュー](https://github.com/kooiei-in4a/amane-pdf-api/pull/127#issuecomment-7179161029)
+
+`thresholding_window_size=1.0` と `thresholding_kfactor=0.2` の組み合わせで旧試料の認識は回復しました。この調整には #126 の試料での再検証が必要です。
+
 ## 処理時間
 
-密な文書は、300 dpiのA4に11 pt相当のBIZ UDP明朝で約1,680字を描き、横書き35行または縦書き28列に配置しました。同じ画像ページを標準は10ページ、高精度は5ページ連ねました。応答時間は、1リクエストずつ送信を開始してからPDFを受信し終えるまでです。
+密な文書は、300 dpiのA4に11 pt相当のBIZ UDP明朝で約1,680字を描き、横書き35行または縦書き28列に配置しました。同じ画像ページを標準は10ページ、高精度は5ページ連ねました。応答時間は、1リクエストずつ送信を開始してからPDFを受信し終えるまでです。他の処理が並行する条件と、本番ホストのCPUでの余裕は未計測です。
 
 | 方式・試料 | 実測 | 試作 | 差 |
 | --- | ---: | ---: | ---: |
@@ -60,3 +73,5 @@ PDF.js 6.3.289の `PDFFindController` で、出力PDFから1回以上見つか�
 | 高精度モデル・ゴシック・`psm 1`（同じ本文と配置） | 17.19秒 |
 
 今回の試料では、高精度モデルのTesseract実行だけで5ページ約81秒を占めます。向き判定の有無と出力指定方法による差は各0.4秒以内でした。試作の入力そのものは使えなかったため、試作との差を生んだ入力条件は特定できていません。
+
+レビューでは、上限の1,600万画素を使った密な縦書き1ページが、高精度のTesseract単体で34.1秒かかりました（1 CPU）。5ページ分の認識だけで約170秒と見積もられ、描画やPDF生成も含む180秒の上限に近づきます。また、密な横書き1ページの高精度認識は、Sauvolaありで13.99秒、なしで13.98秒でした。この0.01秒の差では、高精度の横書きが試作より遅かったことを説明できません。[PR #127 のレビュー](https://github.com/kooiei-in4a/amane-pdf-api/pull/127#issuecomment-7179161029)
