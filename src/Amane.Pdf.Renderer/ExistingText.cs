@@ -7,9 +7,7 @@ internal static class ExistingText
 {
     private const int DeviceSize = 1000; // Use PDFium's display coordinate system without allocating a bitmap.
     private const int BodyMargin = 80;
-    private const int MinimumBodyCharacters = 24;
-    private const int MinimumBodySpan = 20;
-    private const int MinimumInvisibleLetters = 4;
+    private const int MinimumLetters = 4;
     private const int InvisibleTextMode = 3;
     private const int MaxCharacters = 20_000;
     private const int MaxObjects = 100_000;
@@ -50,16 +48,20 @@ internal static class ExistingText
             if (count <= 0) return false;
             var remaining = MaxObjects;
             var hasImage = MayContainImage(page, form: false, depth: 0, ref remaining);
-            var characters = 0;
-            var invisibleLetters = 0;
-            var minX = DeviceSize;
-            var minY = DeviceSize;
-            var maxX = 0;
-            var maxY = 0;
+            var letters = 0;
             for (var i = 0; i < count; i++)
             {
-                if (!Rune.TryCreate((int)Pdfium.FPDFText_GetUnicode(text, i), out var rune) || !Rune.IsLetterOrDigit(rune) ||
-                    Pdfium.FPDFText_GetCharBox(text, i, out var left, out var right, out var bottom, out var top) == 0 ||
+                // Page numbers alone don't make a page searchable. On a scan, visible form values can
+                // be searchable while the printed body still needs OCR.
+                if (!Rune.TryCreate((int)Pdfium.FPDFText_GetUnicode(text, i), out var rune) || !Rune.IsLetter(rune))
+                    continue;
+                if (hasImage)
+                {
+                    var item = Pdfium.FPDFText_GetTextObject(text, i);
+                    if (item == IntPtr.Zero || Pdfium.FPDFTextObj_GetTextRenderMode(item) != InvisibleTextMode)
+                        continue;
+                }
+                if (Pdfium.FPDFText_GetCharBox(text, i, out var left, out var right, out var bottom, out var top) == 0 ||
                     !(left < right && bottom < top))
                     continue;
                 var centerX = left / 2 + right / 2;
@@ -68,24 +70,8 @@ internal static class ExistingText
                     Pdfium.FPDF_PageToDevice(page, 0, 0, DeviceSize, DeviceSize, 0, centerX, centerY, out var x, out var y) == 0 ||
                     x is < 0 or >= DeviceSize || y is < 0 or >= DeviceSize)
                     continue;
-                if (!hasImage) return true;
-                // An image page may carry a digital title or footer. Require text within the page body
-                // spanning both axes before keeping its existing text layer.
-                if (y is < BodyMargin or >= DeviceSize - BodyMargin) continue;
-                // Sparse scans can already have an OCR layer. Count letters so an invisible page number alone cannot qualify.
-                if (Rune.IsLetter(rune))
-                {
-                    var item = Pdfium.FPDFText_GetTextObject(text, i);
-                    if (item != IntPtr.Zero && Pdfium.FPDFTextObj_GetTextRenderMode(item) == InvisibleTextMode &&
-                        ++invisibleLetters >= MinimumInvisibleLetters)
-                        return true;
-                }
-                minX = Math.Min(minX, x);
-                minY = Math.Min(minY, y);
-                maxX = Math.Max(maxX, x);
-                maxY = Math.Max(maxY, y);
-                if (++characters >= MinimumBodyCharacters && maxX - minX >= MinimumBodySpan && maxY - minY >= MinimumBodySpan)
-                    return true;
+                if (hasImage && (y < BodyMargin || y >= DeviceSize - BodyMargin)) continue;
+                if (++letters >= MinimumLetters) return true;
             }
             return false;
         }

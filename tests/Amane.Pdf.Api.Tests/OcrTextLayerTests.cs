@@ -180,6 +180,54 @@ public sealed class OcrTextLayerTests
     }
 
     [TestMethod]
+    [DataRow(90, 200, 350, 50, 250, 0, 1, -1, 0, 57.24, 24.0)]
+    [DataRow(180, 650, 450, 250, 50, -1, 0, 0, -1, 216.0, 57.24)]
+    [DataRow(270, 750, 100, 50, 250, 0, -1, 1, 0, 182.76, 144.0)]
+    public void OrientMatchesHocrBoxAndWritePlacesTextBackOnRotatedImage(int angle,
+        int left, int top, int width, int height, int a, int b, int c, int d, double e, double f)
+    {
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var hocr = Path.Combine(files.DirectoryPath, "page.hocr");
+        File.WriteAllText(hocr, FormattableString.Invariant(
+            $"<div><span class=\"ocr_line\" title=\"bbox {left} {top} {left + width} {top + height}; textangle {angle}\" /></div>"));
+        var unmatched = new OcrTextLayer.Line(50, 50, 160, 35, [new(50, 50, 160, 35, "見出し")]);
+        List<OcrTextLayer.Line> lines = [new(left, top, width, height, [new(left, top, width, height, "開館時間")]), unmatched];
+
+        OcrTextLayer.Orient(lines, hocr, 1000, 700, default);
+
+        Assert.AreEqual(new OcrTextLayer.Line(100, 200, 250, 50, lines[0].Words, Angle: angle), lines[0]);
+        Assert.AreEqual(new OcrTextLayer.Word(100, 200, 250, 50, "開館時間"), lines[0].Words.Single());
+        Assert.AreEqual(unmatched, lines[1]);
+        var (_, shows) = Write(lines, vertical: false, imageHeight: 700);
+        CollectionAssert.AreEqual(new[] { a, b, c, d, e, f }, shows[0].Matrix);
+        CollectionAssert.AreEqual(new double[] { 1, 0, 0, 1 }, shows[1].Matrix[..4]);
+    }
+
+    [TestMethod]
+    [DataRow("<span class=\"ocr_line\" title=\"bbox 10 20 160 50; textangle 90\">")]
+    [DataRow("<span class=\"ocr_line\" title=\"bbox 10 20 160 50; textangle 45\"/>")]
+    public void OrientRejectsMalformedHocrAndUnsupportedAngles(string content)
+    {
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var hocr = Path.Combine(files.DirectoryPath, "page.hocr");
+        File.WriteAllText(hocr, "<div>" + content + Secret + "</div>");
+        var error = Assert.ThrowsExactly<InvalidOperationException>(() => OcrTextLayer.Orient([], hocr, 1000, 700, default));
+        Assert.DoesNotContain(Secret, error.ToString());
+    }
+
+    [TestMethod]
+    public void WriteGroupsUpsideDownWordsInReadingOrderAndSplitsDistantFields()
+    {
+        var line = new OcrTextLayer.Line(100, 200, 550, 50,
+            [new(100, 200, 100, 50, "開館"), new(215, 200, 100, 50, "時間"), new(550, 200, 100, 50, "返却")],
+            Angle: 180);
+        var (_, shows) = Write([line], vertical: false, imageHeight: 700);
+        CollectionAssert.AreEqual(new[] { "開館時間" + OcrTextLayer.FieldBoundary, "返却" }, shows.Select(show => show.Text).ToArray());
+        CollectionAssert.AreEqual(new double[] { -1, 0, 0, -1, 216, 57.24 }, shows[0].Matrix);
+        CollectionAssert.AreEqual(new double[] { -1, 0, 0, -1, 108, 57.24 }, shows[1].Matrix);
+    }
+
+    [TestMethod]
     public void WriteTrimsOverlappingBoxesAndSkipsEmptyLines()
     {
         var line = new OcrTextLayer.Line(0, 0, 400, 50, [

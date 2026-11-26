@@ -396,6 +396,64 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    public async Task OcrProcessesScanWithVisibleFormValuesInTheBody()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        const string printed = "開館時間";
+        var scan = await ScanPageAsync(test, "filled-scan",
+        [
+            new { page = 1, x = 0.1m, y = 0.14m, width = 0.8m, height = 0.06m, fontSize = 20,
+                align = "left", text = "中央図書館の開館時間は午前九時からです。" }
+        ]);
+        string[] values = ["申請者氏名 山田太郎 受付番号 2026-001234", "住所 東京都千代田区丸の内一丁目一番一号"];
+        using var form = PdfFillTemplateTests.Form(scan, JsonSerializer.SerializeToUtf8Bytes(values.Select((text, index) => new
+        {
+            page = 1, x = 0.1m, y = 0.60m + 0.06m * index, width = 0.8m, height = 0.04m, fontSize = 12,
+            align = "left", text
+        }).ToArray()));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", form);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        var input = await filled.Content.ReadAsByteArrayAsync();
+        var inputPath = Path.Combine(test.Root, "filled-scan-input.pdf");
+        await File.WriteAllBytesAsync(inputPath, input);
+        var before = Normalize(await ExtractTextAsync(inputPath, "-raw"));
+        Assert.DoesNotContain(printed, before);
+        Assert.Contains("受付番号", before);
+        Assert.Contains("千代田区", before);
+
+        using var upload = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal, upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.IsFalse(response.Headers.Contains("X-Pdf-Skipped-Pages"));
+        var outputPath = Path.Combine(test.Root, "filled-scan-ocr.pdf");
+        await File.WriteAllBytesAsync(outputPath, await response.Content.ReadAsByteArrayAsync());
+        Assert.Contains(printed, Normalize(await ExtractTextAsync(outputPath, "-raw")));
+        CollectionAssert.AreEqual(await RenderWithPopplerAsync(inputPath), await RenderWithPopplerAsync(outputPath));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrDoesNotSkipAnImageFreePageWithOnlyAPageNumber()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var blank = await PdfAsync(test, JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject(), "numbered-blank");
+        using var form = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            new { page = 1, x = 0.1m, y = 0.94m, width = 0.8m, height = 0.04m, fontSize = 12,
+                align = "center", text = "1" }
+        }));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", form);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        using var upload = PdfTestContext.FileForm(await filled.Content.ReadAsByteArrayAsync());
+        using var response = await test.Client.PostAsync(Horizontal, upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.IsFalse(response.Headers.Contains("X-Pdf-Skipped-Pages"));
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrSkipsAScanWithAShortExistingOcrLayerUnlessExplicitlyRequested()
     {
         if (!OperatingSystem.IsLinux()) return;
