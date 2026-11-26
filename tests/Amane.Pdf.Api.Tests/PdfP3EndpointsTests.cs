@@ -269,12 +269,131 @@ public sealed class PdfP3EndpointsTests
         }).ToArray();
         var scanned = await ScanPageAsync(test, "vertical-heading", fields);
         var path = Path.Combine(test.Root, "vertical-heading-ocr.pdf");
-        await File.WriteAllBytesAsync(path, await PostPdfAsync(test, "/api/pdf/ocr?direction=vertical", scanned, "ocr.pdf"));
+        await File.WriteAllBytesAsync(path, await PostPdfAsync(test, "/api/pdf/ocr?direction=vertical&quality=high", scanned,
+            "ocr.pdf"));
         // jpn_vert --psm 5 alone slices the heading into vertical "columns"; page segmentation keeps it readable.
         var text = (await ExtractTextAsync(path, "-raw")).Normalize(NormalizationForm.FormKC);
         foreach (var phrase in new[] { "中央図書館だより", "開館時間", "返却ポスト", "本人確認書類", "市民課" })
             Assert.Contains(phrase, text);
         test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrQualityFollowsQueryKeyAndValueRulesBeforeUpload()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        foreach (var suffix in new[] { "", "&quality=standard", "&quality=high", "&QuAlItY=high" })
+            await test.AssertQueryAcceptedAsync(Horizontal + suffix, form);
+        foreach (var suffix in new[] { "&quality=auto", "&quality=", "&quality", "&quality=High", "&quality=STANDARD",
+                     "&quality=high&quality=high", "&quality=standard&QUALITY=high", "&quality=%20high" })
+            await test.AssertRejectedBeforeReadingBodyAsync(Horizontal + suffix, form);
+    }
+
+    [TestMethod]
+    [DataRow("standard", 10)]
+    [DataRow("high", 5)]
+    public async Task OcrQualityLimitsSelectedPages(string quality, int maxPages)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var input = await test.CreatePagedPdfAsync(maxPages + 1);
+        var endpoint = Horizontal + "&quality=" + quality;
+        using var form = PdfTestContext.FileForm(input);
+        using var rejected = await test.Client.PostAsync(endpoint, form);
+        Assert.AreEqual(HttpStatusCode.BadRequest, rejected.StatusCode);
+        using var problem = JsonDocument.Parse(await rejected.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("リクエストの形式が不正です。", problem.RootElement.GetProperty("title").GetString());
+        var output = await PostPdfAsync(test, endpoint + "&pages=1-" + maxPages, input, "ocr.pdf");
+        await test.AssertValidPdfAsync(output, maxPages + 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("", "horizontal", "jpn", "1")]
+    [DataRow("&quality=standard", "vertical", "jpn_vert", "5")]
+    [DataRow("&quality=high", "horizontal", "jpn", "1")]
+    [DataRow("&quality=high", "vertical", "jpn+jpn_vert", "3")]
+    public async Task OcrPassesOneRecognitionPerPageWithQualityAndDirection(string quality, string direction,
+        string models, string psm)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var originalTool = options.TesseractPath;
+        using var scripts = new OverlayJob();
+        var invocations = Path.Combine(scripts.Root, "tesseract-arguments");
+        options.TesseractPath = scripts.Script($"""
+            printf '%s\n' "$@" >> '{invocations}'
+            exec '{originalTool}' "$@"
+            """);
+        try
+        {
+            await PostPdfAsync(test, "/api/pdf/ocr?direction=" + direction + quality, PdfTestContext.Fixture, "ocr.pdf");
+        }
+        finally
+        {
+            options.TesseractPath = originalTool;
+        }
+        List<string> expected = ["-l", models, "--psm", psm, "--dpi", "300", "-c", "textonly_pdf=1",
+            "-c", "thresholding_method=2"];
+        if (quality == "&quality=high") expected.AddRange(["--tessdata-dir", options.TessdataBestDir]);
+        expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
+        CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public void OcrQualityOptionsValidateBounds()
+    {
+        var options = new PdfOptions { TessdataBestDir = Path.GetFullPath("tessdata-best") };
+        Assert.AreEqual(10, options.MaxOcrPages);
+        Assert.AreEqual(90, options.OcrTimeoutSeconds);
+        Assert.AreEqual(5, options.MaxOcrHighPages);
+        Assert.AreEqual(180, options.OcrHighTimeoutSeconds);
+        Assert.IsTrue(PdfOcrEndpoint.IsValid(options));
+        options.MaxOcrHighPages = 0;
+        Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
+        options.MaxOcrHighPages = 6;
+        Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
+        options.MaxOcrHighPages = 1;
+        options.OcrHighTimeoutSeconds = 0;
+        Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
+        options.OcrHighTimeoutSeconds = int.MaxValue / 1000 + 1;
+        Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
+        options.OcrHighTimeoutSeconds = 1;
+        Assert.IsTrue(PdfOcrEndpoint.IsValid(options));
+    }
+
+    [TestMethod]
+    [DataRow("jpn", false)]
+    [DataRow("jpn_vert", false)]
+    [DataRow("osd", false)]
+    [DataRow("jpn", true)]
+    [DataRow("jpn_vert", true)]
+    [DataRow("osd", true)]
+    public async Task OcrStartupRequiresAllLanguagesInBothModelDirectories(string missing, bool high)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var scripts = new OverlayJob();
+        var incomplete = string.Join('\n', new[] { "jpn", "jpn_vert", "osd" }.Where(language => language != missing));
+        var standardLanguages = high ? "jpn\njpn_vert\nosd" : incomplete;
+        var highLanguages = high ? incomplete : "jpn\njpn_vert\nosd";
+        var options = new PdfOptions
+        {
+            TesseractPath = scripts.Script($"""
+                if [ "$1" = '--list-langs' ]; then
+                    printf '%s\n' '{standardLanguages}'
+                elif [ "$1" = '--tessdata-dir' ] && [ "$2" = '{scripts.Root}' ] && [ "$3" = '--list-langs' ]; then
+                    printf '%s\n' '{highLanguages}'
+                else
+                    exit 1
+                fi
+                """),
+            TessdataBestDir = scripts.Root
+        };
+        await Assert.ThrowsExactlyAsync<PdfOcrStartupException>(() => PdfOcrEndpoint.ValidateStartupAsync(options, default));
     }
 
     [TestMethod]
@@ -369,10 +488,17 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
-    public async Task OcrSharesRenderSlotTimesOutAndAllowsOtherPdfOperations()
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task OcrSharesRenderSlotTimesOutAndAllowsOtherPdfOperations(bool high)
     {
         if (!OperatingSystem.IsLinux()) return;
-        await using var test = new PdfTestContext(new() { ["Pdf:OcrTimeoutSeconds"] = "4" });
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:OcrTimeoutSeconds"] = high ? "30" : "4",
+            ["Pdf:OcrHighTimeoutSeconds"] = high ? "4" : "30"
+        });
+        var endpoint = high ? Horizontal + "&quality=high" : Horizontal;
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var originalTool = options.TesseractPath;
         using var scripts = new OverlayJob();
@@ -380,7 +506,8 @@ public sealed class PdfP3EndpointsTests
         options.TesseractPath = scripts.Script($"printf '%s' \"$$\" > '{marker}'\nexec sleep 60");
 
         using var upload = PdfTestContext.FileForm(PdfTestContext.Fixture);
-        var request = test.Client.PostAsync(Horizontal, upload);
+        using var requestDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var request = test.Client.PostAsync(endpoint, upload, requestDeadline.Token);
         try
         {
             using var until = new CancellationTokenSource(TimeSpan.FromSeconds(3));
@@ -402,11 +529,13 @@ public sealed class PdfP3EndpointsTests
         {
             using var response = await request;
             Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
+            using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+            Assert.AreEqual("PDF処理が制限時間を超過しました。", problem.RootElement.GetProperty("title").GetString());
             options.TesseractPath = originalTool;
         }
         Assert.IsFalse(Directory.Exists("/proc/" + await File.ReadAllTextAsync(marker)));
         test.AssertClean();
-        await PostPdfAsync(test, Horizontal, PdfTestContext.Fixture, "ocr.pdf");
+        await PostPdfAsync(test, endpoint, PdfTestContext.Fixture, "ocr.pdf");
         test.AssertClean();
     }
 

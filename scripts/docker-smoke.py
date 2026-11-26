@@ -32,7 +32,8 @@ def docker(*arguments, data=None, check=True):
     )
 
 
-def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None, restriction=None, named_files=()):
+def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, regions=None, restriction=None, named_files=(),
+              fields=None):
     boundary = "smoke-" + uuid.uuid4().hex
     parts = []
     inputs = files if files is not None else ([] if file is None else [file])
@@ -52,6 +53,8 @@ def multipart(file=None, password=PASSWORD, files=None, text=None, image=None, r
         )
     if text is not None:
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="text"\r\n\r\n{text}\r\n'.encode())
+    if fields is not None:
+        parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="fields"\r\n\r\n{fields}\r\n'.encode())
     if regions is not None:
         parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="regions"\r\n\r\n{regions}\r\n'.encode())
     if restriction is not None:
@@ -119,7 +122,7 @@ class ApiContainer:
     def exec(self, *arguments):
         return docker("exec", self.name, *arguments)
 
-    def request(self, method, path, body=b"", content_type=None, chunked=False):
+    def request(self, method, path, body=b"", content_type=None, chunked=False, timeout=40):
         if method == "POST":
             self.post_count += 1
         if self.isolated:
@@ -143,7 +146,7 @@ class ApiContainer:
         headers = {}
         if content_type:
             headers["Content-Type"] = content_type
-        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=40)
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=timeout)
         try:
             payload = (body[i:i + 4096] for i in range(0, len(body), 4096)) if chunked else body
             connection.request(method, path, body=payload, headers=headers, encode_chunked=chunked)
@@ -617,12 +620,12 @@ def p2_smoke(api):
     api.assert_clean()
 
 
-def p3_smoke(api, japanese_pdf):
+def p3_smoke(api):
     root = "/tmp/p3-smoke"
     api.exec("mkdir", "-m", "700", root)
 
-    def send(path, pdf, filename):
-        body, content_type = multipart(pdf, password=None)
+    def send(path, pdf, filename, fields=None):
+        body, content_type = multipart(pdf, password=None, fields=fields)
         status, headers, result = api.request("POST", "/api/pdf/" + path, body, content_type)
         assert status == 200, (path, status, result[:200] if status != 200 else b"")
         assert headers["Content-Type"] == "application/pdf" and "filename=" + filename in headers["Content-Disposition"]
@@ -657,10 +660,24 @@ def p3_smoke(api, japanese_pdf):
 
     models = api.exec("tesseract", "--list-langs").stdout.splitlines()
     assert b"jpn" in models and b"jpn_vert" in models
-    for package in ("tesseract-ocr", "libtesseract5", "tesseract-ocr-jpn", "tesseract-ocr-jpn-vert", "libleptonica6"):
+    for package in ("tesseract-ocr", "libtesseract5", "tesseract-ocr-jpn", "tesseract-ocr-jpn-vert",
+                    "tesseract-ocr-osd", "libleptonica6"):
         api.exec("test", "-r", f"/usr/share/doc/{package}/copyright")
     api.exec("test", "-r", "/usr/share/common-licenses/Apache-2.0")
 
+    # With Sauvola, the old 12 pt one-line fixture produced 0/8 characters with the standard model
+    # and 8/8 with the high-quality model. See docs/ocr-quality-validation.md for the comparison.
+    # Use a scanned Japanese document with several body lines to check the OCR text layer.
+    fixtures = Path(__file__).resolve().parent.parent / "tests/Amane.Pdf.Api.Tests/Fixtures"
+    copy("ocr-blank.json", (fixtures / "pdfcpu-blank.json").read_bytes())
+    api.exec("qpdf", "--json-input", root + "/ocr-blank.json", root + "/ocr-blank.pdf")
+    lines = ["中央図書館の開館時間は午前九時から午後七時までです。",
+             "返却ポストは正面入口の東側にあります。",
+             "日本語の読み取りを確認しています。"]
+    fields = [{"page": 1, "x": 0.06, "y": round(0.08 + 0.05 * i, 2), "width": 0.9, "height": 0.04,
+               "fontSize": 18, "align": "left", "text": line} for i, line in enumerate(lines)]
+    japanese_pdf = send("fill-template", api.exec("cat", root + "/ocr-blank.pdf").stdout, "filled.pdf",
+                        fields=json.dumps(fields, ensure_ascii=False))
     body, content_type = multipart(japanese_pdf, password=None)
     path = "/api/pdf/to-images?format=png&dpi=200"
     status, _, result = api.request("POST", path, body, content_type)
@@ -672,7 +689,7 @@ def p3_smoke(api, japanese_pdf):
     api.exec("qpdf", "--check", root + "/ocr.pdf")
     api.exec("dotnet", "/opt/amane-pdf/text-extractor/Amane.Pdf.TextExtractor.dll", root + "/ocr.pdf", root + "/text.json", "1", "200")
     text, = json.loads(api.exec("cat", root + "/text.json").stdout)["pages"]
-    assert "日本語" in text
+    assert all(term in text for term in ("開館時間", "返却ポスト", "日本語"))
     api.exec("rm", "-rf", root)
     api.assert_clean()
     print("Docker flatten/A4 layout/Japanese OCR PASS", flush=True)
@@ -680,15 +697,17 @@ def p3_smoke(api, japanese_pdf):
 
 def main(image):
     with running_container(image, isolated=True) as api:
-        japanese_pdf = pdfcpu_smoke(api)
+        pdfcpu_smoke(api)
         p2_smoke(api)
-        p3_smoke(api, japanese_pdf)
+        p3_smoke(api)
     for setting in ("Pdf__PdfcpuPath=/missing/pdfcpu", "Pdf__PdfcpuConfigDir=/missing/config",
                     "Pdf__PdfcpuAddressSpaceLimitBytes=268435456"):
         assert_startup_failure(image, (setting,), "pdfcpu・日本語フォントの自己テストに失敗しました。")
     for setting in ("Pdf__PdfiumPath=/missing/libpdfium.so", "Pdf__RenderFontDir=/tmp"):
         assert_startup_failure(image, (setting,), "描画プログラム（PDFium）の自己テストに失敗しました。")
     assert_startup_failure(image, ("Pdf__TesseractPath=/missing/tesseract",),
+                           "Tesseractの日本語モデルの確認に失敗しました。")
+    assert_startup_failure(image, ("Pdf__TessdataBestDir=/tmp",),
                            "Tesseractの日本語モデルの確認に失敗しました。")
     clean_smoke(image)
     compress_smoke(image)

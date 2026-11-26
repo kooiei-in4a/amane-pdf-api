@@ -26,6 +26,7 @@
 | [from-images-followup-validation.md](from-images-followup-validation.md) | PNG見積りと画像処理の追加容量検証 |
 | [from-images-as-validation.md](from-images-as-validation.md) | PNG取込時の仮想アドレス空間と同時処理の判断・検証 |
 | [fsize-core-validation.md](fsize-core-validation.md) | LinuxのFSIZE上限とcore dumpに関するAPI側検証・未確認事項 |
+| [ocr-quality-validation.md](ocr-quality-validation.md) | OCRの標準・高精度のPDF.js検索と処理時間の測定（2026-11-26）。現行仕様は[READMEのOCR節](../README.md#スキャンpdfの日本語ocrlinux) |
 | [overlay-validation.md](overlay-validation.md) | pdfcpu共通描画基盤のHTTP・描画・容量検証 |
 | [pdfcpu-validation.md](pdfcpu-validation.md) | pdfcpu導入時の起動・フォント・CI検証（PR A）と、0.16.2更新時の全機能・ToUnicode比較。 |
 | [qpdf-memory-validation.md](qpdf-memory-validation.md) | qpdfのメモリ制限と負荷測定 |

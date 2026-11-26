@@ -15,7 +15,7 @@ public sealed class OcrTextLayerTests
         @"^(?<m>[-\d. ]+) Tm /F1 (?<fs>[\d.]+) Tf (?<tz>[\d.]+) Tz \[ <(?<hex>[0-9a-f]+)> \] TJ$", RegexOptions.Multiline);
 
     [TestMethod]
-    public void ReadKeepsTesseractLinesWordsAndConfidence()
+    public void ReadKeepsTesseractLinesAndWords()
     {
         using var file = new TsvFile(Header,
             "1\t1\t0\t0\t0\t0\t0\t0\t1000\t1000\t-1\t",
@@ -29,11 +29,7 @@ public sealed class OcrTextLayerTests
         Assert.HasCount(2, lines);
         Assert.AreEqual(new(10, 20, 300, 50, lines[0].Words), lines[0]);
         CollectionAssert.AreEqual(new[] { "開館", "時間" }, lines[0].Words.Select(word => word.Text).ToArray());
-        Assert.AreEqual(91.5, lines[0].Words[0].Confidence);
         Assert.AreEqual("Dark", lines[1].Words.Single().Text);
-        // 開館 x2 at 91.5, 時間 x2 at 80, Dark x4 at 70
-        Assert.AreEqual((91.5 * 2 + 80 * 2 + 70 * 4) / 8, OcrTextLayer.MeanConfidence(lines), 1e-9);
-        Assert.AreEqual(0, OcrTextLayer.MeanConfidence([]));
     }
 
     [TestMethod]
@@ -122,7 +118,7 @@ public sealed class OcrTextLayerTests
     {
         // 開館 | 時間 | は with ink gaps; the last word ends the line without punctuation.
         var line = new OcrTextLayer.Line(100, 200, 330, 50, [
-            new(100, 200, 100, 50, "開館", 90), new(215, 200, 100, 50, "時間", 90), new(330, 200, 50, 50, "は", 90)]);
+            new(100, 200, 100, 50, "開館"), new(215, 200, 100, 50, "時間"), new(330, 200, 50, 50, "は")]);
         var (text, shows) = Write([line], vertical: false, imageHeight: 1000);
         Assert.DoesNotContain("<0020>", text);
         Assert.AreEqual("開館時間は", string.Concat(shows.Select(show => show.Text)));
@@ -143,7 +139,7 @@ public sealed class OcrTextLayerTests
     public void WriteSeparatesLatinWordsWithASpaceAndAnItemBreakingGap()
     {
         var line = new OcrTextLayer.Line(100, 200, 400, 50, [
-            new(100, 200, 180, 50, "Dark", 90), new(290, 200, 210, 50, "Mode", 90)]);
+            new(100, 200, 180, 50, "Dark"), new(290, 200, 210, 50, "Mode")]);
         var (text, shows) = Write([line], vertical: false, imageHeight: 1000);
         StringAssert.Contains(text, "100 Tz [ <0020> ] TJ");
         var fontSize = 50 * K * OcrTextLayer.FontSizeRatio;
@@ -157,7 +153,7 @@ public sealed class OcrTextLayerTests
     {
         // Character pitch 55 px; the final 。 has a 20 px ink box, the final 行 a 20 px one too.
         OcrTextLayer.Line Line(int top, string last) => new(0, top, 240, 50, [
-            new(0, top, 100, 50, "中央", 90), new(110, top, 100, 50, "館の", 90), new(220, top, 20, 50, last, 90)]);
+            new(0, top, 100, 50, "中央"), new(110, top, 100, 50, "館の"), new(220, top, 20, 50, last)]);
         var (_, shows) = Write([Line(100, "。"), Line(300, "行")], vertical: false, imageHeight: 1000);
         Assert.AreEqual(55 * K, shows[2].Advance, 0.002);
         Assert.AreEqual(20 * K, shows[5].Advance, 0.002);
@@ -167,8 +163,8 @@ public sealed class OcrTextLayerTests
     public void WritePlacesTallLinesVerticallyOnlyInVerticalRequests()
     {
         var column = new OcrTextLayer.Line(500, 100, 50, 300, [
-            new(500, 100, 50, 140, "返却", 90), new(500, 250, 50, 150, "ポスト", 90)]);
-        var heading = new OcrTextLayer.Line(100, 20, 300, 40, [new(100, 20, 300, 40, "見出し", 90)]);
+            new(500, 100, 50, 140, "返却"), new(500, 250, 50, 150, "ポスト")]);
+        var heading = new OcrTextLayer.Line(100, 20, 300, 40, [new(100, 20, 300, 40, "見出し")]);
         var (text, shows) = Write([column, heading], vertical: true, imageHeight: 1000);
         Assert.DoesNotContain("<0020>", text);
         var fontSize = 50 * K * OcrTextLayer.FontSizeRatio;
@@ -187,7 +183,7 @@ public sealed class OcrTextLayerTests
     public void WriteTrimsOverlappingBoxesAndSkipsEmptyLines()
     {
         var line = new OcrTextLayer.Line(0, 0, 400, 50, [
-            new(0, 0, 300, 50, "末年", 90), new(100, 0, 50, 50, "始", 90)]);
+            new(0, 0, 300, 50, "末年"), new(100, 0, 50, 50, "始")]);
         var empty = new OcrTextLayer.Line(0, 100, 0, 0, []);
         var (_, shows) = Write([empty, line], vertical: false, imageHeight: 1000);
         Assert.HasCount(2, shows);
@@ -205,15 +201,15 @@ public sealed class OcrTextLayerTests
         bool vertical, bool ends)
     {
         // A horizontal line 600x50 at (0, 100), so its bottom edge is at 150.
-        var line = new OcrTextLayer.Line(0, 100, 600, 50, [new(0, 100, 50, 50, "開館", 90)]);
-        var next = new OcrTextLayer.Line(left, top, width, height, [new(left, top, 50, 50, "時間", 90)], block);
+        var line = new OcrTextLayer.Line(0, 100, 600, 50, [new(0, 100, 50, 50, "開館")]);
+        var next = new OcrTextLayer.Line(left, top, width, height, [new(left, top, 50, 50, "時間")], block);
         Assert.AreEqual(ends, OcrTextLayer.EndsField(line, next, vertical));
     }
 
     [TestMethod]
     public void EndsFieldFollowsColumnsRightToLeftOnVerticalPages()
     {
-        var column = new OcrTextLayer.Line(500, 100, 50, 400, [new(500, 100, 50, 100, "返却", 90)]);
+        var column = new OcrTextLayer.Line(500, 100, 50, 400, [new(500, 100, 50, 100, "返却")]);
         Assert.IsFalse(OcrTextLayer.EndsField(column, column with { Left = 430 }, true));
         Assert.IsTrue(OcrTextLayer.EndsField(column, column with { Left = 300 }, true));
         Assert.IsTrue(OcrTextLayer.EndsField(column, column with { Left = 570 }, true));
@@ -225,7 +221,7 @@ public sealed class OcrTextLayerTests
     {
         var boundary = $"100 Tz [ <{(int)OcrTextLayer.FieldBoundary:x4}> ] TJ";
         OcrTextLayer.Line Line(int left, int top, string text, int block = 1)
-            => new(left, top, 300, 50, [new(left, top, 300, 50, text, 90)], block);
+            => new(left, top, 300, 50, [new(left, top, 300, 50, text)], block);
 
         // Far apart: 開館時間 ... 返却ポスト ... Dark Mode. Only lines ending in CJK get the marker.
         var (separate, _) = Write([Line(100, 100, "開館時間"), Line(1300, 1600, "返却ポスト"), Line(500, 2400, "Mode")],

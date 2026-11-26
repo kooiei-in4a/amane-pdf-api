@@ -37,6 +37,9 @@ RUN /tools/scripts/install-compose-mincho.sh /opt/amane-pdf
 COPY scripts/install-pdfium.sh /tools/scripts/install-pdfium.sh
 RUN /tools/scripts/install-pdfium.sh /opt/pdfium
 
+COPY scripts/install-tessdata-best.sh /tools/scripts/install-tessdata-best.sh
+RUN sh /tools/scripts/install-tessdata-best.sh /opt/tessdata-best
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-resolute AS final
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080
@@ -51,7 +54,7 @@ ENV Pdf__PdfcpuPath=/opt/amane-pdf/bin/pdfcpu \
 USER root
 RUN apt-get update \
     && apt-get install -y --no-install-recommends qpdf libjpeg-turbo-progs \
-        tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert \
+        tesseract-ocr tesseract-ocr-jpn tesseract-ocr-jpn-vert tesseract-ocr-osd \
     && rm -f /usr/bin/pebble \
     && test ! -e /usr/bin/pebble && test ! -L /usr/bin/pebble \
     && rm -rf /var/lib/apt/lists/*
@@ -59,6 +62,9 @@ RUN apt-get update \
 COPY --from=build --chown=app:app /app/publish ./
 COPY --from=pdfcpu-tools /opt/amane-pdf/ /opt/amane-pdf/
 COPY --from=pdfcpu-tools /opt/pdfium/ /opt/amane-pdf/
+COPY --from=pdfcpu-tools /opt/tessdata-best/ /opt/amane-pdf/tessdata-best/
+RUN ln -s /usr/share/tesseract-ocr/*/tessdata/osd.traineddata /opt/amane-pdf/tessdata-best/osd.traineddata \
+    && test -r /opt/amane-pdf/tessdata-best/osd.traineddata
 COPY --from=build /app/renderer/ /opt/amane-pdf/renderer/
 COPY --from=build /app/text-extractor/ /opt/amane-pdf/text-extractor/
 COPY third_party/pdfpig/ /opt/amane-pdf/licenses/pdfpig/
