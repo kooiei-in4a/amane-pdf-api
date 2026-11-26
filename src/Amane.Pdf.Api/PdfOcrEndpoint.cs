@@ -197,6 +197,9 @@ internal static class PdfOcrEndpoint
         var tsvInfo = new FileInfo(tsv);
         if (result.ExceedsBudget || tsvInfo.Exists && tsvInfo.Length > budget)
             throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
+        // Tesseract can abort with std::bad_alloc when it reaches its per-process memory limit.
+        if (result.InternalFailure && !result.StartFailed)
+            throw new PdfRenderException(PdfRenderReason.TooComplex);
         if (!result.Succeeded || !tsvInfo.Exists) throw new InvalidOperationException(Failure);
         job.Commit(layer, budget);
         job.Commit(tsv, budget);

@@ -303,6 +303,33 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    [DataRow(134, 422, "too-complex")]
+    [DataRow(126, 500, null)]
+    [DataRow(127, 500, null)]
+    public async Task OcrClassifiesTesseractAbortSeparatelyFromStartupFailures(int exitCode, int status, string? reason)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        using var scripts = new OverlayJob();
+        options.TesseractPath = scripts.Script($"""
+            if [ {exitCode} -eq 134 ]; then
+                printf 'partial' > "$2.pdf"
+                printf 'partial' > "$2.tsv"
+            fi
+            exit {exitCode}
+            """);
+
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var response = await test.Client.PostAsync(Horizontal + "&quality=high", form);
+        Assert.AreEqual(status, (int)response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        if (reason is null) Assert.IsFalse(problem.RootElement.TryGetProperty("reason", out _));
+        else Assert.AreEqual(reason, problem.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task OcrKeepsJapanesePhrasesWholeAndLatinWordsApart()
     {
         if (!OperatingSystem.IsLinux()) return;
