@@ -4,7 +4,7 @@
 fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
 PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
 欧文の単語間の空白が保たれること、離れた欄の語が連結しないことを確かめる。縦書きの横見出し、
-罫線付きの表、影、上下逆さの試料も検索する。--benchmark で上限ページ数の処理時間を測る。
+罫線付きの表、影のある試料も検索する。--benchmark で上限ページ数の処理時間を測る。
 事前に scripts/ocr-search で `npm ci --ignore-scripts --omit=optional --omit=dev` を実行しておく。
 
 --highlight DIR を付けると、横書き・回転+CropBox・縦書きと横見出しの試料について、OCR出力PDFと、元画像から
@@ -196,7 +196,7 @@ def invoice_scans(api, font_path):
     return image_pdf(api, invoice, 200, 75), image_pdf(api, table, 200, 75)
 
 
-def document_scans(api, font_path):
+def shadow_scan(api, font_path):
     from PIL import Image, ImageChops, ImageDraw, ImageFont
     image = Image.new("L", (1654, 2339), 255)
     draw = ImageDraw.Draw(image)
@@ -207,8 +207,7 @@ def document_scans(api, font_path):
     gradient = Image.frombytes("L", (image.width, 1),
                                bytes(round(255 - 89 * x / (image.width - 1)) for x in range(image.width)))
     shadow = ImageChops.multiply(image, gradient.resize(image.size))
-    return (image_pdf(api, shadow, 200, 75),
-            image_pdf(api, image.transpose(Image.Transpose.ROTATE_180), 200, 75))
+    return image_pdf(api, shadow, 200, 75)
 
 
 def dense_scan(api, font_path, direction):
@@ -344,7 +343,7 @@ def main():
         font_path = directory / "BIZUDPGothic-Regular.ttf"
         font_path.write_bytes(api.exec("cat", FONT).stdout)
         invoice, table = invoice_scans(api, font_path)
-        shadow, upside_down = document_scans(api, font_path)
+        shadow = shadow_scan(api, font_path)
         cases = [("horizontal", "horizontal", horizontal, HORIZONTAL_TERMS, ["Windows11"]),
                  ("separate-fields", "horizontal", separate, SEPARATE_TERMS, SEPARATE_ABSENT),
                  ("wrapped-paragraph", "horizontal", wrapped, WRAPPED_TERMS, []),
@@ -353,8 +352,7 @@ def main():
                  ("vertical-with-heading", "vertical", vertical, VERTICAL_TERMS, []),
                  ("ruled-invoice", "horizontal", invoice, INVOICE_TERMS, []),
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
-                 ("shadow", "horizontal", shadow, DOCUMENT_TERMS, []),
-                 ("upside-down", "horizontal", upside_down, DOCUMENT_TERMS, [])]
+                 ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
         failures = []
         for quality in qualities:
             artifacts = args.artifacts

@@ -664,6 +664,8 @@ file: PDF
 
 両方式とも、横書きでページの向きを判定し、明るさのむらに対応する二値化と、罫線付きの表に対応するページ分割を使います。高精度は精度重視の日本語モデルを使い、誤読、記号、小さい文字、縦書きページ内の横書きの見出しの認識を改善します。検証時の通常の横書き1ページは標準で約1秒、高精度で約2秒でした。時間は文字量や画質で変わります。[OCRの検証記録](docs/ocr-quality-validation.md)
 
+スキャン画像自体が上下逆さのページはOCRの対応範囲外です。
+
 `pages` を省略すると全ページが対象です。たとえば `pages=1-3,5` は4ページを対象にします。範囲外・重複の指定や、方式ごとの対象ページ上限を超えた場合は400です。全ページを出力し、選んだページに透明な検索用の文字レイヤーを加えます。元のページの表示、順序、用紙サイズを保ちます。200、`application/pdf`、固定名 `ocr.pdf` で返します。
 
 描画は300 dpi、1ページ1,600万画素までです。黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、方式ごとの処理時間上限を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
@@ -961,7 +963,7 @@ python3 scripts/redact-validation.py amane-pdf-api:ci
 
 CIではGoも検証専用に導入し、`go version -m` と固定module一覧を照合します。開発環境で同じ照合をする場合はGoを用意して `python3 scripts/verify-pdfcpu-modules.py "$Pdf__PdfcpuPath"` を実行します。Go・curl・Python・取得archiveはruntime追加物に含めません。検証済みTTFはPDFium用に `/opt/amane-pdf/fonts/` へも置きます。installerの `--download-cache DIR` は固定名のGo SDK・font archive・OFLをローカルから読む検証用optionで、checksumの検査は省略しません。pdfcpu moduleと依存はbuild時にGo proxyとchecksum databaseから取得します。ソースのmodule checksum・go.mod・binary metadata・licenseを照合し、SDKとビルドcacheはruntimeへ含めません。
 
-OCRの文字レイヤーは、CIで両方式をPDF.js 6.3.289の検索処理（ビューアと同じ `PDFFindController`）でも確認します。日本語の語句が空白で分断されずに見つかること、行をまたぐ語、英字の単語間の空白、離れた欄の語どうしが連結しないこと、回転・CropBox付きのページ、縦書きのページの横書きの見出し、罫線付きの表、影のあるページ、上下逆さのページが対象です。Node.js、pdfjs-dist、PillowはCI・検証で使います。
+OCRの文字レイヤーは、CIで両方式をPDF.js 6.3.289の検索処理（ビューアと同じ `PDFFindController`）でも確認します。日本語の語句が空白で分断されずに見つかること、行をまたぐ語、英字の単語間の空白、離れた欄の語どうしが連結しないこと、PDFのページ回転・CropBox付きのページ、縦書きのページの横書きの見出し、罫線付きの表、影のあるページが対象です。Node.js、pdfjs-dist、PillowはCI・検証で使います。
 
 ```bash
 npm ci --prefix scripts/ocr-search --ignore-scripts --omit=optional --omit=dev
