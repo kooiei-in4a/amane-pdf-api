@@ -4,7 +4,7 @@
 fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
 PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
 欧文の単語間の空白が保たれること、離れた欄の語が連結しないことを確かめる。縦書きの横見出し、
-罫線付きの表、影のある試料も検索する。--benchmark で上限ページ数の処理時間を測る。
+罫線付きの表、影・点ノイズ・紙の粒状感のある試料も検索する。--benchmark で上限ページ数の処理時間を測る。
 事前に scripts/ocr-search で `npm ci --ignore-scripts --omit=optional --omit=dev` を実行しておく。
 
 --highlight DIR を付けると、横書き・回転+CropBox・縦書きと横見出しの試料について、OCR出力PDFと、元画像から
@@ -17,6 +17,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import random
 import subprocess
 import tempfile
 import time
@@ -89,6 +90,7 @@ DOCUMENT_LINES = [
 ]
 DOCUMENT_TERMS = ["中央図書館", "開館時間", "午前九時", "午後七時", "返却ポスト", "正面入口", "休館日",
                   "本人確認書類", "受付窓口", "利用登録", "返却期限", "市民課"]
+NOISE_TERMS = DOCUMENT_TERMS[:9]
 
 
 def form(parts):
@@ -196,18 +198,42 @@ def invoice_scans(api, font_path):
     return image_pdf(api, invoice, 200, 75), image_pdf(api, table, 200, 75)
 
 
-def shadow_scan(api, font_path):
-    from PIL import Image, ImageChops, ImageDraw, ImageFont
+def document_image(font_path):
+    from PIL import Image, ImageDraw, ImageFont
     image = Image.new("L", (1654, 2339), 255)
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(str(font_path), 39)
     for index, text in enumerate(DOCUMENT_LINES):
         draw.text((165, 275 + index * 112), text, fill=0, font=font)
+    return image
+
+
+def shadow_scan(api, font_path):
+    from PIL import Image, ImageChops
+    image = document_image(font_path)
     # 約35%の照度差を左右に付ける。JPEGにして撮影・スキャン時の劣化を加える。
     gradient = Image.frombytes("L", (image.width, 1),
                                bytes(round(255 - 89 * x / (image.width - 1)) for x in range(image.width)))
     shadow = ImageChops.multiply(image, gradient.resize(image.size))
     return image_pdf(api, shadow, 200, 75)
+
+
+def noise_scans(api, font_path):
+    from PIL import Image, ImageChops
+    clean = document_image(font_path)
+
+    # 固定乱数で、本文と余白の両方にスキャン時の点や紙の粒状感を加える。
+    for count in (5000, 10000, 20000):
+        rng = random.Random(128)
+        noisy = clean.copy()
+        for _ in range(count):
+            noisy.putpixel((rng.randrange(clean.width), rng.randrange(clean.height)), 165)
+        yield f"speckle-{count}", image_pdf(api, noisy, 200, 75)
+
+    rng = random.Random(128)
+    grain = Image.frombytes("L", clean.size, bytes(
+        max(0, min(255, round(rng.gauss(245, 30)))) for _ in range(clean.width * clean.height)))
+    yield "paper-grain", image_pdf(api, ImageChops.multiply(clean, grain), 200, 75)
 
 
 def dense_scan(api, font_path, direction):
@@ -353,6 +379,7 @@ def main():
                  ("ruled-invoice", "horizontal", invoice, INVOICE_TERMS, []),
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
                  ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
+        cases.extend((name, "horizontal", source, NOISE_TERMS, []) for name, source in noise_scans(api, font_path))
         failures = []
         for quality in qualities:
             artifacts = args.artifacts
@@ -385,6 +412,9 @@ def main():
                 elif name == "shadow":
                     required = ["開館時間", "返却ポスト", "本人確認書類"]
                     minimum = 10
+                elif name.startswith("speckle-") or name == "paper-grain":
+                    required = ["開館時間", "返却ポスト"]
+                    minimum = 8
                 hits = sum(found[term] > 0 for term in terms)
                 joined = [term for term in absent if found[term] > 0]
                 print(f"{quality} {name}: {hits}/{len(terms)} terms found by PDF.js, "

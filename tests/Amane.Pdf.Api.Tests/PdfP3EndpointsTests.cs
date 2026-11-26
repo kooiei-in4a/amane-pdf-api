@@ -312,6 +312,7 @@ public sealed class PdfP3EndpointsTests
 
     [TestMethod]
     [DataRow("", "horizontal", "jpn", "1")]
+    [DataRow("&quality=standard", "horizontal", "jpn", "1")]
     [DataRow("&quality=standard", "vertical", "jpn_vert", "5")]
     [DataRow("&quality=high", "horizontal", "jpn", "1")]
     [DataRow("&quality=high", "vertical", "jpn+jpn_vert", "3")]
@@ -340,6 +341,8 @@ public sealed class PdfP3EndpointsTests
             "-c", "thresholding_method=2"];
         if (quality == "&quality=high") expected.AddRange(["--tessdata-dir", options.TessdataBestDir]);
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
+        if (quality != "&quality=high" && direction == "horizontal")
+            expected.AddRange(["-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
         test.AssertClean();
     }

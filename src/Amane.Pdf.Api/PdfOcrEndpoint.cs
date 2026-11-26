@@ -191,6 +191,9 @@ internal static class PdfOcrEndpoint
         string[] arguments = [image, basePath, "-l", models, "--psm", psm, "--dpi",
             Dpi.ToString(CultureInfo.InvariantCulture), "-c", "textonly_pdf=1", "-c", "thresholding_method=2",
             .. tessdata, "-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"];
+        // The default Sauvola settings can drop an entire short line with the standard horizontal model.
+        if (!high && !vertical)
+            arguments = [.. arguments, "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
         var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
             with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
         var tsvInfo = new FileInfo(tsv);
