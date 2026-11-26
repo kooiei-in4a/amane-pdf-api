@@ -100,7 +100,7 @@ internal static class OcrTextLayer
 
     // hOCR and TSV use the same image-space line boxes. Use hOCR only for the line angle, leaving TSV
     // responsible for word order and text. Rotate boxes to reading coordinates before spacing the words.
-    internal static void Orient(List<Line> lines, string hocr, int imageWidth, int imageHeight, CancellationToken token)
+    internal static bool Orient(List<Line> lines, string hocr, int imageWidth, int imageHeight, CancellationToken token)
     {
         var angles = new Dictionary<(int Left, int Top, int Width, int Height), int>();
         try
@@ -152,6 +152,7 @@ internal static class OcrTextLayer
             }).ToList();
             lines[i] = new(box.Left, box.Top, box.Width, box.Height, words, line.Block, angle);
         }
+        return angles.Count > 0;
     }
 
     private static (int Left, int Top, int Width, int Height) Upright(

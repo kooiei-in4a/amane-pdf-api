@@ -648,11 +648,11 @@ public sealed class PdfP3EndpointsTests
         {
             options.TesseractPath = originalTool;
         }
-        List<string> expected = ["-l", models, "--psm", psm, "--dpi", "300", "-c", "textonly_pdf=1",
-            "-c", "thresholding_method=2"];
+        List<string> expected = ["-l", models, "--psm", psm, "--dpi", "300", "-c", "textonly_pdf=1"];
         if (quality == "&quality=high") expected.AddRange(["--tessdata-dir", options.TessdataBestDir]);
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
         if (direction == "horizontal") expected.AddRange(["-c", "tessedit_create_hocr=1"]);
+        expected.AddRange(["-c", "thresholding_method=2"]);
         if (quality != "&quality=high" && direction == "horizontal")
             expected.AddRange(["-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
@@ -660,13 +660,14 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
-    [DataRow(true)]
-    [DataRow(false)]
-    public async Task OcrRetriesAnEmptyStandardHorizontalPageOnce(bool retryRecognizesText)
+    [DataRow(true, false)]
+    [DataRow(false, false)]
+    [DataRow(false, true)]
+    public async Task OcrRetriesAnEmptyStandardHorizontalPageOnce(bool retryRecognizesText, bool shadow)
     {
         if (!OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext();
-        var scanned = await ScanAsync(test, vertical: false);
+        var scanned = await ScanAsync(test, vertical: false, shadow: shadow);
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var originalTool = options.TesseractPath;
         using var scripts = new OverlayJob();
@@ -1043,10 +1044,11 @@ public sealed class PdfP3EndpointsTests
         return root;
     }
 
-    private static async Task<byte[]> ScanAsync(PdfTestContext test, bool vertical)
+    private static async Task<byte[]> ScanAsync(PdfTestContext test, bool vertical, bool shadow = false)
     {
         var source = JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject();
         OverlayFixtures.Page(source)["/MediaBox"] = new JsonArray(0, 0, 300, 300);
+        if (shadow) OverlayFixtures.Objects(source)["obj:4 0 R"] = Stream("0.68 g 150 0 150 300 re f");
         var blank = await PdfAsync(test, source, vertical ? "blank-vertical" : "blank-horizontal");
         var fields = vertical
             ? Japanese.Select((character, index) => new { page = 1, x = 0.73m, y = 0.12m + 0.09m * index,

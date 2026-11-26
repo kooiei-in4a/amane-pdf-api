@@ -193,7 +193,7 @@ public sealed class OcrTextLayerTests
         var unmatched = new OcrTextLayer.Line(50, 50, 160, 35, [new(50, 50, 160, 35, "見出し")]);
         List<OcrTextLayer.Line> lines = [new(left, top, width, height, [new(left, top, width, height, "開館時間")]), unmatched];
 
-        OcrTextLayer.Orient(lines, hocr, 1000, 700, default);
+        Assert.IsTrue(OcrTextLayer.Orient(lines, hocr, 1000, 700, default));
 
         Assert.AreEqual(new OcrTextLayer.Line(100, 200, 250, 50, lines[0].Words, Angle: angle), lines[0]);
         Assert.AreEqual(new OcrTextLayer.Word(100, 200, 250, 50, "開館時間"), lines[0].Words.Single());

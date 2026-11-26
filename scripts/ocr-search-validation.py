@@ -90,6 +90,46 @@ SMALL_INVOICE_TERMS = [
     "1234567", "お支払期限", "2026年12月31日",
 ]
 SMALL_INVOICE_MINIMUM = 30
+SMALL_INVOICE_REQUIRED_CASES = {"small-ruled-invoice", "small-ruled-invoice-poppler"}
+SMALL_INVOICE_CASES = SMALL_INVOICE_REQUIRED_CASES | {"small-ruled-invoice-poppler-from-images"}
+# Required PDF.js term counts by quality, using the original review scans.
+REVIEW_SCANS = {
+    "h-mincho-12-noise": (18, 18, [
+        "開館時間", "返却ポスト", "休館日", "正面玄関", "二週間", "窓口",
+        "03-1234-5678", "1,234,567", "2026年11月25日", "千代田区", "丸の内", "サンプル商事",
+        "御中", "Amane Tools", "スキャンPDF", "9:00", "17:00", "月曜日",
+    ]),
+    "h-form-table": (9, 8, [
+        "開館時間", "返却ポスト", "休館日", "正面玄関", "9:00", "山田太郎",
+        "12,800円", "月曜日", "合計金額",
+    ]),
+    "h-multipage-3": (15, 15, [
+        "開館時間", "返却ポスト", "休館日", "正面玄関", "二週間", "窓口",
+        "03-1234-5678", "1,234,567", "2026年11月25日", "千代田区", "丸の内", "サンプル商事",
+        "御中", "9:00", "17:00", "月曜日",
+    ]),
+}
+RULED_FORM_TERMS = [
+    "施設利用申込書", "申込者氏名", "生年月日", "住所", "電話番号", "申込内容",
+    "利用日", "人数", "備考", "佐藤花子", "1990年4月1日", "梅田",
+    "06-9876-5432", "会議室", "2026年12月15日", "12名", "プロジェクター",
+]
+LEDGER_TERMS = [
+    "現金出納帳", "日付", "摘要", "入金", "出金", "残高",
+    "前月繰越", "事務用品", "会費入金", "印刷代", "交通費", "寄付金",
+    "120,000", "3,300", "50,000", "12,100", "2,840", "161,760",
+]
+# Standard and high use their own baseline counts. High rotated ledger is tracked in #138.
+RULED_ORIENTATION_SCANS = {
+    "n-form-clean": (17, 17, RULED_FORM_TERMS),
+    "n-form-clean-180": (17, 17, RULED_FORM_TERMS),
+    "n-form-clean-90": (16, 16, RULED_FORM_TERMS),
+    "n-form-thin-200": (17, 17, RULED_FORM_TERMS),
+    "n-ledger": (18, 17, LEDGER_TERMS),
+    "n-ledger-noise5": (18, 16, LEDGER_TERMS),
+    "n-ledger-fax": (14, 16, LEDGER_TERMS),
+    "n-ledger-180": (18, 0, LEDGER_TERMS),
+}
 DOCUMENT_LINES = [
     "中央図書館の開館時間は午前九時から午後七時までです。",
     "返却ポストは正面入口の東側にあります。",
@@ -183,6 +223,17 @@ def image_pdf(api, image, dpi, quality):
 def jpeg_pdf(api, jpeg):
     return post(api, "/api/pdf/from-images?quality=original",
                 [("file", "scan.jpg", "image/jpeg", jpeg)], "application/pdf")
+
+
+def poppler_invoice_scans(api):
+    from PIL import Image
+
+    jpeg = (SEARCH / "fixtures/small-ruled-invoice-poppler.jpg").read_bytes()
+    # Reproduce the 200 dpi RGB PDF from the original #134 comparison.
+    pdf = io.BytesIO()
+    with Image.open(io.BytesIO(jpeg)) as scan:
+        scan.convert("RGB").save(pdf, format="PDF", resolution=200, quality=75)
+    return pdf.getvalue(), jpeg_pdf(api, jpeg)
 
 
 def invoice_scans(api, font_path):
@@ -424,6 +475,7 @@ def main():
         invoice, table = invoice_scans(api, font_path)
         # Keep the ReportLab/PDFium raster from #134 fixed so CI sees the same 200 dpi JPEG.
         small_invoice = jpeg_pdf(api, (SEARCH / "fixtures/small-ruled-invoice.jpg").read_bytes())
+        poppler_invoice, poppler_from_images = poppler_invoice_scans(api)
         shadow = shadow_scan(api, font_path)
         cases = [("horizontal", "horizontal", horizontal, HORIZONTAL_TERMS, ["Windows11"]),
                  ("separate-fields", "horizontal", separate, SEPARATE_TERMS, SEPARATE_ABSENT),
@@ -433,9 +485,14 @@ def main():
                  ("vertical-with-heading", "vertical", vertical, VERTICAL_TERMS, []),
                  ("ruled-invoice", "horizontal", invoice, INVOICE_TERMS, []),
                  ("small-ruled-invoice", "horizontal", small_invoice, SMALL_INVOICE_TERMS, []),
+                 ("small-ruled-invoice-poppler", "horizontal", poppler_invoice, SMALL_INVOICE_TERMS, []),
+                 ("small-ruled-invoice-poppler-from-images", "horizontal", poppler_from_images, SMALL_INVOICE_TERMS, []),
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
                  ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
         cases.extend((name, "horizontal", source, NOISE_TERMS, []) for name, source in noise_scans(api, font_path))
+        review_scans = REVIEW_SCANS | RULED_ORIENTATION_SCANS
+        cases.extend((name, "horizontal", (SEARCH / f"fixtures/{name}.pdf").read_bytes(), terms, [])
+                     for name, (_, _, terms) in review_scans.items())
         rotated = {}
         upright = document_image(font_path)
         for angle in (90, 180, 270):
@@ -462,10 +519,18 @@ def main():
                           flush=True)
                     if min(scores.values()) < 0.4:
                         failures.append((quality, name, "PDFium", scores))
-                elif name == "small-ruled-invoice":
+                elif name in SMALL_INVOICE_CASES:
                     native = pdfium_search.find(pdfium_library, directory / f"{name}.pdf", terms)
                     print(f"{quality} {name}: PDFium {len(native)}/{len(terms)} terms", flush=True)
-                    if quality == "standard" and len(native) < SMALL_INVOICE_MINIMUM:
+                    if (name in SMALL_INVOICE_REQUIRED_CASES and quality == "standard"
+                            and len(native) < SMALL_INVOICE_MINIMUM):
+                        failures.append((quality, name, "PDFium", sorted(native)))
+                elif name in RULED_ORIENTATION_SCANS:
+                    native = pdfium_search.find(pdfium_library, directory / f"{name}.pdf", terms)
+                    print(f"{quality} {name}: PDFium {len(native)}/{len(terms)} terms", flush=True)
+                    standard_minimum, high_minimum, _ = RULED_ORIENTATION_SCANS[name]
+                    minimum = standard_minimum if quality == "standard" else high_minimum
+                    if len(native) < minimum:
                         failures.append((quality, name, "PDFium", sorted(native)))
                 if artifacts:
                     artifacts.mkdir(parents=True, exist_ok=True)
@@ -485,12 +550,18 @@ def main():
                 elif name == "ruled-invoice":
                     required = ["品名", "金額", "合計金額", "返却ポスト", "12,800"]
                     minimum = 30
-                elif name == "small-ruled-invoice":
+                elif name in SMALL_INVOICE_CASES:
                     required = []
-                    minimum = SMALL_INVOICE_MINIMUM if quality == "standard" else 0
+                    minimum = (
+                        SMALL_INVOICE_MINIMUM if name in SMALL_INVOICE_REQUIRED_CASES and quality == "standard" else 0
+                    )
                 elif name == "ruled-table":
                     required = ["品名", "金額", "返却ポスト"]
                     minimum = 8
+                elif name in review_scans:
+                    standard_minimum, high_minimum, _ = review_scans[name]
+                    required = []
+                    minimum = standard_minimum if quality == "standard" else high_minimum
                 elif name == "shadow":
                     required = ["開館時間", "返却ポスト", "本人確認書類"]
                     minimum = 10
