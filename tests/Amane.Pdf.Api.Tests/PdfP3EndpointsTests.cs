@@ -15,6 +15,7 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfP3EndpointsTests
 {
     private const string Horizontal = "/api/pdf/ocr?direction=horizontal";
+    private const string ForceOcr = "&existingText=ocr";
     private const string Japanese = "東京都千代田区";
     private const string SearchTerm = "東京都";
 
@@ -22,9 +23,9 @@ public sealed class PdfP3EndpointsTests
     [DataRow("/api/pdf/flatten", "--check", "output.pdf", 2)]
     [DataRow("/api/pdf/flatten", "--check", "output.pdf", 3)]
     [DataRow("/api/pdf/n-up?pages-per-sheet=2", "--check", "output.pdf", 3)]
-    [DataRow(Horizontal, "--show-npages", "ocr-text-0.pdf", 3)]
-    [DataRow(Horizontal, "--check", "ocr-text.pdf", 3)]
-    [DataRow(Horizontal, "--check", "output.pdf", 3)]
+    [DataRow(Horizontal + ForceOcr, "--show-npages", "ocr-text-0.pdf", 3)]
+    [DataRow(Horizontal + ForceOcr, "--check", "ocr-text.pdf", 3)]
+    [DataRow(Horizontal + ForceOcr, "--check", "output.pdf", 3)]
     public async Task GeneratedPdfInspectionFailureReturnsInternalError(
         string route, string command, string generatedFile, int exitCode)
     {
@@ -321,12 +322,222 @@ public sealed class PdfP3EndpointsTests
             """);
 
         using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
-        using var response = await test.Client.PostAsync(Horizontal + "&quality=high", form);
+        using var response = await test.Client.PostAsync(Horizontal + "&quality=high" + ForceOcr, form);
         Assert.AreEqual(status, (int)response.StatusCode);
         using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
         if (reason is null) Assert.IsFalse(problem.RootElement.TryGetProperty("reason", out _));
         else Assert.AreEqual(reason, problem.RootElement.GetProperty("reason").GetString());
         test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow("", false)]
+    [DataRow("&existingText=skip", true)]
+    public async Task OcrReturnsOriginalPdfWhenAllSelectedPagesAreAlreadySearchable(string option, bool high)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        using var scripts = new OverlayJob();
+        options.TesseractPath = scripts.Script("exit 99");
+        var input = PdfTestContext.Fixture;
+        using var form = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal + option + (high ? "&quality=high" : ""), form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.AreEqual("1", response.Headers.GetValues("X-Pdf-Skipped-Pages").Single());
+        Assert.AreEqual("ocr.pdf", response.Content.Headers.ContentDisposition?.FileName);
+        CollectionAssert.AreEqual(input, await response.Content.ReadAsByteArrayAsync());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrSkipsSearchableBodyButProcessesAScanWithOnlyACaptionAndPageNumber()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var scan = await ScanAsync(test, vertical: false);
+        using var label = PdfFillTemplateTests.Form(scan, JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            new { page = 1, x = 0.1m, y = 0.04m, width = 0.75m, height = 0.04m, fontSize = 14,
+                align = "left", text = "スキャン文書の見出し" },
+            new { page = 1, x = 0.1m, y = 0.94m, width = 0.75m, height = 0.04m, fontSize = 14,
+                align = "center", text = "2" }
+        }));
+        using var labeled = await test.Client.PostAsync("/api/pdf/fill-template", label);
+        Assert.AreEqual(HttpStatusCode.OK, labeled.StatusCode, await labeled.Content.ReadAsStringAsync());
+        var labeledScan = await labeled.Content.ReadAsByteArrayAsync();
+        string[] lines = ["中央図書館の開館時間は午前九時から午後七時までです。", "返却ポストは正面入口の東側にあります。"];
+        var body = await ScanPageAsync(test, "existing-ocr", lines.Select((text, index) => new
+        {
+            page = 1, x = 0.06m, y = 0.13m + 0.08m * index, width = 0.9m, height = 0.04m, fontSize = 18,
+            align = "left", text
+        }).ToArray());
+        var alreadyOcr = await PostPdfAsync(test, Horizontal, body, "ocr.pdf");
+        using var mergeForm = PdfTestContext.MergeForm(PdfTestContext.Fixture, labeledScan, alreadyOcr, PdfTestContext.Fixture);
+        using var merged = await test.Client.PostAsync("/api/pdf/merge", mergeForm);
+        Assert.AreEqual(HttpStatusCode.OK, merged.StatusCode);
+        var input = await merged.Content.ReadAsByteArrayAsync();
+
+        using var upload = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal + "&pages=3,2,1", upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.AreEqual("1,3", response.Headers.GetValues("X-Pdf-Skipped-Pages").Single());
+        var outputPath = Path.Combine(test.Root, "mixed-searchable.pdf");
+        var inputPath = Path.Combine(test.Root, "mixed-original.pdf");
+        await File.WriteAllBytesAsync(outputPath, await response.Content.ReadAsByteArrayAsync());
+        await File.WriteAllBytesAsync(inputPath, input);
+        Assert.Contains(SearchTerm, Normalize(await ExtractTextAsync(outputPath, "-f", "2", "-l", "2", "-raw")));
+        foreach (var page in new[] { "1", "3", "4" })
+            Assert.AreEqual(await ExtractTextAsync(inputPath, "-f", page, "-l", page, "-raw"),
+                await ExtractTextAsync(outputPath, "-f", page, "-l", page, "-raw"));
+        for (var page = 1; page <= 4; page++)
+            CollectionAssert.AreEqual(await RenderWithPopplerAsync(inputPath, page), await RenderWithPopplerAsync(outputPath, page));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(false, DisplayName = "Small logo")]
+    [DataRow(true, DisplayName = "Large image mostly outside the CropBox")]
+    public async Task OcrSkipsSearchableDocumentWhenImageCoversLessThanHalfOfDisplayedPage(bool cropped)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var blank = await PdfAsync(test, JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject(), "logo-document");
+        using var fill = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(Enumerable.Range(0, 12).Select(index => new
+        {
+            page = 1, x = 0.1m, y = 0.13m + 0.05m * index, width = 0.8m, height = 0.04m, fontSize = 16,
+            align = "left", text = index == 0 ? "中央図書館の開館時間は午前九時からです。" : "返却ポストは正面入口の東側にあります。"
+        }).ToArray()));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", fill);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        var placement = cropped ? "x=0.02&y=0.27&width=0.50" : "x=0.05&y=0.03&width=0.15";
+        using var image = PdfStampImageTests.Form(await filled.Content.ReadAsByteArrayAsync(), StampFixtures.Png(200, cropped ? 400 : 80));
+        using var stamped = await test.Client.PostAsync("/api/pdf/stamp-image?page=1&" + placement, image);
+        Assert.AreEqual(HttpStatusCode.OK, stamped.StatusCode, await stamped.Content.ReadAsStringAsync());
+        var input = await stamped.Content.ReadAsByteArrayAsync();
+        var inputPath = Path.Combine(test.Root, "stamped-document.pdf");
+        await File.WriteAllBytesAsync(inputPath, input);
+        if (cropped)
+        {
+            // The uncut image is larger than half the CropBox. The part visible on the rotated page is smaller.
+            var (code, json) = await test.QpdfAsync("--json", "--json-key=pages", "--json-key=qpdf", inputPath);
+            Assert.AreEqual(0, code);
+            var metadata = JsonNode.Parse(json)!.AsObject();
+            var pageRef = "obj:" + metadata["pages"]![0]!["object"]!.GetValue<string>();
+            var page = OverlayFixtures.Objects(metadata)[pageRef]!.DeepClone();
+            page["value"]!["/CropBox"] = new JsonArray(0, 412, 330, 842);
+            page["value"]!["/Rotate"] = 90;
+            var update = new JsonObject { ["qpdf"] = new JsonArray(new JsonObject { ["jsonversion"] = 2 },
+                new JsonObject { [pageRef] = page }) };
+            var updatePath = Path.Combine(test.Root, "logo-crop.json");
+            await File.WriteAllTextAsync(updatePath, update.ToJsonString());
+            var croppedPath = Path.Combine(test.Root, "cropped-stamped-document.pdf");
+            Assert.AreEqual(0, (await test.QpdfAsync(inputPath, "--update-from-json=" + updatePath, croppedPath)).ExitCode);
+            inputPath = croppedPath;
+            input = await File.ReadAllBytesAsync(inputPath);
+        }
+        var text = Normalize(await ExtractTextAsync(inputPath, "-raw"));
+        Assert.AreEqual(2, text.Split("開館時間", StringSplitOptions.None).Length);
+
+        using var upload = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal, upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.IsTrue(response.Headers.TryGetValues("X-Pdf-Skipped-Pages", out var pages));
+        Assert.AreEqual("1", pages.Single());
+        CollectionAssert.AreEqual(input, await response.Content.ReadAsByteArrayAsync());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrProcessesScanWithVisibleFormValuesInTheBody()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        const string printed = "開館時間";
+        var scan = await ScanPageAsync(test, "filled-scan",
+        [
+            new { page = 1, x = 0.1m, y = 0.14m, width = 0.8m, height = 0.06m, fontSize = 20,
+                align = "left", text = "中央図書館の開館時間は午前九時からです。" }
+        ]);
+        string[] values = ["申請者氏名 山田太郎 受付番号 2026-001234", "住所 東京都千代田区丸の内一丁目一番一号"];
+        using var form = PdfFillTemplateTests.Form(scan, JsonSerializer.SerializeToUtf8Bytes(values.Select((text, index) => new
+        {
+            page = 1, x = 0.1m, y = 0.60m + 0.06m * index, width = 0.8m, height = 0.04m, fontSize = 12,
+            align = "left", text
+        }).ToArray()));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", form);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        var input = await filled.Content.ReadAsByteArrayAsync();
+        var inputPath = Path.Combine(test.Root, "filled-scan-input.pdf");
+        await File.WriteAllBytesAsync(inputPath, input);
+        var before = Normalize(await ExtractTextAsync(inputPath, "-raw"));
+        Assert.DoesNotContain(printed, before);
+        Assert.Contains("受付番号", before);
+        Assert.Contains("千代田区", before);
+
+        using var upload = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal, upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.IsFalse(response.Headers.Contains("X-Pdf-Skipped-Pages"));
+        var outputPath = Path.Combine(test.Root, "filled-scan-ocr.pdf");
+        await File.WriteAllBytesAsync(outputPath, await response.Content.ReadAsByteArrayAsync());
+        Assert.Contains(printed, Normalize(await ExtractTextAsync(outputPath, "-raw")));
+        CollectionAssert.AreEqual(await RenderWithPopplerAsync(inputPath), await RenderWithPopplerAsync(outputPath));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrDoesNotSkipAnImageFreePageWithOnlyAPageNumber()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var blank = await PdfAsync(test, JsonNode.Parse(PdfcpuProcessor.StartupBlankJson)!.AsObject(), "numbered-blank");
+        using var form = PdfFillTemplateTests.Form(blank, JsonSerializer.SerializeToUtf8Bytes(new[]
+        {
+            new { page = 1, x = 0.1m, y = 0.94m, width = 0.8m, height = 0.04m, fontSize = 12,
+                align = "center", text = "1" }
+        }));
+        using var filled = await test.Client.PostAsync("/api/pdf/fill-template", form);
+        Assert.AreEqual(HttpStatusCode.OK, filled.StatusCode, await filled.Content.ReadAsStringAsync());
+        using var upload = PdfTestContext.FileForm(await filled.Content.ReadAsByteArrayAsync());
+        using var response = await test.Client.PostAsync(Horizontal, upload);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.IsFalse(response.Headers.Contains("X-Pdf-Skipped-Pages"));
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrSkipsAScanWithAShortExistingOcrLayerUnlessExplicitlyRequested()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var scan = await ScanAsync(test, vertical: false);
+        var alreadyOcr = await PostPdfAsync(test, Horizontal, scan, "ocr.pdf");
+        using var skippedForm = PdfTestContext.FileForm(alreadyOcr);
+        using var skipped = await test.Client.PostAsync(Horizontal + "&quality=high", skippedForm);
+        Assert.AreEqual(HttpStatusCode.OK, skipped.StatusCode, await skipped.Content.ReadAsStringAsync());
+        Assert.AreEqual("1", skipped.Headers.GetValues("X-Pdf-Skipped-Pages").Single());
+        CollectionAssert.AreEqual(alreadyOcr, await skipped.Content.ReadAsByteArrayAsync());
+
+        using var forcedForm = PdfTestContext.FileForm(alreadyOcr);
+        using var forced = await test.Client.PostAsync(Horizontal + ForceOcr, forcedForm);
+        Assert.AreEqual(HttpStatusCode.OK, forced.StatusCode, await forced.Content.ReadAsStringAsync());
+        Assert.IsFalse(forced.Headers.Contains("X-Pdf-Skipped-Pages"));
+        CollectionAssert.AreNotEqual(alreadyOcr, await forced.Content.ReadAsByteArrayAsync());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrExistingTextOptionUsesTheSameQueryValidationRules()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        foreach (var suffix in new[] { "&existingText=skip", ForceOcr, "&EXISTINGTEXT=ocr" })
+            await test.AssertQueryAcceptedAsync(Horizontal + suffix, form);
+        foreach (var suffix in new[] { "&existingText=", "&existingText=OCR", "&existingText=auto",
+                     "&existingText=skip&existingText=ocr", "&existingText=ocr&ExistingText=ocr" })
+            await test.AssertRejectedBeforeReadingBodyAsync(Horizontal + suffix, form);
     }
 
     [TestMethod]
@@ -430,7 +641,7 @@ public sealed class PdfP3EndpointsTests
             """);
         try
         {
-            await PostPdfAsync(test, "/api/pdf/ocr?direction=" + direction + quality, PdfTestContext.Fixture, "ocr.pdf");
+            await PostPdfAsync(test, "/api/pdf/ocr?direction=" + direction + quality + ForceOcr, PdfTestContext.Fixture, "ocr.pdf");
         }
         finally
         {
@@ -442,6 +653,7 @@ public sealed class PdfP3EndpointsTests
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
         if (quality != "&quality=high" && direction == "horizontal")
             expected.AddRange(["-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"]);
+        if (direction == "horizontal") expected.AddRange(["-c", "tessedit_create_hocr=1"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
         test.AssertClean();
     }
@@ -600,7 +812,7 @@ public sealed class PdfP3EndpointsTests
             ["Pdf:OcrTimeoutSeconds"] = high ? "30" : "4",
             ["Pdf:OcrHighTimeoutSeconds"] = high ? "4" : "30"
         });
-        var endpoint = high ? Horizontal + "&quality=high" : Horizontal;
+        var endpoint = (high ? Horizontal + "&quality=high" : Horizontal) + ForceOcr;
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var originalTool = options.TesseractPath;
         using var scripts = new OverlayJob();

@@ -4,7 +4,8 @@
 fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
 PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
 欧文の単語間の空白が保たれること、離れた欄の語が連結しないことを確かめる。縦書きの横見出し、
-罫線付きの表、影・点ノイズ・紙の粒状感のある試料も検索する。--benchmark で上限ページ数の処理時間を測る。
+罫線付きの表、影・点ノイズ・紙の粒状感のある試料も検索する。画像自体が90°・180°・270°回った試料は
+PDF.jsと同梱のPDFiumの両方で検索し、PDFiumの強調位置も確かめる。--benchmark で上限ページ数の処理時間を測る。
 事前に scripts/ocr-search で `npm ci --ignore-scripts --omit=optional --omit=dev` を実行しておく。
 
 --highlight DIR を付けると、横書き・回転+CropBox・縦書きと横見出しの試料について、OCR出力PDFと、元画像から
@@ -13,6 +14,7 @@ PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、�
 位置をfill-templateが描いたBIZ UDPゴシックの送り幅で按分する。縦書きの語は、列の中で字ごとに分けた画素の範囲を使う。
 """
 import argparse
+import hashlib
 import importlib.util
 import io
 import json
@@ -29,6 +31,9 @@ SEARCH = ROOT / "scripts/ocr-search"
 spec = importlib.util.spec_from_file_location("smoke", ROOT / "scripts/docker-smoke.py")
 smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
+spec = importlib.util.spec_from_file_location("pdfium_search", SEARCH / "pdfium_search.py")
+pdfium_search = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(pdfium_search)
 
 BLANK_A4 = {"qpdf": [{"jsonversion": 2, "pdfversion": "1.7"}, {
     "obj:1 0 R": {"value": {"/Type": "/Catalog", "/Pages": "2 0 R"}},
@@ -339,6 +344,40 @@ def expected_boxes(directory, name, pdf, font_path):
     return {term: boxes[term] for term in terms}
 
 
+def rotated_boxes(directory, name, pdf, angle, font_path):
+    import numpy as np
+    from PIL import ImageFont
+    mask = ink(directory, name, pdf)
+    height, width = mask.shape
+    upright = np.rot90(mask, -(angle // 90))
+    font = ImageFont.truetype(str(font_path), 100, layout_engine=ImageFont.Layout.BASIC)
+    rows = runs(upright.any(axis=1))
+    assert len(rows) == len(DOCUMENT_LINES), (name, rows)
+    boxes = {}
+    for (top, bottom), line in zip(rows, DOCUMENT_LINES):
+        boxes |= line_boxes(upright, top, bottom, line, DOCUMENT_TERMS, font)
+    return {term: {
+        90: [top, height - right, bottom, height - left],
+        180: [width - right, height - bottom, width - left, height - top],
+        270: [width - bottom, left, width - top, right],
+    }[angle] for term, (left, top, right, bottom) in boxes.items()}
+
+
+def overlap(actual, expected):
+    if actual is None:
+        return 0
+    left, top, right, bottom = actual
+    x0, y0, x1, y1 = expected
+    area = max(0, min(right, x1) - max(left, x0)) * max(0, min(bottom, y1) - max(top, y0))
+    return area / ((right - left) * (bottom - top) + (x1 - x0) * (y1 - y0) - area)
+
+
+def display_checksum(pdf_path):
+    rendered = subprocess.run(["pdftoppm", "-cropbox", "-r", "72", "-singlefile", str(pdf_path)],
+                              check=True, capture_output=True, timeout=30)
+    return hashlib.sha256(rendered.stdout).digest()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image")
@@ -368,6 +407,8 @@ def main():
              "align": "left", "text": text} for i, text in enumerate(WRAPPED_LINES)])
         font_path = directory / "BIZUDPGothic-Regular.ttf"
         font_path.write_bytes(api.exec("cat", FONT).stdout)
+        pdfium_library = directory / "libpdfium.so"
+        pdfium_library.write_bytes(api.exec("cat", "/opt/amane-pdf/lib/libpdfium.so").stdout)
         invoice, table = invoice_scans(api, font_path)
         shadow = shadow_scan(api, font_path)
         cases = [("horizontal", "horizontal", horizontal, HORIZONTAL_TERMS, ["Windows11"]),
@@ -380,6 +421,14 @@ def main():
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
                  ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
         cases.extend((name, "horizontal", source, NOISE_TERMS, []) for name, source in noise_scans(api, font_path))
+        rotated = {}
+        upright = document_image(font_path)
+        for angle in (90, 180, 270):
+            name = f"scan-rotated-{angle}"
+            source = image_pdf(api, upright.rotate(angle, expand=True), 200, 75)
+            expected = rotated_boxes(directory, name, source, angle, font_path)
+            rotated[name] = (expected, display_checksum(directory / f"{name}-ink.pdf"))
+            cases.append((name, "horizontal", source, DOCUMENT_TERMS, []))
         failures = []
         for quality in qualities:
             artifacts = args.artifacts
@@ -388,14 +437,24 @@ def main():
             for name, direction, source, terms, absent in cases:
                 output, seconds = ocr(api, quality, direction, source)
                 found = find(directory, name, output, terms + absent)
+                if name in rotated:
+                    expected, input_checksum = rotated[name]
+                    output_path = directory / f"{name}.pdf"
+                    assert display_checksum(output_path) == input_checksum, (quality, name, "render changed")
+                    native = pdfium_search.find(pdfium_library, output_path, terms)
+                    scores = {term: overlap(native.get(term), expected[term]) for term in terms}
+                    print(f"{quality} {name}: PDFium {len(native)}/{len(terms)} terms, minimum IoU {min(scores.values()):.2f}",
+                          flush=True)
+                    if min(scores.values()) < 0.4:
+                        failures.append((quality, name, "PDFium", scores))
                 if artifacts:
                     artifacts.mkdir(parents=True, exist_ok=True)
                     (artifacts / f"{name}-scan.pdf").write_bytes(source)
                     (artifacts / f"{name}-ocr.pdf").write_bytes(output)
-                if args.highlight and name in HIGHLIGHT_TERMS and (quality == "high" or len(qualities) == 1):
+                if args.highlight and (name in HIGHLIGHT_TERMS or name in rotated) and (quality == "high" or len(qualities) == 1):
                     args.highlight.mkdir(parents=True, exist_ok=True)
                     (args.highlight / f"{name}-ocr.pdf").write_bytes(output)
-                    boxes = expected_boxes(directory, name, source, font_path)
+                    boxes = rotated[name][0] if name in rotated else expected_boxes(directory, name, source, font_path)
                     (args.highlight / f"{name}-expected.json").write_text(json.dumps(
                         {term: [round(v, 1) for v in box] for term, box in boxes.items()}, ensure_ascii=False, indent=1))
                 required = terms
@@ -429,7 +488,7 @@ def main():
         assert all(term.encode() not in logs.stdout + logs.stderr for term in ("中央図書館", "返却ポスト"))
         events = dict(line.split() for line in api.exec("cat", "/sys/fs/cgroup/memory.events").stdout.decode().splitlines())
         assert events["oom"] == events["oom_kill"] == "0", events
-        print("OCR search (PDF.js 6.3.289): PASS")
+        print("OCR search (PDF.js 6.3.289 and bundled PDFium): PASS")
 
 
 if __name__ == "__main__":

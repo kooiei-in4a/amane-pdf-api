@@ -15,8 +15,9 @@ internal static class Program
             if (options is null) return 2;
             try
             {
-                if (!options.SelfTest && !NativeLimits.SetFileSize(options.MaxBytes + 1)) return 1;
+                if (!options.SelfTest && options.TextPages is null && !NativeLimits.SetFileSize(options.MaxBytes + 1)) return 1;
                 using var pdfium = new Pdfium(options.Pdfium, options.FontDirectory);
+                if (options.TextPages is { } pages) return ExistingText.Inspect(options.Input, pages);
                 return options.SelfTest ? SelfTest() : Render(options);
             }
             catch (Exception) { return options.SelfTest ? 20 : 1; }
@@ -140,11 +141,13 @@ internal readonly record struct Fill(int Left, int Top, int Right, int Bottom);
 
 internal sealed record Arguments(bool SelfTest, bool Png, string Pdfium, string FontDirectory, string Input,
     string Output, int Page, double ExpectedWidth, double ExpectedHeight, int Width, int Height,
-    long MaxBytes, IReadOnlyList<Fill> Fills)
+    long MaxBytes, IReadOnlyList<Fill> Fills, int[]? TextPages = null)
 {
     internal static Arguments? Parse(string[] args)
     {
-        if (args.Length == 0 || args[0] is not ("self-test" or "render-jpeg" or "render-png") || args.Length % 2 != 1) return null;
+        if (args.Length == 0 || args[0] is not ("self-test" or "render-jpeg" or "render-png" or "inspect-text") ||
+            args.Length % 2 != 1) return null;
+        if (args[0] == "inspect-text") return ParseTextInspection(args);
         var selfTest = args[0] == "self-test";
         var png = args[0] == "render-png";
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -181,6 +184,24 @@ internal sealed record Arguments(bool SelfTest, bool Png, string Pdfium, string 
         }
         return new(false, png, Value("--pdfium"), Value("--font-dir"), Value("--input"), Value("--output"),
             page, expectedWidth, expectedHeight, width, height, maxBytes, rectangles);
+    }
+
+    private static Arguments? ParseTextInspection(string[] args)
+    {
+        if (args.Length != 9) return null;
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var i = 1; i < args.Length; i += 2)
+            if (args[i] is not ("--pdfium" or "--font-dir" or "--input" or "--pages") || !values.TryAdd(args[i], args[i + 1]))
+                return null;
+        if (new[] { "--pdfium", "--font-dir", "--input" }.Any(key =>
+            !Path.IsPathFullyQualified(values[key]) || values[key].Contains('\0'))) return null;
+        var requested = values["--pages"].Split(',');
+        if (requested.Length > 10) return null;
+        var pages = new int[requested.Length];
+        for (var i = 0; i < pages.Length; i++)
+            if (!PositiveInt(requested[i], out pages[i]) || i > 0 && pages[i - 1] >= pages[i]) return null;
+        return new(false, false, values["--pdfium"], values["--font-dir"], values["--input"], "",
+            0, 0, 0, 0, 0, 0, [], pages);
     }
 
     private static bool Coordinate(string text, out int number)

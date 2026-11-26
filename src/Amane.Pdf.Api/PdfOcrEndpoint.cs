@@ -41,10 +41,12 @@ internal static class PdfOcrEndpoint
         var quality = query.TryGetValue("quality", out var value) ? value.ToString() : "standard";
         var high = quality == "high";
         var vertical = false;
+        var skipExistingText = true;
+        int[] skippedPages = [];
         PdfPageSelection? selection = null;
         await PdfEndpointHelpers.ExecuteAsync(context, settings, "ocr.pdf", () =>
         {
-            PdfEndpointHelpers.ValidateQueryKeys(query, "direction", "pages", "quality");
+            PdfEndpointHelpers.ValidateQueryKeys(query, "direction", "pages", "quality", "existingText");
             vertical = query["direction"].ToString() switch
             {
                 "horizontal" => false,
@@ -52,16 +54,32 @@ internal static class PdfOcrEndpoint
                 _ => throw new BadHttpRequestException("Invalid direction query.")
             };
             if (quality is not ("standard" or "high")) throw new BadHttpRequestException("Invalid quality query.");
+            if (query.TryGetValue("existingText", out var existingText))
+                skipExistingText = existingText.ToString() switch
+                {
+                    "skip" => true,
+                    "ocr" => false,
+                    _ => throw new BadHttpRequestException("Invalid existingText query.")
+                };
             if (query.TryGetValue("pages", out var pages)) selection = PdfPageSelection.Parse(pages.ToString());
         }, (files, token) => MultipartPdfUpload.ReadFileAsync(context.Request, files, inputLimit, token),
-        (files, token) => OcrAsync(files, qpdf, renderer, settings, jobLimit, high, vertical, selection, token),
+        async (files, token) =>
+        {
+            skippedPages = await OcrAsync(files, qpdf, renderer, settings, jobLimit, high, vertical, selection, skipExistingText, token);
+        },
         maxRequestBytes: inputLimit + PdfOptions.MultipartOverheadBytes,
+        onSend: response =>
+        {
+            if (skippedPages.Length > 0)
+                response.Headers["X-Pdf-Skipped-Pages"] = PageNumbers(skippedPages);
+        },
         processingTimeoutSeconds: high ? settings.OcrHighTimeoutSeconds : settings.OcrTimeoutSeconds,
         renderFailureTitle: "このPDFをOCR処理できません。");
     }
 
-    private static async Task OcrAsync(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfRenderer renderer,
-        PdfOptions settings, long jobLimit, bool high, bool vertical, PdfPageSelection? selection, CancellationToken token)
+    private static async Task<int[]> OcrAsync(TemporaryPdfFiles files, QpdfProcessor qpdf, PdfRenderer renderer,
+        PdfOptions settings, long jobLimit, bool high, bool vertical, PdfPageSelection? selection, bool skipExistingText,
+        CancellationToken token)
     {
         var job = new PdfPageJob(files, qpdf, settings, jobLimit);
         job.TrackInput();
@@ -71,6 +89,7 @@ internal static class PdfOcrEndpoint
         var image = Path.GetFullPath(job.PathFor("ocr-page.png"));
         int count;
         int[] pages;
+        int[] skippedPages;
         PdfPageAttributes[] geometry;
         (int Width, int Height, int Dpi)[] rasters;
         using (var input = await job.ReadAsync(files.InputPath, token))
@@ -84,6 +103,14 @@ internal static class PdfOcrEndpoint
             if (PdfFormDetector.ContainsSignatureStructure(input, token))
                 throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
             pages = ranges.SelectMany(range => Enumerable.Range(range.Start, range.End - range.Start + 1)).ToArray();
+            skippedPages = skipExistingText ? await renderer.InspectSearchablePagesAsync(files, pages, token) : [];
+            if (skippedPages.Length == pages.Length)
+            {
+                token.ThrowIfCancellationRequested();
+                File.Move(files.InputPath, files.OutputPath);
+                return skippedPages;
+            }
+            if (skippedPages.Length > 0) pages = pages.Except(skippedPages).ToArray();
             geometry = new PdfPageAttributes[pages.Length];
             rasters = new (int, int, int)[pages.Length];
             var document = new RedactDocument(input, token);
@@ -118,7 +145,7 @@ internal static class PdfOcrEndpoint
             catch (PdfInputException) { throw new InvalidOperationException(Failure); }
             textLayers.Add(layer);
             var content = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-content-{i}.bin"));
-            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, vertical, raster.Height, raster.Dpi, token), token);
+            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, vertical, raster.Width, raster.Height, raster.Dpi, token), token);
             contents.Add(content);
         }
 
@@ -147,7 +174,7 @@ internal static class PdfOcrEndpoint
         catch (PdfInputException) { throw new InvalidOperationException(Failure); }
 
         var overlaid = job.PathFor("ocr-overlay.pdf");
-        var destinations = string.Join(',', pages.Select(page => page.ToString(CultureInfo.InvariantCulture)));
+        var destinations = PageNumbers(pages);
         await job.WritePdfAsync(overlaid, [files.InputPath, "--update-from-json=" + update, overlaid,
             "--overlay", combined, "--to=" + destinations, "--from=1-z", "--"], settings.OverlayOutputLimitBytes, token);
         job.Delete(update);
@@ -170,16 +197,22 @@ internal static class PdfOcrEndpoint
         if (result.Pages.Count != count ||
             pages.Where((page, i) => !geometry[i].SameEffective(result.Read(page - 1, token))).Any())
             throw new InvalidOperationException(Failure);
+        return skippedPages;
     }
 
-    // Writes Tesseract's text-only PDF and TSV in one recognition, then reads and deletes the TSV.
+    private static string PageNumbers(IEnumerable<int> pages)
+        => string.Join(',', pages.Select(page => page.ToString(CultureInfo.InvariantCulture)));
+
+    // One recognition supplies the text-only PDF, TSV, and line orientation for horizontal text.
     private static async Task<List<OcrTextLayer.Line>> RecognizePageAsync(TemporaryPdfFiles files, PdfPageJob job,
         PdfOptions settings, bool high, bool vertical, string image, string layer,
         (int Width, int Height, int Dpi) raster, CancellationToken token)
     {
         var tsv = Path.ChangeExtension(layer, ".tsv");
-        // prlimit's file size limit applies to each output file; reserve the same budget for both before running.
-        var budget = job.ReservePair(layer, tsv, settings.OverlayGeneratedLimitBytes);
+        var hocr = vertical ? null : Path.ChangeExtension(layer, ".hocr");
+        string[] outputs = hocr is null ? [layer, tsv] : [layer, tsv, hocr];
+        // prlimit's per-file limit applies to all outputs; reserve that same budget for each before running.
+        var budget = job.ReserveWrites(settings.OverlayGeneratedLimitBytes, outputs);
         var basePath = Path.ChangeExtension(Path.GetFullPath(layer), null);
         var (models, psm) = (high, vertical) switch
         {
@@ -195,19 +228,25 @@ internal static class PdfOcrEndpoint
         // The default Sauvola settings can drop an entire short line with the standard horizontal model.
         if (!high && !vertical)
             arguments = [.. arguments, "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
+        if (hocr is not null)
+            arguments = [.. arguments, "-c", "tessedit_create_hocr=1"];
         var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
             with { WorkingDirectory = Path.GetFullPath(files.DirectoryPath) }, layer, budget, token);
-        var tsvInfo = new FileInfo(tsv);
-        if (result.ExceedsBudget || tsvInfo.Exists && tsvInfo.Length > budget)
+        var sidecars = outputs.Skip(1).Select(path => new FileInfo(path)).ToArray();
+        if (result.ExceedsBudget || sidecars.Any(file => file.Exists && file.Length > budget))
             throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
         // Tesseract can abort with std::bad_alloc when it reaches its per-process memory limit.
         if (result.InternalFailure && !result.StartFailed)
             throw new PdfRenderException(PdfRenderReason.TooComplex);
-        if (!result.Succeeded || !tsvInfo.Exists) throw new InvalidOperationException(Failure);
-        job.Commit(layer, budget);
-        job.Commit(tsv, budget);
+        if (!result.Succeeded || sidecars.Any(file => !file.Exists)) throw new InvalidOperationException(Failure);
+        foreach (var output in outputs) job.Commit(output, budget);
         var lines = OcrTextLayer.Read(tsv, raster.Width, raster.Height, token);
         job.Delete(tsv);
+        if (hocr is not null)
+        {
+            OcrTextLayer.Orient(lines, hocr, raster.Width, raster.Height, token);
+            job.Delete(hocr);
+        }
         return lines;
     }
 

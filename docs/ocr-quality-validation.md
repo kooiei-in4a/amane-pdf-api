@@ -1,6 +1,6 @@
 # OCRの標準・高精度の検証（2026-11-26）
 
-対象は [Issue #126](https://github.com/kooiei-in4a/amane-pdf-api/issues/126) と [Issue #128](https://github.com/kooiei-in4a/amane-pdf-api/issues/128) の実装です。起点は `e3fd370` です。APIの指定と上限は[READMEのOCR節](../README.md#スキャンpdfの日本語ocrlinux)に記載しています。
+対象は [Issue #126](https://github.com/kooiei-in4a/amane-pdf-api/issues/126)、[Issue #128](https://github.com/kooiei-in4a/amane-pdf-api/issues/128)、[Issue #124](https://github.com/kooiei-in4a/amane-pdf-api/issues/124) のOCRです。APIの指定と上限は[READMEのOCR節](../README.md#スキャンpdfの日本語ocrlinux)に記載しています。
 
 ## 再現方法
 
@@ -45,7 +45,7 @@ python3 scripts/ocr-search-validation.py amane-pdf-api:ocr-quality --benchmark
 | 点ノイズ2万個 | 9/9 | 7/9 | 9/9 |
 | 紙の粒状感（σ30） | 9/9 | 0/9 | 8/9 |
 
-スキャン画像自体が上下逆さのページは対応範囲外です。画像を180度回転して行った初回計測では、両方式ともPDF.jsで12/12語、固定版PDFiumで0/12語でした。横向きなどで回転した行の文字層と、既に文字があるページの扱いは #124 に残っています。[初回の試験コード](https://github.com/kooiei-in4a/amane-pdf-api/blob/3076bd984ecb5c0d47800fd6b1cfc322068ad8a5/scripts/ocr-search-validation.py)・[Issue #124](https://github.com/kooiei-in4a/amane-pdf-api/issues/124)
+画像を180度回転して行った #126 の初回計測では、両方式ともPDF.jsで12/12語、固定版PDFiumで0/12語でした。[初回の試験コード](https://github.com/kooiei-in4a/amane-pdf-api/blob/3076bd984ecb5c0d47800fd6b1cfc322068ad8a5/scripts/ocr-search-validation.py)
 
 試作の罫線付き請求書は標準32/34語・高精度31/34語、表だけのページは9/9語・8/9語、影は10/12語・12/12語、縦書きの横書き見出しは7/9語・9/9語でした。試作全体は622語を対象にしています。[試作結果（Issue #126）](https://github.com/kooiei-in4a/amane-pdf-api/issues/126)
 
@@ -62,16 +62,32 @@ PDFiumのPNGでは、どのPSMでもSauvola（`thresholding_method=2`）のと�
 
 `thresholding_window_size=1.0` と `thresholding_kfactor=0.2` の組み合わせで1行の試料は回復しましたが、罫線付き請求書は29/34語で既存の合格基準を下回りました。ノイズ試料でも検証し、標準の横書きに `thresholding_window_size=0.2` と `thresholding_kfactor=0.3` を適用しました。1ページにつき1回の認識で短い1行を抽出できることを、複数行の文書とあわせてDockerスモークで確認しています。
 
+## 横書きスキャンの回転と既存文字層（#124）
+
+横書きは1回の認識でPDF・TSV・hOCRを出力します。TSVで語の順序と位置を取り、hOCRの `textangle` で行の角度を調べます。行を読む向きで文字の間隔を計算し、文字層を画像の向きに戻して配置します。180°ではPDFiumが同じ行の複数のテキストオブジェクトを左から右へ並べ替えるため、読み順と位置を保てるよう、連続した文字列を1つのテキストオブジェクトにまとめます。[TesseractのhOCR出力](https://github.com/tesseract-ocr/tesseract/blob/5.5.0/src/api/hocrrenderer.cpp)・[PDFiumの文字処理](https://github.com/chromium/pdfium/blob/main/core/fpdftext/cpdf_textpage.cpp)
+
+A4・200 dpi・JPEG品質75の合成スキャンの画像自体を回転し、PDFの回転指定を使わずに `6636c57` で検証しました。各角度は標準・高精度の両方で、PDF.js 6.3.289と同梱PDFium（`chromium/8100`）で12/12語を検出しました。下表は、文字の画素の矩形と検索強調の矩形の重なりをIoUで測り、両方式・全語で最小の値を記載しています。
+
+| 画像の回転 | 同梱PDFiumの検索矩形 | Chromiumで実行したPDF.jsの強調 |
+| --- | ---: | ---: |
+| 90° | 0.49 | 0.68 |
+| 180° | 0.65 | 0.82 |
+| 270° | 0.48 | 0.77 |
+
+回帰試験は両エンジンでの全文検索、PDFiumの強調矩形のIoU 0.4以上、Popplerで72 dpiに描画した入力と出力の画素の一致を確認します。PDF.jsの強調表示は `scripts/ocr-search-validation.py --highlight DIR` と `scripts/ocr-search/highlight.mjs` で実ブラウザから測定できます。
+
+既存文字の検査では、PDFiumの子プロセスからページ番号だけを返します。表示範囲に英字や日本語などの文字（UnicodeのLetter）が4字以上あれば、すでに検索できると判定します。画像の描画座標をページ座標に変換し、ページ表示範囲（MediaBoxとCropBoxの共通部分）と重なる面積を画像ごとに求めます。1枚の画像がその範囲の半分以上を覆うページでは、表示上の上下8%を除いた範囲で、透明なテキスト描画モード（`Tr 3`）の文字だけを数えます。本文内に入力値が2行あるスキャン、見出しと番号が付いたスキャン、画像がなくページ番号だけのページはOCRされることを確認します。短い既存OCR文字層、ロゴ付きの文書PDF、回転とCropBoxを持つ文書PDF、混在文書、全スキップ時のバイト一致、明示的にOCRを行う場合も統合テストで確認します。
+
 ## 処理時間
 
 密な文書は、300 dpiのA4に11 pt相当のBIZ UDP明朝で約1,680字を描き、横書き35行または縦書き28列に配置しました。同じ画像ページを標準は10ページ、高精度は5ページ連ねました。応答時間は、1リクエストずつ送信を開始してからPDFを受信し終えるまでです。他の処理が並行する条件と、本番ホストのCPUでの余裕は未計測です。
 
-| 方式・試料 | 再測定 `b740463` | 初回の記録（PR #127、`a904a89` の実装） |
-| --- | ---: | ---: |
-| 標準・密な縦書き10ページ | 59.74秒 | 54.50秒 |
-| 標準・密な横書き10ページ | 44.35秒 | 39.20秒 |
-| 高精度・密な縦書き5ページ | 126.55秒 | 100.36秒 |
-| 高精度・密な横書き5ページ | 81.10秒 | 94.55秒 |
+| 方式・試料 | #124 `6636c57` | #128 `b740463` | 初回の記録（PR #127、`a904a89` の実装） |
+| --- | ---: | ---: | ---: |
+| 標準・密な縦書き10ページ | 52.29秒 | 59.74秒 | 54.50秒 |
+| 標準・密な横書き10ページ | 39.32秒 | 44.35秒 | 39.20秒 |
+| 高精度・密な縦書き5ページ | 111.77秒 | 126.55秒 | 100.36秒 |
+| 高精度・密な横書き5ページ | 80.18秒 | 81.10秒 | 94.55秒 |
 
 全件がHTTP 200で、OCRの上限内に収まりました。全リクエストの終了後に一時ファイルの削除を確認し、コンテナの `memory.events` の `oom` と `oom_kill` はともに0でした。
 

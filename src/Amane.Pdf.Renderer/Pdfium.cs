@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace Amane.Pdf.Renderer;
@@ -5,6 +6,15 @@ namespace Amane.Pdf.Renderer;
 // One library instance, document and page per process. Never loaded by the API.
 internal sealed class Pdfium : IDisposable
 {
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PageBounds
+    {
+        internal float Left;
+        internal float Top;
+        internal float Right;
+        internal float Bottom;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     private struct Config
     {
@@ -61,8 +71,27 @@ internal sealed class Pdfium : IDisposable
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDF_LoadPage(IntPtr document, int index);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern float FPDF_GetPageWidthF(IntPtr page);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern float FPDF_GetPageHeightF(IntPtr page);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDF_GetPageBoundingBox(IntPtr page,
+        out PageBounds bounds);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern void FPDF_ClosePage(IntPtr page);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern void FPDF_CloseDocument(IntPtr document);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDFText_LoadPage(IntPtr page);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern void FPDFText_ClosePage(IntPtr textPage);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFText_CountChars(IntPtr textPage);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern uint FPDFText_GetUnicode(IntPtr textPage, int index);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDFText_GetTextObject(IntPtr textPage, int index);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFTextObj_GetTextRenderMode(IntPtr textObject);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFText_GetCharBox(IntPtr textPage,
+        int index, out double left, out double right, out double bottom, out double top);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDF_PageToDevice(IntPtr page,
+        int startX, int startY, int width, int height, int rotate, double pageX, double pageY, out int deviceX, out int deviceY);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFPage_CountObjects(IntPtr page);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDFPage_GetObject(IntPtr page, int index);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFPageObj_GetType(IntPtr pageObject);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFPageObj_GetMatrix(
+        IntPtr pageObject, out Matrix3x2 matrix);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFFormObj_CountObjects(IntPtr form);
+    [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDFFormObj_GetObject(IntPtr form, nuint index);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDFBitmap_Create(int width, int height, int alpha);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern int FPDFBitmap_FillRect(IntPtr bitmap, int left, int top, int width, int height, uint color);
     [DllImport("pdfium", CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr FPDFBitmap_GetBuffer(IntPtr bitmap);

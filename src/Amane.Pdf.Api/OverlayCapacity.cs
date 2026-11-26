@@ -34,15 +34,13 @@ internal sealed class OverlayCapacity(long limit)
         Reserve(path, budget + (external ? 1 : 0));
         return budget;
     }
-    // One external process writes both files under a single per-file size limit, so fix that limit from the
-    // remaining capacity before either reservation: each file takes at most half of it in 4 KiB units,
-    // including the sentinel byte that detects an overflowing write.
-    internal long ReserveWritePair(string first, string second, long perFileLimit)
+    // One process writes several files under a single per-file size limit. Divide the remaining 4 KiB
+    // blocks before reserving, including the sentinel byte that detects an overflowing write.
+    internal long ReserveWrites(long perFileLimit, params string[] paths)
     {
-        var budget = Math.Min(perFileLimit, Remaining / 4096 / 2 * 4096 - 1);
+        var budget = Math.Min(perFileLimit, Remaining / 4096 / paths.Length * 4096 - 1);
         if (budget <= 0) throw PdfOverlayInputException.TooComplex();
-        ReserveWrite(first, budget, external: true);
-        ReserveWrite(second, budget, external: true);
+        foreach (var path in paths) ReserveWrite(path, budget, external: true);
         return budget;
     }
     internal void Reserve(string path, long bytes)
