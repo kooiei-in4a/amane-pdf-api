@@ -652,8 +652,9 @@ public sealed class PdfP3EndpointsTests
         if (quality == "&quality=high") expected.AddRange(["--tessdata-dir", options.TessdataBestDir]);
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
         if (direction == "horizontal") expected.AddRange(["-c", "tessedit_create_hocr=1"]);
-        var method = quality != "&quality=high" && direction == "horizontal" ? "0" : "2";
-        expected.AddRange(["-c", "thresholding_method=" + method]);
+        expected.AddRange(["-c", "thresholding_method=2"]);
+        if (quality != "&quality=high" && direction == "horizontal")
+            expected.AddRange(["-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
         test.AssertClean();
     }
@@ -671,20 +672,18 @@ public sealed class PdfP3EndpointsTests
         var originalTool = options.TesseractPath;
         using var scripts = new OverlayJob();
         var attempts = Path.Combine(scripts.Root, "ocr-attempts");
-        var first = shadow ? "thresholding_window_size=0.33" : "thresholding_method=0";
-        var retry = shadow ? "thresholding_method=0" : "thresholding_window_size=0.2";
         var retryExit = retryRecognizesText ? "exit 0" : "";
         options.TesseractPath = scripts.Script($"""
             base=$2
             test ! -e "$base.pdf" && test ! -e "$base.tsv" && test ! -e "$base.hocr" || exit 90
             case " $* " in
-                *" {first} "*) printf '%s\n' first >> '{attempts}' ;;
-                *" {retry} "*) printf '%s\n' retry >> '{attempts}' ;;
+                *" thresholding_window_size=0.33 "*) printf '%s\n' first >> '{attempts}' ;;
+                *" thresholding_window_size=0.2 "*) printf '%s\n' retry >> '{attempts}' ;;
                 *) exit 91 ;;
             esac
             '{originalTool}' "$@" || exit $?
             case " $* " in
-                *" {retry} "*) {retryExit} ;;
+                *" thresholding_window_size=0.2 "*) {retryExit} ;;
             esac
             sed -i '2,$d' "$base.tsv"
             """);

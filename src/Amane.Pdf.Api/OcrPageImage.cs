@@ -3,7 +3,7 @@ using System.IO.Compression;
 
 namespace Amane.Pdf.Api;
 
-internal enum OcrBinarization { Otsu, AdaptiveOtsu, Sauvola }
+internal enum OcrBinarization { Sauvola, AdaptiveOtsu }
 
 internal static class OcrPageImage
 {
@@ -15,6 +15,9 @@ internal static class OcrPageImage
     private const int StrokeSampleStep = 16;
     private const int MinStrokeSamples = 32;
     private const int FineStrokePercent = 35;
+    private const int LightBackground = 224;
+    private const int BackgroundPixelDifference = 4;
+    private const int MaxVaryingBackgroundPercent = 5;
 
     internal static OcrBinarization SelectBinarization(string path, int width, int height, CancellationToken token)
     {
@@ -52,7 +55,12 @@ internal static class OcrPageImage
         var firstX = Math.Min(StrokeSampleStep / 2, width / 2);
         var firstY = Math.Min(StrokeSampleStep / 2, height / 2);
         var verticalRuns = new int[1 + (width - 1 - firstX) / StrokeSampleStep];
+        var lastColumnBrightness = new int[verticalRuns.Length];
         var strokes = new StrokeCounts();
+        var background = new BackgroundPairs();
+        var ruleSpan = Math.Max(2, (verticalRuns.Length + 2) / 3);
+        var horizontalRules = 0;
+        var previousRowHasRule = false;
         var sampleY = 0;
         for (var y = 0; y < height; y++)
         {
@@ -77,17 +85,40 @@ internal static class OcrPageImage
             if (y % StrokeSampleStep == firstY)
             {
                 var run = 0;
-                for (var offset = 1; offset < row.Length; offset += 3)
-                    strokes.AddPixel(Brightness(row, offset) < 128, ref run);
+                var lastBrightness = Brightness(row, 1);
+                strokes.AddPixel(lastBrightness < 128, ref run);
+                for (var offset = 4; offset < row.Length; offset += 3)
+                {
+                    var brightness = Brightness(row, offset);
+                    strokes.AddPixel(brightness < 128, ref run);
+                    background.Add(lastBrightness, brightness);
+                    lastBrightness = brightness;
+                }
                 strokes.EndRun(ref run);
             }
+            var darkColumns = 0;
+            var rowHasRule = false;
             for (int i = 0, offset = 1 + 3 * firstX; i < verticalRuns.Length; i++, offset += 3 * StrokeSampleStep)
-                strokes.AddPixel(Brightness(row, offset) < 128, ref verticalRuns[i]);
+            {
+                var brightness = Brightness(row, offset);
+                var dark = brightness < 128;
+                strokes.AddPixel(dark, ref verticalRuns[i]);
+                darkColumns = dark ? darkColumns + 1 : 0;
+                rowHasRule |= darkColumns >= ruleSpan;
+                if (y > 0) background.Add(lastColumnBrightness[i], brightness);
+                lastColumnBrightness[i] = brightness;
+            }
+            // A rule may cover several consecutive rows. Count the band once.
+            if (rowHasRule && !previousRowHasRule) horizontalRules++;
+            previousRowHasRule = rowHasRule;
         }
         foreach (ref var run in verticalRuns.AsSpan()) strokes.EndRun(ref run);
 
-        if (BackgroundSpread(samples) >= UnevenSpread) return OcrBinarization.Sauvola;
-        return strokes.FineStrokesAreCommon ? OcrBinarization.AdaptiveOtsu : OcrBinarization.Otsu;
+        // Prefer Sauvola on ordinary or uncertain scans. Adaptive Otsu can turn background noise
+        // into foreground and disrupt both segmentation and automatic orientation.
+        return horizontalRules >= 2 && strokes.FineStrokesAreCommon &&
+            background.IsClean && BackgroundSpread(samples) < UnevenSpread
+            ? OcrBinarization.AdaptiveOtsu : OcrBinarization.Sauvola;
     }
 
     private static int SampleCoordinate(int sample, int size) => (2 * sample + 1) * size / (2 * GridSize);
@@ -130,6 +161,24 @@ internal static class OcrPageImage
             total++;
             if (run <= 3) fine++;
             run = 0;
+        }
+    }
+
+    private struct BackgroundPairs
+    {
+        private int total;
+        private int light;
+        private int varying;
+
+        internal readonly bool IsClean
+            => light > 0 && light * 2 >= total && varying * 100 <= light * MaxVaryingBackgroundPercent;
+
+        internal void Add(int first, int second)
+        {
+            total++;
+            if (first < LightBackground || second < LightBackground) return;
+            light++;
+            if (Math.Abs(first - second) >= BackgroundPixelDifference) varying++;
         }
     }
 

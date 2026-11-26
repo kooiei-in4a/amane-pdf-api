@@ -7,15 +7,16 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class OcrPageImageTests
 {
     [TestMethod]
-    [DataRow(0, false, "Otsu")]
-    [DataRow(16, false, "Otsu")]
-    [DataRow(89, false, "Sauvola")]
-    [DataRow(0, true, "AdaptiveOtsu")]
-    [DataRow(89, true, "Sauvola")]
-    public void OcrSelectsBinarizationFromTheRenderedPng(int gradient, bool fineStrokes, string expected)
+    [DataRow(0, false, false, false, "Sauvola")]
+    [DataRow(0, false, true, false, "Sauvola")]
+    [DataRow(0, true, false, false, "Sauvola")]
+    [DataRow(0, true, true, false, "AdaptiveOtsu")]
+    [DataRow(89, true, true, false, "Sauvola")]
+    [DataRow(0, true, true, true, "Sauvola")]
+    public void OcrSelectsBinarizationFromTheRenderedPng(int gradient, bool fineStrokes, bool ruled, bool noise, string expected)
     {
-        const int width = 96;
-        const int height = 64;
+        const int width = 128;
+        const int height = 96;
         using var files = new OverlayJob();
         var path = Path.Combine(files.Root, "page.png");
         var header = new byte[13];
@@ -32,10 +33,12 @@ public sealed class OcrPageImageTests
             {
                 for (var x = 0; x < width; x++)
                 {
-                    var shade = (byte)(255 - x * gradient / (width - 1));
-                    var ink = fineStrokes ? x % 16 is 8 or 9 && y % 16 is 8 or 9 :
-                        y % 16 < 4 || x < 4; // Rules and a dark left border.
-                    if (ink) shade = 0;
+                    var noiseOffset = noise && (x + y) % 2 == 0 ? 8 : 0;
+                    var shade = (byte)(255 - x * gradient / (width - 1) - noiseOffset);
+                    var dot = x % 16 is 8 or 9 && y % 16 is 8 or 9 && (x / 16 + y / 16) % 2 == 0;
+                    var stroke = x % 16 < 6 && y % 16 < 6;
+                    var rule = ruled && (y is >= 19 and <= 22 or >= 72 and <= 75);
+                    if ((fineStrokes ? dot : stroke) || rule) shade = 0;
                     row.AsSpan(1 + x * 3, 3).Fill(shade);
                 }
                 zlib.Write(row);

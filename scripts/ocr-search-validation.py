@@ -92,6 +92,23 @@ SMALL_INVOICE_TERMS = [
 SMALL_INVOICE_MINIMUM = 30
 SMALL_INVOICE_REQUIRED_CASES = {"small-ruled-invoice", "small-ruled-invoice-poppler"}
 SMALL_INVOICE_CASES = SMALL_INVOICE_REQUIRED_CASES | {"small-ruled-invoice-poppler-from-images"}
+# Required PDF.js term counts by quality, using the original review scans.
+REVIEW_SCANS = {
+    "h-mincho-12-noise": (18, 18, [
+        "開館時間", "返却ポスト", "休館日", "正面玄関", "二週間", "窓口",
+        "03-1234-5678", "1,234,567", "2026年11月25日", "千代田区", "丸の内", "サンプル商事",
+        "御中", "Amane Tools", "スキャンPDF", "9:00", "17:00", "月曜日",
+    ]),
+    "h-form-table": (9, 8, [
+        "開館時間", "返却ポスト", "休館日", "正面玄関", "9:00", "山田太郎",
+        "12,800円", "月曜日", "合計金額",
+    ]),
+    "h-multipage-3": (15, 15, [
+        "開館時間", "返却ポスト", "休館日", "正面玄関", "二週間", "窓口",
+        "03-1234-5678", "1,234,567", "2026年11月25日", "千代田区", "丸の内", "サンプル商事",
+        "御中", "9:00", "17:00", "月曜日",
+    ]),
+}
 DOCUMENT_LINES = [
     "中央図書館の開館時間は午前九時から午後七時までです。",
     "返却ポストは正面入口の東側にあります。",
@@ -452,6 +469,8 @@ def main():
                  ("ruled-table", "horizontal", table, TABLE_TERMS, []),
                  ("shadow", "horizontal", shadow, DOCUMENT_TERMS, [])]
         cases.extend((name, "horizontal", source, NOISE_TERMS, []) for name, source in noise_scans(api, font_path))
+        cases.extend((name, "horizontal", (SEARCH / f"fixtures/{name}.pdf").read_bytes(), terms, [])
+                     for name, (_, _, terms) in REVIEW_SCANS.items())
         rotated = {}
         upright = document_image(font_path)
         for angle in (90, 180, 270):
@@ -510,6 +529,10 @@ def main():
                 elif name == "ruled-table":
                     required = ["品名", "金額", "返却ポスト"]
                     minimum = 8
+                elif name in REVIEW_SCANS:
+                    standard_minimum, high_minimum, _ = REVIEW_SCANS[name]
+                    required = []
+                    minimum = standard_minimum if quality == "standard" else high_minimum
                 elif name == "shadow":
                     required = ["開館時間", "返却ポスト", "本人確認書類"]
                     minimum = 10

@@ -226,25 +226,18 @@ internal static class PdfOcrEndpoint
             arguments = [.. arguments, "-c", "tessedit_create_hocr=1"];
         if (high || vertical) return await RecognizeAsync([.. arguments, "-c", "thresholding_method=2"]);
 
-        string[] otsu = ["-c", "thresholding_method=0"];
         var binarization = OcrPageImage.SelectBinarization(image, raster.Width, raster.Height, token);
-        string[] thresholding = binarization switch
-        {
-            OcrBinarization.Sauvola => ["-c", "thresholding_method=2", "-c", "thresholding_window_size=0.33",
-                "-c", "thresholding_kfactor=0.32"],
-            OcrBinarization.AdaptiveOtsu => ["-c", "thresholding_method=1", "-c", "thresholding_tile_size=0.5",
-                "-c", "thresholding_smooth_kernel_size=0.03", "-c", "thresholding_score_fraction=0"],
-            _ => otsu
-        };
+        string[] thresholding = binarization == OcrBinarization.AdaptiveOtsu
+            ? ["-c", "thresholding_method=1", "-c", "thresholding_tile_size=0.5",
+                "-c", "thresholding_smooth_kernel_size=0.03", "-c", "thresholding_score_fraction=0"]
+            : ["-c", "thresholding_method=2", "-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"];
         var lines = await RecognizeAsync([.. arguments, .. thresholding]);
         if (lines.Any(line => line.Words.Count > 0)) return lines;
 
-        // Free the first output before reserving space for one retry, under the same request deadline.
-        // Use the Sauvola settings that recovered short lines in Issue #128 when retrying after Otsu.
+        // Free the first output before the existing short-line retry, under the same request deadline.
         job.Delete(layer);
-        var retry = binarization == OcrBinarization.Sauvola ? otsu :
-            ["-c", "thresholding_method=2", "-c", "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
-        return await RecognizeAsync([.. arguments, .. retry]);
+        return await RecognizeAsync([.. arguments, "-c", "thresholding_method=2", "-c",
+            "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"]);
 
         async Task<List<OcrTextLayer.Line>> RecognizeAsync(string[] recognitionArguments)
         {
