@@ -36,12 +36,39 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
 
     internal static (int Width, int Height) GetPixelSize(PdfPageAttributes page, int dpi)
     {
+        if (!TryGetPixelSize(page, dpi, out var size)) throw new PdfRenderException(PdfRenderReason.PageTooLarge);
+        return size;
+    }
+
+    internal static (int Width, int Height, int Dpi) FitPixelSize(PdfPageAttributes page, int minDpi, int maxDpi)
+    {
+        if (TryGetPixelSize(page, maxDpi, out var size)) return (size.Width, size.Height, maxDpi);
+
+        size = GetPixelSize(page, minDpi);
+        var highest = maxDpi - 1;
+        while (minDpi < highest)
+        {
+            var dpi = minDpi + (highest - minDpi + 1) / 2;
+            if (TryGetPixelSize(page, dpi, out var candidate))
+            {
+                minDpi = dpi;
+                size = candidate;
+            }
+            else highest = dpi - 1;
+        }
+        return (size.Width, size.Height, minDpi);
+    }
+
+    private static bool TryGetPixelSize(PdfPageAttributes page, int dpi, out (int Width, int Height) size)
+    {
+        size = default;
         var width = Math.Ceiling(page.DisplayWidth * dpi / 72);
         var height = Math.Ceiling(page.DisplayHeight * dpi / 72);
         if (!double.IsFinite(width) || !double.IsFinite(height) || width < 1 || height < 1 ||
             width > RedactRaster.MaxSide || height > RedactRaster.MaxSide || width * height > RedactRaster.MaxPixels)
-            throw new PdfRenderException(PdfRenderReason.PageTooLarge);
-        return ((int)width, (int)height);
+            return false;
+        size = ((int)width, (int)height);
+        return true;
     }
 
     internal static void CheckImages(RedactDocument document, int page)
