@@ -4,6 +4,43 @@ PDFや画像を、入力検証と容量・時間の制限のもとで処理す�
 
 暗号化・権限制限・パスワード解除、最適化・画像圧縮、情報除去、画像からのPDF作成、ページ編集、番号付け・透かし・押印・黒塗りを提供します。処理には機能に応じてqpdf、pdfcpu、PDFium、libjpeg-turboを使用します。APIの接続先となる`amane-tools-site`は別Repositoryです。
 
+## Quick Start
+
+対応環境は Linux x86_64 上の Docker です。コンテナは Ubuntu 26.04 系を使います。ホストには Docker と curl を用意し、ビルド時はネットワークに接続してください。.NET SDK と処理ツールは Docker ビルドで取得するため、このリポジトリのチェックアウトから単体で起動できます。
+
+この API は認証と利用者ごとの回数制限を持たないため、不特定多数がアクセスできるインターネットへ直接公開しないでください。`/api/pdf/compose` は Amane Tools のレイアウト文書用で、この README が提供する安定した公開 API の契約には含めません。
+
+リポジトリのルートでイメージをビルドし、ループバックに限定して起動します。
+
+```bash
+docker build -t amane-pdf-api:quick-start .
+docker run --rm -d --name amane-pdf-api-quick-start -p 127.0.0.1:8080:8080 \
+  --read-only --tmpfs /tmp:rw,nosuid,nodev,noexec,size=256m \
+  --cpus 1 --memory 1.5g --memory-swap 1.5g --cap-drop ALL \
+  --security-opt no-new-privileges=true amane-pdf-api:quick-start
+```
+
+起動直後の接続エラーは curl が再試行します。`GET /healthz` が HTTP `200` と本文 `Healthy` を返すことを確認します。
+
+```bash
+curl --fail --silent --show-error --include \
+  --retry 30 --retry-delay 1 --retry-all-errors http://127.0.0.1:8080/healthz
+```
+
+同梱の `sample.pdf` を最適化します。HTTP `200` と `Content-Type: application/pdf` が表示され、結果が `optimized.pdf` に保存されます。
+
+```bash
+curl --fail --silent --show-error --dump-header - \
+  -F 'file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf' \
+  http://127.0.0.1:8080/api/pdf/optimize -o optimized.pdf
+```
+
+確認が終わったらコンテナを停止します。
+
+```bash
+docker stop amane-pdf-api-quick-start
+```
+
 ## 現在の状態
 
 実装済み:
@@ -60,6 +97,8 @@ API単体の実装とDockerでの実処理検証を行っています。CIの結
 ## API
 
 ### 画像からPDF（Linux）
+
+この例の `first.jpg` と `second.png` は、手元のJPEG・PNGファイルの名前に置き換えてください。
 
 ```bash
 curl --fail-with-body 'http://localhost:8080/api/pdf/from-images?quality=standard' \
@@ -263,12 +302,7 @@ qpdfのobject stream生成とFlate再圧縮を使用し、画像の解像度やJ
 
 成功時は `200 OK`、`Content-Type: application/pdf`、固定ファイル名 `optimized.pdf` で返します。既存APIと同じPDFサイズ、qpdf処理時間、同時実行数、入力検証の制限が適用されます。
 
-```bash
-curl --fail-with-body \
-  -F file=@tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf \
-  http://127.0.0.1:8080/api/pdf/optimize \
-  -o optimized.pdf
-```
+同梱サンプルを使う実行例は [Quick Start](#quick-start) を参照してください。
 
 ### PDF結合
 
@@ -287,6 +321,8 @@ file  3つ目のPDF（任意）
 同名の `file` fieldを複数指定し、multipart内の出現順で各PDFの全ページを結合します。2〜10ファイルを受け付け、1ファイル最大50 MiB、入力PDF合計最大50 MiBが既定値です。ページ指定やpassword fieldは受け付けず、既暗号化PDFは拒否します。各入力を実qpdfで逐次検証し、空、非PDF、破損、warningのある入力が1件でもあれば全体を拒否します。
 
 成功時は `200 OK`、`Content-Type: application/pdf`、`Content-Disposition: attachment; filename=merged.pdf` で返します。利用者ファイル名は内部path、qpdf argv、返却名、ログへ使用しません。
+
+この例の `first.pdf` と `second.pdf` は、手元のPDFファイルの名前に置き換えてください。
 
 ```bash
 curl --fail-with-body \
