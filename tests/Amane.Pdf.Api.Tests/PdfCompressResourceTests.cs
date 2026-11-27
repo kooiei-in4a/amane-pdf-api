@@ -23,9 +23,11 @@ public sealed class PdfCompressResourceTests
         await using var test = new PdfTestContext(spoolLimit == 16777216 ? null : new() { ["Pdf:CompressSpoolLimitBytes"] = spoolLimit.ToString() });
         var counter = Path.Combine(test.Root, "metadata-starts");
         var extracted = Path.Combine(test.Root, "retained-dictionaries");
+        // Compression metadata goes to JSON files. The signature precheck captures stdout instead.
         var wrapper = await PdfCompressTests.WrapperAsync(test,
+            "for arg do last=$arg; done\n" +
             "for arg do case \"$arg\" in --json-key=pages|--json-stream-data=none) " +
-            $"printf 'metadata\\n' >> '{counter}';; --json-stream-data=file) " +
+            $"case \"$last\" in *.json) printf 'metadata\\n' >> '{counter}';; esac;; --json-stream-data=file) " +
             $"for dict in '{test.TempRoot}'/*/dict-*.json; do [ ! -f \"$dict\" ] || basename \"$dict\" >> '{extracted}'; done;; " +
             "esac; done\nexec qpdf \"$@\"\n");
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
@@ -82,8 +84,9 @@ public sealed class PdfCompressResourceTests
         await using var test = new PdfTestContext();
         var counter = Path.Combine(test.Root, "metadata-starts");
         var wrapper = await PdfCompressTests.WrapperAsync(test,
+            "for arg do last=$arg; done\n" +
             "for arg do case \"$arg\" in --json-key=pages|--json-stream-data=none) " +
-            $"printf 'metadata\\n' >> '{counter}';; esac; done\nexec qpdf \"$@\"\n");
+            $"case \"$last\" in *.json) printf 'metadata\\n' >> '{counter}';; esac;; esac; done\nexec qpdf \"$@\"\n");
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         var jpeg = await CompressFixtures.JpegAsync(test);
         using var response = await PdfCompressTests.PostAsync(test, CompressFixtures.MultiPage(jpeg, pages, indirect, inherited, dependencies));
@@ -360,7 +363,8 @@ public sealed class PdfCompressResourceTests
         if (!PdfCompressTests.Linux()) return;
         await using var test = new PdfTestContext();
         var wrapper = await PdfCompressTests.WrapperAsync(test,
-            "case \"$1\" in --json=2) for arg do last=$arg; done; printf '{bad metadata' > \"$last\"; exit 0;; esac\nexec qpdf \"$@\"\n");
+            "for arg do last=$arg; done\n" +
+            "case \"$1:$last\" in --json=2:*.json) printf '{bad metadata' > \"$last\"; exit 0;; esac\nexec qpdf \"$@\"\n");
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         options.QpdfPath = wrapper;
         using var response = await PdfCompressTests.PostAsync(test, PdfTestContext.Fixture);

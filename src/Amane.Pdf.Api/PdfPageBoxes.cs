@@ -40,13 +40,14 @@ internal sealed class PdfPageBoxes : IDisposable
     internal const int ReferenceDepthLimit = 32;
     private readonly JsonDocument document;
     private readonly Dictionary<PdfObjectRef, JsonElement> objects = [];
-    internal IReadOnlyList<PdfObjectRef> Pages { get; }
+    internal IReadOnlyList<PdfObjectRef> Pages { get; } = [];
     internal bool? Encrypted { get; }
     internal int ObjectCount => objects.Count;
     internal JsonDocument Document => document;
     internal IReadOnlyDictionary<PdfObjectRef, JsonElement> Objects => objects;
 
-    internal PdfPageBoxes(ReadOnlyMemory<byte> bytes, long byteLimit, int objectLimit, CancellationToken token)
+    internal PdfPageBoxes(ReadOnlyMemory<byte> bytes, long byteLimit, int objectLimit, CancellationToken token,
+        bool readPages = true)
     {
         if (bytes.Length > byteLimit) throw PdfOverlayInputException.TooComplex();
         CheckJson(bytes.Span, token);
@@ -69,6 +70,8 @@ internal sealed class PdfPageBoxes : IDisposable
                     throw new InvalidOperationException();
                 if (objects.Count > objectLimit) throw PdfOverlayInputException.TooComplex();
             }
+            if (!readPages) return;
+
             var pages = new List<PdfObjectRef>();
             var seen = new HashSet<PdfObjectRef>();
             foreach (var page in root.GetProperty("pages").EnumerateArray())

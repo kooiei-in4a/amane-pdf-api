@@ -35,7 +35,7 @@ public static class PdfRotateEndpoint
                 MultipartPdfUpload.ReadFileAsync(context.Request, files, options.Value, cancellationToken),
             async (files, cancellationToken) =>
             {
-                await processor.ValidateAsync(files, cancellationToken);
+                await processor.ValidateForRewriteAsync(files, cancellationToken);
                 var pageRange = selection is null
                     ? null
                     : selection.ToQpdfRange(await processor.GetPageCountAsync(files, cancellationToken));

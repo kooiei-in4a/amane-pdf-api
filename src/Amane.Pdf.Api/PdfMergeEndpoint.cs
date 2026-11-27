@@ -16,8 +16,7 @@ public static class PdfMergeEndpoint
                 inputPaths = await MultipartPdfUpload.ReadMergeFilesAsync(context.Request, files, options.Value, cancellationToken),
             async (files, cancellationToken) =>
             {
-                foreach (var path in inputPaths)
-                    await processor.ValidateAsync(path, cancellationToken);
+                await processor.ValidateForRewriteAsync(inputPaths, cancellationToken);
                 await processor.MergeAsync(files, inputPaths, cancellationToken);
             },
             maxRequestBytes: options.Value.MaxMergeRequestBytes);

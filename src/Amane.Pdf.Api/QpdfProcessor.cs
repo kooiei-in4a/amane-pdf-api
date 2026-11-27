@@ -6,6 +6,8 @@ namespace Amane.Pdf.Api;
 
 public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 {
+    private const int SignatureMetadataLimitBytes = 32 * 1024 * 1024;
+
     public Task ValidateAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
         => ValidateAsync(files.InputPath, cancellationToken);
 
@@ -15,6 +17,38 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 
     internal Task ValidateOutputAsync(string path, CancellationToken cancellationToken)
         => ValidateCoreAsync(path, cancellationToken, PdfStage.OutputValidation);
+
+    internal Task ValidateForRewriteAsync(TemporaryPdfFiles files, CancellationToken token)
+        => ValidateForRewriteAsync([files.InputPath], token);
+
+    internal async Task ValidateForRewriteAsync(IReadOnlyList<string> paths, CancellationToken token)
+    {
+        // Preserve the generic input rejection for encrypted or invalid PDFs, including merge inputs.
+        foreach (var path in paths)
+            await ValidateAsync(path, token);
+
+        foreach (var path in paths)
+        {
+            var (exitCode, json) = await RunWithBoundedStdoutAsync(
+                ["--json=2", "--json-key=qpdf", "--json-stream-data=none", "--decode-level=none", path],
+                SignatureMetadataLimitBytes, token);
+            if (exitCode is 2 or 3) throw new PdfInputException();
+            if (exitCode != 0) throw new InvalidOperationException("PDF inspection failed.");
+            if (json is null) throw new PdfInputException();
+
+            try
+            {
+                using var metadata = new PdfPageBoxes(json, SignatureMetadataLimitBytes, PdfPageBoxes.InputObjectLimit,
+                    token, readPages: false);
+                if (PdfFormDetector.ContainsAppliedSignature(metadata, token))
+                    throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
+            }
+            catch (PdfOverlayInputException exception) when (exception.Reason == PdfOverlayReason.TooComplex)
+            {
+                throw new PdfInputException();
+            }
+        }
+    }
 
     private async Task ValidateCoreAsync(string path, CancellationToken cancellationToken, PdfStage kind)
     {

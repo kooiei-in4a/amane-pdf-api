@@ -5,6 +5,27 @@ namespace Amane.Pdf.Api.Tests;
 [TestClass]
 public sealed class FillTemplateStructureTests
 {
+    [DataRow("""{"/Ty#70e":"/DocTime#53tamp"}""", true)]
+    [DataRow("""{"/Nested":[{"/Fil#74er":"/Adobe.PPKLite","/Conte#6ets":"b:0123","/ByteRan#67e":[0,10,20,30]}]}""", true)]
+    [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"u:abc","/ByteRange":[0,10,20,30]}""", true)]
+    [DataRow("""{"/FT":"/Sig"}""", false)]
+    [DataRow("""{"/FT":"/Tx"}""", false)]
+    [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"b:0123"}""", false)]
+    [DataRow("""{"/Filter":"u:Adobe.PPKLite","/Contents":"b:0123","/ByteRange":[0,10,20,30]}""", false)]
+    [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"6 0 R","/ByteRange":[0,10,20,30]}""", false)]
+    [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"b:0123","/ByteRange":[0,1.5,20,30]}""", false)]
+    [DataRow("""{"/Nested":[{"/Filter":"/Adobe.PPKLite","/Contents":"b:0123"},{"/ByteRange":[0,10,20,30]}]}""", false)]
+    [TestMethod]
+    public void AppliedSignature_RequiresSignatureDictionary(string dictionary, bool expected)
+    {
+        var root = OverlayFixtures.Metadata();
+        OverlayFixtures.Objects(root)["obj:1 0 R"]!["value"]!["/Perms"] = new JsonObject();
+        OverlayFixtures.Objects(root)["obj:4 0 R"] = JsonNode.Parse("{\"value\":" + dictionary + "}");
+        using var metadata = OverlayFixtures.Parse(root);
+        Assert.AreEqual(expected, PdfFormDetector.ContainsAppliedSignature(metadata, default));
+        Assert.IsTrue(PdfFormDetector.ContainsSignatureStructure(metadata, default));
+    }
+
     [TestMethod]
     public void Forms_RecursivelyScanDirectArraysDictionariesAndStreamDictionaries()
     {

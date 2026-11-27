@@ -6,7 +6,7 @@ internal sealed class PdfSplitProcessor(QpdfProcessor qpdf, PdfOptions options, 
 {
     internal async Task SplitAsync(PdfSplitPlan plan, string baseName, CancellationToken token)
     {
-        await qpdf.ValidateAsync(files, token);
+        await qpdf.ValidateForRewriteAsync(files, token);
         var parts = plan.CreateParts(await qpdf.GetPageCountAsync(files, token));
         var accepted = await WriteZipAsync(TemporaryPdfFiles.CreatePrivateFile(files.OutputPath), parts, baseName, token);
         token.ThrowIfCancellationRequested();
