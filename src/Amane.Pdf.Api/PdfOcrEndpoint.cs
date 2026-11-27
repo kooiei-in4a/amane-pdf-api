@@ -8,6 +8,7 @@ internal sealed class PdfOcrStartupException : Exception;
 
 internal static class PdfOcrEndpoint
 {
+    internal const int MaxConfiguredPages = 100;
     private const int MaxDpi = 300;
     private const int MinDpi = 72;
     private const long ImageLimit = 64 * 1024 * 1024;
@@ -21,8 +22,8 @@ internal static class PdfOcrEndpoint
     private const string Vertical = "jpn_vert";
 
     internal static bool IsValid(PdfOptions options) =>
-        options.MaxOcrPages is >= 1 and <= 10 && options.OcrTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
-        options.MaxOcrHighPages is >= 1 and <= 5 && options.OcrHighTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
+        options.MaxOcrPages is >= 1 and <= MaxConfiguredPages && options.OcrTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
+        options.MaxOcrHighPages is >= 1 and <= MaxConfiguredPages && options.OcrHighTimeoutSeconds is > 0 and <= int.MaxValue / 1000 &&
         !string.IsNullOrWhiteSpace(options.TesseractPath) && !options.TesseractPath.Contains('\0') &&
         !string.IsNullOrWhiteSpace(options.TessdataBestDir) && !options.TessdataBestDir.Contains('\0') &&
         Path.IsPathFullyQualified(options.TessdataBestDir);

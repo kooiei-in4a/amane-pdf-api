@@ -6,7 +6,7 @@ namespace Amane.Pdf.Api;
 
 internal sealed record ComposeUpload(ComposeLayout Layout, Dictionary<string, string> Images)
 {
-    internal static long BackgroundLimit(PdfOptions options) => Math.Min(PdfOverlayBuilder.InputLimitBytes, options.MaxFileBytes);
+    internal static long BackgroundLimit(PdfOptions options) => options.MaxFileBytes;
     internal static long RequestLimit(PdfOptions options) =>
         BackgroundLimit(options) + ComposeLayout.TotalImageBytes + ComposeLayout.JsonBytes + PdfOptions.MultipartOverheadBytes;
 

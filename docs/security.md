@@ -51,7 +51,7 @@ JSONの形式とCLIの対応は[qpdf公式QPDFJob文書](https://qpdf.readthedoc
 - unlockはprivate JSONで認証と構造検査を行い、解除後の非空・未暗号化・構造検査成功を確認してから送信する。出力検証の失敗は422ではなく500とする
 - unlockの422だけに固定の`not-encrypted` / `no-open-password` / `wrong-password` / `invalid-pdf`をreasonとして付け、unlock専用のtitleとreasonを維持する。共通422はreasonなしとし、破損・パスワード設定・大きすぎる画像の確認を促す固定titleを返す
 - 必須項目不足/重複、multipart形式不正、制御文字やUTF-8で127 bytesを超えるpassword、不正なangle/pagesは400で拒否する
-- 結合は2〜10個の同名`file` fieldだけを受け付け、全入力を逐次検証する。不正入力が1件でもあれば結合全体を拒否する
+- 結合は2個以上、既定10個・設定上限100個の同名`file` fieldを受け付け、全入力を逐次検証する。不正入力が1件でもあれば結合全体を拒否する
 - qpdf実行失敗や未知のexit codeは500とし、HTTP response/logには内部例外を含めない
 - エラーは固定文言のProblem Detailsへ統一し、password、PDF本文、内部path、stack trace、stderrを含めない
 
@@ -61,11 +61,11 @@ qpdfの`--check`はPDFの完全な適合性や無害性を保証しません。c
 
 実装済みの初期値:
 
-- PDF 50 MiB、リクエスト総量はその上限 + multipart用64 KiB
-- 結合は最大10ファイル、入力合計50 MiB、リクエスト総量は入力合計上限 + 64 KiB。各入力にも既存の単一PDF上限を適用する
-- qpdfの検査と各PDF処理、または検査・ページ数取得・ページ操作の全体で30秒
-- 結合では全入力検証と最終結合を1つの30秒予算で制御し、qpdfをrequest内で並列起動しない
-- unlockはJSON作成・対象判定・認証・入力検査・解除・出力検証で1つの30秒予算を共有し、qpdfを逐次実行する
+- PDFは `MaxFileBytes`（既定50 MiB）、リクエスト総量はその上限 + multipart用64 KiB
+- 結合は既定10ファイル（`Pdf__MaxMergeFiles` は最大100）、入力合計は既定50 MiB（`MaxMergeInputBytes`）、リクエスト総量は入力合計上限 + 64 KiB。各入力にも既存の単一PDF上限を適用する
+- qpdfの検査と各PDF処理、または検査・ページ数取得・ページ操作は `QpdfTimeoutSeconds`（既定30秒）の範囲
+- 結合では全入力検証と最終結合で1つの `QpdfTimeoutSeconds` 予算を共有し、qpdfをrequest内で並列起動しない
+- unlockはJSON作成・対象判定・認証・入力検査・解除・出力検証で1つの `QpdfTimeoutSeconds` 予算を共有し、qpdfを逐次実行する
 - 同時PDF処理数2、待ち行列0
 - Linuxではすべてのqpdf実行をenv → prlimit → qpdfのexec経路で起動し、SIGXFSZ無視、RLIMIT_CORE=0、RLIMIT_AS 544 MiB（570425344 bytes）を適用。shellは挟まない
 - 全OSのqpdfにJPEGMEM=600M（600,000,000 bytes）を既存RunnerのEnvironmentで渡す。非LinuxにはAS制限を適用しない
@@ -81,7 +81,7 @@ timeoutは504で返し、qpdfの検査と各PDF処理の段階でprocess treeの
 サイズ超過は413、形式不正は400です。内部情報を含まないProblem Detailsで返します。
 成功、途中入力の拒否、timeout、クライアントキャンセル、アプリ停止のすべてでjob directory全体を再帰削除します。アプリ停止のtokenはアップロード・PDF送信にも適用します。
 
-結合の出力PDFは入力合計より大きくなる可能性があります。入力合計50 MiB、同時2 requestはtmpfs 256 MiBへ収めやすくする初期値であり、出力サイズを保証しません。tmpfs / memory limitを実行環境側の安全境界として維持します。`--empty --pages`による結合は文書レベルmetadata / outlineの保持・統合を保証しません。
+結合の出力PDFは入力合計より大きくなる可能性があります。入力合計50 MiB、同時2 requestはtmpfs 256 MiBへ収めやすくする既定値であり、出力サイズを保証しません。`MaxMergeFiles` と `MaxMergeInputBytes` を増やす場合は、出力サイズ・30秒のqpdf期限・tmpfsを合わせて見直してください。tmpfs / memory limitを実行環境側の安全境界として維持します。`--empty --pages`による結合は文書レベルmetadata / outlineの保持・統合を保証しません。
 
 qpdf自身も`--check`でJPEG streamをプロセス内でデコードします。JPEGMEMはlibjpegの内部メモリ管理へ作用しますが、baseline JPEGの全メモリやqpdf自身のデコード済みbufferを制限できません。Flate画像にもJPEGMEMだけでは十分ではありません。標準JPEGMEMは標準AS全体のbytes値より大きくし、ASで処理できる範囲を先に狭めない値にしています。標準ASでは巨大progressiveの拒否に大きな差はありませんでしたが、ASを768 MiBへ増やした比較ではJPEGMEM 600Mにより拒否までの時間とRSSを減らせました。ASを増やすときは、JPEGMEMによる受付範囲の変化も測定してください。AS、同時実行数、tmpfs、コンテナmemory 1.5 GiB（swapなし）を合わせて管理します。制限は設定値で、実行時の空きメモリに応じた自動調整はしません。
 
@@ -164,7 +164,7 @@ Unicode空白と制御・書式・私用領域・置換文字を抽出時に除�
 
 ## PDFから画像（Linux）
 
-to-imagesはqpdfの上限付きメタデータから表示寸法を決め、個々のページを描画する前にページ数と画素数、redactと同じ画像XObject・SMask/Maskの上限を検査します。画像の検査は元PDFのページresourcesを対象にするため、描画に使われない画像でも上限を超えれば422になります。PDFiumを別プロセスで実行し、黒塗り・OCR・文字比較と描画枠を共有します。PNGは1行ずつ圧縮し、JPEG・PNGともに1ページ分の画像をZIPへ格納すると削除します。作成中ZIPとページ画像が重なる分も `Pdf__RedactJobLimitBytes` の見積りに含めます。アップロードにも同じ上限を適用し、完成したZIPを送信します。
+to-imagesはqpdfの上限付きメタデータから表示寸法を決め、個々のページを描画する前にページ数と画素数、redactと同じ画像XObject・SMask/Maskの上限を検査します。画像の検査は元PDFのページresourcesを対象にするため、描画に使われない画像でも上限を超えれば422になります。ページ数は `Pdf__MaxToImagesPages`（既定50、最大1,000）、ZIPは `Pdf__MaxToImagesZipBytes`（既定64 MiB、最大120 MiB）で変更できます。ZIPとページ画像の同時存在を4 KiB単位の台帳で検査し、`Pdf__RedactJobLimitBytes`（既定124 MiB、最大124 MiB）も適用するため、ZIP設定だけを大きくしてもジョブ容量を超える書き込みはできません。PDFiumを別プロセスで実行し、黒塗り・OCR・文字比較と描画枠を共有します。PNGは1行ずつ圧縮し、JPEG・PNGともに1ページ分の画像をZIPへ格納すると削除します。アップロードにも同じjob上限を適用し、完成したZIPを送信します。
 
 ## 焼き込み・A4割付・OCR
 
@@ -172,13 +172,13 @@ to-imagesはqpdfの上限付きメタデータから表示寸法を決め、個�
 
 A4割付・サイズ統一はqpdfで元ページの描画内容をForm XObjectとして取り込み、表示上の回転・CropBoxに基づく変換行列で新しいページに配置します。取り込みの前に、リンクとポップアップ以外の注釈の正常外観をqpdfで元ページへ焼き込み、フォームを除去します。qpdfの重ね合わせは元ページの注釈を複製するため、取り込み後に注釈が残る場合は422にします。外観の再生成を要求するフォームとXFAも422です。利用者のPDFをpdfcpuへ渡しません。新しい文書のカタログは用紙だけを持ちます。元のカタログがレイヤー表示状態を管理するPDFは422です。
 
-OCRは描画前に対象ページ数（標準10ページ、高精度5ページ）と各1,600万画素の上限、画像XObjectの複雑度を確認します。PDFiumに渡す入力はqpdfで検査し、Tesseractに渡す入力はジョブ内で生成したPNGです。Tesseractは別プロセスで `CORE=0`、`RLIMIT_AS` 384 MiB、ジョブ残容量に応じた `RLIMIT_FSIZE`、`OMP_THREAD_LIMIT=1` を適用します。標準の言語モデルと向き判定用の `osd` はUbuntuのaptパッケージから導入します。高精度の日本語モデルはtessdata_bestのコミットとSHA-256を固定します。Tesseractはどちらの方式でも1ページにつき1回の認識で文字PDFとTSV（語の位置）を出力します。実行前に、ジョブの残り容量を4 KiB単位で二等分した範囲で、両方に同じ上限（超過検出用の1バイトを含む）を予約し、`RLIMIT_FSIZE` もその上限にします。TSVは見出し行を照合し、1ページ20,000語・1語256文字・画像内の座標に制限して読み、読み終えたら削除します。1ページのOCRが終了するたびにPNGを削除します。文字PDFをqpdfで結合し、TSVから作った本文で各ページの本文ストリームを差し替えてから検査し、対象ページに重ね、出力PDFを再検査します。差し替えのJSONは `Pdf__OverlayGeneratedJsonLimitBytes` までです。文字・TSVの行・プロセス出力・入力ファイル名はログにも例外にも出しません。
+OCRは描画前に対象ページ数（標準は既定10、高精度は既定5。各 `Pdf__MaxOcrPages` / `Pdf__MaxOcrHighPages` により最大100ページ）と各1,600万画素の上限、画像XObjectの複雑度を確認します。処理時間の既定値は標準90秒、高精度180秒で、それぞれ `Pdf__OcrTimeoutSeconds` / `Pdf__OcrHighTimeoutSeconds` から変更できます。PDFiumに渡す入力はqpdfで検査し、Tesseractに渡す入力はジョブ内で生成したPNGです。Tesseractは別プロセスで `CORE=0`、`RLIMIT_AS` 384 MiB、ジョブ残容量に応じた `RLIMIT_FSIZE`、`OMP_THREAD_LIMIT=1` を適用します。標準の言語モデルと向き判定用の `osd` はUbuntuのaptパッケージから導入します。高精度の日本語モデルはtessdata_bestのコミットとSHA-256を固定します。Tesseractはどちらの方式でも1ページにつき1回の認識で文字PDFとTSV（語の位置）を出力します。実行前に、ジョブの残り容量を4 KiB単位で二等分した範囲で、両方に同じ上限（超過検出用の1バイトを含む）を予約し、`RLIMIT_FSIZE` もその上限にします。TSVは見出し行を照合し、1ページ20,000語・1語256文字・画像内の座標に制限して読み、読み終えたら削除します。1ページのOCRが終了するたびにPNGを削除します。文字PDFをqpdfで結合し、TSVから作った本文で各ページの本文ストリームを差し替えてから検査し、対象ページに重ね、出力PDFを再検査します。差し替えのJSONは `Pdf__OverlayGeneratedJsonLimitBytes` までです。文字・TSVの行・プロセス出力・入力ファイル名はログにも例外にも出しません。
 
 OCRは共有描画枠をアップロード前に待ちなしで確保し、応答・一時ファイル削除まで確保します。処理期限と接続中断では共通Runnerが子プロセスを終了・回収し、リクエストのジョブを削除します。これら4 APIの入出力と中間物には、上限付きqpdfプロセス、4 KiB単位の容量制限、ジョブ専用の0700ディレクトリを使います。容量制限は焼き込み・A4割付・サイズ統一が `Pdf__OverlayJobLimitBytes`（既定124 MiB）、OCRがPDFiumを使う黒塗り・PDF→画像と同じ `Pdf__RedactJobLimitBytes`（既定124 MiB）で、OCRのアップロードも単一PDF上限とこの容量の小さい方までです。
 
 ## 画像からPDFの生成（Linux）
 
-from-imagesは拡張子・MIME・元ファイル名を参照せず、内容がJPEGまたは静止PNGの画像を1〜30枚、合計50 MiBまで受け付けます。既存のstreaming multipart、共通実行枠、アップロード後30秒のdeadline、Runnerのkill tree・wait・drainとjob削除を使用します。未知field、quality、画像数、単一file・入力合計・request全量（epilogueを含む）の制限を検査します。
+from-imagesは拡張子・MIME・元ファイル名を参照せず、内容がJPEGまたは静止PNGの画像を既定1〜30枚（最大100枚）、入力合計は既定50 MiB（最大100 MiB）まで受け付けます。既定のstreaming multipart、共通実行枠、アップロード後30秒のdeadline、Runnerのkill tree・wait・drainとjob削除を使用します。jobは既定・最大124 MiBで、未知field、quality、画像数、単一file・入力合計・request全量（epilogueを含む）の制限を検査します。
 
 JPEGは8 bit・1/3成分に限り、全体を上限付きで走査するJpegHeaderとstrict decoderを組み合わせます。最初のSOSまでの最初のExif APP1だけから、境界と型を検査したIFD0 Orientationを読みます。不正な値・重複は1にし、GPS等へ再帰しません。jpegtranはcopy none・strict・optimize・maxscans 100を固定し、必要な回転/反転/trimだけをAPIが選びます。生成JPEGは全scanを再検査してAPP/COM/末尾データの残存を拒否し、固定長JFIF densityを書き直します。
 
@@ -196,7 +196,7 @@ seek可能なwrite wrapperは、ZIPの最終長が採用PDF合計＋1 MiB以内�
 
 splitとto-imagesは、ZipArchive/entry streamをusingで囲まず、コピー成功時だけentryを閉じ、全entry成功時だけarchiveを最終化します。作成・コピー・entry/archiveのDispose・一時ファイル削除・基底streamのcloseのいずれかで失敗したら、wrapperをAbortし、ZIPの最終化を再試行しません。Abort後のwrite/seek/length変更/flushを拒否します。所有する実FileStreamは必ず閉じます。主処理失敗後のclose障害だけを抑えて元の例外を維持し、成功時のclose障害は500へ伝播します。完成してcloseしたZIPだけを既存helperから送信し、部分ZIPはjob全体とともに削除します。request中断・アプリ停止・全処理timeoutは既存Runnerのprocess tree終了待ちを維持します。
 
-to-imagesも同じseek可能なwrite wrapperを使い、splitと同様にStoredエントリをデータ記述子なしで出力します。書込み時にZIPの64 MiB上限を適用します。最大50ページに制限し、ZIP用に16 KiBの余裕を確保します。画像ファイルとZIP内のコピーの同時存在を見込んで残りのjob予算の半分をページの描画に使います。
+to-imagesも同じseek可能なwrite wrapperを使い、splitと同様にStoredエントリをデータ記述子なしで出力します。書込み時に設定されたZIP上限（既定64 MiB、最大120 MiB）を適用します。既定50ページ、最大1,000ページに制限し、ZIP用に16 KiBの余裕を確保します。画像ファイルとZIP内のコピーの同時存在を見込んで残りのjob予算の半分をページの描画に使います。ページ数・ZIP上限を上げても、既定の30秒期限とRedactJobLimitBytes（最大124 MiB）は自動では増えません。
 
 標準容量の前提は4 KiB pageのx86_64 Linux Docker、同時2、tmpfs 256 MiBです。非Linuxにはqpdfの書込み中のFSIZE/AS hard limitがなく、他page sizeも同じピーク容量を保証しません。容量・時間の実測は通常のsmokeと分離した`scripts/split-validation.py`で行い、[測定記録](split-validation.md)に残します。
 
@@ -226,9 +226,9 @@ pdfcpuはshellを介さず既存RunnerのArgumentListから、envのSIGXFSZ無�
 
 文字系modelの既定値は1要素128 UTF-16単位、1ページ4要素、合計4,000要素、対象1,000ページまでです。差し込みだけ呼び出し元で1要素200 UTF-16単位・1ページ100要素へ変更します。既存APIの値は維持します。各要素のLF/tabは各3個まで、他の制御文字・不正UTF-16は生成前に拒否します。`%`の連続n個をn+1個へ書き換え、元の文字数で上限を検査し、書き換え後のJSON全体にbytes予算を適用します。既存APIは入力時に`%`を拒否するか固定のページ番号を生成します。font size 1〜14,400 pt、有限の座標/offset ±14,400 pt、文字回転 ±360度、色は#RRGGBB、配置は許可した9 anchorまたは座標に限定します。ページ寸法はAPIのcanvasから渡し、JSONのcropで描画計算へ反映します。利用者のBox文字列は透過させません。
 
-入力PDF 50 MiB、入力metadata 32 MiB/50,000 object、合成後/最終metadata 40 MiB/75,000 object、JSON深さ64、参照/Parent連鎖32を上限とします。循環・深さ・各容量の超過はoverlay専用422 too-complex、対応範囲外のBox/Rotate/UserUnit/物理寸法はunsupported-pdfです。壊れたtool JSON、無効な生成PDF、出力不在・空・exit 3を含む非0終了は固定500です。126/127を容量超過として扱いません。pdfcpuが部分出力を削除したexit 1も、stderrだけで容量超過と推測しません。
+入力PDFは既定50 MiBの `Pdf__MaxFileBytes` を使います。入力metadata 32 MiB/50,000 object、合成後/最終metadata 40 MiB/75,000 object、JSON深さ64、参照/Parent連鎖32を上限とします。循環・深さ・各容量の超過はoverlay専用422 too-complex、対応範囲外のBox/Rotate/UserUnit/物理寸法はunsupported-pdfです。壊れたtool JSON、無効な生成PDF、出力不在・空・exit 3を含む非0終了は固定500です。126/127を容量超過として扱いません。pdfcpuが部分出力を削除したexit 1も、stderrだけで容量超過と推測しません。
 
-OverlayCapacityは全fileを4 KiBへ切り上げて書込み前に予約し、外部writerのFSIZE budget+1のsentinelも数えます。生成JSON/白紙/レイヤーは各8 MiB、overlaid/最終PDFは各62 MiB、jobは124 MiBが確定値です。各fileにはjob残容量から求めた実効予算も適用し、実サイズへ予約を縮め、削除後に解放します。入力DOMをdisposeし中間物を削除して次のprocessへ進み、同じ呼出し元tokenで共有30秒・同時2件/queue 0を維持します。clean固有の設定/例外は流用しません。
+OverlayCapacityは全fileを4 KiBへ切り上げて書込み前に予約し、外部writerのFSIZE budget+1のsentinelも数えます。生成JSON/白紙/レイヤーは各8 MiB（固定）、overlaid/最終PDFの設定上限は既定62 MiB・最大512 MiB、job上限は既定124 MiB・最大512 MiBです。jobとの整合性検証と、各fileへの残容量から求める実効予算は維持します。実サイズへ予約を縮め、削除後に解放します。入力DOMをdisposeし中間物を削除して次のprocessへ進み、同じ呼出し元tokenで共有30秒・同時2件/queue 0を維持します。clean固有の設定/例外は流用しません。
 
 MediaBox/CropBox/Rotateは継承、UserUnit/TrimBoxは非継承で解決します。実効CropBoxはMediaBoxとの交差、Rotateは90の倍数、UserUnitは0より大きく75,000以下、表示上の物理各辺は0より大きく14,400 pt以下です。対象ページのBoxを揃えてRotateを正規化した更新とoverlayを同じqpdfで行います。合成後の辞書とParentを再取得し、現在のContents/Resources等を保持してBoxと元の整数Rotateを復元します。入力参照番号はコピーしません。最終PDFの非暗号化、check exit 0、ページ数、属性、UserUnit/BleedBox/ArtBoxを検査します。
 
@@ -252,7 +252,7 @@ uploadとepilogueの完了後、外部toolの前にstrict UTF-8/BOM拒否・深�
 
 ## 電子印鑑（PNG画像の押印、Linux）
 
-`stamp-image`はPDFとPNGを各1個、ストリーミングで読みます。PDF 50 MiB・画像1 MiBのpart上限に加え、request全体の50 MiB + 1 MiB + 64 KiBをContent-Lengthと読み取りbytesの両方で制限します。他endpointのrequest上限は広げません。画像はAPI生成の0600ファイルへ置き、利用者のfilename・Content-Type・pathは処理やログに使いません。
+`stamp-image`はPDFとPNGを各1個、ストリーミングで読みます。PDFは `MaxFileBytes`（既定50 MiB）、画像は1 MiBのpart上限に加え、request全体のPDF上限 + 1 MiB + 64 KiBをContent-Lengthと読み取りbytesの両方で制限します。他endpointの既定request上限は変わりません。画像はAPI生成の0600ファイルへ置き、利用者のfilename・Content-Type・pathは処理やログに使いません。
 
 既存PngSanitizerのsignature・全chunk CRC・順序・IHDR・depth/color type・PLTE/tRNS・APNG検査とmetadata除去を使い、縦横各2000 px以下を追加で確認します。IDATはencoded 1 MiB以下だけを保持し、ZLibStreamで1行ずつ展開してAdam7を含むデータの過不足・filter・zlib header・Adler-32を検査します。展開画素全体を保持しません。圧縮bytesだけで展開メモリを推定せず、既存のPNG working bytes見積りも適用します。from-imagesの入力契約は変更しません。
 

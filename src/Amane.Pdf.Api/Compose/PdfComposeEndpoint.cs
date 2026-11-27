@@ -25,7 +25,7 @@ internal static class PdfComposeEndpoint
                     context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("PdfCompose")
                         .LogInformation("PDF合成の台帳ピーク {Bytes} bytes", capacity.Peak);
                 }
-            }, maxRequestBytes: ComposeUpload.RequestLimit(settings), processingTimeoutSeconds: 30);
+            }, maxRequestBytes: ComposeUpload.RequestLimit(settings), processingTimeoutSeconds: settings.QpdfTimeoutSeconds);
     }
 
     internal static IResult Capabilities(IOptions<PdfOptions> options) =>

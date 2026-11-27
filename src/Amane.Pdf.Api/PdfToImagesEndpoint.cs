@@ -6,9 +6,13 @@ namespace Amane.Pdf.Api;
 
 internal static class PdfToImagesEndpoint
 {
-    private const int MaxPages = 50;
-    private const long MaxOutput = 64L * 1024 * 1024;
+    internal const int MaxConfiguredPages = 1000;
+    internal const long MaxConfiguredZipBytes = 120L * 1024 * 1024;
     private const int ZipHeadroom = 16 * 1024;
+
+    internal static bool IsValid(PdfOptions options) =>
+        options.MaxToImagesPages is >= 1 and <= MaxConfiguredPages &&
+        options.MaxToImagesZipBytes is > 0 && options.MaxToImagesZipBytes <= MaxConfiguredZipBytes;
 
     internal static async Task HandleAsync(HttpContext context, QpdfProcessor qpdf, PdfRenderer renderer,
         RenderSlot slot, IOptions<PdfOptions> options)
@@ -61,7 +65,7 @@ internal static class PdfToImagesEndpoint
                 metadata, metadataLimit, token);
             using var boxes = new PdfPageBoxes(await File.ReadAllBytesAsync(metadata, token), metadataLimit, PdfPageBoxes.InputObjectLimit, token);
             var ranges = selection?.GetRanges(boxes.Pages.Count) ?? [(1, boxes.Pages.Count)];
-            if (ranges.Sum(range => (long)range.End - range.Start + 1) > MaxPages)
+            if (ranges.Sum(range => (long)range.End - range.Start + 1) > options.MaxToImagesPages)
                 throw new PdfRenderException(PdfRenderReason.TooManyPages);
             // Apply redact's measured PDFium image limits before rendering any page.
             var document = new RedactDocument(boxes, token);
@@ -77,7 +81,7 @@ internal static class PdfToImagesEndpoint
 
         Stream? output = TemporaryPdfFiles.CreatePrivateFile(files.OutputPath);
         Stream? source = null;
-        var bounded = new PdfZipWriteStream(output, CheckZipLength, OutputTooLarge, token);
+        var bounded = new PdfZipWriteStream(output, length => CheckZipLength(length, options.MaxToImagesZipBytes), OutputTooLarge, token);
         try
         {
             var zip = new ZipArchive(bounded, ZipArchiveMode.Create, leaveOpen: true);
@@ -87,7 +91,7 @@ internal static class PdfToImagesEndpoint
             {
                 token.ThrowIfCancellationRequested();
                 // The rendered page temporarily exists both on disk and within the ZIP.
-                var budget = Math.Min(MaxOutput - bounded.Length - ZipHeadroom,
+                var budget = Math.Min(options.MaxToImagesZipBytes - bounded.Length - ZipHeadroom,
                     (jobLimit - inputBytes - CleanCapacity.Allocated(bounded.Length) - ZipHeadroom) / 2);
                 if (budget <= 0) throw OutputTooLarge();
                 var page = plan.Attributes;
@@ -124,9 +128,9 @@ internal static class PdfToImagesEndpoint
         }
     }
 
-    private static void CheckZipLength(long length)
+    private static void CheckZipLength(long length, long maxOutput)
     {
-        if (length > MaxOutput) throw OutputTooLarge();
+        if (length > maxOutput) throw OutputTooLarge();
     }
 
     private static PdfRenderException OutputTooLarge() => new(PdfRenderReason.OutputTooLarge);

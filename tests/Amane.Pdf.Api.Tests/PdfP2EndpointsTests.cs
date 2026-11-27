@@ -277,6 +277,23 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    public async Task CompareKeepsApiWorkerOutputWithinEightMiBForLargeUnicodeDifference()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new() { ["Pdf:TextExtractorPath"] = ExtractorPath() });
+        using var form = CompareForm(WinAnsiTextPdf(new string('\u00e9', 500_000)),
+            WinAnsiTextPdf(new string('\u00f1', 500_000)));
+        using var response = await test.Client.PostAsync("/api/pdf/compare", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.IsGreaterThan(2 * 1024 * 1024, bytes.Length);
+        Assert.IsLessThan(8 * 1024 * 1024, bytes.Length);
+        using var json = JsonDocument.Parse(bytes);
+        Assert.IsFalse(json.RootElement.GetProperty("truncated").GetBoolean());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     [DataRow(0, 5, false)]
     [DataRow(5, 5, false)]
     [DataRow(10, 10, false)]
@@ -654,6 +671,44 @@ public sealed class PdfP2EndpointsTests
     }
 
     [TestMethod]
+    public void ToImagesSettingsValidateBoundsAndKeepDefaultValues()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        var defaults = new PdfOptions();
+        Assert.AreEqual(50, defaults.MaxToImagesPages);
+        Assert.AreEqual(64L * 1024 * 1024, defaults.MaxToImagesZipBytes);
+        Assert.IsTrue(PdfToImagesEndpoint.IsValid(defaults));
+        Assert.IsTrue(PdfToImagesEndpoint.IsValid(new()
+        {
+            MaxToImagesPages = PdfToImagesEndpoint.MaxConfiguredPages,
+            MaxToImagesZipBytes = PdfToImagesEndpoint.MaxConfiguredZipBytes
+        }));
+        Assert.IsFalse(PdfToImagesEndpoint.IsValid(new() { MaxToImagesPages = 0 }));
+        Assert.IsFalse(PdfToImagesEndpoint.IsValid(new()
+        { MaxToImagesPages = PdfToImagesEndpoint.MaxConfiguredPages + 1 }));
+        Assert.IsFalse(PdfToImagesEndpoint.IsValid(new() { MaxToImagesZipBytes = 0 }));
+        Assert.IsFalse(PdfToImagesEndpoint.IsValid(new()
+        { MaxToImagesZipBytes = PdfToImagesEndpoint.MaxConfiguredZipBytes + 1 }));
+    }
+
+    [TestMethod]
+    public async Task ToImagesAcceptsExpandedLimits()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:MaxToImagesPages"] = PdfToImagesEndpoint.MaxConfiguredPages.ToString(),
+            ["Pdf:MaxToImagesZipBytes"] = PdfToImagesEndpoint.MaxConfiguredZipBytes.ToString()
+        });
+        using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var response = await test.Client.PostAsync("/api/pdf/to-images?format=jpeg&dpi=72", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        using var zip = new ZipArchive(new MemoryStream(await response.Content.ReadAsByteArrayAsync()), ZipArchiveMode.Read);
+        Assert.HasCount(1, zip.Entries);
+        test.AssertClean();
+    }
+
+    [TestMethod]
     public async Task ToImagesRejectsPageAndImageLimitsAndSharesRenderSlotWithCompare()
     {
         if (!OperatingSystem.IsLinux()) return;
@@ -804,6 +859,15 @@ public sealed class PdfP2EndpointsTests
     }
 
     private static byte[] TextPdf(string text) => ContentPdf($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET");
+
+    private static byte[] WinAnsiTextPdf(string text) => CompressFixtures.Objects(
+    [
+        "<< /Type /Catalog /Pages 2 0 R >>"u8.ToArray(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>"u8.ToArray(),
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"u8.ToArray(),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"u8.ToArray(),
+        CompressFixtures.Stream("", Encoding.Latin1.GetBytes($"BT /F1 12 Tf 20 100 Td ({text}) Tj ET"))
+    ]);
 
     private static string[][] ContractPages(string title, int pages) => Enumerable.Range(1, pages).Select(page =>
         Enumerable.Range(1, 25).Select(line =>

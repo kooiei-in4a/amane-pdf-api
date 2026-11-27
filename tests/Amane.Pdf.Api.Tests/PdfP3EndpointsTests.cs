@@ -714,9 +714,15 @@ public sealed class PdfP3EndpointsTests
         Assert.AreEqual(5, options.MaxOcrHighPages);
         Assert.AreEqual(180, options.OcrHighTimeoutSeconds);
         Assert.IsTrue(PdfOcrEndpoint.IsValid(options));
+        options.MaxOcrPages = PdfOcrEndpoint.MaxConfiguredPages;
+        options.MaxOcrHighPages = PdfOcrEndpoint.MaxConfiguredPages;
+        Assert.IsTrue(PdfOcrEndpoint.IsValid(options));
+        options.MaxOcrPages = PdfOcrEndpoint.MaxConfiguredPages + 1;
+        Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
+        options.MaxOcrPages = PdfOcrEndpoint.MaxConfiguredPages;
         options.MaxOcrHighPages = 0;
         Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
-        options.MaxOcrHighPages = 6;
+        options.MaxOcrHighPages = PdfOcrEndpoint.MaxConfiguredPages + 1;
         Assert.IsFalse(PdfOcrEndpoint.IsValid(options));
         options.MaxOcrHighPages = 1;
         options.OcrHighTimeoutSeconds = 0;

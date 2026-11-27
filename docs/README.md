@@ -7,6 +7,7 @@
 | 文書 | 内容 |
 | --- | --- |
 | [roadmap.md](roadmap.md) | PDF機能の方針と判断の経緯。優先度表は2026-10-07時点の計画記録で、現在の未完了項目を表しません。 |
+| [limits.md](limits.md) | APIの処理制限、設定可能範囲、固定した保護上限、配備時の責任分界、amane-tools-siteとの互換性。 |
 | [pdfcpu-design.md](pdfcpu-design.md) | pdfcpu導入と共通描画・合成基盤の設計記録。 |
 | [fill-template-design.md](fill-template-design.md) | PDFテンプレート差し込みの確定基本設計（2026-10-19 Human承認）。 |
 | [stamp-image-design.md](stamp-image-design.md) | 透過PNG押印APIの設計と採用判断。現行の検証結果は対応するvalidation記録を参照してください。 |

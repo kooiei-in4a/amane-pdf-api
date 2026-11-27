@@ -358,7 +358,7 @@ pdfcpu = "pos:bl, off:{left} {bottom}, scale:{scale} abs, rot:0"
 | `MaxStampRequestBytes`（計算値） | 53,542,912（50 MiB + 1 MiB + 64 KiB） | 計算前に `MaxFileBytes ≤ long.MaxValue − 64 KiB − MaxStampImageBytes` を確認し、overflowを例外にせず設定エラーとする。プロパティ自体は `checked` |
 | 画像の各辺 | 2000 px（定数 `StampImageInput.MaxSide`） | 設定にしない |
 | レイヤー上限 | `OverlayGeneratedLimitBytes`（8 MiB、既存） | 既存の `OverlayCapacity.IsValid` |
-| job上限 | `OverlayJobLimitBytes`（124 MiB、既存） | `≥ Allocated(MaxFileBytes) + 2 × Allocated(MaxStampImageBytes)`（Builder開始前の upload＋sanitize 済みファイルの合計） |
+| job上限 | `OverlayJobLimitBytes`（既定124 MiB、Issue #146後の設定上限512 MiB） | `≥ Allocated(MaxFileBytes) + 2 × Allocated(MaxStampImageBytes)`（Builder開始前の upload＋sanitize 済みファイルの合計） |
 | 処理時間・同時実行 | 30秒・2枠・待ち0（既存） | 既存 |
 
 他APIの request 上限（`MaxRequestBytes`、merge、from-images）は変更しない。stamp だけが `ExecuteAsync(maxRequestBytes: MaxStampRequestBytes)` と `ReadFileAndImageAsync` の `SizeLimitedReadStream(MaxStampRequestBytes)` の両方を使う。

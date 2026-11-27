@@ -188,7 +188,9 @@ qpdfのmanualはoverlayを後段で処理することを説明しており、[12
 
 ### PR Bで確定した値と変更
 
-初期案の入力・object・対象ページ・8 MiB生成物・124 MiB/job・30秒・同時2件は維持した。上限規模で生成後metadataが32 MiBを超え、overlaidが54 MiBを超えたため、生成後metadataを40 MiB、overlaid/最終PDFを62 MiBへ変更した。入力metadataは32 MiBのままである。設定値はこの実測範囲を超えて広げられず、入力は既存MaxFileBytesと50 MiBの小さい方を使う。より小さい予算ではtoo-complexで拒否する。
+初期案の入力・object・対象ページ・8 MiB生成物・124 MiB/job・30秒・同時2件は維持した。上限規模で生成後metadataが32 MiBを超え、overlaidが54 MiBを超えたため、生成後metadataを40 MiB、overlaid/最終PDFを62 MiBへ変更した。入力metadataは32 MiBのままである。PR B時点では実測範囲より広い容量設定を拒否し、入力は既存MaxFileBytesと50 MiBの小さい方を使っていた。より小さい予算ではtoo-complexで拒否する。
+
+この節はPR B時点の設計・測定記録である。Issue #146では既定値と8/32/40 MiBの生成物・metadata上限を維持しつつ、入力PDFは `MaxFileBytes`、出力PDFは既定62 MiB・最大512 MiB、jobは既定124 MiB・最大512 MiBまで設定可能にした。上限を上げても4 KiB容量台帳とqpdfのFSIZE制限を適用する。512 MiB処理の性能保証や実測値ではなく、配備者が一要求の一時領域を明示的に上限設定する範囲である。現在の設定範囲と安全な配備方法は[処理制限ガイド](limits.md)を参照。
 
 | 項目 | 確定値 |
 | --- | ---: |

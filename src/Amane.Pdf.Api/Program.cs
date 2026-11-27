@@ -5,14 +5,14 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOptions<PdfOptions>().BindConfiguration("Pdf")
     .Validate(options => options.MaxFileBytes > 0 && options.MaxFileBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes - FillTemplateFields.MaxBytes &&
-        options.MaxMergeFiles is >= 2 and <= 10 &&
+        PdfOptions.IsValidMergeFileCount(options.MaxMergeFiles) &&
         options.MaxMergeInputBytes > 0 && options.MaxMergeInputBytes < long.MaxValue - PdfOptions.MultipartOverheadBytes &&
         options.QpdfTimeoutSeconds > 0 && options.QpdfTimeoutSeconds <= int.MaxValue / 1000 &&
         options.MaxConcurrentProcesses > 0 && ProcessMemoryLimits.IsValid(options) && PdfSplitCapacity.IsValid(options) &&
         (!OperatingSystem.IsLinux() || (PdfCompressProcessor.IsValid(options) && CleanCapacity.IsValid(options) &&
             PdfcpuProcessor.IsValid(options) && OverlayCapacity.IsValid(options) && FromImagesCapacity.IsValid(options) &&
             StampImageInput.IsValid(options) && PdfRenderer.IsValid(options) && PdfRedactProcessor.IsValid(options) &&
-            PdfCompareEndpoint.IsValid(options) && PdfOcrEndpoint.IsValid(options))) &&
+            PdfCompareEndpoint.IsValid(options) && PdfOcrEndpoint.IsValid(options) && PdfToImagesEndpoint.IsValid(options))) &&
         !string.IsNullOrWhiteSpace(options.QpdfPath) && !string.IsNullOrWhiteSpace(options.TempRoot),
         "PDF設定値が不正です。")
     .ValidateOnStart();

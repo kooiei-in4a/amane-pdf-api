@@ -15,6 +15,17 @@ public sealed class PdfComposeTests
     private static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web);
 
     [TestMethod]
+    public void BackgroundInputUsesTheConfiguredSinglePdfLimit()
+    {
+        var defaults = new PdfOptions();
+        Assert.AreEqual(50L * 1024 * 1024, ComposeUpload.BackgroundLimit(defaults));
+        var expanded = new PdfOptions { MaxFileBytes = 200L * 1024 * 1024 };
+        Assert.AreEqual(expanded.MaxFileBytes, ComposeUpload.BackgroundLimit(expanded));
+        Assert.AreEqual(expanded.MaxFileBytes + ComposeLayout.TotalImageBytes + ComposeLayout.JsonBytes +
+            PdfOptions.MultipartOverheadBytes, ComposeUpload.RequestLimit(expanded));
+    }
+
+    [TestMethod]
     public void MatchesEveryLayoutVector()
     {
         using var fixture = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "layout-v1-vectors.json")));
@@ -59,6 +70,26 @@ public sealed class PdfComposeTests
             test.AssertClean();
         }
         Assert.IsFalse(test.Logs.Any(line => line.Contains(ImageId, StringComparison.Ordinal)));
+    }
+
+    [TestMethod]
+    public async Task ComposeUsesConfiguredQpdfProcessingTimeout()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var blocker = new BlockingQpdf("--json=2");
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:QpdfPath"] = blocker.Executable,
+            ["Pdf:QpdfTimeoutSeconds"] = "1"
+        });
+        var png = StampFixtures.Png();
+        using var form = Form(ImageLayout(png).ToJsonString());
+        form.Add(new ByteArrayContent(png), "image", ImageId);
+        using var response = await test.Client.PostAsync(Endpoint, form);
+        await blocker.WaitForJobsAsync(1);
+        Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
+        await blocker.AssertStoppedAsync();
+        test.AssertClean();
     }
 
     [TestMethod]
