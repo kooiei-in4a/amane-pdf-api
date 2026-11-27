@@ -30,7 +30,7 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
         foreach (var path in paths)
         {
             var (exitCode, json) = await RunWithBoundedStdoutAsync(
-                ["--json=2", "--json-key=qpdf", "--json-stream-data=none", "--decode-level=none", path],
+                ["--json-output=2", "--json-stream-data=none", "--decode-level=none", path],
                 SignatureMetadataLimitBytes, token);
             if (exitCode is 2 or 3) throw new PdfInputException();
             if (exitCode != 0) throw new InvalidOperationException("PDF inspection failed.");
