@@ -12,7 +12,7 @@ API 単体には認証や利用者ごとのレート制限がありません。�
 
 [Quick Start](#quick-start) · [Python / C# から呼び出す](#api-連携サンプル) · [詳細 API 仕様](#api) · [設計・検証記録](docs/README.md)
 
-## 現在の状態
+## 機能一覧
 
 | やりたいこと | API の詳細仕様 |
 | --- | --- |
@@ -22,9 +22,11 @@ API 単体には認証や利用者ごとのレート制限がありません。�
 | PDF と画像を変換する、PDF の容量を調整する | [画像から PDF](#画像からpdflinux)・[PDF から画像](#pdfから画像linux)・[構造の最適化](#pdf-lossless最適化)・[JPEG 画像の圧縮](#pdf画像圧縮linux) |
 | 文書を保護する、指定した情報を除く | [暗号化](#pdf暗号化)・[権限制限](#pdf権限制限)・[パスワード解除](#pdfパスワード解除)・[文書情報や添付の除去](#pdf情報除去linux)・[指定範囲の黒塗り](#pdf黒塗りlinux) |
 
+詳細仕様の見出しに「（Linux）」とある API は Linux でのみ動作します。各 API は実 qpdf を使う自動テスト、Docker build、実コンテナの E2E を GitHub Actions で確認しています。手順は [Docker / CI の検証](#docker--ciの検証)を参照してください。
+
 ## Quick Start
 
-Linux x86_64 ホストに Git、Docker Engine 28.0.0 以降、curl を用意します。Compose で試す場合は Docker Compose プラグインも用意します。コンテナは Ubuntu 26.04 系です。Docker ビルド時に .NET SDK や PDF 処理ツールを取得するため、ビルドにはネットワーク接続が必要です。Docker Engine のバージョン条件は[ポート公開仕様](https://docs.docker.com/engine/network/port-publishing/#publishing-ports)に基づきます。
+Linux x86_64 ホストに Git、Docker Engine 28.0.0 以降、curl を用意します。Compose で試す場合は Docker Compose プラグインも用意します。コンテナは Ubuntu 26.04 系です。Docker ビルド時に .NET SDK や PDF 処理ツールを取得するため、ビルドにはネットワーク接続が必要です。Docker Engine 28.0.0 より前では、`127.0.0.1` に限定して公開したポートへ同じネットワークの他のホストから届く場合があるため、28.0.0 以降を条件にしています（[ポート公開仕様](https://docs.docker.com/engine/network/port-publishing/#publishing-ports)）。
 
 ```bash
 git clone https://github.com/kooiei-in4a/amane-pdf-api.git

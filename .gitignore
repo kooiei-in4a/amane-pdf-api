@@ -13,3 +13,5 @@ __pycache__/
 .env.*
 !.env.example
 node_modules/
+.venv/
+/optimized*.pdf
