@@ -38,6 +38,23 @@ internal static class ExternalProcessRunner
         return new(process.ExitCode, capturedStdout is null ? null : await capturedStdout);
     }
 
+    internal static async Task<(int ExitCode, T Result)> ReadStdoutAsync<T>(ExternalProcessRequest request,
+        Func<Stream, CancellationToken, Task<T>> read, CancellationToken token)
+    {
+        using var process = Start(request, token);
+        var stdout = ReadAndDrainAsync(process.StandardOutput.BaseStream);
+        var stderr = process.StandardError.BaseStream.CopyToAsync(Stream.Null);
+        await WaitForExitAsync(process, stdout, stderr, token);
+        return (process.ExitCode, await stdout);
+
+        async Task<T> ReadAndDrainAsync(Stream stream)
+        {
+            try { return await read(stream, token); }
+            // Keep the child unblocked even after the reader finds a match or encounters bad output.
+            finally { await stream.CopyToAsync(Stream.Null); }
+        }
+    }
+
     private static Process Start(ExternalProcessRequest request, CancellationToken cancellationToken)
     {
         var startInfo = new ProcessStartInfo(request.ExecutablePath)

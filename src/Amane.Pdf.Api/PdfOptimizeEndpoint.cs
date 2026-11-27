@@ -15,7 +15,7 @@ public static class PdfOptimizeEndpoint
                 MultipartPdfUpload.ReadFileAsync(context.Request, files, options.Value, cancellationToken),
             async (files, cancellationToken) =>
             {
-                await processor.ValidateAsync(files, cancellationToken);
+                await processor.ValidateForRewriteAsync(files, cancellationToken);
                 await processor.OptimizeAsync(files, cancellationToken);
             });
     }

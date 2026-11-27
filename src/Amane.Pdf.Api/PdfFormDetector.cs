@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace Amane.Pdf.Api;
 
-internal static class PdfFormDetector
+internal static partial class PdfFormDetector
 {
     internal static void RejectForms(PdfPageBoxes metadata, CancellationToken token)
     {

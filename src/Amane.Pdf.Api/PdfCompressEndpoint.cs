@@ -37,7 +37,7 @@ public static class PdfCompressEndpoint
         {
             // ExecuteAsync starts the shared hard budget immediately before this delegate.
             var start = Stopwatch.GetTimestamp();
-            await processor.ValidateAsync(files, token);
+            await processor.ValidateForRewriteAsync(files, token);
             if (target is { } maxBytes)
                 (count, reached) = await PdfCompressProcessor.CompressTargetAsync(options.Value, files, maxBytes, start, token);
             else

@@ -36,7 +36,7 @@ public static class PdfPageSelectionEndpoints
             (files, cancellationToken) => MultipartPdfUpload.ReadFileAsync(context.Request, files, options, cancellationToken),
             async (files, cancellationToken) =>
             {
-                await processor.ValidateAsync(files, cancellationToken);
+                await processor.ValidateForRewriteAsync(files, cancellationToken);
                 var pageCount = await processor.GetPageCountAsync(files, cancellationToken);
                 var pageRange = createPageRange(selection!, pageCount);
                 await processor.SelectPagesAsync(files, pageRange, cancellationToken);

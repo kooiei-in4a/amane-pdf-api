@@ -102,6 +102,8 @@ public sealed class PdfMergeResourceTests
     [TestMethod]
     [DataRow("--is-encrypted")]
     [DataRow("--check")]
+    [DataRow("--show-xref")]
+    [DataRow("--json-output=2")]
     [DataRow("--empty")]
     public async Task Timeout_KillsProcessTree_CleansEveryInput_AndReleasesPermit(string stage)
     {
@@ -113,10 +115,13 @@ public sealed class PdfMergeResourceTests
             ["Pdf:QpdfTimeoutSeconds"] = "1",
             ["Pdf:MaxConcurrentProcesses"] = "1"
         });
-        using var form = PdfTestContext.MergeForm(PdfTestContext.Fixture, PdfTestContext.Fixture);
+        var fixture = stage == "--json-output=2"
+            ? await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Fixtures", "signed.pdf"))
+            : PdfTestContext.Fixture;
+        using var form = PdfTestContext.MergeForm(fixture, fixture);
         await PdfMergeTests.AssertProblemAsync(test, form, HttpStatusCode.GatewayTimeout);
         await blocker.AssertStoppedAsync();
-        using var next = PdfTestContext.FileForm(PdfTestContext.Fixture);
+        using var next = PdfTestContext.FileForm(fixture);
         using var response = await test.Client.PostAsync("/api/pdf/optimize", next);
         Assert.AreEqual(stage == "--empty" ? HttpStatusCode.OK : HttpStatusCode.GatewayTimeout, response.StatusCode);
         await blocker.AssertStoppedAsync();
@@ -155,7 +160,10 @@ public sealed class PdfMergeResourceTests
         await blocker.WaitForJobsAsync(3);
         using var response = await job.WaitAsync(TimeSpan.FromSeconds(2.5));
         Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
-        CollectionAssert.AreEqual(new[] { "--is-encrypted", "--check", "--is-encrypted", "--check", "--empty" }, blocker.Calls);
+        CollectionAssert.AreEqual(new[]
+        {
+            "--is-encrypted", "--check", "--is-encrypted", "--check", "--show-xref", "--show-xref", "--empty"
+        }, blocker.Calls);
         await blocker.AssertStoppedAsync();
         test.AssertClean();
     }

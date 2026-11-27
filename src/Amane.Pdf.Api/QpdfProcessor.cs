@@ -16,6 +16,46 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
     internal Task ValidateOutputAsync(string path, CancellationToken cancellationToken)
         => ValidateCoreAsync(path, cancellationToken, PdfStage.OutputValidation);
 
+    internal Task ValidateForRewriteAsync(TemporaryPdfFiles files, CancellationToken token)
+        => ValidateForRewriteAsync([files.InputPath], token);
+
+    internal async Task ValidateForRewriteAsync(IReadOnlyList<string> paths, CancellationToken token)
+    {
+        // Preserve the generic input rejection for encrypted or invalid PDFs, including merge inputs.
+        foreach (var path in paths)
+            await ValidateAsync(path, token);
+
+        foreach (var path in paths)
+        {
+            if (!await PdfFormDetector.MayHaveSignatureNameAsync(path, token))
+            {
+                var (xrefExit, onlyUncompressed) = await ExternalProcessRunner.ReadStdoutAsync(
+                    CreateRequest(["--show-xref", path]), PdfFormDetector.HasOnlyUncompressedObjectsAsync, token);
+                if (xrefExit == 0 && onlyUncompressed) continue;
+            }
+
+            var (exitCode, signed) = await InspectSignatureJsonAsync(path, token);
+            if (exitCode is 2 or 3) throw new PdfInputException();
+            if (exitCode != 0 || signed is null) throw new InvalidOperationException("PDF inspection failed.");
+            if (signed.Value) throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
+        }
+    }
+
+    private async Task<(int ExitCode, bool? Signed)> InspectSignatureJsonAsync(string path, CancellationToken token)
+    {
+        string[] arguments = ["--json-output=2", "--json-stream-data=none", "--decode-level=none", path];
+        if (OperatingSystem.IsLinux())
+        {
+            // An explicit output path makes qpdf buffer writes to the same redirected pipe.
+            // Some hosts restrict reopening /dev/stdout. Retry with implicit stdout there.
+            var buffered = await ExternalProcessRunner.ReadStdoutAsync(CreateRequest([.. arguments, "/dev/stdout"]),
+                PdfFormDetector.ContainsAppliedSignatureAsync, token);
+            if (buffered.ExitCode == 0) return buffered;
+        }
+        return await ExternalProcessRunner.ReadStdoutAsync(CreateRequest(arguments),
+            PdfFormDetector.ContainsAppliedSignatureAsync, token);
+    }
+
     private async Task ValidateCoreAsync(string path, CancellationToken cancellationToken, PdfStage kind)
     {
         using var stage = PdfProcessingDiagnostics.Measure(kind);
