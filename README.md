@@ -454,7 +454,7 @@ file  PDFファイル一つ
 
 `format` は `png` または `jpeg`、`dpi` は72〜200の整数です。`pages` は既存のページ選択形式で、省略時は全ページです。CropBox、回転、UserUnitを反映した寸法で白背景に描画します。
 
-1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。既定は50ページ、ZIP 64 MiBで、それぞれ `Pdf__MaxToImagesPages`（最大1,000ページ）と `Pdf__MaxToImagesZipBytes`（最大120 MiB）で調整できます。1ページ1,600万画素の上限は固定です。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB、設定上限124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。画像とZIPの重複を含む容量台帳も維持するため、ZIP設定を増やしてもジョブ容量に収まらない要求は422 `output-too-large` になります。ほかに422 `too-many-pages`、`page-too-large` があります。黒塗り・OCR・文字比較と描画枠を共有し、使用中は503です。
+1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。既定は50ページ、ZIP 64 MiBで、それぞれ `Pdf__MaxToImagesPages`（最大1,000ページ）と `Pdf__MaxToImagesZipBytes`（最大120 MiB）で調整できます。1ページ1,600万画素の上限は固定です。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB、設定上限124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。画像とZIPの重複を含む容量台帳も維持するため、ZIP設定を増やしてもジョブ容量に収まらない要求は422 `output-too-large` になります。ほかに422 `too-many-pages`、`page-too-large` があります。処理全体には共有の `Pdf__QpdfTimeoutSeconds`（既定30秒）を適用するため、1,000ページの上限がその期限内の完了を保証するわけではありません。timeoutを延ばすと黒塗り・OCR・文字比較と共有する描画枠を長く占有し、その間の要求は503になる場合があります。
 
 ### PDFページ番号（Linux）
 

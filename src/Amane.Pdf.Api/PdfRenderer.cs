@@ -94,7 +94,7 @@ internal sealed class PdfRenderer(IOptions<PdfOptions> options)
         var result = await ExternalProcessRunner.RunAsync(CreateRequest(Path.GetFullPath(files.DirectoryPath),
             ["inspect-text", "--input", Path.GetFullPath(files.InputPath), "--pages",
                 string.Join(',', pages.Order().Select(page => Number(page)))],
-            maxBytes: 0, stdoutLimit: 128), token);
+            maxBytes: 0, stdoutLimit: checked(pages.Length * 11)), token);
         token.ThrowIfCancellationRequested();
         CheckExitCode(result.ExitCode);
         if (result.Stdout is null) throw new InvalidOperationException(Failure);

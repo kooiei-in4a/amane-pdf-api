@@ -143,6 +143,8 @@ internal sealed record Arguments(bool SelfTest, bool Png, string Pdfium, string 
     string Output, int Page, double ExpectedWidth, double ExpectedHeight, int Width, int Height,
     long MaxBytes, IReadOnlyList<Fill> Fills, int[]? TextPages = null)
 {
+    private const int MaxTextInspectionPages = 100;
+
     internal static Arguments? Parse(string[] args)
     {
         if (args.Length == 0 || args[0] is not ("self-test" or "render-jpeg" or "render-png" or "inspect-text") ||
@@ -196,7 +198,7 @@ internal sealed record Arguments(bool SelfTest, bool Png, string Pdfium, string 
         if (new[] { "--pdfium", "--font-dir", "--input" }.Any(key =>
             !Path.IsPathFullyQualified(values[key]) || values[key].Contains('\0'))) return null;
         var requested = values["--pages"].Split(',');
-        if (requested.Length > 10) return null;
+        if (requested.Length > MaxTextInspectionPages) return null;
         var pages = new int[requested.Length];
         for (var i = 0; i < pages.Length; i++)
             if (!PositiveInt(requested[i], out pages[i]) || i > 0 && pages[i - 1] >= pages[i]) return null;

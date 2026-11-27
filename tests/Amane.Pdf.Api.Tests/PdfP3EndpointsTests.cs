@@ -621,6 +621,25 @@ public sealed class PdfP3EndpointsTests
     }
 
     [TestMethod]
+    public async Task OcrSkipHandlesMoreThanTenSearchablePagesByDefault()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        const int pages = PdfOcrEndpoint.MaxConfiguredPages;
+        await using var test = new PdfTestContext(new()
+        {
+            ["Pdf:MaxOcrPages"] = pages.ToString(CultureInfo.InvariantCulture)
+        });
+        var input = await test.CreatePagedPdfAsync(pages);
+        using var form = PdfTestContext.FileForm(input);
+        using var response = await test.Client.PostAsync(Horizontal, form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, await response.Content.ReadAsStringAsync());
+        Assert.AreEqual(string.Join(',', Enumerable.Range(1, pages)),
+            response.Headers.GetValues("X-Pdf-Skipped-Pages").Single());
+        CollectionAssert.AreEqual(input, await response.Content.ReadAsByteArrayAsync());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     [DataRow("", "horizontal", "jpn", "1")]
     [DataRow("&quality=standard", "horizontal", "jpn", "1")]
     [DataRow("&quality=standard", "vertical", "jpn_vert", "5")]

@@ -7,17 +7,21 @@
 | 設定 | 既定値 | 設定可能範囲 | 関連する保護・注意 |
 | --- | ---: | --- | --- |
 | `Pdf__MaxMergeFiles` | 10 | 2〜100 | 100件で反復検証・結合回数を有限に保つ。各ファイルは `MaxFileBytes` 以下、合計は既定50 MiBの `MaxMergeInputBytes` 以下。qpdfの処理期限と全体同時実行枠も適用。 |
-| `Pdf__MaxImageInputBytes` | 50 MiB | 1〜100 MiB | 既存の画像job上限124 MiBとvalidatorにより、入力100 MiB、ファイル予約、補助領域を収容する。各画像には `MaxFileBytes`（既定50 MiB）も適用。出力・中間画像は残り容量に制限され、複雑な画像は422になる。 |
+| `Pdf__MaxImageInputBytes` | 50 MiB | 1〜100 MiB | 既存の画像job上限124 MiBとvalidatorにより、入力100 MiB、ファイル予約、補助領域を収容する。各画像には `MaxFileBytes`（既定50 MiB）も適用。入力上限と生成PDF上限は別で、`original` は生成ページPDF合計・最終PDF各54 MiB（`ImageOutputLimitBytes` の最大値）にも制限される。 |
 | `Pdf__MaxOcrPages` | 10 | 1〜100 | 標準OCRの対象ページ数。1ページずつ処理し、描画枠・1ページ画素上限・総処理期限も維持。 |
 | `Pdf__MaxOcrHighPages` | 5 | 1〜100 | 高精度OCRの対象ページ数。同じ共有枠・job容量・総処理期限を維持。 |
 | `Pdf__OcrTimeoutSeconds` | 90秒 | 1〜`int.MaxValue / 1000` | アップロード後の標準OCR全体の期限。qpdfの個別コマンド期限とは異なる。 |
 | `Pdf__OcrHighTimeoutSeconds` | 180秒 | 1〜`int.MaxValue / 1000` | アップロード後の高精度OCR全体の期限。 |
-| `Pdf__MaxToImagesPages` | 50 | 1〜1,000 | overlayの既存対象ページ上限と揃える。PDFium描画枠と最大1,600万画素/ページは変わらない。 |
+| `Pdf__MaxToImagesPages` | 50 | 1〜1,000 | overlayの既存対象ページ上限と揃える。ページ上限は30秒の既定期限内に完了する保証ではない。個別期限はなく、`QpdfTimeoutSeconds` を共有する。延長中は唯一のPDFium描画枠を占有し、黒塗り・OCR・比較などが503になる場合がある。最大1,600万画素/ページも維持。 |
 | `Pdf__MaxToImagesZipBytes` | 64 MiB | 1〜120 MiB | 124 MiBの既存job容量内に置いたZIP固有の上限。ZIPと描画中のページ画像を含む実効容量は `RedactJobLimitBytes`（既定・最大124 MiB）でさらに制限する。 |
 | `Pdf__OverlayOutputLimitBytes` | 62 MiB | 1〜512 MiB | overlaid PDFと最終PDFそれぞれの上限。512 MiBは1 fileの設定ガード上限で、4 KiB単位job台帳とqpdfのFSIZE上限も維持する。 |
 | `Pdf__OverlayJobLimitBytes` | 124 MiB | 1〜512 MiB | 全入力・中間物・出力・FSIZE番兵を含む1要求の容量ガード。4 KiB割当で計上し、`MaxFileBytes` と印影画像用の余裕を満たす必要がある。 |
 
 OCRのページ数を増やす場合は、処理に必要な時間に合わせてtimeoutも確認してください。OCRは1ページずつ処理しますが、既定の124 MiB job予算、ページあたり1,600万画素、Tesseractのメモリ上限、共有描画枠を維持します。
+
+PDF→画像には専用timeoutがなく、処理全体に `QpdfTimeoutSeconds`（既定30秒）を使います。1,000ページの上限を設定しても、既定期限内に終わらなければ504になります。実測ではSite相当のCPU 1・RAM 1,536 MiB・tmpfs 256 MiB環境で、単純なページを72 dpiで描画した場合に400ページは16秒、1,000ページは30秒を超えました。処理時間はPDFと実行環境で変わります。timeoutを延ばすとPDF→画像が共有描画枠を長く占有し、黒塗り・OCR・比較などの要求がその間503になる場合があります。また `QpdfTimeoutSeconds` はPDF→画像以外のqpdf処理でも使う共有設定です。
+
+from-imagesの入力上限を100 MiBにしても、生成ページPDF合計・最終PDFそれぞれの `ImageOutputLimitBytes` は最大54 MiBです。特に `quality=original` では入力画像を縮小しないため、入力合計が100 MiBに達する前に生成PDF上限へ達することがあります。その場合は422 `output-too-large` になります。画像の形式や破損を示す `unsupported-image` とは区別されます。
 
 PDF→画像のZIP上限を上げても、入力PDF、qpdf metadata、ページ画像、ZIPが同時に使う領域をjob台帳で管理します。利用可能な容量は入力PDFの大きさにも依存します。ページ数とZIP容量の最大値を同時に利用できることは保証しません。
 
