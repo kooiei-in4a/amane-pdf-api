@@ -6,8 +6,6 @@ namespace Amane.Pdf.Api;
 
 public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 {
-    private const int SignatureMetadataLimitBytes = 32 * 1024 * 1024;
-
     public Task ValidateAsync(TemporaryPdfFiles files, CancellationToken cancellationToken)
         => ValidateAsync(files.InputPath, cancellationToken);
 
@@ -29,24 +27,19 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
 
         foreach (var path in paths)
         {
-            var (exitCode, json) = await RunWithBoundedStdoutAsync(
-                ["--json-output=2", "--json-stream-data=none", "--decode-level=none", path],
-                SignatureMetadataLimitBytes, token);
-            if (exitCode is 2 or 3) throw new PdfInputException();
-            if (exitCode != 0) throw new InvalidOperationException("PDF inspection failed.");
-            if (json is null) throw new PdfInputException();
+            if (!await PdfFormDetector.MayHaveSignatureNameAsync(path, token))
+            {
+                var (xrefExit, onlyUncompressed) = await ExternalProcessRunner.ReadStdoutAsync(
+                    CreateRequest(["--show-xref", path]), PdfFormDetector.HasOnlyUncompressedObjectsAsync, token);
+                if (xrefExit == 0 && onlyUncompressed) continue;
+            }
 
-            try
-            {
-                using var metadata = new PdfPageBoxes(json, SignatureMetadataLimitBytes, PdfPageBoxes.InputObjectLimit,
-                    token, readPages: false);
-                if (PdfFormDetector.ContainsAppliedSignature(metadata, token))
-                    throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
-            }
-            catch (PdfOverlayInputException exception) when (exception.Reason == PdfOverlayReason.TooComplex)
-            {
-                throw new PdfInputException();
-            }
+            var (exitCode, signed) = await ExternalProcessRunner.ReadStdoutAsync(
+                CreateRequest(["--json-output=2", "--json-stream-data=none", "--decode-level=none", path]),
+                PdfFormDetector.ContainsAppliedSignatureAsync, token);
+            if (exitCode is 2 or 3) throw new PdfInputException();
+            if (exitCode != 0 || signed is null) throw new InvalidOperationException("PDF inspection failed.");
+            if (signed.Value) throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
         }
     }
 

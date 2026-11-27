@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Amane.Pdf.Api.Tests;
@@ -107,6 +108,75 @@ public sealed class PdfSignedRewriteTests
                 : PdfTestContext.FileForm(encrypted);
             await AssertRejectedAsync(test, operation, form, signed: false);
         }
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Rewrite_AcceptsLargeUnsignedPdf(bool wideMetadata)
+    {
+        await using var test = new PdfTestContext();
+        var input = TaggedPdf(wideMetadata);
+        if (wideMetadata)
+        {
+            // Keep the serialized PDF within the split output budget while the JSON exceeds 32 MiB.
+            var unpacked = Path.Combine(test.Root, "large-unpacked.pdf");
+            var packed = Path.Combine(test.Root, "large-packed.pdf");
+            await File.WriteAllBytesAsync(unpacked, input);
+            Assert.AreEqual(0, (await test.QpdfAsync("--object-streams=generate", unpacked, packed)).ExitCode);
+            input = await File.ReadAllBytesAsync(packed);
+        }
+        foreach (var (operation, pages) in AvailableOperations)
+        {
+            using var form = operation == "merge"
+                ? PdfTestContext.MergeForm(input, input)
+                : PdfTestContext.FileForm(input);
+            using var response = await test.Client.PostAsync("/api/pdf/" + operation, form);
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode, operation);
+            if (operation.StartsWith("split?", StringComparison.Ordinal))
+            {
+                using var archive = new ZipArchive(await response.Content.ReadAsStreamAsync());
+                Assert.HasCount(pages, archive.Entries);
+            }
+            else
+            {
+                await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), pages);
+            }
+            test.AssertClean();
+        }
+    }
+
+    [TestMethod]
+    public async Task Rewrite_RejectsSignatureDictionaryInsideObjectStream()
+    {
+        await using var test = new PdfTestContext();
+        var packed = Path.Combine(test.Root, "packed.pdf");
+        // Repacking invalidates the CMS signature. The API checks for the signature dictionary.
+        Assert.AreEqual(0, (await test.QpdfAsync("--object-streams=generate",
+            FixturePath("signed-without-type.pdf"), packed)).ExitCode);
+        Assert.IsFalse(await PdfFormDetector.MayHaveSignatureNameAsync(packed, default));
+        using var form = PdfTestContext.FileForm(await File.ReadAllBytesAsync(packed));
+        await AssertRejectedAsync(test, "optimize", form, signed: true);
+    }
+
+    private static byte[] TaggedPdf(bool wideMetadata)
+    {
+        var count = wideMetadata ? 1400 : 60_000;
+        var objects = new List<byte[]>
+        {
+            CompressFixtures.Text("<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 6 0 R >>"),
+            CompressFixtures.Text("<< /Type /Pages /Count 3 /Kids [3 0 R 4 0 R 5 0 R] >>")
+        };
+        var page = CompressFixtures.Text("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> >>");
+        objects.AddRange([page, page, page]);
+        var tree = new StringBuilder("<< /Type /StructTreeRoot /K [");
+        for (var i = 0; i < count; i++) tree.Append(i + 7).Append(" 0 R ");
+        objects.Add(CompressFixtures.Text(tree.Append("] >>").ToString()));
+        // qpdf represents these binary strings as hex. The resulting JSON exceeds 32 MiB.
+        var text = wideMetadata ? new string('\u0001', 13_000) : "Synthetic tagged paragraph.";
+        var paragraph = CompressFixtures.Text("<< /Type /StructElem /S /P /P 6 0 R /ActualText (" + text + ") >>");
+        for (var i = 0; i < count; i++) objects.Add(paragraph);
+        return CompressFixtures.Objects(objects);
     }
 
     private static string FixturePath(string file) => Path.Combine(AppContext.BaseDirectory, "Fixtures", file);

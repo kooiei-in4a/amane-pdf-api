@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Nodes;
 
 namespace Amane.Pdf.Api.Tests;
@@ -8,6 +9,7 @@ public sealed class FillTemplateStructureTests
     [DataRow("""{"/Ty#70e":"/DocTime#53tamp"}""", true)]
     [DataRow("""{"/Nested":[{"/Fil#74er":"/Adobe.PPKLite","/Conte#6ets":"b:0123","/ByteRan#67e":[0,10,20,30]}]}""", true)]
     [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"u:abc","/ByteRange":[0,10,20,30]}""", true)]
+    [DataRow("""{"/Filter":"n:/Adobe.PPKLite","/Contents":"b:0123","/ByteRange":[0,10,20,30]}""", true)]
     [DataRow("""{"/FT":"/Sig"}""", false)]
     [DataRow("""{"/FT":"/Tx"}""", false)]
     [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"b:0123"}""", false)]
@@ -16,14 +18,24 @@ public sealed class FillTemplateStructureTests
     [DataRow("""{"/Filter":"/Adobe.PPKLite","/Contents":"b:0123","/ByteRange":[0,1.5,20,30]}""", false)]
     [DataRow("""{"/Nested":[{"/Filter":"/Adobe.PPKLite","/Contents":"b:0123"},{"/ByteRange":[0,10,20,30]}]}""", false)]
     [TestMethod]
-    public void AppliedSignature_RequiresSignatureDictionary(string dictionary, bool expected)
+    public async Task AppliedSignature_RequiresSignatureDictionary(string dictionary, bool expected)
     {
         var root = OverlayFixtures.Metadata();
         OverlayFixtures.Objects(root)["obj:1 0 R"]!["value"]!["/Perms"] = new JsonObject();
         OverlayFixtures.Objects(root)["obj:4 0 R"] = JsonNode.Parse("{\"value\":" + dictionary + "}");
         using var metadata = OverlayFixtures.Parse(root);
-        Assert.AreEqual(expected, PdfFormDetector.ContainsAppliedSignature(metadata, default));
+        using var streamedMetadata = new MemoryStream(Encoding.UTF8.GetBytes(root.ToJsonString()));
+        Assert.AreEqual<bool?>(expected, await PdfFormDetector.ContainsAppliedSignatureAsync(streamedMetadata, default));
         Assert.IsTrue(PdfFormDetector.ContainsSignatureStructure(metadata, default));
+    }
+
+    [TestMethod]
+    public async Task AppliedSignature_RecognizesEscapedNameAcrossInputBufferBoundary()
+    {
+        using var files = new TemporaryPdfFiles(Path.GetTempPath());
+        var prefix = new byte[64 * 1024 + 34];
+        await File.WriteAllBytesAsync(files.InputPath, [.. prefix, .. "/#44ocTimeStamp"u8]);
+        Assert.IsTrue(await PdfFormDetector.MayHaveSignatureNameAsync(files.InputPath, default));
     }
 
     [TestMethod]

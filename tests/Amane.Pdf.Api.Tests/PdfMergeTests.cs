@@ -181,8 +181,7 @@ public sealed class PdfMergeTests
         {
             "--is-encrypted", first, "--check", first,
             "--is-encrypted", second, "--check", second,
-            "--json-output=2", "--json-stream-data=none", "--decode-level=none", first,
-            "--json-output=2", "--json-stream-data=none", "--decode-level=none", second,
+            "--show-xref", first, "--show-xref", second,
             "--empty", "--pages", first, "1-z", second, "1-z", "--",
             Path.Combine(Path.GetDirectoryName(first)!, "output.pdf")
         }, argv);
