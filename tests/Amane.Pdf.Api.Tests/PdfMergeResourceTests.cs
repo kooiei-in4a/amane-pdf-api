@@ -102,6 +102,7 @@ public sealed class PdfMergeResourceTests
     [TestMethod]
     [DataRow("--is-encrypted")]
     [DataRow("--check")]
+    [DataRow("--json=2")]
     [DataRow("--empty")]
     public async Task Timeout_KillsProcessTree_CleansEveryInput_AndReleasesPermit(string stage)
     {
@@ -155,7 +156,8 @@ public sealed class PdfMergeResourceTests
         await blocker.WaitForJobsAsync(3);
         using var response = await job.WaitAsync(TimeSpan.FromSeconds(2.5));
         Assert.AreEqual(HttpStatusCode.GatewayTimeout, response.StatusCode);
-        CollectionAssert.AreEqual(new[] { "--is-encrypted", "--check", "--is-encrypted", "--check", "--empty" }, blocker.Calls);
+        CollectionAssert.AreEqual(new[] { "--is-encrypted", "--check", "--is-encrypted", "--check", "--json=2", "--json=2", "--empty" },
+            blocker.Calls);
         await blocker.AssertStoppedAsync();
         test.AssertClean();
     }
