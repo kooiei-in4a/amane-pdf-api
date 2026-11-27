@@ -127,7 +127,7 @@ curl --fail-with-body -F file=@input.pdf http://127.0.0.1:8080/api/pdf/clean -o 
 
 共有の50 MiB入力・30秒・同時2件を使います。qpdfは標準経路で9回起動し、JSONは32 MiB、最終PDFは54 MiB、全一時ファイルの4 KiB単位の割当は1 job 124 MiBが初期値です。JSON深さ・参照連鎖は64、間接objectは50,000までです。容量・JSON・深さ・object数の上限超過は422、reason `too-complex`、title「このPDFは情報除去の処理上限を超えています。」です。qpdfの書込みには出力予算＋1バイトのFSIZEを設定し、番兵の1バイトも台帳に計上します。実サイズが予算を超えた場合は、終了コードが0でも拒否します。予算ちょうどの出力は通常の検査に進みます。対象外の型だけを理由に独自の構造422を返さず、入力のwarningは既存422、検査不能・残存は500です。
 
-入力DOMを破棄してからPDFを生成し、入力・更新JSON・job JSONを削除してから出力を検査します。2 jobで248 MiB以内の一時ファイル予算を確保し、tmpfs 256 MiBとmemory 1.5 GiB・swapなしを実行環境で維持してください。[検証記録](docs/clean-validation.md)は合成fixtureでの実測です。設定を増やす場合は容量・メモリ・時間を再計測してください。#46の公開条件の確認は別途必要です。
+入力DOMを破棄してからPDFを生成し、入力・更新JSON・job JSONを削除してから出力を検査します。2 jobで248 MiB以内の一時ファイル予算を確保し、tmpfs 256 MiBとmemory 1.5 GiB・swapなしを実行環境で維持してください。[検証記録](docs/clean-validation.md)は合成fixtureでの実測です。設定を増やす場合は容量・メモリ・時間を再計測してください。FSIZE超過時のcore対策は2026-10-12に検証・本番反映が完了しました。[共通対策 #46の完了記録](https://github.com/kooiei-in4a/amane-pdf-api/issues/46#issuecomment-6118578841)
 
 ### PDF黒塗り（Linux）
 
@@ -1043,7 +1043,7 @@ python3 scripts/overlay-validation.py amane-pdf-api:ci --capacity --supplementar
   --font /path/to/locked/BIZUDPGothic-Regular.ttf --output /tmp/overlay-lines-tabs-all
 ```
 
-CPU 1、memory 1.5 GiB、swapなし、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privilegesで実Builderを単独・同時2件測定します。入力配置・起動自己テストはtimer前、Builder開始から最終検査・中間物削除までが測定範囲です。最終出力とjobの削除も検査し、driverのメモリを含むcgroup peakとtmpfs観測最大を記録します。#46のdeploy保留は別途追跡します。
+CPU 1、memory 1.5 GiB、swapなし、tmpfs 256 MiB、non-root、read-only、network none、cap-drop ALL、no-new-privilegesで実Builderを単独・同時2件測定します。入力配置・起動自己テストはtimer前、Builder開始から最終検査・中間物削除までが測定範囲です。最終出力とjobの削除も検査し、driverのメモリを含むcgroup peakとtmpfs観測最大を記録します。[FSIZE超過時のcore対策と容量確認の完了記録（#46）](https://github.com/kooiei-in4a/amane-pdf-api/issues/46#issuecomment-6118578841)も参照してください。
 
 ## セキュリティ
 

@@ -268,7 +268,9 @@ FSIZE超過時のSIGXFSZの既定動作はcoreを伴う終了です。Linuxの�
 
 CORE soft/hard=0も共通適用しますが、pipe方式のcore collectorはRLIMIT_COREを無視するため、CORE=0だけを受渡し防止策とは扱いません。SIGSEGV／ABRT等の別signalによるcoreは今回の対策対象外です。qpdfのメモリにはPDF内容が含まれ得るため、コンテナ内にcoreファイルがないことだけではhostのcollectorへ内容が渡らない証明になりません。[Linuxのcore仕様](https://man7.org/linux/man-pages/man5/core.5.html)と[signalのexec時の継承](https://man7.org/linux/man-pages/man7/signal.7.html)を参照してください。
 
-合成データによるAPIの検証結果は[FSIZE core対策の検証記録](fsize-core-validation.md)に残します。本番に近い隔離VMでのcollector起動数・受信bytes・保存数の確認とinfraの容量整合は[共通対策 #46](https://github.com/kooiei-in4a/amane-pdf-api/issues/46)で追跡し、完了までAPI splitのdeployを保留します。サイトのsplitツールもAPI deploy後に行います。PRのmergeとdeployはそれぞれHumanの承認が必要です。
+合成データによるAPIの検証結果は[FSIZE core対策の検証記録](fsize-core-validation.md)に残します。本番に近い隔離VMでのcollector起動数・受信bytes・保存数の確認とinfraの容量整合を含む共通対策は、2026-10-12に検証・本番反映が完了しました。[共通対策 #46の完了記録](https://github.com/kooiei-in4a/amane-pdf-api/issues/46#issuecomment-6118578841)
+
+PRのmergeとdeployはそれぞれHumanの承認が必要です。
 
 ## 描画プログラム（PDFium、Linux x86_64）
 
