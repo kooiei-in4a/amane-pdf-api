@@ -1,16 +1,41 @@
 # amane-pdf-api
 
-PDFや画像を、入力検証と容量・時間の制限のもとで処理するWeb APIです。
+社内システムやバッチ処理に組み込める、セルフホスト型の PDF 処理 REST API です。PDF や画像を HTTP で渡すと、文書を外部クラウドへ送らずに自社環境で処理できます。データベースや `amane-tools-site` は不要です。Docker で単体起動でき、[Apache License 2.0](LICENSE) で利用できます。
 
-暗号化・権限制限・パスワード解除、最適化・画像圧縮、情報除去、画像からのPDF作成、ページ編集、番号付け・透かし・押印・黒塗りを提供します。処理には機能に応じてqpdf、pdfcpu、PDFium、libjpeg-turboを使用します。APIの接続先となる`amane-tools-site`は別Repositoryです。
+- **社内文書の整理**では、スキャンした日本語文書に検索用の文字を追加し、複数の PDF をまとめたり必要なページだけを取り出したりできます。
+- **定型帳票の作成**では、既存 PDF の指定位置に日本語の文字列や透過 PNG の印影を重ねられます。
+- **業務の自動化**では、既存システムのバックエンドから、ページの整形、画像変換、圧縮、パスワード保護などを呼び出せます。
+
+対応環境は Linux x86_64 上の Docker です。OCR は日本語の横書き・縦書きに対応し、表のセル構造は復元しません。文字差し込みは固定フォントの対応字形が対象です。`/api/pdf/compose` は Amane Tools のレイアウト文書用で、この README が提供する安定した公開 API の契約には含めません。
+
+API 単体には認証や利用者ごとのレート制限がありません。内部ネットワークに配置し、ネットワーク越しに提供する場合は入口で認証・レート制限・HTTP 全体の期限・要求と応答の容量を管理してください。単一 PDF は既定 50 MiB、多くの qpdf 処理はアップロード後 30 秒、同時処理は 2 件で待ち行列はありません。設定で調整できる上限と、引き続き適用される保護上限は[設定ガイド](docs/limits.md)にまとめています。[セキュリティ方針](docs/security.md)も参照してください。
+
+[Quick Start](#quick-start) · [Python / C# から呼び出す](#api-連携サンプル) · [詳細 API 仕様](#api) · [設計・検証記録](docs/README.md)
+
+## 現在の状態
+
+| やりたいこと | API の詳細仕様 |
+| --- | --- |
+| スキャン文書を検索する、PDF の文字を比較する | [日本語 OCR](#スキャンpdfの日本語ocrlinux)・[文字差分](#pdf文字差分linux) |
+| 帳票に文字・印影・ページ番号を付ける | [テンプレート差し込み](#pdfテンプレート差し込みlinux)・[透過 PNG の印影](#pdf電子印鑑linux)・[ページ番号](#pdfページ番号linux)・[透かし](#pdf透かしlinux) |
+| 文書やページを整理する | [結合](#pdf結合)・[分割](#pdf分割zip)・[回転](#pdfページ回転)・[抽出／削除／並べ替え](#pdfページ抽出削除並べ替え)・[A4 割付／サイズ統一](#a4割付とサイズ統一linux)・[フォームと注釈の焼き込み](#フォームと注釈の焼き込みlinux) |
+| PDF と画像を変換する、PDF の容量を調整する | [画像から PDF](#画像からpdflinux)・[PDF から画像](#pdfから画像linux)・[構造の最適化](#pdf-lossless最適化)・[JPEG 画像の圧縮](#pdf画像圧縮linux) |
+| 文書を保護する、指定した情報を除く | [暗号化](#pdf暗号化)・[権限制限](#pdf権限制限)・[パスワード解除](#pdfパスワード解除)・[文書情報や添付の除去](#pdf情報除去linux)・[指定範囲の黒塗り](#pdf黒塗りlinux) |
 
 ## Quick Start
 
-対応環境は Linux x86_64 上の Docker です。コンテナは Ubuntu 26.04 系を使います。ホストには Docker と curl を用意し、ビルド時はネットワークに接続してください。.NET SDK と処理ツールは Docker ビルドで取得するため、このリポジトリのチェックアウトから単体で起動できます。
+Linux x86_64 ホストに Git、Docker Engine 28.0.0 以降、curl を用意します。Compose で試す場合は Docker Compose プラグインも用意します。コンテナは Ubuntu 26.04 系です。Docker ビルド時に .NET SDK や PDF 処理ツールを取得するため、ビルドにはネットワーク接続が必要です。Docker Engine のバージョン条件は[ポート公開仕様](https://docs.docker.com/engine/network/port-publishing/#publishing-ports)に基づきます。
 
-この API は認証と利用者ごとの回数制限を持たないため、不特定多数がアクセスできるインターネットへ直接公開しないでください。`/api/pdf/compose` は Amane Tools のレイアウト文書用で、この README が提供する安定した公開 API の契約には含めません。
+```bash
+git clone https://github.com/kooiei-in4a/amane-pdf-api.git
+cd amane-pdf-api
+```
 
-リポジトリのルートでイメージをビルドし、ループバックに限定して起動します。
+### 起動
+
+Docker または Docker Compose のどちらか一方で起動します。どちらも `127.0.0.1:8080` で受け付け、Dockerfile の `app` ユーザーで動きます。
+
+**Docker**
 
 ```bash
 docker build -t amane-pdf-api:quick-start .
@@ -20,14 +45,25 @@ docker run --rm -d --name amane-pdf-api-quick-start -p 127.0.0.1:8080:8080 \
   --security-opt no-new-privileges=true amane-pdf-api:quick-start
 ```
 
-起動直後の接続エラーは curl が再試行します。`GET /healthz` が HTTP `200` と本文 `Healthy` を返すことを確認します。
+**Docker Compose**
+
+[試用用 Compose](compose.quickstart.yaml)はソースからビルドし、Docker の例と同じ制限と API の既定設定を使います。
+
+```bash
+docker compose -f compose.quickstart.yaml up --build -d
+```
+
+### 疎通確認と PDF 処理
+
+`GET /healthz` が HTTP `200` と本文 `Healthy` を返すことを確認します。起動直後の接続エラーは curl が再試行します。
 
 ```bash
 curl --fail --silent --show-error --include \
-  --retry 30 --retry-delay 1 --retry-all-errors http://127.0.0.1:8080/healthz
+  --retry 30 --retry-delay 1 --retry-all-errors --max-time 2 --retry-max-time 40 \
+  http://127.0.0.1:8080/healthz
 ```
 
-同梱の `sample.pdf` を最適化します。HTTP `200` と `Content-Type: application/pdf` が表示され、結果が `optimized.pdf` に保存されます。
+同梱の `sample.pdf` を最適化します。HTTP `200` と `Content-Type: application/pdf` が表示されたら、`optimized.pdf` を開いて確認できます。
 
 ```bash
 curl --fail --silent --show-error --dump-header - \
@@ -35,50 +71,56 @@ curl --fail --silent --show-error --dump-header - \
   http://127.0.0.1:8080/api/pdf/optimize -o optimized.pdf
 ```
 
-確認が終わったらコンテナを停止します。
+同じ処理は[Python / C# のサンプル](#api-連携サンプル)でも試せます。
 
-```bash
-docker stop amane-pdf-api-quick-start
+### 停止
+
+Docker で起動した場合は `docker stop amane-pdf-api-quick-start`、Compose の場合は `docker compose -f compose.quickstart.yaml down` で停止します。
+
+### 設定を調整する
+
+標準 OCR の対象ページを既定の 10 から 20 に増やし、処理期限も 90 秒から 180 秒に延ばす例です。[試用用 Compose](compose.quickstart.yaml)の `services.pdf-api` に次を追加し、`docker compose -f compose.quickstart.yaml up -d` で再作成します。Docker の場合は起動時に `-e Pdf__MaxOcrPages=20 -e Pdf__OcrTimeoutSeconds=180` をイメージ名の前に加えます。
+
+```yaml
+environment:
+  Pdf__MaxOcrPages: "20"
+  Pdf__OcrTimeoutSeconds: "180"
 ```
 
-## 現在の状態
+ページ数の設定を増やしても、描画・ジョブ容量・同時処理の上限は引き続き適用されます。設定の組み合わせを変える場合は、CPU、メモリ、tmpfs、入口側の期限を[設定ガイド](docs/limits.md)と照らし合わせ、実際の文書で確認してください。
 
-実装済み:
+### トラブルシューティング
 
-- .NET 10 / ASP.NET Core の最小API、`GET /healthz`
-- `POST /api/pdf/protect` によるPDFのAES-256暗号化
-- `POST /api/pdf/restrict` によるPDFの印刷・コピー・編集権限の制限
-- `POST /api/pdf/unlock` による、正しいuser / owner passwordでの暗号化解除
-- `POST /api/pdf/optimize` によるPDFのlossless構造最適化
-- Linuxの `POST /api/pdf/compress` による対象JPEG画像の縮小・再圧縮、目標サイズ指定
-- Linuxの `POST /api/pdf/compare` によるPDFの文字差分比較
-- Linuxの `POST /api/pdf/to-images` によるPDFからPNG・JPEGへの変換とZIP返却
-- Linuxの `POST /api/pdf/flatten` によるフォーム・注釈の焼き込み
-- Linuxの `POST /api/pdf/n-up` と `POST /api/pdf/resize` によるA4割付・サイズ統一
-- Linuxの `POST /api/pdf/ocr` による日本語スキャンPDFの検索用文字レイヤー追加
-- Linuxの `POST /api/pdf/clean` による文書情報・文書XMP・添付ファイルの除去
-- Linuxの `POST /api/pdf/from-images` によるJPEG・PNGからのPDF生成
-- Linuxの `POST /api/pdf/page-numbers` による表紙を除いた番号付け・総数付きページ番号
-- Linuxの `POST /api/pdf/fill-template` による既存PDFへの固定レイアウト文字差し込み
-- Linuxの `POST /api/pdf/watermark` による全ページへの透かし文字
-- Linuxの `POST /api/pdf/redact` による指定範囲の画像化方式の黒塗り
-- Linuxの `POST /api/pdf/stamp-image` による指定ページ・表示位置への透過PNG押印
-- `POST /api/pdf/merge` による複数PDFのアップロード順での結合
-- `POST /api/pdf/split` によるPDF分割とZIP返却
-- `POST /api/pdf/rotate` による全ページまたは指定ページの相対回転
-- `POST /api/pdf/extract` による指定ページの抽出
-- `POST /api/pdf/delete-pages` による指定ページの削除
-- `POST /api/pdf/reorder` による全ページの並べ替え
-- 独立したランダムowner password、QPDFJob JSON経由のパスワード入力
-- 成功・失敗・キャンセル時の一時ファイル削除
-- 正常PDFの検証、破損/警告の拒否、unlock以外での既暗号化PDFの拒否、統一Problem Details
-- Unicodeパスワード対応
-- PDF 既定50 MiB / qpdf処理既定30秒 / 同時2処理 / 待ち行列0の制限
-- 実qpdfを使った自動テスト、Docker build、実コンテナE2Eを含むGitHub Actions
+| 状況 | 確認すること |
+| --- | --- |
+| 起動または疎通確認に失敗 | 起動コマンドのエラーとホストの 8080 番ポートの使用状況を確認します。起動後の失敗は `docker logs amane-pdf-api-quick-start` または `docker compose -f compose.quickstart.yaml logs pdf-api` で確認します。`Pdf__...` を変更した場合はログと[設定一覧](#リソース制限と設定)を照らし合わせます。Docker の例では `--rm` により、終了後のログが必要なら `-d` を外して再実行します。 |
+| `413` | 入力ファイル、合計、リクエスト全体の上限と、入口側の容量制限を確認します。 |
+| `422` | 暗号化・破損の有無、対象 API の形式・処理上限を確認します。Problem Details の `title` と、返る場合は `reason` を参照します。 |
+| `503` | 同時処理枠や共有描画枠の使用状況を確認し、他の処理が終わってから再試行します。 |
+| `504` | 処理するページ数や入力を減らすか、API と入口側の処理期限を確認します。 |
 
-API単体の実装とDockerでの実処理検証を行っています。CIの結果は各PRで確認してください。
+詳しくは[入力とエラー](#入力とエラー)を参照してください。
 
-`amane-tools-site` との接続は別Repositoryの責務です。
+## API 連携サンプル
+
+API の起動中に、いずれかの例をリポジトリのルートから実行します。両方とも `POST /api/pdf/optimize` に multipart の `file` として PDF を送り、`200` かつ `application/pdf` の応答を指定したファイルに保存します。エラーでは HTTP ステータスと、取得できる場合は Problem Details の `title`・`reason` を標準エラーに表示します。
+
+**[Python](examples/optimize.py)**（Python 3 と `requests`）
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install requests
+python examples/optimize.py tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf optimized-python.pdf
+```
+
+**[C#](examples/optimize.cs)**（.NET 10 SDK）
+
+```bash
+dotnet run --file examples/optimize.cs -- tests/Amane.Pdf.Api.Tests/Fixtures/sample.pdf optimized-csharp.pdf
+```
+
+サンプルは小さな PDF での試用を想定し、応答全体を受け取ってから保存します。出力先に同じ名前のファイルがある場合、成功時に上書きします。[最適化 API の詳細](#pdf-lossless最適化)も参照してください。
 
 ## 方針
 
