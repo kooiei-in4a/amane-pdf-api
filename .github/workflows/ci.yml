@@ -84,6 +84,11 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore
 
+      - name: Verify API client examples compile
+        run: |
+          python3 -m py_compile examples/optimize.py
+          dotnet build examples/optimize.cs --configuration Release
+
       - name: Verify mutation verdict runner
         run: python3 docs/test-value-audit-2026-10-21/evidence/validation-fix/test_mutation_runner.py
 

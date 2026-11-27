@@ -1,0 +1,16 @@
+services:
+  pdf-api:
+    build: .
+    platform: linux/amd64
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=256m
+    cpus: 1.0
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true

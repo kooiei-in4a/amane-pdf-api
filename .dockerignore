@@ -10,3 +10,5 @@ TestResults
 .env.*
 README.md
 docs
+.venv
+optimized*.pdf
