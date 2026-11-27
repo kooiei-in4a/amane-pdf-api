@@ -73,7 +73,7 @@ docker stop amane-pdf-api-quick-start
 - 成功・失敗・キャンセル時の一時ファイル削除
 - 正常PDFの検証、破損/警告の拒否、unlock以外での既暗号化PDFの拒否、統一Problem Details
 - Unicodeパスワード対応
-- PDF 50 MiB / qpdf処理30秒 / 同時2処理 / 待ち行列0の制限
+- PDF 既定50 MiB / qpdf処理既定30秒 / 同時2処理 / 待ち行列0の制限
 - 実qpdfを使った自動テスト、Docker build、実コンテナE2Eを含むGitHub Actions
 
 API単体の実装とDockerでの実処理検証を行っています。CIの結果は各PRで確認してください。
@@ -118,7 +118,7 @@ standardの縮小率は、長辺Lが2339以下なら8/8、それ以外は`clamp(
 
 JPEGのEXIF・GPS・コメント・ICC・末尾データを除き、生成されたJFIFのdensityを単位なしの1×1に統一します。PNGはCRCと構造を検査し、IHDR・PLTE・tRNS・IDAT・IENDだけを書き直して渡します。テキスト・EXIF・ICC・gammaなどは除去します。ICC等の除去で色の見え方が変わることがあります。PNGを内部でJPEGへ自動変換することはありません。
 
-入力は単一fileの上限と合計50 MiB、画像1枚は50,000,000画素が受付上限です。受付上限内でも、メモリ・時間・出力容量の制限によりJPEG・PNGの変換が成功するとは限りません。大きい4:4:4 JPEGで回転・反転が必要な場合、`original`はメモリ制限により422 `unsupported-image`になることがあります。この場合は「標準」で再度試すか、画像を小さくしてください。`standard`でも任意の画像の成功は保証しません。対応範囲と測定条件は[検証記録](docs/from-images-validation.md#大きい444-jpegの既知の制約)を参照してください。
+入力は単一fileの上限と合計（既定50 MiB、設定上限100 MiB）、画像1枚は50,000,000画素が受付上限です。受付上限内でも、メモリ・時間・出力容量の制限によりJPEG・PNGの変換が成功するとは限りません。大きい4:4:4 JPEGで回転・反転が必要な場合、`original`はメモリ制限により422 `unsupported-image`になることがあります。この場合は「標準」で再度試すか、画像を小さくしてください。`standard`でも任意の画像の成功は保証しません。対応範囲と測定条件は[検証記録](docs/from-images-validation.md#大きい444-jpegの既知の制約)を参照してください。
 
 PNGはデコード作業量の見積りにも上限があります。標準設定で非interlaceの12 MP RGBA PNG（4000×3000と3000×4000、低・高entropy）を同時2件で検証しています。8 bitのカラー・透過付きグレーは約12.2 MPを超えると拒否され、1/2/4 bitグレーの透過付きにも同じ画素数の下限見積りを使います。16 bitカラー・透過付きグレーは単色でも約5.6 MPを超えると拒否され、複雑な画像はさらに小さくても制限にかかります。16 bitカラーの受付範囲は以前より狭くなっています。透過なしの16 bitグレーは別の見積りを使います。Adam7（interlace）形式は展開画像1枚分を追加で見積もるため、8 bitのカラー・透過付きグレーは約10.3 MP、16 bitカラー・透過付きグレーは単色でも約4.8 MPを超えると拒否されます。画像を小さくするか、利用者側でJPEGへ保存し直してください。16 bitから8 bitへの保存し直しでも、8 bit側の制限を超える大きさでは解消しません。PNGでは画質を「標準」に変えるだけでは解消しません。[追加検証記録](docs/from-images-followup-validation.md)に条件を記載しています。**PNGはPDFにすると大きくなることがあります。** 出力上限に届く場合はJPEGへ変換する、画像を小さくする、枚数を減らす方法を案内してください。
 
@@ -318,7 +318,7 @@ file  3つ目のPDF（任意）
 
 入力のいずれかに適用済みの電子署名がある場合、結合全体を加工前に `422`（`signature-structure`）で拒否します。未署名の署名欄だけでは拒否しません。
 
-同名の `file` fieldを複数指定し、multipart内の出現順で各PDFの全ページを結合します。2〜10ファイルを受け付け、1ファイル最大50 MiB、入力PDF合計最大50 MiBが既定値です。ページ指定やpassword fieldは受け付けず、既暗号化PDFは拒否します。各入力を実qpdfで逐次検証し、空、非PDF、破損、warningのある入力が1件でもあれば全体を拒否します。
+同名の `file` fieldを複数指定し、multipart内の出現順で各PDFの全ページを結合します。既定の最大数は10、`Pdf__MaxMergeFiles` で最大100ファイルまで設定できます。1ファイル上限は `Pdf__MaxFileBytes`（既定50 MiB）、入力PDF合計は `Pdf__MaxMergeInputBytes`（既定50 MiB）です。ページ指定やpassword fieldは受け付けず、既暗号化PDFは拒否します。各入力を実qpdfで逐次検証し、空、非PDF、破損、warningのある入力が1件でもあれば全体を拒否します。
 
 成功時は `200 OK`、`Content-Type: application/pdf`、`Content-Disposition: attachment; filename=merged.pdf` で返します。利用者ファイル名は内部path、qpdf argv、返却名、ログへ使用しません。
 
@@ -454,7 +454,7 @@ file  PDFファイル一つ
 
 `format` は `png` または `jpeg`、`dpi` は72〜200の整数です。`pages` は既存のページ選択形式で、省略時は全ページです。CropBox、回転、UserUnitを反映した寸法で白背景に描画します。
 
-1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。最大50ページ、1ページ1,600万画素、ZIP最大64 MiBです。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。対応する上限超過は422 `too-many-pages`、`page-too-large`、`output-too-large` です。黒塗り・OCR・文字比較と描画枠を共有し、使用中は503です。
+1ページでも200、`application/zip`、`images.zip` で返します。ファイル名は元ページ番号を使った `page-001.png` または `page-001.jpg` です。既定は50ページ、ZIP 64 MiBで、それぞれ `Pdf__MaxToImagesPages`（最大1,000ページ）と `Pdf__MaxToImagesZipBytes`（最大120 MiB）で調整できます。1ページ1,600万画素の上限は固定です。一時領域は `Pdf__RedactJobLimitBytes`（既定124 MiB、設定上限124 MiB）を使い、アップロードは単一PDF上限と一時領域上限の小さい方までです。画像とZIPの重複を含む容量台帳も維持するため、ZIP設定を増やしてもジョブ容量に収まらない要求は422 `output-too-large` になります。ほかに422 `too-many-pages`、`page-too-large` があります。処理全体には共有の `Pdf__QpdfTimeoutSeconds`（既定30秒）を適用するため、1,000ページの上限がその期限内の完了を保証するわけではありません。timeoutを延ばすと黒塗り・OCR・文字比較と共有する描画枠を長く占有し、その間の要求は503になる場合があります。
 
 ### PDFページ番号（Linux）
 
@@ -483,7 +483,7 @@ file  PDFファイル
 
 電子署名、未署名の署名欄、文書タイムスタンプなどの署名関連の構造を検出したPDFは、加工前に422 `signature-structure` で拒否します。通常の入力欄を含むフォームは保持します。
 
-対象は最大1000ページで、表紙などの対象外ページはこの数に含めません。入力PDF 50 MiB、入力metadata 32 MiB / 50,000 object、生成JSON・白紙・番号レイヤー各8 MiB、出力62 MiB、job 124 MiBの既存overlay上限を使います。処理上限は422 `too-complex`、対応範囲外のページ属性は422 `unsupported-pdf`、破損・警告・暗号化などの入力不正はreasonなしの422です。番号用queryの書式はアップロード前、ページ数に依存する400は入力検査後に判定します。
+対象は最大1,000ページで、表紙などの対象外ページはこの数に含めません。単一PDFは `Pdf__MaxFileBytes`（既定50 MiB）、overlaid/最終PDFは `Pdf__OverlayOutputLimitBytes`（既定62 MiB、最大512 MiB）、jobは `Pdf__OverlayJobLimitBytes`（既定124 MiB、最大512 MiB）を使います。入力metadata 32 MiB / 50,000 object、生成JSON・白紙・番号レイヤー各8 MiBは固定上限です。処理上限は422 `too-complex`、対応範囲外のページ属性は422 `unsupported-pdf`、破損・警告・暗号化などの入力不正はreasonなしの422です。番号用queryの書式はアップロード前、ページ数に依存する400は入力検査後に判定します。
 
 入力検査・metadata取得・番号描画・合成・属性復元・出力検査を合わせてアップロード後30秒、既存APIと共有する同時2枠・待ち行列0です。入力検査を二重に実行せず、全処理が完了して出力検査を通ってから返します。
 
@@ -514,7 +514,7 @@ multipartは `file`（filenameあり）と `text`（filenameなし）各1件で�
 
 diagonalは字幅と回転後の外接矩形に加え、pdfcpuが回転前の枠をページ内へ押し戻す制約に合わせて縮小します。そのため縦長ページの長い文字は対角線全体より小さくなります。最小は両styleとも1 ptです。非常に小さいページでは文字や28 ptの余白が収まらず、切れる場合があります。
 
-上限はPDF 50 MiB、全1000ページ、入力metadata 32 MiB / 50,000 object、各生成JSON・白紙・レイヤー8 MiB、出力62 MiB、job 124 MiBです。queryはアップロード前、textの意味・文字種はアップロード完了後かつtool起動前に判定します。121 byte目を読むと即400です。PDF・リクエスト総量の超過は413、描画予算の超過は422 `too-complex`、対応範囲外のページ属性は422 `unsupported-pdf`、破損・警告・暗号化はreasonなしの422です。処理はアップロード後30秒、既存APIと共有する同時2枠・待ち0（503）です。
+単一PDFは `Pdf__MaxFileBytes`（既定50 MiB）、対象は全1,000ページ、overlaid/最終PDFは `Pdf__OverlayOutputLimitBytes`（既定62 MiB、最大512 MiB）、jobは `Pdf__OverlayJobLimitBytes`（既定124 MiB、最大512 MiB）です。入力metadata 32 MiB / 50,000 object、各生成JSON・白紙・レイヤー8 MiBは固定上限です。queryはアップロード前、textの意味・文字種はアップロード完了後かつtool起動前に判定します。121 byte目を読むと即400です。PDF・リクエスト総量の超過は413、描画予算の超過は422 `too-complex`、対応範囲外のページ属性は422 `unsupported-pdf`、破損・警告・暗号化はreasonなしの422です。処理はアップロード後30秒、既存APIと共有する同時2枠・待ち0（503）です。
 
 透かしはPDF編集ソフトで消せるため、情報保護の手段には使えません。透かしの文字は抽出・検索・コピーの対象になります。PDF/A-1にdiagonalの透過を加えると、出力はPDF/A-1に適合しなくなります。検証方法と制約は[透かし検証記録](docs/watermark-validation.md)を参照してください。
 
@@ -712,14 +712,14 @@ file: PDF
 
 | 方式 | 対象ページ上限 | 処理時間上限 | 密な文書の応答時間の目安 |
 | --- | ---: | ---: | --- |
-| 標準 `standard` | 10 | 90秒 | 横書き約40秒、縦書き約55秒（10ページ） |
-| 高精度 `high` | 5 | 180秒 | 横書き約95秒、縦書き約100秒（5ページ） |
+| 標準 `standard` | 10（設定上限100） | 90秒（設定可能） | 横書き約40秒、縦書き約55秒（10ページ） |
+| 高精度 `high` | 5（設定上限100） | 180秒（設定可能） | 横書き約95秒、縦書き約100秒（5ページ） |
 
 両方式とも、横書きでページの向きを判定し、罫線付きの表に対応するページ分割を使います。標準の横書きでは、通常は Sauvola を使い、背景のむらと雑音が少なく、細い画線と長い罫線があって正立を確認できたページでは適応型 Otsu を使います。高精度は精度重視の日本語モデルを使い、誤読、記号、小さい文字、縦書きページ内の横書きの見出しの認識を改善します。検証時の通常の横書き1ページは標準で約1秒、高精度で約2秒でした。時間は文字量や画質で変わります。[OCRの検証記録](docs/ocr-quality-validation.md)
 
 横書きは、スキャン画像自体が90°・180°・270°回っていても、Tesseractが行の向きを判定できれば検索用の文字をその向きに合わせます。元の画像の表示はそのままです。
 
-`pages` を省略すると全ページが対象です。たとえば `pages=1-3,5` は4ページを対象にします。範囲外・重複の指定や、方式ごとの対象ページ上限を超えた場合は400です。上限はスキップ前の対象ページ数に適用します。
+`pages` を省略すると全ページが対象です。たとえば `pages=1-3,5` は4ページを対象にします。範囲外・重複の指定や、設定された方式ごとの対象ページ上限を超えた場合は400です。上限はスキップ前の対象ページ数に適用します。`Pdf__MaxOcrPages` と `Pdf__MaxOcrHighPages` は各1〜100です。各方式の処理期限は `Pdf__OcrTimeoutSeconds`（既定90秒）と `Pdf__OcrHighTimeoutSeconds`（既定180秒）で調整できます。
 
 `existingText` は `skip`（既定）または `ocr` です。空・未知・重複の指定はアップロード本文を読む前に400で返します。`skip` では、すでに本文を検索できると判定したページを処理から外します。表示面積の半分以上を覆う画像があるページをスキャンとみなし、本文範囲の透明な文字層で判定します。入力値や見出しが重ねられたスキャンも、既存のOCR文字層がなければOCRの対象です。小さなロゴなどを載せた文書PDFでは、元の本文を判定に使います。ページ番号だけならOCRの対象になります。`ocr` では既存文字があるページも処理します。元の文字層を残してOCR文字層を加えるため、処理したページの検索結果が重複することがあります。
 
@@ -727,7 +727,7 @@ file: PDF
 
 描画は最大300 dpiです。A3などの大きなページは、1ページ1,600万画素に収まるようページごとに描画解像度を下げます。たとえばA0は約100 dpiになり、小さな文字の認識精度が下がることがあります。72 dpiでも描画の上限を超えるページは422 `page-too-large` です。埋め込み画像が画素数などの複雑度の上限を超えるスキャンPDFは422 `too-complex` です。大きく文字の密なページを高精度で認識すると、メモリ上限に達して422 `too-complex` になることがあります。
 
-黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、方式ごとの処理時間上限を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。表のセル構造は復元されません。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
+黒塗り・PDF→画像・文字比較と共有する描画枠が使用中なら503、方式ごとの処理時間上限を超えると504です。入力は単一PDF上限（既定50 MiB）と `Pdf__RedactJobLimitBytes`（既定124 MiB）の小さい方までで、暗号化PDFや署名関連構造のあるPDFは422です。標準・高精度ともページ上限は設定で最大100まで広げられますが、ジョブ容量124 MiB、1ページ1,600万画素、TesseractのAS制限、設定した処理期限は維持されます。上限いっぱいまでの成功や所要時間を保証しません。表のセル構造は復元されません。印字の状態や撮影条件で認識結果が変わるため、コピーした文章や数字は原本と照合してください。
 
 検索用の文字は、Tesseractが認識した語の位置から置き直します。日本語の語の間には空白を入れず、英数字の単語の間と、離れた欄・段の間には空白を入れます。このため、日本語の文中の空白（全角・半角）や、間隔の狭い表の欄の区切りは詰まることがあります。PDF.jsは日本語の直後の改行を検索時に無視するため、離れた欄・段の終わりには表示されない区切り文字（U+034F）を置き、別の欄の語とつながって一致しないようにします。コピーした文章にもこの文字が含まれます（表示はされません）。縦中横の数字は認識されません。PDF.jsで検索したときの強調表示が元の行に重なるように配置しています。ビューアの代替フォントによっては、数字や英字を含む行で強調の位置がずれることがあります。
 
@@ -753,12 +753,14 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 
 ## リソース制限と設定
 
+既定値・調整範囲・固定上限・安全な配備方法と、Site側で管理する制限の一覧は[処理制限の設定ガイド](docs/limits.md)を参照してください。環境変数は.NET標準configurationにより `Pdf__...` 形式で指定します。既定値は変わらないため、amane-tools-siteの既存設定を変更せずに利用できます。
+
 | 環境変数 | 初期値 | 意味 |
 | --- | --- | --- |
 | `Pdf__MaxFileBytes` | `52428800`（50 MiB） | 実際に読み込む単一file（PDF・画像）の最大bytes |
 | `Pdf__MaxStampImageBytes` | `1048576`（1 MiB） | 電子印鑑の画像上限。0より大きく1 MiB以下。request上限はMaxFileBytes + この値 + 64 KiB |
 | `Pdf__MaxImageFiles` | `30` | from-imagesの画像枚数。1〜100 |
-| `Pdf__MaxImageInputBytes` | `52428800`（50 MiB） | 画像入力合計の最大bytes。正、50 MiB以下 |
+| `Pdf__MaxImageInputBytes` | `52428800`（50 MiB） | 画像入力合計の最大bytes。正、100 MiB以下。画像job予算124 MiBの整合性検証を適用 |
 | `Pdf__MaxUploadImagePixels` | `50000000` | 画像1枚の受付画素数。正、50 MP以下 |
 | `Pdf__ImageOutputLimitBytes` | `56623104`（54 MiB） | 生成ページPDF合計・最終PDFそれぞれの上限。正、54 MiB以下 |
 | `Pdf__ImageJobLimitBytes` | `130023424`（124 MiB） | 全upload・中間物・出力・補助1 MiB・sentinelの割当上限 |
@@ -769,7 +771,7 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__ImageDjpegMaxMemoryMegabytes` | `320` | djpegのmaxmemory。1〜320の10進MB、ASから64 MiBを残す |
 | `Pdf__ImageJpegtranAddressSpaceLimitBytes` | `402653184`（384 MiB） | jpegtran専用AS。同じ範囲 |
 | `Pdf__ImageJpegtranMaxMemoryMegabytes` | `320` | jpegtran専用maxmemory。同じ範囲・余裕の検証を適用 |
-| `Pdf__MaxMergeFiles` | `10` | mergeの最大ファイル数。設定可能な範囲は2〜10 |
+| `Pdf__MaxMergeFiles` | `10` | mergeの最大ファイル数。設定可能な範囲は2〜100 |
 | `Pdf__MaxMergeInputBytes` | `52428800`（50 MiB） | 実際に読み込むmerge入力PDF合計の最大bytes |
 | `Pdf__MaxSplitParts` | `100` | 分割数上限。設定範囲2〜500 |
 | `Pdf__MaxSplitOutputBytes` | `52428800`（50 MiB） | ZIP内PDFの実サイズ合計。MaxFileBytesから独立 |
@@ -777,21 +779,23 @@ PDFiumは対応外の内容やメモリ不足で画像を黙って省略する�
 | `Pdf__CleanJsonLimitBytes` | `33554432`（32 MiB） | cleanの入力・更新・出力検査JSONの各上限。int.MaxValue以下 |
 | `Pdf__CleanOutputLimitBytes` | `56623104`（54 MiB） | cleanの最終PDF上限 |
 | `Pdf__CleanJobLimitBytes` | `130023424`（124 MiB） | cleanの一時ファイル割当合計。4 KiB単位の入力上限以上が必須 |
-| `Pdf__MaxOcrPages` | `10` | 標準OCRの対象ページ数の上限。1〜10 |
+| `Pdf__MaxOcrPages` | `10` | 標準OCRの対象ページ数の上限。1〜100 |
 | `Pdf__OcrTimeoutSeconds` | `90` | アップロード後の標準OCR処理全体の上限（秒） |
-| `Pdf__MaxOcrHighPages` | `5` | 高精度OCRの対象ページ数の上限。1〜5 |
+| `Pdf__MaxOcrHighPages` | `5` | 高精度OCRの対象ページ数の上限。1〜100 |
 | `Pdf__OcrHighTimeoutSeconds` | `180` | アップロード後の高精度OCR処理全体の上限（秒） |
 | `Pdf__TesseractPath` | `tesseract` | Tesseract実行ファイル。起動時に両方式の `jpn`・`jpn_vert`・`osd` を確認 |
 | `Pdf__TessdataBestDir` | `/opt/amane-pdf/tessdata-best` | 高精度のモデルディレクトリの絶対パス |
-| `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数 |
+| `Pdf__QpdfTimeoutSeconds` | `30` | qpdfの検査と各PDF処理全体の最大秒数。composeとPDF→画像にも適用 |
 | `Pdf__MaxConcurrentProcesses` | `2` | 同時PDF処理枠。アップロードから送信/削除まで保持 |
 | `Pdf__QpdfPath` | `qpdf` | qpdf実行ファイル |
 | `Pdf__OverlayJsonLimitBytes` | `33554432`（32 MiB） | overlay入力metadataの上限。深さ64、間接object 50,000 |
 | `Pdf__OverlayGeneratedJsonLimitBytes` | `41943040`（40 MiB） | 合成後・最終metadataの上限。間接object 75,000 |
 | `Pdf__OverlayGeneratedLimitBytes` | `8388608`（8 MiB） | 白紙PDF・白紙/描画/更新JSON・描画レイヤーの各上限 |
-| `Pdf__OverlayOutputLimitBytes` | `65011712`（62 MiB） | overlaid/最終PDFの各上限。job残容量による実効予算も適用 |
-| `Pdf__OverlayJobLimitBytes` | `130023424`（124 MiB） | 入力、全中間物、出力、FSIZE sentinelを4 KiB単位で予約 |
+| `Pdf__OverlayOutputLimitBytes` | `65011712`（62 MiB） | overlaid/最終PDFの各上限。設定範囲は正、512 MiB以下。job残容量による実効予算も適用 |
+| `Pdf__OverlayJobLimitBytes` | `130023424`（124 MiB） | 入力、全中間物、出力、FSIZE sentinelを4 KiB単位で予約。設定上限512 MiB、入力上限以上が必須 |
 | `Pdf__OverlayMaxPages` | `1000` | 連続した対象ページの上限 |
+| `Pdf__MaxToImagesPages` | `50` | PDF→画像のページ上限。1〜1,000 |
+| `Pdf__MaxToImagesZipBytes` | `67108864`（64 MiB） | PDF→画像のZIP上限。正、120 MiB以下。実効容量はRedactJobLimitBytesにも制限される |
 | `Pdf__PdfcpuPath` | `pdfcpu`（Dockerは `/opt/amane-pdf/bin/pdfcpu`） | 固定version 0.16.3の描画tool |
 | `Pdf__PdfcpuConfigDir` | 空（Dockerは `/opt/amane-pdf/config`） | Linuxでは必須の絶対path。`pdfcpu/config.yml` と日本語font cacheを含む親dir |
 | `Pdf__PdfcpuMemoryLimit` | `200MiB` | Go runtimeのsoft limit。正のASCII整数＋`MiB`、AS以下 |
@@ -851,7 +855,7 @@ passwordも127 bytesまでに制限し、UTF-8として不正な入力は400で�
 
 mergeでは11個目（設定した上限の次）のfile partを発見した時点で、新しい一時ファイルへ書き込む前に400で拒否します。単一・合計・requestのサイズ超過は413です。
 
-30秒はアップロード完了後のqpdf検査と各PDF処理（restrictは入力検査と権限制限設定、unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。ページ番号も入力検査から描画・合成・復元・出力検査まで同じ予算を共有します。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
+`Pdf__QpdfTimeoutSeconds`（既定30秒）はアップロード完了後のqpdf検査と各PDF処理（restrictは入力検査と権限制限設定、unlockはJSON作成・認証・入力検査・解除・出力検証を含む）、検査・ページ数取得・ページ操作、または全merge入力検証・結合の合計です。composeとPDF→画像もこの処理期限を使います。ページ番号も入力検査から描画・合成・復元・出力検査まで同じ予算を共有します。timeout/クライアント切断時はprocess treeをkillして終了を待ち、一時ファイルを削除します。アプリ停止時もアップロードとqpdfをキャンセルします。
 暗号化、権限制限、解除、最適化、圧縮、情報除去、画像からPDF、結合、分割、回転、ページ番号、抽出、削除、並べ替えは同じ同時実行枠と一時領域を共有します。既暗号化PDFはunlock以外の処理APIで拒否します。
 
 merge入力合計50 MiBは、同時2 requestの入力・出力・小さな処理ファイルをDocker例のtmpfs 256 MiBへ収めやすくする初期値です。出力サイズを数学的に保証する上限ではありません。出力の増加やqpdfのメモリ使用に対しては、tmpfs 256 MiB / memory 1.5 GiBなど実行環境側の上限を引き続き安全境界として使用します。設定を増やす場合は同時実行数と一時領域・メモリ容量も合わせて調整してください。

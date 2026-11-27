@@ -11,6 +11,7 @@ internal sealed class PdfImageInputException(PdfImageReason reason) : Exception
 internal sealed class FromImagesCapacity
 {
     internal const long AuxiliaryBytes = 1024 * 1024;
+    internal const long MaxInputBytes = 100 * 1024 * 1024;
     private readonly long limit;
     private readonly Dictionary<string, long> reservations = [];
     internal long Used { get; private set; } = AuxiliaryBytes;
@@ -21,7 +22,7 @@ internal sealed class FromImagesCapacity
 
     internal static bool IsValid(PdfOptions o) =>
         o.MaxImageFiles is >= 1 and <= 100 &&
-        o.MaxImageInputBytes is > 0 and <= 50 * 1048576 &&
+        o.MaxImageInputBytes is > 0 && o.MaxImageInputBytes <= MaxInputBytes &&
         o.MaxUploadImagePixels is > 0 and <= 50_000_000 &&
         o.ImageOutputLimitBytes is > 0 and <= 54 * 1048576 &&
         o.ImageJobLimitBytes is > 0 and <= 124 * 1048576 &&

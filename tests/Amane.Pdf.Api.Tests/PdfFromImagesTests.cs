@@ -70,6 +70,22 @@ public sealed class PdfFromImagesTests
     }
 
     [TestMethod]
+    public async Task OriginalJpegsReportAggregatePdfOutputLimitAsCapacity()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var jpeg = await CompressFixtures.JpegAsync(test, 800, 600);
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        options.ImageOutputLimitBytes = jpeg.Length + jpeg.Length / 2L;
+        using var form = PdfTestContext.MergeForm(jpeg, jpeg);
+        using var response = await test.Client.PostAsync("/api/pdf/from-images?quality=original", form);
+        Assert.AreEqual(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsByteArrayAsync());
+        Assert.AreEqual("output-too-large", problem.RootElement.GetProperty("reason").GetString());
+        test.AssertClean();
+    }
+
+    [TestMethod]
     [DataRow("standard", 2)]
     [DataRow("original", 2)]
     [DataRow("standard", 6)]

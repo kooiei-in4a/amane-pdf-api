@@ -69,9 +69,16 @@ public sealed class OverlayCapacityTests
     public void Settings_CannotRaiseMeasuredEnvelope()
     {
         Assert.IsTrue(OverlayCapacity.IsValid(new()));
+        Assert.IsTrue(OverlayCapacity.IsValid(new()
+        {
+            MaxFileBytes = 200 * 1048576,
+            OverlayOutputLimitBytes = 256 * 1048576,
+            OverlayJobLimitBytes = 256 * 1048576
+        }));
         foreach (var settings in new[] { new PdfOptions { OverlayMaxPages = 1001 }, new() { OverlayGeneratedLimitBytes = 8388609 },
             new() { OverlayJsonLimitBytes = 33554433 }, new() { OverlayGeneratedJsonLimitBytes = 41943041 },
-            new() { OverlayOutputLimitBytes = 65011713 }, new() { OverlayJobLimitBytes = 130023425 },
+            new() { OverlayOutputLimitBytes = OverlayCapacity.MaxOutputLimitBytes + 1 },
+            new() { OverlayJobLimitBytes = OverlayCapacity.MaxJobLimitBytes + 1 },
             new() { OverlayMaxPages = 0 }, new() { MaxFileBytes = 4097, OverlayJobLimitBytes = 8191 } })
             Assert.IsFalse(OverlayCapacity.IsValid(settings));
     }

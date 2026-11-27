@@ -7,6 +7,23 @@ namespace Amane.Pdf.Api.Tests;
 public sealed class PdfOverlayBuilderTests
 {
     [TestMethod]
+    public async Task InputAboveFormerFiftyMiBLimitUsesConfiguredFileAndJobCapacity()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        using var job = new OverlayJob();
+        job.Settings.MaxFileBytes = 60 * 1048576;
+        job.Settings.OverlayJobLimitBytes = 124 * 1048576;
+        using (var input = TemporaryPdfFiles.CreatePrivateFile(job.Files.InputPath))
+            input.SetLength(50L * 1048576 + 1);
+        var marker = Path.Combine(job.Root, "qpdf-reached");
+        job.Settings.QpdfPath = job.Script($"touch '{marker}'\nexit 2");
+        await Assert.ThrowsExactlyAsync<PdfInputException>(() => job.Builder.BuildAsync(job.Files, 1, 1,
+            static (_, _) => Task.CompletedTask, default));
+        Assert.IsTrue(File.Exists(marker), "The configured 60 MiB input limit must permit qpdf validation to start.");
+        Assert.IsFalse(File.Exists(job.Files.OutputPath));
+    }
+
+    [TestMethod]
     [DataRow(false)] [DataRow(true)]
     public async Task BlankOpacityUsesOnePrivateStreamPerPageAndDefaultHasNoContents(bool transparent)
     {

@@ -2,6 +2,8 @@ namespace Amane.Pdf.Api;
 
 public sealed class PdfOptions
 {
+    internal const int MaxMergeFilesLimit = 100;
+    internal static bool IsValidMergeFileCount(int count) => count is >= 2 and <= MaxMergeFilesLimit;
     public long MaxFileBytes { get; set; } = 50 * 1024 * 1024;
     public int MaxMergeFiles { get; set; } = 10;
     public long MaxMergeInputBytes { get; set; } = 50 * 1024 * 1024;
@@ -58,6 +60,8 @@ public sealed class PdfOptions
     public string JpegtranPath { get; set; } = "jpegtran";
     public int MaxImageFiles { get; set; } = 30;
     public long MaxImageInputBytes { get; set; } = 50 * 1024 * 1024;
+    public int MaxToImagesPages { get; set; } = 50;
+    public long MaxToImagesZipBytes { get; set; } = 64 * 1024 * 1024;
     public long MaxUploadImagePixels { get; set; } = 50_000_000;
     public long ImageOutputLimitBytes { get; set; } = 54 * 1024 * 1024;
     public long ImageJobLimitBytes { get; set; } = 124 * 1024 * 1024;

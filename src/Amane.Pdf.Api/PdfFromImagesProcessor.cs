@@ -37,6 +37,11 @@ internal sealed class PdfFromImagesProcessor(PdfOptions options, TemporaryPdfFil
             Capacity.Delete(input); // Release upload before retaining both normalized image and page.
             var page = files.ImagePath(index, "page.pdf");
             var pageBudget = Capacity.ReserveWrite(page, options.ImageOutputLimitBytes - pageBytes, external: true);
+            // PDFcpu embeds JPEG data in the generated page PDF. If the remaining aggregate
+            // output budget cannot hold the normalized JPEG itself, failure is certain and is
+            // a capacity limit rather than an unsupported-image error from the child process.
+            if (!image.Png && new FileInfo(normalized).Length > pageBudget)
+                throw PdfImageInputException.Capacity();
             await pdfcpu.ImportImageAsync(files, normalized, image, page, pageBudget, token);
             Capacity.Commit(page, pageBudget);
             await qpdf.CheckImagePdfAsync(files, page, 1, pageBudget, token);

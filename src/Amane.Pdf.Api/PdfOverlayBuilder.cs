@@ -11,7 +11,6 @@ internal sealed record OverlayStage(string Name, double Milliseconds, long Bytes
 internal sealed partial class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<PdfOptions> options)
 {
     internal const string Failure = "PDF描画処理に失敗しました。";
-    internal const long InputLimitBytes = 50 * 1048576;
     private readonly PdfOptions settings = options.Value;
 
     internal Task BuildAsync(TemporaryPdfFiles files, int from, int to,
@@ -79,7 +78,7 @@ internal sealed partial class PdfOverlayBuilder(QpdfProcessor qpdf, IOptions<Pdf
         try
         {
             var inputBytes = new FileInfo(files.InputPath).Length;
-            if (inputBytes > Math.Min(settings.MaxFileBytes, InputLimitBytes)) throw PdfOverlayInputException.TooComplex();
+            if (inputBytes > settings.MaxFileBytes) throw PdfOverlayInputException.TooComplex();
             capacity.Reserve(files.InputPath, inputBytes);
             foreach (var path in inputs) capacity.Reserve(path, new FileInfo(path).Length);
             await qpdf.ValidateAsync(files, token);

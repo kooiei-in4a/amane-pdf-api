@@ -35,6 +35,28 @@ public sealed class PdfMergeTests
     }
 
     [TestMethod]
+    public async Task Merge_AcceptsMoreThanTenFilesAtMaximumConfiguredLimit()
+    {
+        await using var test = new PdfTestContext(new() { ["Pdf:MaxMergeFiles"] = PdfOptions.MaxMergeFilesLimit.ToString() });
+        using var form = PdfTestContext.MergeForm(Enumerable.Repeat(PdfTestContext.Fixture, 11).ToArray());
+        using var response = await test.Client.PostAsync("/api/pdf/merge", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 11);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(1, false)]
+    [DataRow(2, true)]
+    [DataRow(10, true)]
+    [DataRow(100, true)]
+    [DataRow(101, false)]
+    public void MergeFileCountConfigurationHasFiniteBounds(int count, bool expected)
+    {
+        Assert.AreEqual(expected, PdfOptions.IsValidMergeFileCount(count));
+    }
+
+    [TestMethod]
     public async Task Merge_PreservesMultipartOrder_AndEveryPageWithinEachInput()
     {
         await using var test = new PdfTestContext();
@@ -216,7 +238,7 @@ public sealed class PdfMergeTests
     [DataRow("Pdf:MaxMergeFiles", "0")]
     [DataRow("Pdf:MaxMergeFiles", "-1")]
     [DataRow("Pdf:MaxMergeFiles", "1")]
-    [DataRow("Pdf:MaxMergeFiles", "11")]
+    [DataRow("Pdf:MaxMergeFiles", "101")]
     [DataRow("Pdf:MaxMergeInputBytes", "0")]
     [DataRow("Pdf:MaxMergeInputBytes", "-1")]
     [DataRow("Pdf:MaxMergeInputBytes", "9223372036854775807")]

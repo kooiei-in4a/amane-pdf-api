@@ -66,6 +66,8 @@ public sealed class FromImagesDesignTests
     public void Settings_Leave64MiBForLibrariesAndRejectOverflow()
     {
         Assert.IsTrue(FromImagesCapacity.IsValid(new()));
+        Assert.IsTrue(FromImagesCapacity.IsValid(new() { MaxImageInputBytes = FromImagesCapacity.MaxInputBytes }));
+        Assert.IsFalse(FromImagesCapacity.IsValid(new() { MaxImageInputBytes = FromImagesCapacity.MaxInputBytes + 1 }));
         Assert.IsTrue(FromImagesCapacity.ValidJpegMemory(320 * 1048576, 268));
         Assert.IsFalse(FromImagesCapacity.ValidJpegMemory(320 * 1048576, 269));
         Assert.IsFalse(FromImagesCapacity.IsValid(new() { ImageDjpegAddressSpaceLimitBytes = 64 * 1048576 }));

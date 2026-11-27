@@ -10,6 +10,8 @@ internal sealed class PdfOverlayInputException(PdfOverlayReason reason) : Except
 
 internal sealed class OverlayCapacity(long limit)
 {
+    internal const long MaxJobLimitBytes = 512 * 1024 * 1024;
+    internal const long MaxOutputLimitBytes = 512 * 1024 * 1024;
     private readonly Dictionary<string, long> reservations = [];
     internal long Used { get; private set; }
     internal long Peak { get; private set; }
@@ -19,8 +21,8 @@ internal sealed class OverlayCapacity(long limit)
         options.OverlayJsonLimitBytes is > 0 and <= 32 * 1048576 &&
         options.OverlayGeneratedLimitBytes is > 0 and <= 8 * 1048576 &&
         options.OverlayGeneratedJsonLimitBytes is > 0 and <= 40 * 1048576 &&
-        options.OverlayOutputLimitBytes is > 0 and <= 62 * 1048576 &&
-        options.OverlayJobLimitBytes is > 0 and <= 124 * 1048576 &&
+        options.OverlayOutputLimitBytes is > 0 && options.OverlayOutputLimitBytes <= MaxOutputLimitBytes &&
+        options.OverlayJobLimitBytes is > 0 && options.OverlayJobLimitBytes <= MaxJobLimitBytes &&
         options.OverlayMaxPages is > 0 and <= 1000 &&
         options.MaxFileBytes is > 0 and <= long.MaxValue - 4095 &&
         options.OverlayJobLimitBytes >= Allocated(options.MaxFileBytes);
