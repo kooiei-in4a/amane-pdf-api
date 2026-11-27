@@ -2,6 +2,8 @@ using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Amane.Pdf.Api.Tests;
 
@@ -147,16 +149,45 @@ public sealed class PdfSignedRewriteTests
     }
 
     [TestMethod]
-    public async Task Rewrite_RejectsSignatureDictionaryInsideObjectStream()
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Rewrite_RejectsSignatureDictionaryInsideObjectStream(bool denyReopeningStdout)
     {
+        if (denyReopeningStdout && !OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext();
         var packed = Path.Combine(test.Root, "packed.pdf");
         // Repacking invalidates the CMS signature. The API checks for the signature dictionary.
         Assert.AreEqual(0, (await test.QpdfAsync("--object-streams=generate",
             FixturePath("signed-without-type.pdf"), packed)).ExitCode);
         Assert.IsFalse(await PdfFormDetector.MayHaveSignatureNameAsync(packed, default));
+        if (denyReopeningStdout)
+        {
+            var wrapper = await PdfCompressTests.WrapperAsync(test,
+                "for arg do [ \"$arg\" != /dev/stdout ] || exit 2; done\nexec qpdf \"$@\"\n");
+            test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
+        }
         using var form = PdfTestContext.FileForm(await File.ReadAllBytesAsync(packed));
         await AssertRejectedAsync(test, "optimize", form, signed: true);
+    }
+
+    [TestMethod]
+    public async Task Merge_AcceptsTenPdfsWithLargeObjectStreamsWithinSharedDeadline()
+    {
+        await using var test = new PdfTestContext();
+        var unpacked = Path.Combine(test.Root, "unpacked.pdf");
+        var packed = Path.Combine(test.Root, "packed.pdf");
+        await File.WriteAllBytesAsync(unpacked, TaggedPdf(wideMetadata: false));
+        Assert.AreEqual(0, (await test.QpdfAsync("--object-streams=generate", unpacked, packed)).ExitCode);
+        var xref = await test.QpdfAsync("--show-xref", packed);
+        Assert.AreEqual(0, xref.ExitCode);
+        Assert.IsTrue(xref.Output.Contains(": compressed; stream =", StringComparison.Ordinal));
+
+        var input = await File.ReadAllBytesAsync(packed);
+        using var form = PdfTestContext.MergeForm(Enumerable.Repeat(input, 10).ToArray());
+        using var response = await test.Client.PostAsync("/api/pdf/merge", form);
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        await test.AssertValidPdfAsync(await response.Content.ReadAsByteArrayAsync(), 30);
+        test.AssertClean();
     }
 
     private static byte[] TaggedPdf(bool wideMetadata)

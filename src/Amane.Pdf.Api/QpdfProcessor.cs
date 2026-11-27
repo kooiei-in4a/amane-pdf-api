@@ -34,13 +34,26 @@ public sealed class QpdfProcessor(IOptions<PdfOptions> options)
                 if (xrefExit == 0 && onlyUncompressed) continue;
             }
 
-            var (exitCode, signed) = await ExternalProcessRunner.ReadStdoutAsync(
-                CreateRequest(["--json-output=2", "--json-stream-data=none", "--decode-level=none", path]),
-                PdfFormDetector.ContainsAppliedSignatureAsync, token);
+            var (exitCode, signed) = await InspectSignatureJsonAsync(path, token);
             if (exitCode is 2 or 3) throw new PdfInputException();
             if (exitCode != 0 || signed is null) throw new InvalidOperationException("PDF inspection failed.");
             if (signed.Value) throw new PdfOverlayInputException(PdfOverlayReason.SignatureStructure);
         }
+    }
+
+    private async Task<(int ExitCode, bool? Signed)> InspectSignatureJsonAsync(string path, CancellationToken token)
+    {
+        string[] arguments = ["--json-output=2", "--json-stream-data=none", "--decode-level=none", path];
+        if (OperatingSystem.IsLinux())
+        {
+            // An explicit output path makes qpdf buffer writes to the same redirected pipe.
+            // Some hosts restrict reopening /dev/stdout. Retry with implicit stdout there.
+            var buffered = await ExternalProcessRunner.ReadStdoutAsync(CreateRequest([.. arguments, "/dev/stdout"]),
+                PdfFormDetector.ContainsAppliedSignatureAsync, token);
+            if (buffered.ExitCode == 0) return buffered;
+        }
+        return await ExternalProcessRunner.ReadStdoutAsync(CreateRequest(arguments),
+            PdfFormDetector.ContainsAppliedSignatureAsync, token);
     }
 
     private async Task ValidateCoreAsync(string path, CancellationToken cancellationToken, PdfStage kind)
