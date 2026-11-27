@@ -321,8 +321,7 @@ public sealed class PdfCompressTests
     internal static async Task<string> WrapperAsync(PdfTestContext test, string body)
     {
         var path = Path.Combine(test.Root, "wrapper-" + Guid.NewGuid().ToString("N") + ".sh");
-        await File.WriteAllTextAsync(path, "#!/bin/sh\n" + body);
-        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(path, "#!/bin/sh\n" + body);
         return path;
     }
     [SupportedOSPlatformGuard("linux")]

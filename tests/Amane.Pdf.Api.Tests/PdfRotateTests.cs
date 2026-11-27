@@ -168,8 +168,7 @@ public sealed class PdfRotateTests
         try
         {
             var wrapper = Path.Combine(root, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper, $"#!/bin/sh\nprintf '%s\\n' \"$1\" >> '{root}/calls'\nexec qpdf \"$@\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            TestExecutable.Write(wrapper, $"#!/bin/sh\nprintf '%s\\n' \"$1\" >> '{root}/calls'\nexec qpdf \"$@\"\n");
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using (var allPages = PdfTestContext.FileForm(PdfTestContext.Fixture))
             using (var response = await test.Client.PostAsync("/api/pdf/rotate?angle=90", allPages))
@@ -197,9 +196,8 @@ public sealed class PdfRotateTests
         try
         {
             var wrapper = Path.Combine(root, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper,
+            TestExecutable.Write(wrapper,
                 $"#!/bin/sh\ncase \"$1\" in\n--show-npages) printf '%066d' 1; echo ' PDF-CONTENT-SENTINEL {root}' >&2; exit 0;;\n*) exec qpdf \"$@\";;\nesac\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
             await AssertProblemAsync(test, "/api/pdf/rotate?angle=90&pages=1", form, HttpStatusCode.InternalServerError);
@@ -254,9 +252,8 @@ public sealed class PdfRotateTests
         try
         {
             var wrapper = Path.Combine(root, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper,
+            TestExecutable.Write(wrapper,
                 $"#!/bin/sh\ncase \"$1\" in\n--rotate=*) echo 'stderr PDF-CONTENT-SENTINEL {root}' >&2; exit {exitCode};;\n*) exec qpdf \"$@\";;\nesac\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
             await AssertProblemAsync(test, "/api/pdf/rotate?angle=90", form, (HttpStatusCode)status);

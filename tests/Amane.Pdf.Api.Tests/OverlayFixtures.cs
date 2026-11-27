@@ -45,8 +45,7 @@ internal sealed class OverlayJob : IDisposable
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         var path = Path.Combine(Root, "tool.sh");
-        File.WriteAllText(path, "#!/bin/sh\n" + body + "\n");
-        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(path, "#!/bin/sh\n" + body + "\n");
         return path;
     }
     public void Dispose() { Files.Dispose(); Directory.Delete(Root, true); }

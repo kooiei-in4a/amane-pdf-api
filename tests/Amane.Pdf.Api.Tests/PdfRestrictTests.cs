@@ -358,8 +358,7 @@ public sealed class PdfRestrictTests
         if (OperatingSystem.IsWindows()) { Assert.Inconclusive("Unix権限を検証します。"); return; }
         await using var test = new PdfTestContext();
         var wrapper = Path.Combine(test.Root, "wrapper.sh");
-        await File.WriteAllTextAsync(wrapper, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{test.Root}/argv'\ncp \"${{1#--job-json-file=}}\" '{test.Root}/inspection.json'\nexec qpdf \"$@\"\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(wrapper, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{test.Root}/argv'\ncp \"${{1#--job-json-file=}}\" '{test.Root}/inspection.json'\nexec qpdf \"$@\"\n");
         var restriction = new PdfRestriction(Owner, User, "low", "deny", "deny");
         Assert.IsFalse(restriction.ToString().Contains(Owner, StringComparison.Ordinal));
         Assert.IsFalse(restriction.ToString().Contains(User, StringComparison.Ordinal));

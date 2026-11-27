@@ -47,9 +47,8 @@ public sealed class PdfOptimizeTests
         try
         {
             var wrapper = Path.Combine(wrapperRoot, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper,
+            TestExecutable.Write(wrapper,
                 $"#!/bin/sh\nif [ \"$1\" = --object-streams=generate ]; then printf '%s\\n' \"$@\" > '{wrapperRoot}/argv'; fi\nexec qpdf \"$@\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
             using var response = await test.Client.PostAsync("/api/pdf/optimize", form);
@@ -121,9 +120,8 @@ public sealed class PdfOptimizeTests
         try
         {
             var wrapper = Path.Combine(wrapperRoot, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper,
+            TestExecutable.Write(wrapper,
                 $"#!/bin/sh\ncase \"$1\" in\n--object-streams=generate) echo 'stderr PDF-CONTENT-SENTINEL {wrapperRoot}' >&2; exit {exitCode};;\n*) exec qpdf \"$@\";;\nesac\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.FileForm(PdfTestContext.Fixture, "private-name.pdf");
             await AssertProblemAsync(test, form, (HttpStatusCode)status);

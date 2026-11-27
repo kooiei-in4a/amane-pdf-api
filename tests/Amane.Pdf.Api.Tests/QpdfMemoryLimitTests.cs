@@ -148,11 +148,10 @@ public sealed class QpdfMemoryLimitTests
         if (!RequireLinux()) return;
         await using var test = new PdfTestContext();
         var wrapper = Path.Combine(test.Root, "inspect-limits.sh");
-        await File.WriteAllTextAsync(wrapper, "#!/bin/sh\n" +
+        TestExecutable.Write(wrapper, "#!/bin/sh\n" +
             "[ \"$JPEGMEM\" = 64000 ] || exit 9\n" +
             "grep -Eq '^Max address space +67108864 +67108864 +bytes' /proc/$$/limits || exit 9\n" +
             "exec qpdf \"$@\"\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         options.QpdfPath = wrapper;
         options.QpdfAddressSpaceLimitBytes = 64 * 1024 * 1024;

@@ -144,8 +144,7 @@ public sealed class PdfValidationTests
         try
         {
             var wrapper = Path.Combine(wrapperRoot, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper, $"#!/bin/sh\ncase \"$1\" in\n--job-json-file=*) echo 'stderr-fixture-password PDF-CONTENT-SENTINEL {wrapperRoot}' >&2; exit {exitCode};;\nesac\nexec qpdf \"$@\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            TestExecutable.Write(wrapper, $"#!/bin/sh\ncase \"$1\" in\n--job-json-file=*) echo 'stderr-fixture-password PDF-CONTENT-SENTINEL {wrapperRoot}' >&2; exit {exitCode};;\nesac\nexec qpdf \"$@\"\n");
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.Form(PdfTestContext.Fixture, "stderr-fixture-password");
             await AssertProblemAsync(test, form, (HttpStatusCode)status);

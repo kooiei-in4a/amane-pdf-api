@@ -189,9 +189,8 @@ public sealed class PdfMergeTests
         if (!RequireLinux()) return;
         await using var test = new PdfTestContext();
         var wrapper = Path.Combine(test.Root, "qpdf.sh");
-        await File.WriteAllTextAsync(wrapper,
+        TestExecutable.Write(wrapper,
             $"#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{test.Root}/argv'\nexec qpdf \"$@\"\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var form = PdfTestContext.MergeForm(PdfTestContext.Fixture, PdfTestContext.Fixture);
         using var response = await test.Client.PostAsync("/api/pdf/merge", form);
@@ -225,10 +224,9 @@ public sealed class PdfMergeTests
         if (!RequireLinux()) return;
         await using var test = new PdfTestContext();
         var wrapper = Path.Combine(test.Root, "qpdf.sh");
-        await File.WriteAllTextAsync(wrapper, $"#!/bin/sh\ncase \"$1\" in\n{stage})\n" +
+        TestExecutable.Write(wrapper, $"#!/bin/sh\ncase \"$1\" in\n{stage})\n" +
             $"  echo 'stdout PDF-CONTENT-SENTINEL {test.Root}'\n  echo 'stderr PDF-CONTENT-SENTINEL {test.Root}' >&2\n" +
             $"  exit {exitCode};;\n*) exec qpdf \"$@\";;\nesac\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var form = PdfTestContext.MergeForm(PdfTestContext.Fixture, PdfTestContext.Fixture);
         await AssertProblemAsync(test, form, (HttpStatusCode)status);
