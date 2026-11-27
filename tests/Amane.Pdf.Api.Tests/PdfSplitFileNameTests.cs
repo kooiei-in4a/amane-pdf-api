@@ -152,11 +152,10 @@ public sealed class PdfSplitFileNameTests
             await File.WriteAllBytesAsync(files.InputPath, payload);
             var wrapper = Path.Combine(root, "qpdf");
             // Only replace PDF extraction/inspection. The ZIP loop, metadata and limits are production code.
-            await File.WriteAllTextAsync(wrapper, "#!/bin/sh\n" +
+            TestExecutable.Write(wrapper, "#!/bin/sh\n" +
                 "case \"$1\" in --is-encrypted) exit 2;; --check) exit 0;; esac\n" +
                 "[ \"$#\" -eq 6 ] && [ \"$2\" = --pages ] && [ \"$5\" = -- ] || exit 97\n" +
                 "cp \"$1\" \"$6\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             options.QpdfPath = wrapper;
             var processor = new PdfSplitProcessor(new(Options.Create(options)), options, files);
             long accepted = 0;

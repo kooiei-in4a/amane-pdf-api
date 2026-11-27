@@ -281,8 +281,7 @@ public sealed class ExternalProcessRunnerTests
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         var path = Path.Combine(files.DirectoryPath, "process.sh");
-        File.WriteAllText(path, "#!/bin/sh\n" + body + "\n");
-        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(path, "#!/bin/sh\n" + body + "\n");
         return path;
     }
 

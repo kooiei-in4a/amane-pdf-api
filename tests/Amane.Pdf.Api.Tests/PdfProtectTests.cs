@@ -21,8 +21,7 @@ public sealed class PdfProtectTests
         try
         {
             var wrapper = Path.Combine(root, "qpdf-wrapper.sh");
-            await File.WriteAllTextAsync(wrapper, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{root}/argv'\ncp \"${{1#--job-json-file=}}\" '{root}/inspection.json'\nexec qpdf \"$@\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            TestExecutable.Write(wrapper, $"#!/bin/sh\nprintf '%s\\n' \"$@\" > '{root}/argv'\ncp \"${{1#--job-json-file=}}\" '{root}/inspection.json'\nexec qpdf \"$@\"\n");
             using var files = new TemporaryPdfFiles(Path.Combine(root, "jobs"));
             await using (var input = TemporaryPdfFiles.CreatePrivateFile(files.InputPath))
             {

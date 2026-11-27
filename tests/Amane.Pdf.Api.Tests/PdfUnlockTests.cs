@@ -381,8 +381,7 @@ public sealed class PdfUnlockTests
     internal static string CreateShim(string root, string body)
     {
         var path = Path.Combine(root, "unlock-qpdf.sh");
-        File.WriteAllText(path, "#!/bin/sh\n" + body + "\n");
-        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(path, "#!/bin/sh\n" + body + "\n");
         return path;
     }
 

@@ -181,8 +181,7 @@ public sealed class PdfFromImagesTests
             (139, 500, null), (0, 500, null) })
         {
             var script = Path.Combine(test.Root, "fault.sh");
-            await File.WriteAllTextAsync(script, $"#!/bin/sh\necho private-image-marker >&2\nexit {exit}\n");
-            File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            TestExecutable.Write(script, $"#!/bin/sh\necho private-image-marker >&2\nexit {exit}\n");
             options.JpegtranPath = script;
             using var form = PdfTestContext.MergeForm(jpeg);
             await Problem(test, form, "?quality=original", status, reason);
@@ -239,9 +238,8 @@ public sealed class PdfFromImagesTests
         await using var test = new PdfTestContext();
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var script = Path.Combine(test.Root, "merge-fault.sh");
-        await File.WriteAllTextAsync(script, "#!/bin/sh\n" +
+        TestExecutable.Write(script, "#!/bin/sh\n" +
             "if [ \"$1\" = --empty ]; then for last do :; done; dd if=/dev/zero of=\"$last\" bs=16385 count=1 status=none; exit 139; fi\nexec qpdf \"$@\"\n");
-        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         options.QpdfPath = script; options.ImageOutputLimitBytes = 16384;
         using var form = PdfTestContext.MergeForm(FromImagesFixtures.Png());
         await Problem(test, form, "?quality=original", 500);

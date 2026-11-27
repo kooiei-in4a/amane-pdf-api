@@ -154,9 +154,8 @@ public sealed class PdfPageSelectionOperationTests
         try
         {
             var wrapper = Path.Combine(wrapperRoot, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper,
+            TestExecutable.Write(wrapper,
                 $"#!/bin/sh\nif [ \"$2\" = --pages ]; then printf '%s\\n' \"$@\" > '{wrapperRoot}/argv'; fi\nexec qpdf \"$@\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.FileForm(await test.CreatePagedPdfAsync(10));
             using var response = await test.Client.PostAsync("/api/pdf/delete-pages?pages=5,2", form);
@@ -213,9 +212,8 @@ public sealed class PdfPageSelectionOperationTests
         try
         {
             var wrapper = Path.Combine(wrapperRoot, "qpdf.sh");
-            await File.WriteAllTextAsync(wrapper,
+            TestExecutable.Write(wrapper,
                 $"#!/bin/sh\nif [ \"$2\" = --pages ]; then echo 'stderr PDF-CONTENT-SENTINEL {wrapperRoot}' >&2; exit {exitCode}; fi\nexec qpdf \"$@\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             await using var test = new PdfTestContext(new() { ["Pdf:QpdfPath"] = wrapper });
             using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
             await AssertProblemAsync(test, "/api/pdf/extract?pages=1", form, (HttpStatusCode)status);

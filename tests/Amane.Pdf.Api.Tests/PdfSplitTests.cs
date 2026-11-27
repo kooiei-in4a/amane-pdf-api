@@ -321,8 +321,7 @@ public sealed class PdfSplitTests
     {
         if (!OperatingSystem.IsLinux()) throw new PlatformNotSupportedException();
         var path = Path.Combine(test.Root, "split-qpdf.sh");
-        await File.WriteAllTextAsync(path, "#!/bin/sh\n" + source);
-        File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(path, "#!/bin/sh\n" + source);
         return path;
     }
     internal static async Task<HttpResponseMessage> PostAsync(PdfTestContext test, byte[] input, string query = "every=1",

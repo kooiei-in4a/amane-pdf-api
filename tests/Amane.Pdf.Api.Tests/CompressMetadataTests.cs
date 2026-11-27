@@ -18,8 +18,7 @@ public sealed class CompressMetadataTests
             // defensive resolution and accounting directly, without starting an API host.
             const string json = """{"qpdf":[{"jsonversion":2},{"obj:11 0 R":{"value":"12 0 R"},"obj:12 0 R":{"value":"13 0 R"},"obj:13 0 R":{"value":{"/XObject":{"/Im0":"4 0 R"}}}}]}""";
             var wrapper = Path.Combine(root, "metadata.sh");
-            await File.WriteAllTextAsync(wrapper, "#!/bin/sh\nfor arg do last=$arg; done\nprintf '%s' '" + json + "' > \"$last\"\n");
-            File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            TestExecutable.Write(wrapper, "#!/bin/sh\nfor arg do last=$arg; done\nprintf '%s' '" + json + "' > \"$last\"\n");
             var options = new PdfOptions { QpdfPath = wrapper, CompressSpoolLimitBytes = 3 * 4096 };
             using var files = new TemporaryPdfFiles(root);
             await File.WriteAllBytesAsync(files.InputPath, PdfTestContext.Fixture);

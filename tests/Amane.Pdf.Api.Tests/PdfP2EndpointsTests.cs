@@ -116,7 +116,7 @@ public sealed class PdfP2EndpointsTests
         if (!OperatingSystem.IsLinux()) return;
         await using var test = new PdfTestContext(new() { ["Pdf:CompressSoftTimeoutSeconds"] = "1" });
         var wrapper = Path.Combine(test.Root, "qpdf.sh");
-        await File.WriteAllTextAsync(wrapper, """
+        TestExecutable.Write(wrapper, """
             #!/bin/sh
             for arg do
                 if [ "$arg" = "--object-streams=generate" ]; then
@@ -125,7 +125,6 @@ public sealed class PdfP2EndpointsTests
             done
             exec qpdf "$@"
             """);
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var form = PdfTestContext.FileForm(PdfTestContext.Fixture);
         using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=102400", form);
@@ -147,7 +146,7 @@ public sealed class PdfP2EndpointsTests
         var source = CompressFixtures.Many(await CompressFixtures.JpegAsync(test), 2);
         var attempts = Path.Combine(test.Root, "cjpeg-attempts");
         var wrapper = Path.Combine(test.Root, "cjpeg.sh");
-        await File.WriteAllTextAsync(wrapper, $$"""
+        TestExecutable.Write(wrapper, $$"""
             #!/bin/sh
             printf 'image\n' >> '{{attempts}}'
             if [ "$(wc -l < '{{attempts}}')" -gt 1 ]; then
@@ -155,7 +154,6 @@ public sealed class PdfP2EndpointsTests
             fi
             exec cjpeg "$@"
             """);
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.CjpegPath = wrapper;
         using var form = PdfTestContext.FileForm(source);
         using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=102400", form);
@@ -182,14 +180,13 @@ public sealed class PdfP2EndpointsTests
         var pidMarker = Path.Combine(test.Root, "qpdf-update.pid");
         var wrapper = Path.Combine(test.Root, "qpdf.sh");
         // Only the lossy pass writes with --update-from-json; stall it past the soft deadline.
-        await File.WriteAllTextAsync(wrapper, $$"""
+        TestExecutable.Write(wrapper, $$"""
             #!/bin/sh
             for argument in "$@"; do
                 case "$argument" in --update-from-json=*) printf '%s' "$$" > '{{pidMarker}}'; exec sleep 60 ;; esac
             done
             exec qpdf "$@"
             """);
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var form = PdfTestContext.FileForm(source);
         using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=102400", form);
@@ -221,7 +218,7 @@ public sealed class PdfP2EndpointsTests
         var source = CompressFixtures.Many(await CompressFixtures.JpegAsync(test), 6);
         var events = Path.Combine(test.Root, "qpdf-events");
         var wrapper = Path.Combine(test.Root, "qpdf.sh");
-        await File.WriteAllTextAsync(wrapper, $$"""
+        TestExecutable.Write(wrapper, $$"""
             #!/bin/sh
             for arg do
                 case "$arg" in
@@ -231,7 +228,6 @@ public sealed class PdfP2EndpointsTests
             done
             exec qpdf "$@"
             """);
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var form = PdfTestContext.FileForm(source);
         using var response = await test.Client.PostAsync("/api/pdf/compress?maxBytes=102400", form);
@@ -459,7 +455,7 @@ public sealed class PdfP2EndpointsTests
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var marker = Path.Combine(test.Root, "diff.pid");
         var runner = Path.Combine(test.Root, "compare-worker.sh");
-        await File.WriteAllTextAsync(runner, $$"""
+        TestExecutable.Write(runner, $$"""
             #!/bin/sh
             if [ "$2" = "--diff" ]; then
                 [ "$(ulimit -d)" = 393216 ] && [ "$DOTNET_GCHeapHardLimit" = 0x10000000 ] || exit 1
@@ -468,7 +464,6 @@ public sealed class PdfP2EndpointsTests
             fi
             exec '{{options.DotnetPath}}' "$@"
             """);
-        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         options.DotnetPath = runner;
 
         // Disjoint alphabets give an insertion/deletion distance of exactly 4,096.
@@ -504,8 +499,7 @@ public sealed class PdfP2EndpointsTests
         Assert.AreEqual(1, result.ExitCode);
 
         var runner = Path.Combine(test.Root, "failed-extractor.sh");
-        await File.WriteAllTextAsync(runner, "#!/bin/sh\nprintf 'EXTRACTOR-DETAIL-SENTINEL' >&2\nexit 1\n");
-        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(runner, "#!/bin/sh\nprintf 'EXTRACTOR-DETAIL-SENTINEL' >&2\nexit 1\n");
         options.DotnetPath = runner;
         using var form = new MultipartFormDataContent();
         form.Add(new ByteArrayContent(PdfTestContext.Fixture), "old", "old.pdf");
@@ -575,8 +569,7 @@ public sealed class PdfP2EndpointsTests
         await using var test = new PdfTestContext(new() { ["Pdf:QpdfTimeoutSeconds"] = "2" });
         var runner = Path.Combine(test.Root, "slow-extractor.sh");
         var pidMarker = Path.Combine(test.Root, "extractor.pid");
-        await File.WriteAllTextAsync(runner, $"#!/bin/sh\nprintf '%s' \"$$\" > '{pidMarker}'\nexec sleep 60\n");
-        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(runner, $"#!/bin/sh\nprintf '%s' \"$$\" > '{pidMarker}'\nexec sleep 60\n");
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.DotnetPath = runner;
         using var form = new MultipartFormDataContent();
         form.Add(new ByteArrayContent(PdfTestContext.Fixture), "old", "old.pdf");
@@ -845,7 +838,7 @@ public sealed class PdfP2EndpointsTests
         var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
         var marker = Path.Combine(test.Root, "second-page.pid");
         var runner = Path.Combine(test.Root, "to-images-renderer.sh");
-        await File.WriteAllTextAsync(runner, $$"""
+        TestExecutable.Write(runner, $$"""
             #!/bin/sh
             if [ "$5" = --page ] && [ "$6" = 2 ]; then
                 printf '%s' "$$" > '{{marker}}'
@@ -853,7 +846,6 @@ public sealed class PdfP2EndpointsTests
             fi
             exec '{{options.DotnetPath}}' "$@"
             """);
-        File.SetUnixFileMode(runner, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         options.DotnetPath = runner;
         return marker;
     }

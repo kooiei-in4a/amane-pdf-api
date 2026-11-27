@@ -249,8 +249,7 @@ public sealed class PdfCleanTests
             : fault == "residual"
             ? "case \"$1\" in --job-json-file=*) job=${1#--job-json-file=}; dir=${job%/*}; exec qpdf \"$dir/input.pdf\" \"$dir/output.pdf\";; esac\n"
             : $"case \"$1\" in --job-json-file=*) echo 'SENTINEL stderr' >&2; exit {fault[4..]};; esac\n";
-        await File.WriteAllTextAsync(wrapper, "#!/bin/sh\n" + body + "exec qpdf \"$@\"\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        TestExecutable.Write(wrapper, "#!/bin/sh\n" + body + "exec qpdf \"$@\"\n");
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var response = await PostAsync(test, await FixtureAsync(test));
         await ProblemAsync(test, response, 500);
@@ -262,7 +261,7 @@ public sealed class PdfCleanTests
         if (!Linux()) return;
         await using var test = new PdfTestContext();
         var wrapper = Path.Combine(test.Root, "qpdf.sh");
-        await File.WriteAllTextAsync(wrapper, $$"""
+        TestExecutable.Write(wrapper, $$"""
         #!/bin/sh
         printf '%s\n' "$@" >> '{{test.Root}}/arguments'
         printf '%s\n' "$1" >> '{{test.Root}}/calls'
@@ -283,7 +282,6 @@ public sealed class PdfCleanTests
         esac
         exec qpdf "$@"
         """ + "\n");
-        File.SetUnixFileMode(wrapper, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value.QpdfPath = wrapper;
         using var response = await PostAsync(test, await FixtureAsync(test));
         Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
