@@ -192,12 +192,22 @@ internal static class OcrTextLayer
     // Writes the content stream for Tesseract's text-only page: the rendered image at dpi, origin bottom-left.
     // The page's font resource is renamed to FontName; GlyphLessFont maps UTF-16 code units to 500/1000 em glyphs.
     internal static void Write(Stream output, IReadOnlyList<Line> lines, bool vertical, int imageWidth, int imageHeight, int dpi,
-        CancellationToken token)
+        CancellationToken token, double skew = 0)
     {
         var k = 72.0 / dpi;
         var pageWidth = imageWidth * k;
         var pageHeight = imageHeight * k;
         using var writer = new StreamWriter(output, new UTF8Encoding(false), leaveOpen: true) { NewLine = "\n" };
+        if (skew != 0)
+        {
+            // Restore the original slope. Image y grows downwards, while PDF y grows upwards.
+            var (sin, cos) = Math.SinCos(skew * Math.PI / 180);
+            var cx = pageWidth / 2;
+            var cy = pageHeight / 2;
+            var tx = (1 - cos) * cx - sin * cy;
+            var ty = (1 - cos) * cy + sin * cx;
+            writer.WriteLine(Invariant($"q {cos:0.########} {-sin:0.########} {sin:0.########} {cos:0.########} {tx:0.#####} {ty:0.#####} cm"));
+        }
         writer.WriteLine("BT");
         writer.WriteLine("3 Tr");
         var count = 0;
@@ -269,12 +279,21 @@ internal static class OcrTextLayer
                 writer.Write(Invariant($" /{FontName} {wordFontSize:0.###} Tf {horizontalScale:0.###} Tz [ <"));
                 writer.Write(Convert.ToHexStringLower(Encoding.BigEndianUnicode.GetBytes(word.Text)));
                 writer.WriteLine("> ] TJ");
-                if (separated) writer.WriteLine("100 Tz [ <0020> ] TJ");
+                if (separated)
+                {
+                    // A viewer can drop the space between rotated text items. Preserve wide field
+                    // boundaries explicitly, just as for independent lines and half-turned runs.
+                    var gap = line.Words[i + 1].Left - word.Left - word.Width;
+                    if (skew != 0 && gap > FieldGap * thickness && EndsCjk(word.Text))
+                        writer.WriteLine(Invariant($"100 Tz [ <{(int)FieldBoundary:x4}> ] TJ"));
+                    writer.WriteLine("100 Tz [ <0020> ] TJ");
+                }
             }
             if (endsField)
                 writer.WriteLine(Invariant($"100 Tz [ <{(int)FieldBoundary:x4}> ] TJ"));
         }
         writer.WriteLine("ET");
+        if (skew != 0) writer.WriteLine("Q");
     }
 
     // PDFium sorts text objects left to right on the same horizontal baseline, even for a 180° matrix.

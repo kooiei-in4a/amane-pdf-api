@@ -93,6 +93,7 @@ internal static class PdfOcrEndpoint
         var source = Path.GetFullPath(files.InputPath);
         var update = job.PathFor("ocr-geometry.json");
         var image = Path.GetFullPath(job.PathFor("ocr-page.png"));
+        var corrected = Path.GetFullPath(job.PathFor("ocr-deskewed.png"));
         int count;
         int[] pages;
         int[] skippedPages;
@@ -141,9 +142,17 @@ internal static class PdfOcrEndpoint
                 page.DisplayWidth / page.UserUnit, page.DisplayHeight / page.UserUnit,
                 raster.Width, raster.Height, imageBudget, []), token);
             job.Commit(image, imageBudget);
+            var angle = vertical ? 0 :
+                OcrDeskew.TryCorrect(job, image, corrected, raster.Width, raster.Height, ImageLimit, token, high);
+            var recognitionImage = image;
+            if (angle != 0)
+            {
+                job.Delete(image);
+                recognitionImage = corrected;
+            }
             var layer = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-text-{i}.pdf"));
-            var lines = await RecognizePageAsync(files, job, settings, high, vertical, image, layer, raster, token);
-            job.Delete(image);
+            var lines = await RecognizePageAsync(files, job, settings, high, vertical, recognitionImage, layer, raster, token);
+            job.Delete(recognitionImage);
             try
             {
                 if (await qpdf.GetPageCountAsync(layer, token) != 1) throw new InvalidOperationException(Failure);
@@ -151,7 +160,7 @@ internal static class PdfOcrEndpoint
             catch (PdfInputException) { throw new InvalidOperationException(Failure); }
             textLayers.Add(layer);
             var content = job.PathFor(string.Create(CultureInfo.InvariantCulture, $"ocr-content-{i}.bin"));
-            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, vertical, raster.Width, raster.Height, raster.Dpi, token), token);
+            job.WriteFile(content, stream => OcrTextLayer.Write(stream, lines, vertical, raster.Width, raster.Height, raster.Dpi, token, angle), token);
             contents.Add(content);
         }
 
