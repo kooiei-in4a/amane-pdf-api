@@ -43,7 +43,7 @@ internal static class OcrTextLayer
     internal const char FieldBoundary = '\u034F';
     internal const double FieldGap = 1.5;
 
-    internal sealed record Word(int Left, int Top, int Width, int Height, string Text);
+    internal sealed record Word(int Left, int Top, int Width, int Height, string Text, double Confidence = 100, bool IsVerticalNumber = false);
     internal sealed record Line(int Left, int Top, int Width, int Height, List<Word> Words, int Block = 1, int Angle = 0);
 
     internal static List<Line> Read(string path, int imageWidth, int imageHeight, CancellationToken token)
@@ -87,8 +87,9 @@ internal static class OcrTextLayer
                         throw new PdfRenderException(PdfRenderReason.OutputTooLarge);
                     var confidence = double.Parse(columns[10], NumberStyles.Float, CultureInfo.InvariantCulture);
                     if (!double.IsFinite(confidence)) throw new InvalidDataException();
-                    confidenceSum += Math.Clamp(confidence, 0, 100);
-                    lines[^1].Words.Add(new(left, top, width, height, word));
+                    confidence = Math.Clamp(confidence, 0, 100);
+                    confidenceSum += confidence;
+                    lines[^1].Words.Add(new(left, top, width, height, word, confidence));
                 }
             }
         }
@@ -155,7 +156,7 @@ internal static class OcrTextLayer
             var words = line.Words.Select(word =>
             {
                 var bounds = Upright(word.Left, word.Top, word.Width, word.Height, angle, imageWidth, imageHeight);
-                return new Word(bounds.Left, bounds.Top, bounds.Width, bounds.Height, word.Text);
+                return word with { Left = bounds.Left, Top = bounds.Top, Width = bounds.Width, Height = bounds.Height };
             }).ToList();
             lines[i] = new(box.Left, box.Top, box.Width, box.Height, words, line.Block, angle);
         }
@@ -209,6 +210,11 @@ internal static class OcrTextLayer
             var lineVertical = IsVertical(line, vertical);
             var thickness = lineVertical ? line.Width : line.Height;
             var fontSize = thickness * k * FontSizeRatio;
+            // PDFium joins vertical text on a shared baseline. Use the body column for the whole line.
+            var number = lineVertical ? line.Words.Find(word => word.IsVerticalNumber) : null;
+            var verticalBaseline = number is null
+                ? line.Left + (1 - BaselineRatio) * line.Width
+                : number.Left + 0.15 * number.Width;
             plan.Clear();
             for (var i = 0; i < line.Words.Count; i++)
             {
@@ -225,9 +231,9 @@ internal static class OcrTextLayer
                 double nextBegin = lineVertical ? next.Top : next.Left;
                 if (Joins(word.Text, next.Text, nextBegin - (begin + extent), thickness))
                 {
-                    // Advance exactly to the next word so PDF.js neither keeps nor infers a space. Tesseract boxes
-                    // can overlap; trimming them keeps the per-character highlight in place.
-                    plan.Add((Math.Max(nextBegin - begin, 1), false, true));
+                    // Close the gap between joined words so PDF.js does not infer a space. Keep a
+                    // recovered number's advance limited to its measured cell for the highlight.
+                    plan.Add((word.IsVerticalNumber ? extent : Math.Max(nextBegin - begin, 1), false, true));
                 }
                 else
                 {
@@ -254,11 +260,13 @@ internal static class OcrTextLayer
             {
                 var word = line.Words[i];
                 var (advance, separated, _) = plan[i];
-                var horizontalScale = advance * k / (word.Text.Length * 0.5 * fontSize) * 100;
+                // A distinct font size makes PDF.js measure the compressed digits as their own span.
+                var wordFontSize = word.IsVerticalNumber ? word.Width * k * 0.8 : fontSize;
+                var horizontalScale = advance * k / (word.Text.Length * 0.5 * wordFontSize) * 100;
                 writer.Write(lineVertical
-                    ? Invariant($"0 -1 1 0 {(line.Left + (1 - BaselineRatio) * line.Width) * k:0.###} {pageHeight - word.Top * k:0.###} Tm")
+                    ? Invariant($"0 -1 1 0 {verticalBaseline * k:0.###} {pageHeight - word.Top * k:0.###} Tm")
                     : HorizontalMatrix(line, word, k, pageWidth, pageHeight));
-                writer.Write(Invariant($" /{FontName} {fontSize:0.###} Tf {horizontalScale:0.###} Tz [ <"));
+                writer.Write(Invariant($" /{FontName} {wordFontSize:0.###} Tf {horizontalScale:0.###} Tz [ <"));
                 writer.Write(Convert.ToHexStringLower(Encoding.BigEndianUnicode.GetBytes(word.Text)));
                 writer.WriteLine("> ] TJ");
                 if (separated) writer.WriteLine("100 Tz [ <0020> ] TJ");
@@ -316,7 +324,7 @@ internal static class OcrTextLayer
         };
     }
 
-    private static bool IsVertical(Line line, bool vertical) => vertical && line.Height > line.Width * VerticalLineAspect;
+    internal static bool IsVertical(Line line, bool vertical) => vertical && line.Height > line.Width * VerticalLineAspect;
 
     // Lines of one paragraph follow each other closely and overlap across the reading direction.
     internal static bool EndsField(Line line, Line next, bool vertical)

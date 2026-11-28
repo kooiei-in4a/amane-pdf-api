@@ -35,15 +35,7 @@ internal static class OcrPageImage
 
     private static OcrBinarization SelectBinarization(Stream png, int width, int height, CancellationToken token)
     {
-        // PngWriter emits non-interlaced, unfiltered RGB8 scanlines.
-        Span<byte> header = stackalloc byte[33];
-        png.ReadExactly(header);
-        if (header[0] != 137 || !header[1..16].SequenceEqual("PNG\r\n\x1a\n\0\0\0\rIHDR"u8) ||
-            BinaryPrimitives.ReadInt32BigEndian(header[16..]) != width ||
-            BinaryPrimitives.ReadInt32BigEndian(header[20..]) != height ||
-            !header[24..29].SequenceEqual("\x08\x02\0\0\0"u8))
-            throw new InvalidDataException();
-
+        ReadHeader(png, width, height);
         using var imageData = new ImageDataStream(png, token);
         using var pixels = new ZLibStream(imageData, CompressionMode.Decompress);
         var row = new byte[width * 3 + 1];
@@ -119,6 +111,38 @@ internal static class OcrPageImage
         return horizontalRules >= 2 && strokes.FineStrokesAreCommon &&
             background.IsClean && BackgroundSpread(samples) < UnevenSpread
             ? OcrBinarization.AdaptiveOtsu : OcrBinarization.Sauvola;
+    }
+
+    // The renderer's pixel limit also bounds this grayscale buffer to 16 MB.
+    internal static byte[] ReadGrayscale(string path, int width, int height, CancellationToken token)
+    {
+        using var png = File.OpenRead(path);
+        ReadHeader(png, width, height);
+        using var imageData = new ImageDataStream(png, token);
+        using var pixels = new ZLibStream(imageData, CompressionMode.Decompress);
+        var row = new byte[width * 3 + 1];
+        var grayscale = new byte[width * height];
+        for (var y = 0; y < height; y++)
+        {
+            token.ThrowIfCancellationRequested();
+            pixels.ReadExactly(row);
+            if (row[0] != 0) throw new InvalidDataException();
+            for (int x = 0, offset = 1; x < width; x++, offset += 3)
+                grayscale[y * width + x] = (byte)Brightness(row, offset);
+        }
+        return grayscale;
+    }
+
+    private static void ReadHeader(Stream png, int width, int height)
+    {
+        // PngWriter emits non-interlaced, unfiltered RGB8 scanlines.
+        Span<byte> header = stackalloc byte[33];
+        png.ReadExactly(header);
+        if (header[0] != 137 || !header[1..16].SequenceEqual("PNG\r\n\x1a\n\0\0\0\rIHDR"u8) ||
+            BinaryPrimitives.ReadInt32BigEndian(header[16..]) != width ||
+            BinaryPrimitives.ReadInt32BigEndian(header[20..]) != height ||
+            !header[24..29].SequenceEqual("\x08\x02\0\0\0"u8))
+            throw new InvalidDataException();
     }
 
     private static int SampleCoordinate(int sample, int size) => (2 * sample + 1) * size / (2 * GridSize);
