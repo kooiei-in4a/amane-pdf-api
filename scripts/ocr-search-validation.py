@@ -94,6 +94,10 @@ SMALL_INVOICE_REQUIRED_CASES = {"small-ruled-invoice", "small-ruled-invoice-popp
 SMALL_INVOICE_CASES = SMALL_INVOICE_REQUIRED_CASES | {"small-ruled-invoice-poppler-from-images"}
 # Required PDF.js term counts by quality, using the original review scans.
 REVIEW_SCANS = {
+    "h-faded-bleed": (8, 8, [
+        "貸出機材", "点検手順", "返却前", "接続端子", "乾いた布",
+        "拭き取ります", "RK-218", "確認票", "転記",
+    ]),
     "h-mincho-12-noise": (18, 18, [
         "開館時間", "返却ポスト", "休館日", "正面玄関", "二週間", "窓口",
         "03-1234-5678", "1,234,567", "2026年11月25日", "千代田区", "丸の内", "サンプル商事",
