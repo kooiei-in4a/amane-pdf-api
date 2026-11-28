@@ -32,9 +32,9 @@ internal sealed class PdfPageJob(TemporaryPdfFiles files, QpdfProcessor qpdf, Pd
         Commit(path, budget);
     }
 
-    internal void WriteFile(string path, Action<Stream> write, CancellationToken token)
+    internal void WriteFile(string path, Action<Stream> write, CancellationToken token, long? limit = null)
     {
-        var budget = capacity.ReserveWrite(path, options.OverlayGeneratedLimitBytes);
+        var budget = capacity.ReserveWrite(path, limit ?? options.OverlayGeneratedLimitBytes);
         using (var file = TemporaryPdfFiles.CreatePrivateFile(path))
         using (var bounded = new OverlayLimitedWriteStream(file, budget, token))
         {

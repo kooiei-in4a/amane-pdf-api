@@ -115,22 +115,82 @@ internal static class OcrPageImage
 
     // The renderer's pixel limit also bounds this grayscale buffer to 16 MB.
     internal static byte[] ReadGrayscale(string path, int width, int height, CancellationToken token)
+        => ReadPixels(path, width, height, rgb: false, token);
+
+    internal static byte[] ReadRgb(string path, int width, int height, CancellationToken token)
+        => ReadPixels(path, width, height, rgb: true, token);
+
+    private static byte[] ReadPixels(string path, int width, int height, bool rgb, CancellationToken token)
     {
         using var png = File.OpenRead(path);
         ReadHeader(png, width, height);
         using var imageData = new ImageDataStream(png, token);
         using var pixels = new ZLibStream(imageData, CompressionMode.Decompress);
         var row = new byte[width * 3 + 1];
-        var grayscale = new byte[width * height];
+        var raster = new byte[width * height * (rgb ? 3 : 1)];
         for (var y = 0; y < height; y++)
         {
             token.ThrowIfCancellationRequested();
             pixels.ReadExactly(row);
             if (row[0] != 0) throw new InvalidDataException();
-            for (int x = 0, offset = 1; x < width; x++, offset += 3)
-                grayscale[y * width + x] = (byte)Brightness(row, offset);
+            if (rgb)
+                row.AsSpan(1).CopyTo(raster.AsSpan(y * width * 3));
+            else
+                for (int x = 0, offset = 1; x < width; x++, offset += 3)
+                    raster[y * width + x] = (byte)Brightness(row, offset);
         }
-        return grayscale;
+        return raster;
+    }
+
+    internal static void WritePng(Stream output, int width, int height, bool rgb, Action<int, Span<byte>> fillRow,
+        CancellationToken token)
+    {
+        output.Write([137, 80, 78, 71, 13, 10, 26, 10]);
+        Span<byte> header = stackalloc byte[13];
+        header.Clear();
+        BinaryPrimitives.WriteInt32BigEndian(header, width);
+        BinaryPrimitives.WriteInt32BigEndian(header[4..], height);
+        header[8] = 8;
+        header[9] = rgb ? (byte)2 : (byte)0;
+        WriteChunk(output, "IHDR"u8, header);
+        using (var chunks = new PngDataOutput(output))
+        using (var zlib = new ZLibStream(chunks, CompressionLevel.Fastest))
+        {
+            var row = new byte[width * (rgb ? 3 : 1) + 1];
+            for (var y = 0; y < height; y++)
+            {
+                token.ThrowIfCancellationRequested();
+                fillRow(y, row.AsSpan(1));
+                zlib.Write(row);
+            }
+        }
+        WriteChunk(output, "IEND"u8, []);
+    }
+
+    private static void WriteChunk(Stream stream, ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
+    {
+        Span<byte> buffer = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(buffer, data.Length);
+        stream.Write(buffer);
+        stream.Write(type);
+        stream.Write(data);
+        BinaryPrimitives.WriteUInt32BigEndian(buffer, ~PngSanitizer.UpdateCrc(PngSanitizer.UpdateCrc(uint.MaxValue, type), data));
+        stream.Write(buffer);
+    }
+
+    private sealed class PngDataOutput(Stream output) : Stream
+    {
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => output.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer.AsSpan(offset, count));
+        public override void Write(ReadOnlySpan<byte> buffer) => WriteChunk(output, "IDAT"u8, buffer);
     }
 
     private static void ReadHeader(Stream png, int width, int height)

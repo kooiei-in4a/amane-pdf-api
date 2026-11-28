@@ -207,6 +207,50 @@ public sealed class OcrTextLayerTests
     }
 
     [TestMethod]
+    [DataRow(5.0, 0)]
+    [DataRow(-5.0, 0)]
+    [DataRow(5.0, 90)]
+    [DataRow(5.0, 180)]
+    [DataRow(-5.0, 270)]
+    public void WriteMapsTheWordOriginFromItsReadingOrientationBackToTheOriginalPage(double skew, int angle)
+    {
+        var line = new OcrTextLayer.Line(100, 200, 250, 50, [new(100, 200, 250, 50, "開館時間")], Angle: angle);
+        var (upright, shows) = Write([line], vertical: false, imageHeight: 700);
+        using var stream = new MemoryStream();
+        OcrTextLayer.Write(stream, [line], false, 1000, 700, Dpi, default, skew);
+        var content = Encoding.ASCII.GetString(stream.ToArray()).Split('\n', 2);
+        StringAssert.StartsWith(content[0], "q ");
+        StringAssert.EndsWith(content[0], " cm");
+        Assert.AreEqual(upright + "Q\n", content[1]);
+
+        var matrix = content[0].Split(' ').Skip(1).Take(6).Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray();
+        var x = shows[0].Matrix[4];
+        var y = shows[0].Matrix[5];
+        var cx = 500 * K;
+        var cy = 350 * K;
+        var (sin, cos) = Math.SinCos(skew * Math.PI / 180);
+        var imageX = x - cx;
+        var imageY = cy - y;
+        Assert.AreEqual(cx + cos * imageX - sin * imageY, matrix[0] * x + matrix[2] * y + matrix[4], 0.0001);
+        Assert.AreEqual(cy - sin * imageX - cos * imageY, matrix[1] * x + matrix[3] * y + matrix[5], 0.0001);
+    }
+
+    [TestMethod]
+    public void WriteKeepsWideSkewedTableCellsSeparateInSearch()
+    {
+        var line = new OcrTextLayer.Line(100, 200, 600, 50,
+            [new(100, 200, 100, 50, "金額"), new(450, 200, 100, 50, "12,"), new(560, 200, 140, 50, "800")]);
+        var marker = $"<{(int)OcrTextLayer.FieldBoundary:x4}>";
+        var (unskewed, _) = Write([line], vertical: false, imageHeight: 700);
+        Assert.DoesNotContain(marker, unskewed);
+
+        using var stream = new MemoryStream();
+        OcrTextLayer.Write(stream, [line], false, 1000, 700, Dpi, default, skew: 2);
+        var skewed = Encoding.ASCII.GetString(stream.ToArray());
+        Assert.HasCount(2, skewed.Split(marker), "Only the wide gap preceding the amount should get a marker.");
+    }
+
+    [TestMethod]
     [DataRow("<span class=\"ocr_line\" title=\"bbox 10 20 160 50; textangle 90\">")]
     [DataRow("<span class=\"ocr_line\" title=\"bbox 10 20 160 50; textangle 45\"/>")]
     public void OrientRejectsMalformedHocrAndUnsupportedAngles(string content)

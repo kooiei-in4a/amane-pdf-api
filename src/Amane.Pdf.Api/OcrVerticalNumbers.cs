@@ -1,6 +1,3 @@
-using System.Buffers.Binary;
-using System.IO.Compression;
-
 namespace Amane.Pdf.Api;
 
 internal sealed class OcrVerticalNumbers
@@ -255,34 +252,17 @@ internal sealed class OcrVerticalNumbers
 
     internal void Write(Stream output, CancellationToken token)
     {
-        output.Write([137, 80, 78, 71, 13, 10, 26, 10]);
-        Span<byte> header = stackalloc byte[13];
-        header.Clear();
-        BinaryPrimitives.WriteInt32BigEndian(header, Width);
-        BinaryPrimitives.WriteInt32BigEndian(header[4..], Height);
-        header[8] = 8; // grayscale, filter 0
-        WriteChunk(output, "IHDR"u8, header);
-        using var compressed = new MemoryStream();
-        using (var zlib = new ZLibStream(compressed, CompressionLevel.Fastest, leaveOpen: true))
+        OcrPageImage.WritePng(output, Width, Height, rgb: false, (y, row) =>
         {
-            var row = new byte[Width + 1];
-            for (var y = 0; y < Height; y++)
+            row.Fill(255);
+            var candidate = candidates[y / pitch];
+            var cellRow = y % pitch - margin;
+            if (cellRow >= 0 && cellRow < Scale(candidate.Cell.Height))
             {
-                token.ThrowIfCancellationRequested();
-                row.AsSpan(1).Fill(255);
-                var candidate = candidates[y / pitch];
-                var cellRow = y % pitch - margin;
-                if (cellRow >= 0 && cellRow < Scale(candidate.Cell.Height))
-                {
-                    var scaledWidth = Scale(candidate.Width);
-                    var target = row.AsSpan(1 + (Width - scaledWidth) / 2, scaledWidth);
-                    CopyRow(candidate, cellRow, target);
-                }
-                zlib.Write(row);
+                var scaledWidth = Scale(candidate.Width);
+                CopyRow(candidate, cellRow, row.Slice((Width - scaledWidth) / 2, scaledWidth));
             }
-        }
-        WriteChunk(output, "IDAT"u8, compressed.GetBuffer().AsSpan(0, (int)compressed.Length));
-        WriteChunk(output, "IEND"u8, []);
+        }, token);
     }
 
     private void CopyRow(Candidate candidate, int row, Span<byte> destination)
@@ -312,15 +292,4 @@ internal sealed class OcrVerticalNumbers
 
     private static double SourceCoordinate(int pixel, int sourceLength, int targetLength)
         => Math.Clamp((pixel + 0.5) * sourceLength / targetLength - 0.5, 0, sourceLength - 1);
-
-    private static void WriteChunk(Stream stream, ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
-    {
-        Span<byte> buffer = stackalloc byte[4];
-        BinaryPrimitives.WriteInt32BigEndian(buffer, data.Length);
-        stream.Write(buffer);
-        stream.Write(type);
-        stream.Write(data);
-        BinaryPrimitives.WriteUInt32BigEndian(buffer, ~PngSanitizer.UpdateCrc(PngSanitizer.UpdateCrc(uint.MaxValue, type), data));
-        stream.Write(buffer);
-    }
 }

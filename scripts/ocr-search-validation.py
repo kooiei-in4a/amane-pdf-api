@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OCR済みPDFをPDF.jsの検索で確かめる（Issue #116、#126、#155）。
+"""OCR済みPDFをPDF.jsの検索で確かめる（Issue #116、#126、#154、#155）。
 
 fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
 PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
@@ -12,18 +12,21 @@ PDF.jsと同梱のPDFiumの両方で検索し、PDFiumの強調位置も確か�
 求めた語ごとの期待矩形（300 dpiの表示座標）を DIR に保存する。強調表示の位置は scripts/ocr-search/highlight.mjs
 で実測する（CIでは実行しない）。期待矩形は、行の文字の画素の範囲を元画像から求め、行内の
 位置をfill-templateが描いたBIZ UDPゴシックの送り幅で按分する。縦書きの語は、列の中で字ごとに分けた画素の範囲を使う。
+傾いた試料の期待矩形は、鮮明な原稿上の字面を変換した四角形の外接矩形を使う。
 """
 import argparse
 import hashlib
 import importlib.util
 import io
 import json
+import math
 from pathlib import Path
 import random
 import re
 import subprocess
 import tempfile
 import time
+import unicodedata
 import uuid
 import zipfile
 
@@ -39,6 +42,10 @@ spec.loader.exec_module(pdfium_search)
 spec = importlib.util.spec_from_file_location("tcy_samples", SEARCH / "tcy_samples.py")
 tcy_samples = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tcy_samples)
+
+spec = importlib.util.spec_from_file_location("deskew_samples", SEARCH / "deskew_samples.py")
+deskew_samples = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(deskew_samples)
 
 BLANK_A4 = {"qpdf": [{"jsonversion": 2, "pdfversion": "1.7"}, {
     "obj:1 0 R": {"value": {"/Type": "/Catalog", "/Pages": "2 0 R"}},
@@ -504,6 +511,90 @@ def validate_tcy(api, directory, qualities, font, pdfium_library, args):
     return failures
 
 
+def validate_deskew(api, directory, qualities, font, pdfium_library, args):
+    failures = []
+    for name, sample in deskew_samples.generate(font):
+        source = post(api, "/api/pdf/from-images?quality=original",
+                      [("file", "scan.png", "image/png", sample.image)], "application/pdf")
+        source_path = directory / f"{name}-scan.pdf"
+        source_path.write_bytes(source)
+        checksum = display_checksum(source_path)
+        for quality in qualities:
+            output, seconds = ocr(api, quality, "horizontal", source)
+            found = find(directory, name, output, [*sample.terms, *sample.absent])
+            path = directory / f"{name}.pdf"
+            assert display_checksum(path) == checksum, (quality, name, "render changed")
+            native = pdfium_search.find(pdfium_library, path, [*sample.terms, *sample.absent])
+            hits = [term for term in sample.terms if found[term] == 1 and term in native]
+            scores = {term: overlap(native[term], sample.boxes[term]) for term in hits}
+            joined = [term for term in sample.absent if found[term] != 0 or (sample.angle and term in native)]
+            field_hits = sum(term in scores and scores[term] >= 0.4 for term in sample.fields)
+            minimum = 11 if sample.fields else len(sample.terms)
+            if (len(hits) < minimum or min(scores.values(), default=0) < 0.4 or joined or
+                (sample.fields and (sample.fields[0] not in hits or field_hits < 5))):
+                failures.append((quality, name, hits, scores, joined))
+            if args.highlight:
+                target = args.highlight / "deskew" / quality
+                target.mkdir(parents=True, exist_ok=True)
+                (target / f"{name}-ocr.pdf").write_bytes(output)
+                (target / f"{name}-expected.json").write_text(json.dumps(
+                    {term: sample.boxes[term] for term in hits}, ensure_ascii=False, indent=1))
+            if args.artifacts:
+                target = args.artifacts / quality if len(qualities) > 1 else args.artifacts
+                target.mkdir(parents=True, exist_ok=True)
+                (target / f"{name}-scan.pdf").write_bytes(source)
+                (target / f"{name}-ocr.pdf").write_bytes(output)
+            print(f"{quality} {name}: {len(hits)}/{len(sample.terms)} terms in both engines, "
+                  f"{field_hits}/{len(sample.fields)} number and amount fields, "
+                  f"{len(sample.absent) - len(joined)}/{len(sample.absent)} unwanted joins absent, "
+                  f"minimum PDFium IoU {min(scores.values(), default=0):.2f}, {seconds:.2f} s", flush=True)
+            api.assert_clean()
+    return failures
+
+
+def measure_deskew(api, directory, qualities, font, pdfium_library):
+    """文字順は描画命令順で比較し、欄の対応は元画像上の位置で比較する。"""
+    def normalize(text):
+        return "".join(char for char in unicodedata.normalize("NFC", text)
+                       if not char.isspace() and char not in "\u034f\u200b\ufeff")
+
+    def edits(truth, actual):
+        row = list(range(len(actual) + 1))
+        for i, expected in enumerate(truth, 1):
+            updated = [i]
+            for j, char in enumerate(actual, 1):
+                updated.append(min(row[j] + 1, updated[-1] + 1, row[j - 1] + (char != expected)))
+            row = updated
+        return row[-1]
+
+    for name, sample in deskew_samples.generate(font, matrix=True):
+        src = post(api, "/api/pdf/from-images?quality=original",
+                   [("file", "scan.png", "image/png", sample.image)], "application/pdf")
+        truth = normalize(sample.truth)
+        terms = [*sample.fields, *(item for item, _ in sample.row_pairs)]
+        for quality in qualities:
+            output, seconds = ocr(api, quality, "horizontal", src)
+            path = directory / f"{name}.pdf"
+            path.write_bytes(output)
+            actual = normalize(subprocess.check_output(["pdftotext", "-raw", str(path), "-"], timeout=30).decode())
+            boxes = pdfium_search.find(pdfium_library, path, terms) if terms else {}
+            field_hits = sum(value in actual for value in sample.fields)
+            located = {term for term in terms if overlap(boxes.get(term), sample.boxes[term]) >= 0.4}
+            pairs = sum(item in located and value in located for item, value in sample.row_pairs)
+            # Inspect the restore matrix in the OCR content. The input contains a raster image alone.
+            content = subprocess.check_output(["qpdf", "--qdf", "--object-streams=disable", str(path), "-"], timeout=30)
+            matrix = re.search(rb"q (0\.\d+) (-?0\.\d+) -?0\.\d+ 0\.\d+ [-\d.]+ [-\d.]+ cm\nBT", content)
+            angle = round(math.degrees(math.atan2(-float(matrix[2]), float(matrix[1]))), 2) if matrix else None
+            print(json.dumps({
+                "sample": name, "quality": quality, "input_angle": sample.angle, "applied_angle": angle,
+                "errors": edits(truth, actual), "characters": len(truth),
+                "exact_fields": field_hits, "fields": len(sample.fields),
+                "located_fields": sum(field in located for field in sample.fields),
+                "row_pairs": pairs, "seconds": round(seconds, 3),
+            }), flush=True)
+            api.assert_clean()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image")
@@ -511,7 +602,10 @@ def main():
     parser.add_argument("--benchmark", action="store_true", help="上限ページ数の密な文書で応答時間を測る")
     parser.add_argument("--artifacts", type=Path, help="OCRの入力と出力のPDFを保存する")
     parser.add_argument("--highlight", type=Path, help="強調表示の実測用に、OCR出力PDFと元画像から求めた期待矩形を保存する")
-    parser.add_argument("--tcy-only", action="store_true", help="縦中横の試料だけを検証する")
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--tcy-only", action="store_true", help="縦中横の試料だけを検証する")
+    selection.add_argument("--deskew-only", action="store_true", help="傾きと台形歪みの試料だけを検証する")
+    selection.add_argument("--deskew-matrix", action="store_true", help="傾きと各劣化要因の組み合わせを計測する")
     args = parser.parse_args()
     qualities = ("standard", "high") if args.quality == "both" else (args.quality,)
     assert (SEARCH / "node_modules/pdfjs-dist").is_dir(), "Run npm ci in scripts/ocr-search first."
@@ -521,6 +615,13 @@ def main():
         font_path.write_bytes(api.exec("cat", FONT).stdout)
         pdfium_library = directory / "libpdfium.so"
         pdfium_library.write_bytes(api.exec("cat", "/opt/amane-pdf/lib/libpdfium.so").stdout)
+        if args.deskew_matrix:
+            measure_deskew(api, directory, qualities, font_path, pdfium_library)
+            return
+        if args.deskew_only:
+            failures = validate_deskew(api, directory, qualities, font_path, pdfium_library, args)
+            assert not failures, failures
+            return
         if args.tcy_only:
             failures = validate_tcy(api, directory, qualities, font_path, pdfium_library, args)
             assert not failures, failures
@@ -650,6 +751,7 @@ def main():
                 if hits < minimum or any(found[term] == 0 for term in required) or joined:
                     failures.append((quality, name, found))
                 api.assert_clean()
+        failures.extend(validate_deskew(api, directory, qualities, font_path, pdfium_library, args))
         failures.extend(validate_tcy(api, directory, qualities, font_path, pdfium_library, args))
         assert not failures, failures
         if args.benchmark:
