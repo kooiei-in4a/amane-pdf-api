@@ -511,7 +511,22 @@ def validate_tcy(api, directory, qualities, font, pdfium_library, args):
     return failures
 
 
+def applied_deskew_angle(path):
+    # The fixture has only a raster image. The restore matrix wraps the generated OCR text.
+    content = subprocess.check_output(["qpdf", "--qdf", "--object-streams=disable", str(path), "-"], timeout=30)
+    matrix = re.search(rb"(?m)^q (0\.\d+) (-?0\.\d+) -?0\.\d+ 0\.\d+ [-\d.]+ [-\d.]+ cm\nBT", content)
+    return round(math.degrees(math.atan2(-float(matrix[2]), float(matrix[1]))), 2) if matrix else None
+
+
 def validate_deskew(api, directory, qualities, font, pdfium_library, args):
+    # Match MinStandardAngle and MinHighAngle in OcrDeskew. The fixtures have known input angles.
+    minimum_angle = {"standard": 0.8, "high": 2.5}
+    # b51a1ac: text 3/4 at IoU 0.66; form 12/13, 5/6 fields at IoU >= 0.30, minimum 0.34,
+    # and three PDFium joins. Leave a small IoU margin and hold search counts at the baseline.
+    known_limits = {
+        "deskew-text-tilt-2": (3, 0, 0.60, 0),
+        "deskew-form-tilt-2": (12, 5, 0.30, 3),
+    }
     failures = []
     for name, sample in deskew_samples.generate(font):
         source = post(api, "/api/pdf/from-images?quality=original",
@@ -520,9 +535,6 @@ def validate_deskew(api, directory, qualities, font, pdfium_library, args):
         source_path.write_bytes(source)
         checksum = display_checksum(source_path)
         for quality in qualities:
-            # The smallest positive-tilt fixture exercising correction differs by quality.
-            if (sample.angle == 2 and quality == "high") or (sample.angle == 3 and quality == "standard"):
-                continue
             output, seconds = ocr(api, quality, "horizontal", source)
             found = find(directory, name, output, [*sample.terms, *sample.absent])
             path = directory / f"{name}.pdf"
@@ -530,12 +542,28 @@ def validate_deskew(api, directory, qualities, font, pdfium_library, args):
             native = pdfium_search.find(pdfium_library, path, [*sample.terms, *sample.absent])
             hits = [term for term in sample.terms if found[term] == 1 and term in native]
             scores = {term: overlap(native[term], sample.boxes[term]) for term in hits}
-            joined = [term for term in sample.absent if found[term] != 0 or (sample.angle and term in native)]
-            field_hits = sum(term in scores and scores[term] >= 0.4 for term in sample.fields)
-            minimum = 11 if sample.fields else len(sample.terms)
-            if (len(hits) < minimum or min(scores.values(), default=0) < 0.4 or joined or
-                (sample.fields and (sample.fields[0] not in hits or field_hits < 5))):
-                failures.append((quality, name, hits, scores, joined))
+            js_joins = sum(found[term] != 0 for term in sample.absent)
+            pdfium_joins = sum(term in native for term in sample.absent)
+            min_iou = min(scores.values(), default=0)
+            deskewed = applied_deskew_angle(path) is not None
+            expected_deskew = abs(sample.angle) >= minimum_angle[quality]
+            if deskewed != expected_deskew:
+                failures.append((quality, name, "deskew matrix", {"expected": expected_deskew, "actual": deskewed}))
+
+            minimum_hits = 11 if sample.fields else len(sample.terms)
+            minimum_fields = 5 if sample.fields else 0
+            required_iou = 0.40
+            # The perspective-only fixtures retain the existing PDF.js-only join check.
+            max_pdfium_joins = 0 if sample.angle else None
+            limits = known_limits.get(name) if quality == "high" else None
+            if limits:
+                minimum_hits, minimum_fields, required_iou, max_pdfium_joins = limits
+
+            field_hits = sum(scores.get(term, 0) >= required_iou for term in sample.fields)
+            if (len(hits) < minimum_hits or min_iou < required_iou or field_hits < minimum_fields or
+                    (sample.fields and sample.fields[0] not in hits) or js_joins or
+                    (max_pdfium_joins is not None and pdfium_joins > max_pdfium_joins)):
+                failures.append((quality, name, "search", hits, scores, field_hits, js_joins, pdfium_joins))
             if args.highlight:
                 target = args.highlight / "deskew" / quality
                 target.mkdir(parents=True, exist_ok=True)
@@ -547,10 +575,11 @@ def validate_deskew(api, directory, qualities, font, pdfium_library, args):
                 target.mkdir(parents=True, exist_ok=True)
                 (target / f"{name}-scan.pdf").write_bytes(source)
                 (target / f"{name}-ocr.pdf").write_bytes(output)
-            print(f"{quality} {name}: {len(hits)}/{len(sample.terms)} terms in both engines, "
-                  f"{field_hits}/{len(sample.fields)} number and amount fields, "
-                  f"{len(sample.absent) - len(joined)}/{len(sample.absent)} unwanted joins absent, "
-                  f"minimum PDFium IoU {min(scores.values(), default=0):.2f}, {seconds:.2f} s", flush=True)
+            label = " [known limitation]" if limits else ""
+            print(f"{quality} {name}{label}: deskew {'applied' if deskewed else 'skipped'}, "
+                  f"{len(hits)}/{len(sample.terms)} terms in both engines, {field_hits}/{len(sample.fields)} number and amount fields, "
+                  f"minimum PDFium IoU {min_iou:.2f}, unwanted joins PDF.js {js_joins}, PDFium {pdfium_joins}, {seconds:.2f} s",
+                  flush=True)
             api.assert_clean()
     return failures
 
@@ -584,10 +613,7 @@ def measure_deskew(api, directory, qualities, font, pdfium_library):
             field_hits = sum(value in actual for value in sample.fields)
             located = {term for term in terms if overlap(boxes.get(term), sample.boxes[term]) >= 0.4}
             pairs = sum(item in located and value in located for item, value in sample.row_pairs)
-            # Inspect the restore matrix in the OCR content. The input contains a raster image alone.
-            content = subprocess.check_output(["qpdf", "--qdf", "--object-streams=disable", str(path), "-"], timeout=30)
-            matrix = re.search(rb"q (0\.\d+) (-?0\.\d+) -?0\.\d+ 0\.\d+ [-\d.]+ [-\d.]+ cm\nBT", content)
-            angle = round(math.degrees(math.atan2(-float(matrix[2]), float(matrix[1]))), 2) if matrix else None
+            angle = applied_deskew_angle(path)
             print(json.dumps({
                 "sample": name, "quality": quality, "input_angle": sample.angle, "applied_angle": angle,
                 "errors": edits(truth, actual), "characters": len(truth),
