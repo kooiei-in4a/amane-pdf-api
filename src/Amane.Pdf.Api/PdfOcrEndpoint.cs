@@ -226,7 +226,11 @@ internal static class PdfOcrEndpoint
         var dpi = raster.Dpi.ToString(CultureInfo.InvariantCulture);
         var directory = Path.GetFullPath(files.DirectoryPath);
         string[] tessdata = high ? ["--tessdata-dir", settings.TessdataBestDir] : [];
-        if (vertical) return (await RecognizeAsync(["-c", "thresholding_method=2"])).Lines;
+        if (vertical)
+        {
+            var original = await RecognizeAsync(["-c", "thresholding_method=2"]);
+            return await RefineVerticalNumbersAsync(job, settings, image, raster, directory, dpi, tessdata, original.Lines, token);
+        }
         if (high)
         {
             var first = await RecognizeAsync(HorizontalSauvola);
@@ -309,6 +313,42 @@ internal static class PdfOcrEndpoint
             var reportedRotation = OcrTextLayer.Orient(recognizedLines, hocr, raster.Width, raster.Height, token);
             job.Delete(hocr);
             return (recognizedLines, reportedRotation, confidence);
+        }
+    }
+
+    private static async Task<List<OcrTextLayer.Line>> RefineVerticalNumbersAsync(PdfPageJob job,
+        PdfOptions settings, string image, (int Width, int Height, int Dpi) raster, string directory,
+        string dpi, string[] tessdata, List<OcrTextLayer.Line> lines, CancellationToken token)
+    {
+        var batch = job.PathFor("ocr-number-cells.png");
+        var output = job.PathFor("ocr-number-cells.tsv");
+        try
+        {
+            var page = OcrVerticalNumbers.Find(image, raster.Width, raster.Height, lines, vertical: true, token);
+            if (page is null) return lines;
+            job.WriteFile(batch, stream => page.Write(stream, token), token);
+            var budget = job.Reserve(output, settings.OverlayGeneratedLimitBytes);
+            string[] arguments = [batch, Path.ChangeExtension(output, null), "-l", Horizontal, "--psm", "6", "--dpi", dpi,
+                .. tessdata, "-c", "tessedit_create_tsv=1", "-c", "tessedit_char_whitelist=0123456789０１２３４５６７８９"];
+            var result = await BoundedOutput.RunAsync(limit => CreateRequest(settings, arguments, limit)
+                with { WorkingDirectory = directory }, output, budget, token);
+            token.ThrowIfCancellationRequested();
+            if (!result.Succeeded) return lines;
+            job.Commit(output, budget);
+            var recognized = OcrTextLayer.Read(output, page.Width, page.Height, token);
+            return page.Apply(lines, recognized);
+        }
+        catch (Exception exception) when (exception is IOException or InvalidDataException or PdfOverlayInputException or
+            PdfRenderException or InvalidOperationException)
+        {
+            // The original recognition is complete. An optional retry can fail independently.
+            token.ThrowIfCancellationRequested();
+            return lines;
+        }
+        finally
+        {
+            job.Delete(batch);
+            job.Delete(output);
         }
     }
 

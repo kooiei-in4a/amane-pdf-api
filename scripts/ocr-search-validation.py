@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OCR済みPDFをPDF.jsの検索で確かめる（Issue #116、#126）。
+"""OCR済みPDFをPDF.jsの検索で確かめる（Issue #116、#126、#155）。
 
 fill-templateとPillowで作った日本語の画像PDFを、実コンテナの /api/pdf/ocr に標準と高精度で送る。
 PDF.js 6.3.289のPDFFindController（ビューアと同じ検索処理）で、語句が分断されずに見つかること、
@@ -20,6 +20,7 @@ import io
 import json
 from pathlib import Path
 import random
+import re
 import subprocess
 import tempfile
 import time
@@ -34,6 +35,10 @@ spec.loader.exec_module(smoke)
 spec = importlib.util.spec_from_file_location("pdfium_search", SEARCH / "pdfium_search.py")
 pdfium_search = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(pdfium_search)
+
+spec = importlib.util.spec_from_file_location("tcy_samples", SEARCH / "tcy_samples.py")
+tcy_samples = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(tcy_samples)
 
 BLANK_A4 = {"qpdf": [{"jsonversion": 2, "pdfversion": "1.7"}, {
     "obj:1 0 R": {"value": {"/Type": "/Catalog", "/Pages": "2 0 R"}},
@@ -455,6 +460,50 @@ def pdfium_display_checksum(api, pdf):
         return hashlib.sha256(archive.read(page)).digest()
 
 
+def validate_tcy(api, directory, qualities, font, pdfium_library, args):
+    failures = []
+    for name, source, numbers, phrases in tcy_samples.samples(api, font, image_pdf):
+        boxes = tcy_samples.expected_boxes(ink(directory, name, source), numbers) if numbers else {}
+        for quality in qualities:
+            output, seconds = ocr(api, quality, "vertical", source)
+            # Standard may miss the horizontal heading. High preserves an extra primary-OCR
+            # kana after 16 in the first tier, so check the preceding text and the second tier.
+            required = phrases
+            if name == "tcy-heading-ruby" and quality == "standard":
+                required = phrases[1:]
+            if name == "tcy-two-tiers" and quality == "high":
+                required = [phrases[0][:-1], *phrases[1:]]
+            terms = list(boxes) + required
+            found = find(directory, name, output, terms)
+            path = directory / f"{name}.pdf"
+            native = pdfium_search.find(pdfium_library, path, terms)
+            scores = {term: overlap(native.get(term), box) for term, box in boxes.items()}
+            copied = subprocess.check_output(["pdftotext", str(path), "-"], timeout=30).decode()
+            positions = [copied.find(term) for term in required]
+            # Each digit must occur exactly once. In the negative sample one digit and
+            # a kanji numeral remain searchable in the original phrase.
+            if (any(found[term] != 1 for term in boxes) or any(found[term] == 0 for term in required) or
+                    any(term not in native for term in terms) or min(scores.values(), default=1) < 0.4 or
+                    any(i < 0 for i in positions) or positions != sorted(positions) or
+                    (not boxes and re.search(r"[0-9０-９]{2,}", copied))):
+                failures.append((quality, name, found, scores, positions))
+            if args.highlight and boxes:
+                target = args.highlight / "tcy" / quality
+                target.mkdir(parents=True, exist_ok=True)
+                (target / f"{name}-ocr.pdf").write_bytes(output)
+                (target / f"{name}-expected.json").write_text(json.dumps(boxes, indent=1))
+            if args.artifacts:
+                target = args.artifacts / quality if len(qualities) > 1 else args.artifacts
+                target.mkdir(parents=True, exist_ok=True)
+                (target / f"{name}-scan.pdf").write_bytes(source)
+                (target / f"{name}-ocr.pdf").write_bytes(output)
+            result = f", minimum PDFium IoU {min(scores.values()):.2f}" if scores else ""
+            hits = sum(found[term] == 1 for term in boxes)
+            print(f"{quality} {name}: {hits}/{len(boxes)} digits, search and copy order{result}, {seconds:.2f} s", flush=True)
+            api.assert_clean()
+    return failures
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("image")
@@ -462,11 +511,20 @@ def main():
     parser.add_argument("--benchmark", action="store_true", help="上限ページ数の密な文書で応答時間を測る")
     parser.add_argument("--artifacts", type=Path, help="OCRの入力と出力のPDFを保存する")
     parser.add_argument("--highlight", type=Path, help="強調表示の実測用に、OCR出力PDFと元画像から求めた期待矩形を保存する")
+    parser.add_argument("--tcy-only", action="store_true", help="縦中横の試料だけを検証する")
     args = parser.parse_args()
     qualities = ("standard", "high") if args.quality == "both" else (args.quality,)
     assert (SEARCH / "node_modules/pdfjs-dist").is_dir(), "Run npm ci in scripts/ocr-search first."
     with tempfile.TemporaryDirectory(prefix="amane-ocr-search-") as temporary, smoke.running_container(args.image) as api:
         directory = Path(temporary)
+        font_path = directory / "BIZUDPGothic-Regular.ttf"
+        font_path.write_bytes(api.exec("cat", FONT).stdout)
+        pdfium_library = directory / "libpdfium.so"
+        pdfium_library.write_bytes(api.exec("cat", "/opt/amane-pdf/lib/libpdfium.so").stdout)
+        if args.tcy_only:
+            failures = validate_tcy(api, directory, qualities, font_path, pdfium_library, args)
+            assert not failures, failures
+            return
         horizontal = scan(api, directory, "horizontal", [
             {"page": 1, "x": 0.06, "y": round(0.08 + 0.05 * i, 2), "width": 0.9, "height": 0.04, "fontSize": 18,
              "align": "left", "text": text} for i, text in enumerate(LINES)])
@@ -482,10 +540,6 @@ def main():
         wrapped = scan(api, directory, "wrapped", [
             {"page": 1, "x": 0.08, "y": round(0.10 + 0.035 * i, 3), "width": 0.84, "height": 0.03, "fontSize": 20,
              "align": "left", "text": text} for i, text in enumerate(WRAPPED_LINES)])
-        font_path = directory / "BIZUDPGothic-Regular.ttf"
-        font_path.write_bytes(api.exec("cat", FONT).stdout)
-        pdfium_library = directory / "libpdfium.so"
-        pdfium_library.write_bytes(api.exec("cat", "/opt/amane-pdf/lib/libpdfium.so").stdout)
         invoice, table = invoice_scans(api, font_path)
         # Keep the ReportLab/PDFium raster from #134 fixed so CI sees the same 200 dpi JPEG.
         small_invoice = jpeg_pdf(api, (SEARCH / "fixtures/small-ruled-invoice.jpg").read_bytes())
@@ -596,6 +650,7 @@ def main():
                 if hits < minimum or any(found[term] == 0 for term in required) or joined:
                     failures.append((quality, name, found))
                 api.assert_clean()
+        failures.extend(validate_tcy(api, directory, qualities, font_path, pdfium_library, args))
         assert not failures, failures
         if args.benchmark:
             benchmark(api, directory, qualities)
