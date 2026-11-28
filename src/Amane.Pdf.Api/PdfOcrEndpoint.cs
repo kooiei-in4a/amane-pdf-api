@@ -92,8 +92,8 @@ internal static class PdfOcrEndpoint
         await qpdf.ValidateAsync(files, token);
         var source = Path.GetFullPath(files.InputPath);
         var update = job.PathFor("ocr-geometry.json");
-        var image = job.PathFor("ocr-page.png");
-        var corrected = job.PathFor("ocr-deskewed.png");
+        var image = Path.GetFullPath(job.PathFor("ocr-page.png"));
+        var corrected = Path.GetFullPath(job.PathFor("ocr-deskewed.png"));
         int count;
         int[] pages;
         int[] skippedPages;
@@ -143,7 +143,7 @@ internal static class PdfOcrEndpoint
                 raster.Width, raster.Height, imageBudget, []), token);
             job.Commit(image, imageBudget);
             var angle = vertical ? 0 :
-                OcrDeskew.TryCorrect(job, image, corrected, raster.Width, raster.Height, ImageLimit, token);
+                OcrDeskew.TryCorrect(job, image, corrected, raster.Width, raster.Height, ImageLimit, token, high);
             var recognitionImage = image;
             if (angle != 0)
             {

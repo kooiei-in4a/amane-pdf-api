@@ -6,18 +6,19 @@ internal static class OcrDeskew
     private const int Ink = 160;
     private const int EdgeInk = 232;
     private const int MaxAngle = 10;
-    private const double MinAngle = 0.8;
+    private const double MinStandardAngle = 0.8;
+    private const double MinHighAngle = 2.5;
     private const double MinImprovement = 1.2;
     private const double MinPeakRatio = 1.08;
 
     internal static double TryCorrect(PdfPageJob job, string source, string corrected,
-        int width, int height, long imageLimit, CancellationToken token)
+        int width, int height, long imageLimit, CancellationToken token, bool high = false)
     {
         var complete = false;
         try
         {
             var gray = OcrPageImage.ReadGrayscale(source, width, height, token);
-            var angle = Estimate(gray, width, height, token);
+            var angle = Estimate(gray, width, height, token, high);
             if (angle == 0) return 0;
 
             var rgb = OcrPageImage.ReadRgb(source, width, height, token);
@@ -37,7 +38,7 @@ internal static class OcrDeskew
     }
 
     // Positive angles slope down to the right in image coordinates.
-    internal static double Estimate(byte[] gray, int width, int height, CancellationToken token)
+    internal static double Estimate(byte[] gray, int width, int height, CancellationToken token, bool high = false)
     {
         var step = (Math.Max(width, height) + AnalysisSide - 1) / AnalysisSide;
         var columns = width / step;
@@ -53,10 +54,13 @@ internal static class OcrDeskew
             {
                 if (!HasInk(gray, width, column * step, row * step, step)) continue;
                 points.Add((column, row));
-                if (points.Count > sampleCount / 5) return 0;
+                if (points.Count > sampleCount / 3) return 0;
             }
         }
         if (points.Count < Math.Max(40, sampleCount / 500)) return 0;
+        // Dense text still has light paper between strokes. A broad dark or midtone region can
+        // dominate the projection on a photo or a page with a dark background.
+        if (points.Count > sampleCount / 5 && !HasLightBackground(gray, width, height, token)) return 0;
 
         // Distribute each ink sample between neighboring projected rows to avoid rounding peaks.
         var padding = (int)Math.Ceiling(columns * Math.Tan(Radians(MaxAngle))) + 1;
@@ -91,7 +95,10 @@ internal static class OcrDeskew
             if (Math.Abs((i - 2 * MaxAngle) * 0.5 - angle) >= 1.5)
                 otherPeak = Math.Max(otherPeak, scores[i]);
         }
-        if (Math.Abs(angle) < MinAngle || peak <= upright * MinImprovement || peak <= otherPeak * MinPeakRatio)
+        // Mild skew often reads correctly with tessdata-best. Resampling can change the
+        // segmentation or shape of those characters even when the estimated angle is sound.
+        var minAngle = high ? MinHighAngle : MinStandardAngle;
+        if (Math.Abs(angle) < minAngle || peak <= upright * MinImprovement || peak <= otherPeak * MinPeakRatio)
             return 0;
         return WouldClipInk(gray, width, height, angle, token) ? 0 : angle;
 
@@ -119,6 +126,34 @@ internal static class OcrDeskew
             }
             return score;
         }
+    }
+
+    private static bool HasLightBackground(byte[] gray, int width, int height, CancellationToken token)
+    {
+        const int tiles = 8;
+        const int samples = 8;
+        const int grid = tiles * samples;
+        const int light = 224;
+        var darkTiles = 0;
+        for (var tileY = 0; tileY < tiles; tileY++)
+        {
+            token.ThrowIfCancellationRequested();
+            for (var tileX = 0; tileX < tiles; tileX++)
+            {
+                var bright = 0;
+                for (var y = 0; y < samples; y++)
+                {
+                    var offset = (2 * (tileY * samples + y) + 1) * height / (2 * grid) * width;
+                    for (var x = 0; x < samples; x++)
+                    {
+                        var column = (2 * (tileX * samples + x) + 1) * width / (2 * grid);
+                        if (gray[offset + column] >= light) bright++;
+                    }
+                }
+                if (bright < samples * samples / 2 && ++darkTiles >= tiles) return false;
+            }
+        }
+        return true;
     }
 
     private static bool HasInk(byte[] gray, int width, int left, int top, int step)

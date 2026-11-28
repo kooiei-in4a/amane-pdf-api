@@ -1,9 +1,11 @@
+using System.Buffers.Binary;
 using System.Globalization;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -228,6 +230,54 @@ public sealed class PdfP3EndpointsTests
         if (!vertical)
             await AssertOcrTextMatchesForegroundAsync(await RenderWithPopplerAsync(Path.Combine(test.Root, "cropped.pdf")),
                 outputPath, 1);
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task OcrUsesRelativeTempRootForOriginalAndDeskewedImages(bool skewed)
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        options.TempRoot = Path.GetRelativePath(Directory.GetCurrentDirectory(), test.TempRoot);
+        Assert.IsFalse(Path.IsPathFullyQualified(options.TempRoot));
+
+        var scan = await ScanPageAsync(test, "relative-root", [
+            new { page = 1, x = 0.09m, y = 0.20m, width = 0.82m, height = 0.05m, fontSize = 19,
+                align = "left", text = "中央図書館の開館時間は午前九時からです。" },
+            new { page = 1, x = 0.09m, y = 0.27m, width = 0.82m, height = 0.05m, fontSize = 19,
+                align = "left", text = "返却ポストは正面入口の東側にあります。" },
+            new { page = 1, x = 0.09m, y = 0.34m, width = 0.82m, height = 0.05m, fontSize = 19,
+                align = "left", text = "休館日は毎月第三月曜日です。" }
+        ]);
+        if (skewed)
+        {
+            var png = await RenderPngAsync(test, scan, 200);
+            var width = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(16));
+            var height = BinaryPrimitives.ReadInt32BigEndian(png.AsSpan(20));
+            var original = Path.Combine(test.Root, "relative-original.png");
+            await File.WriteAllBytesAsync(original, png);
+            var rgb = OcrPageImage.ReadRgb(original, width, height, default);
+            using var rotatedPng = new MemoryStream();
+            OcrDeskew.WriteCorrected(rotatedPng, rgb, width, height, -5, default);
+            using var images = new MultipartFormDataContent();
+            images.Add(new ByteArrayContent(rotatedPng.ToArray()), "file", "tilted.png");
+            using var rotated = await test.Client.PostAsync("/api/pdf/from-images?quality=original", images);
+            Assert.AreEqual(HttpStatusCode.OK, rotated.StatusCode);
+            scan = await rotated.Content.ReadAsByteArrayAsync();
+        }
+
+        var result = await PostPdfAsync(test, Horizontal, scan, "ocr.pdf");
+        var path = Path.Combine(test.Root, "relative-ocr.pdf");
+        await File.WriteAllBytesAsync(path, result);
+        Assert.Contains("開館時間", Normalize(await ExtractTextAsync(path, "-raw")));
+        var qdf = Path.Combine(test.Root, "relative-ocr-qdf.pdf");
+        Assert.AreEqual(0, (await test.QpdfAsync("--qdf", "--object-streams=disable", path, qdf)).ExitCode);
+        Assert.AreEqual(skewed, Regex.IsMatch(await File.ReadAllTextAsync(qdf),
+            @"q 0\.\d+ -?0\.\d+ -?0\.\d+ 0\.\d+ [-\d.]+ [-\d.]+ cm
+BT"));
         test.AssertClean();
     }
 

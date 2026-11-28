@@ -109,7 +109,7 @@ def transformed_box(box, angle, perspective):
 
 
 def generate(font_path, matrix=False):
-    selected = {"tilt-2", "tilt-minus-5", "perspective"}
+    selected = {"tilt-2", "tilt-3", "tilt-minus-5", "perspective"}
     for kind in ("text", "form"):
         original_page, truth, boxes, fields, row_pairs, terms, absent = original(kind, font_path)
         for variant, angle, perspective, blur in MATRIX_CASES:

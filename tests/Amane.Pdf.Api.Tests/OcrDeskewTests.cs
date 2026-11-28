@@ -19,6 +19,38 @@ public sealed class OcrDeskewTests
         => Assert.AreEqual(skew, OcrDeskew.Estimate(Page(skew), Width, Height, default), 0.2);
 
     [TestMethod]
+    [DataRow(2.0, 0.0)]
+    [DataRow(-2.0, 0.0)]
+    [DataRow(3.0, 3.0)]
+    [DataRow(-3.0, -3.0)]
+    public void HighQualitySkipsMildSkewWithoutChangingStandard(double skew, double expected)
+    {
+        var gray = Page(skew);
+        Assert.AreEqual(skew, OcrDeskew.Estimate(gray, Width, Height, default), 0.2);
+        Assert.AreEqual(expected, OcrDeskew.Estimate(gray, Width, Height, default, high: true),
+            expected == 0 ? 0 : 0.2);
+    }
+
+    [TestMethod]
+    [DataRow(5.0)]
+    [DataRow(-5.0)]
+    public void EstimateAcceptsDenseTextOnLightPaper(double skew)
+    {
+        var gray = new byte[Width * Height];
+        Array.Fill(gray, (byte)255);
+        var slope = Math.Tan(skew * Math.PI / 180);
+        for (var x = 60; x < Width - 60; x++)
+        {
+            if (x % 22 >= 15) continue;
+            var shift = (int)Math.Round(slope * (x - Width / 2));
+            for (var row = 105; row < Height - 105; row += 25)
+                for (var y = row + shift; y < row + shift + 12; y++)
+                    gray[y * Width + x] = 0;
+        }
+        Assert.AreEqual(skew, OcrDeskew.Estimate(gray, Width, Height, default), 0.2);
+    }
+
+    [TestMethod]
     [DataRow(0.0)]
     [DataRow(0.25)]
     [DataRow(0.5)]
