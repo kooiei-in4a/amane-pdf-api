@@ -672,9 +672,60 @@ public sealed class PdfP3EndpointsTests
         expected.AddRange(["-c", "tessedit_create_pdf=1", "-c", "tessedit_create_tsv=1"]);
         if (direction == "horizontal") expected.AddRange(["-c", "tessedit_create_hocr=1"]);
         expected.AddRange(["-c", "thresholding_method=2"]);
-        if (quality != "&quality=high" && direction == "horizontal")
+        if (direction == "horizontal")
             expected.AddRange(["-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"]);
         CollectionAssert.AreEqual(expected, File.ReadAllLines(invocations).Skip(2).ToArray());
+        test.AssertClean();
+    }
+
+    [TestMethod]
+    public async Task OcrHighHorizontalRetryForHalfTurnUsesHorizontalSauvola()
+    {
+        if (!OperatingSystem.IsLinux()) return;
+        await using var test = new PdfTestContext();
+        var scanned = await ScanAsync(test, vertical: false);
+        var options = test.Factory.Services.GetRequiredService<IOptions<PdfOptions>>().Value;
+        var originalTool = options.TesseractPath;
+        using var scripts = new OverlayJob();
+        var initialRecognition = Path.Combine(scripts.Root, "initial-recognition");
+        var retryArguments = Path.Combine(scripts.Root, "retry-arguments");
+        var lowConfidence = Path.Combine(scripts.Root, "low-confidence.tsv");
+        options.TesseractPath = scripts.Script($$"""
+            case " $* " in
+                *" --psm 0 "*)
+                    printf 'Orientation in degrees: 180\nOrientation confidence: 6.22\n'
+                    exit 0
+                    ;;
+            esac
+            if [ -f '{{initialRecognition}}' ]; then
+                printf '%s\n' "$@" >> '{{retryArguments}}'
+                exit 1
+            fi
+            touch '{{initialRecognition}}'
+            '{{originalTool}}' "$@" || exit $?
+            awk 'BEGIN { FS = OFS = "\t" } $1 == 5 { $11 = 40 } { print }' "$2.tsv" > '{{lowConfidence}}' || exit $?
+            mv '{{lowConfidence}}' "$2.tsv"
+            """);
+        byte[] output;
+        try
+        {
+            output = await PostPdfAsync(test, Horizontal + "&quality=high" + ForceOcr, scanned, "ocr.pdf");
+        }
+        finally
+        {
+            options.TesseractPath = originalTool;
+        }
+
+        Assert.IsTrue(File.Exists(retryArguments), "Low confidence and a 180-degree OSD result must trigger a retry.");
+        string[] expected = [
+            "-l", "jpn", "--psm", "1", "--dpi", "300", "-c", "textonly_pdf=1",
+            "--tessdata-dir", options.TessdataBestDir, "-c", "tessedit_create_pdf=0",
+            "-c", "tessedit_create_tsv=1", "-c", "tessedit_create_hocr=1",
+            "-c", "thresholding_method=2", "-c", "thresholding_window_size=0.33",
+            "-c", "thresholding_kfactor=0.32", "-c", "min_orientation_margin=0"
+        ];
+        CollectionAssert.AreEqual(expected, File.ReadAllLines(retryArguments).Skip(2).ToArray());
+        await test.AssertValidPdfAsync(output, 1);
         test.AssertClean();
     }
 

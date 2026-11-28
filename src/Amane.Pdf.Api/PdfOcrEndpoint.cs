@@ -16,7 +16,8 @@ internal static class PdfOcrEndpoint
     private const string Failure = "PDFのOCR処理に失敗しました。";
     // Tesseract's word confidence ranges from 0 to 100.
     private const double LowWordConfidence = 50;
-    private static readonly string[] StandardSauvola = ["-c", "thresholding_method=2",
+    // The native Sauvola kfactor of 0.34 can fragment faint horizontal text.
+    private static readonly string[] HorizontalSauvola = ["-c", "thresholding_method=2",
         "-c", "thresholding_window_size=0.33", "-c", "thresholding_kfactor=0.32"];
     private const string Horizontal = "jpn";
     private const string Vertical = "jpn_vert";
@@ -225,13 +226,12 @@ internal static class PdfOcrEndpoint
         var dpi = raster.Dpi.ToString(CultureInfo.InvariantCulture);
         var directory = Path.GetFullPath(files.DirectoryPath);
         string[] tessdata = high ? ["--tessdata-dir", settings.TessdataBestDir] : [];
-        string[] sauvola = ["-c", "thresholding_method=2"];
-        if (vertical) return (await RecognizeAsync(sauvola)).Lines;
+        if (vertical) return (await RecognizeAsync(["-c", "thresholding_method=2"])).Lines;
         if (high)
         {
-            var first = await RecognizeAsync(sauvola);
+            var first = await RecognizeAsync(HorizontalSauvola);
             if (first.Rotated || first.Confidence is not < LowWordConfidence ||
-                await DetectOrientationAsync(settings, image, directory, dpi, StandardSauvola, token)
+                await DetectOrientationAsync(settings, image, directory, dpi, HorizontalSauvola, token)
                     is not { Degrees: 180, Confidence: > 0 })
                 return first.Lines;
 
@@ -239,7 +239,7 @@ internal static class PdfOcrEndpoint
             // keeping the existing PDF's page geometry and GlyphLessFont for either result.
             try
             {
-                var turned = await RecognizeAsync([.. sauvola, "-c", "min_orientation_margin=0"], writePdf: false);
+                var turned = await RecognizeAsync([.. HorizontalSauvola, "-c", "min_orientation_margin=0"], writePdf: false);
                 if (turned.Confidence is >= LowWordConfidence &&
                     turned.Lines.All(line => line.Words.Count == 0 || line.Angle == 180))
                     return turned.Lines;
@@ -258,19 +258,19 @@ internal static class PdfOcrEndpoint
 
         var useAdaptiveOtsu = OcrPageImage.SelectBinarization(image, raster.Width, raster.Height, token) ==
             OcrBinarization.AdaptiveOtsu &&
-            await DetectOrientationAsync(settings, image, directory, dpi, StandardSauvola, token)
+            await DetectOrientationAsync(settings, image, directory, dpi, HorizontalSauvola, token)
                 is { IsConfidentlyUpright: true };
 
         var (lines, rotated, _) = useAdaptiveOtsu
             ? await RecognizeAsync(["-c", "thresholding_method=1", "-c", "thresholding_tile_size=0.5",
                 "-c", "thresholding_smooth_kernel_size=0.03", "-c", "thresholding_score_fraction=0"])
-            : await RecognizeAsync(StandardSauvola);
+            : await RecognizeAsync(HorizontalSauvola);
         var hasWords = lines.Any(line => line.Words.Count > 0);
         if (hasWords && !(useAdaptiveOtsu && rotated)) return lines;
 
         // Free the first output before retrying under the same request deadline and job budget.
         job.Delete(layer);
-        string[] retry = hasWords ? StandardSauvola : ["-c", "thresholding_method=2", "-c",
+        string[] retry = hasWords ? HorizontalSauvola : ["-c", "thresholding_method=2", "-c",
             "thresholding_window_size=0.2", "-c", "thresholding_kfactor=0.3"];
         return (await RecognizeAsync(retry)).Lines;
 
