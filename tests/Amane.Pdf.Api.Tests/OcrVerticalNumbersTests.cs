@@ -49,6 +49,32 @@ public sealed class OcrVerticalNumbersTests
     }
 
     [TestMethod]
+    [DataRow("い")]
+    [DataRow("ハ")]
+    public void KeepsAnAmbiguousJapaneseGlyphWhenTheRetryReadsOnlyOnes(string text)
+    {
+        using var job = new OverlayJob();
+        var png = WritePage(job.Root, 128, 100, [30]);
+        List<OcrTextLayer.Line> original = [new(20, 10, 24, 65, [new(20, 30, 24, 18, text, 35)])];
+        var page = OcrVerticalNumbers.Find(png, 128, 100, original, true, default);
+        Assert.IsNotNull(page);
+        Assert.AreSame(original, page.Apply(original, BatchResult("11")));
+    }
+
+    [TestMethod]
+    [DataRow("1")]
+    [DataRow("１")]
+    public void CanRecoverASecondOneWhenThePrimaryOcrFoundOne(string text)
+    {
+        using var job = new OverlayJob();
+        var png = WritePage(job.Root, 128, 100, [30]);
+        List<OcrTextLayer.Line> original = [new(20, 10, 24, 65, [new(20, 30, 24, 18, text, 35)])];
+        var page = OcrVerticalNumbers.Find(png, 128, 100, original, true, default);
+        Assert.IsNotNull(page);
+        Assert.AreEqual("11", page.Apply(original, BatchResult("11")).Single().Words.Single().Text);
+    }
+
+    [TestMethod]
     public void SkipsConfidentJapaneseAndHorizontalRecognition()
     {
         using var job = new OverlayJob();

@@ -193,6 +193,10 @@ internal sealed class OcrVerticalNumbers
             var number = string.Concat(word.Text.Select(NormalizeDigit));
             var candidate = candidates[i];
             if (number.Length != candidate.Cell.DigitBands || !number.All(char.IsAsciiDigit)) continue;
+            // Separate upright strokes can be kana or kanji. The digit-only retry cannot
+            // distinguish them from a run of ones without evidence in the primary OCR.
+            var primary = original[candidate.Line].Words[candidate.Word];
+            if (number.All(c => c == '1') && !primary.Text.Any(c => c is '1' or '１')) continue;
             var top = i * pitch + margin;
             if (word.Top >= top + Scale(candidate.Cell.Height) || word.Top + word.Height <= top) continue;
             if (!edits.TryGetValue(candidate.Line, out var changes)) edits.Add(candidate.Line, changes = []);

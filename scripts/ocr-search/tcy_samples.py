@@ -1,8 +1,9 @@
 """縦中横の字面と検索語の正解位置を持つ合成試料（Issue #155）。"""
 import math
+import random
 import re
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 SIZE = (2480, 3508)
@@ -14,6 +15,49 @@ CASES = {
                        ["下の池には鳥が38羽います。", "水辺には草が生えています。"]], None, None),
     "tcy-negative": ([["花が１輪咲きました。", "小鳥が三羽遊んでいます。"]], None, None),
 }
+
+
+BAND_GLYPHS = "いりけにハル川八小州什"
+BAND_COLUMNS = (
+    "小さな川のそばに八つの灯りがともり、けむりが流れた。",
+    "古い小屋に入り、八枚の札からハとルの印を見つけた。",
+    "州境の川べりに什器を運び、岩の陰に小さな旗を立てた。",
+    "広い川には小舟があり、八本の柱に細い糸をかけていた。",
+    "明け方に小雨が降り、川沿いの什器に白い布をかけた。",
+)
+
+
+def band_controls(font_path):
+    # Each entry in glyphs identifies the source glyph and its cell on the scan.
+    font = ImageFont.truetype(str(font_path), 76)
+    clean = Image.new("L", SIZE, 255)
+    draw = ImageDraw.Draw(clean)
+    glyphs = []
+    for column, text in enumerate(BAND_COLUMNS):
+        x = 2020 - column * 125
+        for row, glyph in enumerate(text):
+            y = 480 + row * 92
+            draw.text((x, y), glyph, fill=0, font=font, anchor="lt")
+            if glyph in BAND_GLYPHS:
+                glyphs.append((glyph, x, y))
+    yield "tcy-bands-clean", clean, glyphs
+
+    # Thin portions of strokes can disappear in a scan while leaving parallel strokes.
+    for streaked in (False, True):
+        rng = random.Random(158 if streaked else 156)
+        blurred = clean.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.GaussianBlur(2.25 if streaked else 1.25))
+        draw = ImageDraw.Draw(blurred)
+        for _, x, y in glyphs:
+            cut = rng.randrange(12, 47)
+            left = x + rng.randrange(2, 36)
+            if streaked:
+                draw.rectangle((left, y + 10, left + 14, y + 59), fill=224)
+            else:
+                draw.rectangle((left, y + cut, left + 27, y + cut + 9), fill=248)
+        for _ in range(400 if streaked else 200):
+            x, y = rng.randrange(1470, 2130), rng.randrange(470, 3060)
+            draw.ellipse((x, y, x + 2, y + 2), fill=rng.randrange(100, 230))
+        yield ("tcy-bands-streaked" if streaked else "tcy-bands-faded"), blurred, glyphs
 
 
 def samples(api, font_path, image_pdf):
@@ -52,6 +96,8 @@ def samples(api, font_path, image_pdf):
         if name == "tcy-negative":
             phrases = ["花が1輪", "小鳥が三羽"]
         yield name, image_pdf(api, image, 300, 95), numbers, phrases
+    for name, image, _ in band_controls(font_path):
+        yield name, image_pdf(api, image, 300, 95), {}, []
 
 
 def expected_boxes(mask, numbers):
